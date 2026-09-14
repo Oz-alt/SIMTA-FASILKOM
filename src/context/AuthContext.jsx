@@ -748,6 +748,21 @@ export function AuthProvider({ children }) {
     return updatedObj;
   };
 
+  const getAllRegisteredStudents = () => {
+    const localReg = getRegisteredUsers();
+    const mockMhs = MOCK_USERS.filter(u => u.role === 'mahasiswa');
+    const mapByNim = new Map();
+    [...localReg, ...mockMhs].forEach(u => {
+      if (u && u.nim) {
+        const cleanNim = String(u.nim).trim();
+        if (cleanNim) {
+          mapByNim.set(cleanNim, u);
+        }
+      }
+    });
+    return Array.from(mapByNim.values());
+  };
+
   return (
     <AuthContext.Provider value={{
       currentUser,
@@ -758,6 +773,7 @@ export function AuthProvider({ children }) {
       logout,
       registerStudent,
       switchRole,
+      getAllRegisteredStudents,
       thesisTitles,
       historicalTitles,
       thesisStages,

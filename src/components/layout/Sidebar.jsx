@@ -18,6 +18,7 @@ import {
   Globe,
   Settings,
   User,
+  UserCheck,
   LogOut,
   ChevronDown,
   Printer
@@ -134,6 +135,7 @@ export default function Sidebar() {
               icon: Database,
               items: [
                 { to: '/thesis/archive', label: 'Arsip Tugas Akhir', icon: BookOpen },
+                { to: '/kaprodi/check-accounts', label: 'Cek Akun Mahasiswa', icon: UserCheck },
                 { to: '/kaprodi/repository/review', label: 'Verifikasi Repositori TA', icon: FileCheck },
                 { to: '/kaprodi/import', label: 'Bulk Import Historis', icon: UploadCloud },
                 { to: '/kaprodi/analytics', label: 'Analitik & Tren Topik', icon: BarChart3 }

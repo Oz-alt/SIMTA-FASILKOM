@@ -9,6 +9,7 @@ import {
   BarChart3, 
   ArrowRight, 
   Users, 
+  UserCheck,
   CheckCircle2, 
   Building2 
 } from 'lucide-react';
@@ -34,7 +35,7 @@ export default function DashboardKaprodi() {
       </div>
 
       {/* Metrics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         
         <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs space-y-1">
           <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Menunggu Tinjauan</div>
@@ -62,6 +63,18 @@ export default function DashboardKaprodi() {
           </div>
           <p className="text-[11px] text-slate-500">Jadwal seminar/sidang telah disetujui</p>
         </div>
+
+        <Link to="/kaprodi/check-accounts" className="bg-gradient-to-br from-indigo-50 to-indigo-100/60 border border-indigo-200 rounded-xl p-5 shadow-2xs space-y-1 hover:border-indigo-400 hover:shadow-md transition-all group block">
+          <div className="text-xs font-bold text-indigo-700 uppercase tracking-wider flex items-center justify-between">
+            <span>Cek Akun Mahasiswa</span>
+            <UserCheck className="w-5 h-5 text-indigo-600 group-hover:scale-110 transition-transform" />
+          </div>
+          <div className="text-sm font-bold text-slate-900 pt-1">Audit NIM Excel/PDF</div>
+          <p className="text-[11px] text-indigo-600/80 font-medium flex items-center space-x-1">
+            <span>Periksa status registrasi</span>
+            <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+          </p>
+        </Link>
 
       </div>
 

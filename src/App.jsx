@@ -23,6 +23,7 @@ import TinjauJudulPage from './pages/kaprodi/TinjauJudulPage.jsx';
 import TinjauRepositoryKaprodi from './pages/kaprodi/TinjauRepositoryKaprodi.jsx';
 import BulkImportPage from './pages/kaprodi/BulkImportPage.jsx';
 import AnalitikPage from './pages/kaprodi/AnalitikPage.jsx';
+import CekAkunMahasiswaPage from './pages/kaprodi/CekAkunMahasiswaPage.jsx';
 
 import DashboardAdmin from './pages/admin/DashboardAdmin.jsx';
 import KelolaPeminjamanPage from './pages/admin/KelolaPeminjamanPage.jsx';
@@ -69,6 +70,7 @@ export default function App() {
               <Route path="/kaprodi/titles" element={<TinjauJudulPage />} />
               <Route path="/kaprodi/repository/review" element={<TinjauRepositoryKaprodi />} />
               <Route path="/kaprodi/import" element={<BulkImportPage />} />
+              <Route path="/kaprodi/check-accounts" element={<CekAkunMahasiswaPage />} />
               <Route path="/kaprodi/analytics" element={<AnalitikPage />} />
 
               {/* Admin Sarana Routes */}
