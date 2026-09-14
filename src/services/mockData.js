@@ -1,0 +1,455 @@
+/**
+ * SIMTA Mock Initial State & Sample Historical Records
+ * D3 Manajemen Informatika UNSRI Dataset
+ */
+
+export const MOCK_USERS = [
+  {
+    id: 'user-mhs-1',
+    nim: '09031182328001',
+    nama: 'Ahmad Rizky Pratama',
+    role: 'mahasiswa',
+    kelas: 'MI 5A',
+    email: 'rizky.mhs@unsri.ac.id',
+    no_hp: '081278901234',
+    department_id: 'dept-mi-1'
+  },
+  {
+    id: 'user-mhs-2',
+    nim: '09031182328002',
+    nama: 'Siti Sarah Rahmawati',
+    role: 'mahasiswa',
+    kelas: 'MI 5B',
+    email: 'sarah.mhs@unsri.ac.id',
+    no_hp: '081367891200',
+    department_id: 'dept-mi-1'
+  },
+  {
+    id: 'user-kaprodi',
+    nim: '197805122005011002',
+    nama: 'Dr. Ir. Hendra Kusuma, M.T.',
+    role: 'kaprodi',
+    email: 'kaprodi.mi@unsri.ac.id',
+    department_id: 'dept-mi-1'
+  },
+  {
+    id: 'user-admin-sarana',
+    nim: '198509152010121004',
+    nama: 'Budi Santoso, S.Kom. (Admin Ruang)',
+    role: 'admin_sarana',
+    email: 'sarana.fasilkom@unsri.ac.id',
+    department_id: 'dept-mi-1'
+  }
+];
+
+export const MOCK_DEPARTMENTS = [
+  { id: 'dept-mi-1', name: 'D3 Manajemen Informatika', code: 'MI' },
+  { id: 'dept-ti-1', name: 'S1 Teknik Informatika', code: 'TI' }
+];
+
+export const MOCK_BUILDINGS = [
+  { id: 'bld-1', code: 'DIPKOM', name: 'Gedung Diploma Komputer (DIPKOM)', description: 'Gedung Utama D3 MI Kampus Palembang' },
+  { id: 'bld-2', code: 'DIKLAT', name: 'Gedung Diklat Fasilkom', description: 'Gedung Ruang Sidang Utama Fasilkom' }
+];
+
+export const MOCK_ROOMS = [
+  {
+    id: 'room-1',
+    building_id: 'bld-1',
+    name: 'Ruang Sidang Utama DIPKOM',
+    code: 'RS-DIPKOM-01',
+    capacity: 25,
+    facilities: ['AC', 'Proyektor Ultra HD', 'Sound System', 'Whiteboard', 'Meja Penguji Oval'],
+    status: 'aktif'
+  },
+  {
+    id: 'room-2',
+    building_id: 'bld-1',
+    name: 'Ruang Seminar DIPKOM Lt. 2',
+    code: 'RS-DIPKOM-02',
+    capacity: 35,
+    facilities: ['AC', 'Proyektor', 'Whiteboard', 'Podium'],
+    status: 'aktif'
+  },
+  {
+    id: 'room-3',
+    building_id: 'bld-2',
+    name: 'Ruang Sidang Diklat A',
+    code: 'RS-DIKLAT-A',
+    capacity: 30,
+    facilities: ['AC', 'Smart TV 75 inch', 'Sound System', 'Whiteboard'],
+    status: 'aktif'
+  },
+  {
+    id: 'room-4',
+    building_id: 'bld-2',
+    name: 'Ruang Sidang Diklat B',
+    code: 'RS-DIKLAT-B',
+    capacity: 20,
+    facilities: ['AC', 'Proyektor'],
+    status: 'maintenance'
+  }
+];
+
+export const MOCK_ROOM_PRIORITIES = [
+  // Seminar Proposal Priorities for MI
+  { id: 'prio-1', department_id: 'dept-mi-1', room_id: 'room-1', stage_type: 'seminar_proposal', priority_order: 1 },
+  { id: 'prio-2', department_id: 'dept-mi-1', room_id: 'room-2', stage_type: 'seminar_proposal', priority_order: 2 },
+  { id: 'prio-3', department_id: 'dept-mi-1', room_id: 'room-3', stage_type: 'seminar_proposal', priority_order: 3 },
+  // Sidang Akhir Priorities for MI
+  { id: 'prio-4', department_id: 'dept-mi-1', room_id: 'room-1', stage_type: 'sidang_akhir', priority_order: 1 },
+  { id: 'prio-5', department_id: 'dept-mi-1', room_id: 'room-3', stage_type: 'sidang_akhir', priority_order: 2 }
+];
+
+export const MOCK_HISTORICAL_TITLES = [
+  {
+    id: 'hist-1',
+    judul: 'Sistem Informasi Pendataan Alumni Berbasis Web pada D3 Manajemen Informatika UNSRI',
+    judul_processed: 'pendataan alumni',
+    tahun_angkatan: '2023',
+    penulis: 'Rizky Kurniawan'
+  },
+  {
+    id: 'hist-2',
+    judul: 'Rancang Bangun Aplikasi Peminjaman Inventaris Laboratorium Komputer Berbasis Mobile',
+    judul_processed: 'peminjaman inventaris laboratorium komputer',
+    tahun_angkatan: '2024',
+    penulis: 'Dian Permata'
+  },
+  {
+    id: 'hist-3',
+    judul: 'Sistem Informasi Pengolahan Data Nilai Mahasiswa Berbasis Web dengan Framework Laravel',
+    judul_processed: 'pengolahan nilai mahasiswa framework laravel',
+    tahun_angkatan: '2023',
+    penulis: 'Fajar Nugraha'
+  },
+  {
+    id: 'hist-4',
+    judul: 'Pengembangan Portal Tugas Akhir dan Penjadwalan Ruang Sidang Fasilkom',
+    judul_processed: 'portal tugas akhir penjadwalan ruang sidang fasilkom',
+    tahun_angkatan: '2024',
+    penulis: 'Bagus Setyo'
+  },
+  {
+    id: 'hist-5',
+    judul: 'Aplikasi Absensi Perkuliahan Menggunakan QR Code Berbasis Android',
+    judul_processed: 'absensi perkuliahan qr code android',
+    tahun_angkatan: '2022',
+    penulis: 'Bambang Tri'
+  }
+];
+
+export const MOCK_THESIS_TITLES = [
+  {
+    id: 'title-101',
+    profile_id: 'user-mhs-1',
+    judul: 'Sistem Informasi Manajemen Tugas Akhir dan Peminjaman Ruang Sidang Terpadu (SIMTA)',
+    deskripsi: 'Aplikasi portal terpadu untuk pengajuan judul TA dengan similarity check engine serta penjadwalan otomatis ruang sidang berdasarkan prioritas jurusan.',
+    judul_processed: 'penjadwalan ruang sidang',
+    status: 'disetujui',
+    skor_kemiripan_terakhir: 28.5,
+    created_at: '2026-08-15T09:00:00Z',
+    updated_at: '2026-08-16T14:30:00Z',
+    mhs_nama: 'Ahmad Rizky Pratama',
+    mhs_nim: '09031182328001',
+    mhs_kelas: 'MI 5A',
+    pembimbing_1: 'Dr. Ir. Hendra Kusuma, M.T.',
+    pembimbing_2: 'Siti Nurhaliza, S.Kom., M.Kom.'
+  },
+  {
+    id: 'title-102',
+    profile_id: 'user-mhs-2',
+    judul: 'Rancang Bangun Sistem Informasi Pendataan Alumni dan Tracert Study D3 MI',
+    deskripsi: 'Sistem web portal untuk melacak jejak alumni dan survei kepuasan penggunan lulusan.',
+    judul_processed: 'pendataan alumni tracert study',
+    status: 'diajukan',
+    skor_kemiripan_terakhir: 58.0,
+    created_at: '2026-09-01T10:15:00Z',
+    updated_at: '2026-09-01T10:15:00Z',
+    mhs_nama: 'Siti Sarah Rahmawati',
+    mhs_nim: '09031182328002',
+    mhs_kelas: 'MI 5B',
+    pembimbing_1: 'Dr. Ir. Hendra Kusuma, M.T.',
+    pembimbing_2: 'Prof. Dr. Ir. Ahmad Zaki, M.Sc.'
+  }
+];
+
+export const MOCK_THESIS_STAGES = [
+  {
+    id: 'stage-1',
+    thesis_title_id: 'title-101',
+    stage_type: 'seminar_proposal',
+    status: 'disetujui',
+    urutan: 1
+  },
+  {
+    id: 'stage-2',
+    thesis_title_id: 'title-101',
+    stage_type: 'seminar_hasil',
+    status: 'menunggu_jadwal',
+    urutan: 2
+  },
+  {
+    id: 'stage-3',
+    thesis_title_id: 'title-101',
+    stage_type: 'sidang_akhir',
+    status: 'belum_diajukan',
+    urutan: 3
+  }
+];
+
+export const MOCK_BOOKINGS = [
+  {
+    id: 'book-1',
+    booking_code: 'BK-2026-0901',
+    thesis_stage_id: 'stage-1',
+    room_id: 'room-1',
+    booking_date: '2026-09-12',
+    start_time: '09:00',
+    end_time: '11:00',
+    purpose: 'Seminar Proposal - Ahmad Rizky Pratama',
+    status: 'disetujui',
+    rejection_reason: null,
+    approved_by: 'Budi Santoso, S.Kom.',
+    room_name: 'Ruang Sidang Utama DIPKOM',
+    building_code: 'DIPKOM',
+    mhs_nama: 'Ahmad Rizky Pratama',
+    mhs_nim: '09031182328001',
+    judul_ta: 'Sistem Informasi Manajemen Tugas Akhir dan Peminjaman Ruang Sidang Terpadu (SIMTA)',
+    stage_label: 'Seminar Proposal'
+  }
+];
+
+export const MOCK_NOTIFICATIONS = [
+  {
+    id: 'notif-1',
+    profile_id: 'user-mhs-1',
+    related_type: 'thesis_title',
+    title: 'Judul TA Disetujui!',
+    message: 'Selamat! Judul TA Anda telah disetujui Kaprodi. Tombol Pengajuan Ruang Seminar Proposal kini sudah aktif.',
+    is_read: false,
+    created_at: '2026-08-16T14:30:00Z'
+  },
+  {
+    id: 'notif-2',
+    profile_id: 'user-mhs-1',
+    related_type: 'booking',
+    title: 'Peminjaman Ruangan Disetujui',
+    message: 'Peminjaman Ruang Sidang Utama DIPKOM untuk Seminar Proposal pada 12 Sep 2026 (09:00 - 11:00) telah disetujui Admin Sarana.',
+    is_read: true,
+    created_at: '2026-09-02T11:00:00Z'
+  }
+];
+
+export const MOCK_THESIS_ARCHIVES = [
+  {
+    id: 'arc-2025-001',
+    judul: 'Rancang Bangun Sistem Informasi Monitoring Presensi Mahasiswa Berbasis Geolocation dan QR-Code Dynamic pada FASILKOM UNSRI',
+    abstrak: 'Penelitian ini bertujuan untuk mengembangkan sistem informasi monitoring presensi mahasiswa berbasis lokasi geofencing dan kode QR dinamis untuk mencegah kecurangan absensi pada perkuliahan FASILKOM UNSRI. Sistem dibangun menggunakan arsitektur web modern dengan teknologi Supabase backend dan React JS.',
+    abstrak_en: 'This research aims to develop a student attendance monitoring information system based on geofencing location and dynamic QR codes to prevent attendance fraud in FASILKOM UNSRI lectures. The system was built using a modern web architecture with Supabase backend and React JS.',
+    penulis_nama: 'Muhammad Farhan',
+    penulis_nim: '09011282126044',
+    prodi: 'S1 Teknik Informatika',
+    kelas: 'TI 5A',
+    tahun_angkatan: '2021',
+    tahun_lulus: '2025',
+    pembimbing_1: 'Dr. Ir. Hendra Kusuma, M.T. (NIP. 197805122005011002)',
+    pembimbing_2: 'Siti Nurhaliza, S.Kom., M.Kom. (NIP. 198804102015042001)',
+    penguji_1: 'Prof. Dr. Ir. Ahmad Zaki, M.Sc.',
+    penguji_2: 'Rina Kartika, S.T., M.T.',
+    kata_kunci: ['Geolocation', 'QR Code', 'ReactJS', 'Supabase', 'Presensi'],
+    file_pdf_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+    status: 'dipublikasikan',
+    created_at: '2025-07-20T10:00:00Z'
+  },
+  {
+    id: 'arc-2025-002',
+    judul: 'Aplikasi Inventarisasi dan Reservasi Fasilitas Laboratorium Komputer Menggunakan Algoritma First-Come First-Served',
+    abstrak: 'Tugas akhir ini memuat perancangan aplikasi inventarisasi sarana prasarana serta peminjaman fasilitas laboratorium berbasis web. Sistem mengimplementasikan alokasi jadwal peminjaman secara transparan untuk menghindari bentrok penggunaan laboratorium.',
+    abstrak_en: 'This final project contains the design of an inventory application for infrastructure facilities and laboratory reservations based on the web. The system implements transparent scheduling to avoid collisions.',
+    penulis_nama: 'Anisa Putri Maharani',
+    penulis_nim: '09031182126012',
+    prodi: 'D3 Manajemen Informatika',
+    kelas: 'MI 5B',
+    tahun_angkatan: '2022',
+    tahun_lulus: '2025',
+    pembimbing_1: 'Budi Santoso, S.Kom., M.Kom. (NIP. 198509152010121004)',
+    pembimbing_2: 'Dr. Endang Sulastri, M.Si. (NIP. 198002152008012003)',
+    penguji_1: 'Dr. Ir. Hendra Kusuma, M.T.',
+    penguji_2: 'Bambang Irawan, S.Kom., M.T.',
+    kata_kunci: ['Inventaris', 'Reservasi Lab', 'FCFS', 'Manajemen Informatika'],
+    file_pdf_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+    status: 'dipublikasikan',
+    created_at: '2025-08-15T09:30:00Z'
+  },
+  {
+    id: 'arc-2024-003',
+    judul: 'Implementasi Machine Learning untuk Pengelompokan Minat Topik Tugas Akhir Mahasiswa Menggunakan Algoritma K-Means Clustering',
+    abstrak: 'Studi ini menerapkan algoritma K-Means Clustering untuk menganalisis tren minat topik tugas akhir mahasiswa FASILKOM UNSRI dari kumpulan judul karya ilmiah lima tahun terakhir.',
+    abstrak_en: 'This study applies K-Means Clustering algorithm to analyze the trend of student final project topic interests in FASILKOM UNSRI from the last five years scientific publications.',
+    penulis_nama: 'Rizky Pratama Wijaya',
+    penulis_nim: '09011182025033',
+    prodi: 'S1 Teknik Informatika',
+    kelas: 'TI 7A',
+    tahun_angkatan: '2020',
+    tahun_lulus: '2024',
+    pembimbing_1: 'Prof. Dr. Ir. Ahmad Zaki, M.Sc. (NIP. 197001011995031001)',
+    pembimbing_2: 'Siti Nurhaliza, S.Kom., M.Kom. (NIP. 198804102015042001)',
+    penguji_1: 'Dr. Ir. Hendra Kusuma, M.T.',
+    penguji_2: 'Dr. Endang Sulastri, M.Si.',
+    kata_kunci: ['Machine Learning', 'K-Means', 'Clustering', 'Teknik Informatika'],
+    file_pdf_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+    status: 'dipublikasikan',
+    created_at: '2024-12-10T14:15:00Z'
+  }
+];
+
+export const MOCK_THESIS_REPOSITORIES = [
+  {
+    id: 'repo-2026-001',
+    judul: 'Sistem Informasi Manajemen Tugas Akhir dan Peminjaman Ruang Sidang Terpadu (SIMTA) FASILKOM UNSRI',
+    abstrak: 'Aplikasi portal terpadu untuk pengajuan judul TA dengan similarity check engine, bimbingan online, serta penjadwalan otomatis ruang sidang berdasarkan prioritas jurusan.',
+    abstrak_en: 'Integrated portal application for final thesis submission with similarity check engine and room booking.',
+    penulis_nama: 'Aulia Azzahra',
+    penulis_nim: '09010182428002',
+    prodi: 'D3 Manajemen Informatika',
+    kelas: 'MI 5A',
+    tahun_angkatan: '2022',
+    tahun_lulus: '2026',
+    pembimbing_1: 'Dr. Ir. Hendra Kusuma, M.T.',
+    pembimbing_2: 'Siti Nurhaliza, S.Kom., M.Kom.',
+    penguji_1: 'Prof. Dr. Ir. Ahmad Zaki, M.Sc.',
+    penguji_2: 'Budi Santoso, S.Kom., M.Kom.',
+    kata_kunci: ['SIMTA', 'Tugas Akhir', 'Fasilkom UNSRI', 'ReactJS'],
+    file_pdf_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+    status: 'menunggu_review_kaprodi',
+    catatan_kaprodi: '',
+    created_at: '2026-09-10T11:00:00Z'
+  },
+  {
+    id: 'repo-2026-002',
+    judul: 'Rancang Bangun Sistem Pendeteksi Kebocoran Gas Elpiji Berbasis IoT dan Telegram Bot Messenger',
+    abstrak: 'Perancangan hardware sensor MQ-2 mikrokontroler ESP8266 untuk memberikan notifikasi dini kebocoran gas ke smartphone pengguna secara realtime.',
+    abstrak_en: 'Design of MQ-2 gas leakage sensor with ESP8266 microcontroller for early warning alert via Telegram.',
+    penulis_nama: 'Bagas Aditya',
+    penulis_nim: '09031182227015',
+    prodi: 'D3 Manajemen Informatika',
+    kelas: 'MI 5B',
+    tahun_angkatan: '2022',
+    tahun_lulus: '2026',
+    pembimbing_1: 'Siti Nurhaliza, S.Kom., M.Kom.',
+    pembimbing_2: 'Dr. Ir. Hendra Kusuma, M.T.',
+    penguji_1: 'Dr. Endang Sulastri, M.Si.',
+    penguji_2: 'Bambang Irawan, S.Kom., M.T.',
+    kata_kunci: ['IoT', 'MQ-2', 'ESP8266', 'Telegram Bot'],
+    file_pdf_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+    status: 'disetujui_kaprodi',
+    catatan_kaprodi: 'Dokumen lengkap dan memenuhi syarat publikasi.',
+    created_at: '2026-09-08T09:30:00Z'
+  }
+];
+
+export const MOCK_CONSULTATIONS = [
+  {
+    id: 'cons-1',
+    mhs_nim: '09010182428002',
+    mhs_nama: 'Aulia Azzahra',
+    pembimbing: 'Pembimbing 1',
+    dosen_nama: 'Dr. Ir. Hendra Kusuma, M.T.',
+    tanggal: '2026-08-20',
+    waktu: '10:00',
+    bab_topik: 'Bab 1 - Pendahuluan & Latar Belakang',
+    catatan_mahasiswa: 'Konsultasi perumusan masalah, batasan masalah, serta batasan teknologi sistem SIMTA.',
+    masukan_dosen: 'Latar belakang sudah bagus. Perjelas urgensi pengintegrasian Similarity Check Engine pada Bab 1.3.',
+    file_revisi_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+    status: 'disetujui',
+    created_at: '2026-08-20T10:00:00Z'
+  },
+  {
+    id: 'cons-2',
+    mhs_nim: '09010182428002',
+    mhs_nama: 'Aulia Azzahra',
+    pembimbing: 'Pembimbing 2',
+    dosen_nama: 'Siti Nurhaliza, S.Kom., M.Kom.',
+    tanggal: '2026-08-27',
+    waktu: '13:30',
+    bab_topik: 'Bab 2 - Landasan Teori & Kajian Pustaka',
+    catatan_mahasiswa: 'Pengajuan kajian pustaka algoritma N-Gram dan Trigram Similarity.',
+    masukan_dosen: 'Tambahkan referensi jurnal terindeks SINTA/Scopus 3 tahun terakhir pada bagian persamaan Trigram.',
+    file_revisi_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+    status: 'disetujui',
+    created_at: '2026-08-27T13:30:00Z'
+  },
+  {
+    id: 'cons-3',
+    mhs_nim: '09010182428002',
+    mhs_nama: 'Aulia Azzahra',
+    pembimbing: 'Pembimbing 1',
+    dosen_nama: 'Dr. Ir. Hendra Kusuma, M.T.',
+    tanggal: '2026-09-05',
+    waktu: '09:00',
+    bab_topik: 'Bab 3 - Metodologi Penelitian & Perancangan Sistem',
+    catatan_mahasiswa: 'Pengajuan diagram alur Use Case, ERD Database, dan Flowchart Algoritma Peminjaman Ruangan.',
+    masukan_dosen: 'Desain ERD sudah lengkap. Lanjutkan ke tahap pengujian prototype web.',
+    file_revisi_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+    status: 'disetujui',
+    created_at: '2026-09-05T09:00:00Z'
+  },
+  {
+    id: 'cons-4',
+    mhs_nim: '09010182428002',
+    mhs_nama: 'Aulia Azzahra',
+    pembimbing: 'Pembimbing 2',
+    dosen_nama: 'Siti Nurhaliza, S.Kom., M.Kom.',
+    tanggal: '2026-09-10',
+    waktu: '14:00',
+    bab_topik: 'Bab 4 - Hasil dan Pembahasan (Analisis Uji Coba)',
+    catatan_mahasiswa: 'Mengunggah draf bab 4 berupa grafik performa kecepatan kalkulasi skor similarity.',
+    masukan_dosen: 'Mohon rapikan tabel pengujian black-box dan lengkapi screenshot antarmuka.',
+    file_revisi_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+    status: 'perlu_revisi',
+    created_at: '2026-09-10T14:00:00Z'
+  }
+];
+
+export const MOCK_ADVISOR_SCHEDULES = [
+  {
+    id: 'adv-sch-1',
+    dosen_nip: '197805122005011002',
+    dosen_nama: 'Dr. Ir. Hendra Kusuma, M.T.',
+    peran: 'Pembimbing 1 & Kaprodi',
+    hari_bimbingan: 'Senin & Rabu',
+    jam_bimbingan: '09:00 - 12:00 WIB',
+    lokasi: 'Ruang Dosen Gedung DIPKOM Lt. 2 (Ruang 204)',
+    link_wa_group: 'https://chat.whatsapp.com/BimbTAHendraKusuma2026',
+    no_hp_wa: '081278901234',
+    catatan: 'Wajib konfirmasi H-1 melalui WA. Silakan bawa draf yang sudah di-print dan lembar kendali bimbingan.'
+  },
+  {
+    id: 'adv-sch-2',
+    dosen_nip: '198804102015042001',
+    dosen_nama: 'Siti Nurhaliza, S.Kom., M.Kom.',
+    peran: 'Pembimbing 2',
+    hari_bimbingan: 'Selasa & Kamis',
+    jam_bimbingan: '13:00 - 16:00 WIB',
+    lokasi: 'Laboratorium Rekayasa Perangkat Lunak / Ruang Dosen Lt. 1',
+    link_wa_group: 'https://chat.whatsapp.com/BimbTASitiNurhaliza2026',
+    no_hp_wa: '081367891200',
+    catatan: 'Bimbingan dilakukan secara offline. Draf file revisi (PDF/Word) wajib di-upload ke SIMTA sebelum sesi pertemuan.'
+  },
+  {
+    id: 'adv-sch-3',
+    dosen_nip: '198509152010121004',
+    dosen_nama: 'Budi Santoso, S.Kom., M.Kom.',
+    peran: 'Dosen Pembimbing / Penguji',
+    hari_bimbingan: 'Jumat',
+    jam_bimbingan: '08:30 - 11:30 WIB',
+    lokasi: 'Ruang Admin Sarana & Dosen Diklat Fasilkom',
+    link_wa_group: 'https://chat.whatsapp.com/BimbTABudiSantoso2026',
+    no_hp_wa: '081298765432',
+    catatan: 'Harap hadir tepat waktu sesuai slot waktu bimbingan yang telah disepakati.'
+  }
+];
+
+
+
