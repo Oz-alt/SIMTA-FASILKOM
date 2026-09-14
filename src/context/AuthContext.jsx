@@ -13,7 +13,9 @@ import {
   MOCK_THESIS_ARCHIVES,
   MOCK_THESIS_REPOSITORIES,
   MOCK_CONSULTATIONS,
-  MOCK_ADVISOR_SCHEDULES
+  MOCK_ADVISOR_SCHEDULES,
+  MOCK_ADVISORS,
+  MOCK_STUDENT_ADVISORS
 } from '../services/mockData.js';
 
 const AuthContext = createContext();
@@ -21,14 +23,48 @@ const AuthContext = createContext();
 import { supabase, isSupabaseConfigured } from '../services/supabase.js';
 
 export function AuthProvider({ children }) {
-  // Helper to sanitize profile names to guarantee full name is used
+  // Helper to sanitize profile names to guarantee full name and correct role are used
   const sanitizeProfile = (user) => {
     if (!user) return null;
     let cleanNama = user.nama;
-    if (!cleanNama || cleanNama === 'Mahasiswa UNSRI' || cleanNama === 'Pengguna SIMTA' || /^\d+$/.test(cleanNama)) {
+
+    if (user.role === 'kaprodi') {
+      if (!cleanNama || cleanNama === 'Mahasiswa UNSRI' || cleanNama === 'Pengguna SIMTA' || cleanNama === 'Aulia Azzahra' || /^\d+$/.test(cleanNama)) {
+        cleanNama = 'Dr. Ir. Hendra Kusuma, M.T.';
+      }
+      return {
+        ...user,
+        nama: cleanNama,
+        role: 'kaprodi',
+        nip: user.nip || user.nim || '197805122005011002',
+        nim: user.nip || user.nim || '197805122005011002',
+        kelas: 'Dosen / Kaprodi'
+      };
+    }
+
+    if (user.role === 'admin_sarana') {
+      if (!cleanNama || cleanNama === 'Mahasiswa UNSRI' || cleanNama === 'Pengguna SIMTA' || cleanNama === 'Aulia Azzahra' || /^\d+$/.test(cleanNama)) {
+        cleanNama = 'Budi Santoso, S.Kom. (Admin Ruang)';
+      }
+      return {
+        ...user,
+        nama: cleanNama,
+        role: 'admin_sarana',
+        kelas: 'Admin Sarana'
+      };
+    }
+
+    // Default for Mahasiswa
+    if (!cleanNama || cleanNama === 'Mahasiswa UNSRI' || cleanNama === 'Pengguna SIMTA' || cleanNama === 'Dr. Ir. Hendra Kusuma, M.T.' || /^\d+$/.test(cleanNama)) {
       cleanNama = 'Aulia Azzahra';
     }
-    return { ...user, nama: cleanNama };
+
+    let cleanNim = user.nim || '09010182428002';
+    if (cleanNim === '090108148002') {
+      cleanNim = '09010182428002';
+    }
+
+    return { ...user, nama: cleanNama, nim: cleanNim };
   };
 
   // Helper to read all registered user accounts from localStorage
@@ -39,8 +75,21 @@ export function AuthProvider({ children }) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
           const sanitizedList = parsed.map(u => sanitizeProfile(u));
-          localStorage.setItem('simta_registered_users', JSON.stringify(sanitizedList));
-          return sanitizedList;
+          
+          // Deduplicate entries by role + name
+          const uniqueMap = new Map();
+          sanitizedList.forEach(u => {
+            if (u && u.nama) {
+              const key = u.role === 'mahasiswa' ? `mhs-${u.nama.toLowerCase()}` : (u.id || u.email || u.nip);
+              if (!uniqueMap.has(key) || u.nim === '09010182428002') {
+                uniqueMap.set(key, u);
+              }
+            }
+          });
+
+          const deduplicated = Array.from(uniqueMap.values());
+          localStorage.setItem('simta_registered_users', JSON.stringify(deduplicated));
+          return deduplicated;
         }
       }
     } catch {}
@@ -191,6 +240,136 @@ export function AuthProvider({ children }) {
     } catch {}
     return MOCK_ADVISOR_SCHEDULES;
   });
+
+  // Dosen Pembimbing (Advisors) master dataset with local persistence
+  const [advisors, setAdvisors] = useState(() => {
+    try {
+      const saved = localStorage.getItem('simta_advisors');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return MOCK_ADVISORS;
+  });
+
+  // Student Advisor Assignments state with local persistence
+  const [studentAdvisors, setStudentAdvisors] = useState(() => {
+    try {
+      const saved = localStorage.getItem('simta_student_advisors');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return MOCK_STUDENT_ADVISORS;
+  });
+
+  // Helper actions for Dosen Pembimbing management
+  const addAdvisor = (advisorData) => {
+    const newAdvisor = {
+      id: `adv-${Date.now()}`,
+      nip: (advisorData.nip || '').trim(),
+      nama: (advisorData.nama || '').trim(),
+      email: (advisorData.email || '').trim(),
+      no_hp: (advisorData.no_hp || '').trim(),
+      prodi: advisorData.prodi || 'D3 Manajemen Informatika',
+      keahlian: Array.isArray(advisorData.keahlian) 
+        ? advisorData.keahlian 
+        : (advisorData.keahlian || '').split(',').map(s => s.trim()).filter(Boolean),
+      kuota_dospem1: Number(advisorData.kuota_dospem1) || 8,
+      kuota_dospem2: Number(advisorData.kuota_dospem2) || 8,
+      status: advisorData.status || 'aktif'
+    };
+    setAdvisors(prev => {
+      const updated = [newAdvisor, ...prev];
+      try { localStorage.setItem('simta_advisors', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+    return newAdvisor;
+  };
+
+  const updateAdvisor = (advisorId, updatedFields) => {
+    setAdvisors(prev => {
+      const updated = prev.map(a => a.id === advisorId ? { ...a, ...updatedFields } : a);
+      try { localStorage.setItem('simta_advisors', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+  };
+
+  const deleteAdvisor = (advisorId) => {
+    setAdvisors(prev => {
+      const updated = prev.filter(a => a.id !== advisorId);
+      try { localStorage.setItem('simta_advisors', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+  };
+
+  const bulkImportAdvisors = (importedList) => {
+    const formatted = importedList.map((item, idx) => ({
+      id: `adv-import-${Date.now()}-${idx}`,
+      nip: String(item.nip || `1990${idx}123456`).trim(),
+      nama: String(item.nama || 'Dosen Pembimbing').trim(),
+      email: String(item.email || '').trim(),
+      no_hp: String(item.no_hp || '').trim(),
+      prodi: item.prodi || 'D3 Manajemen Informatika',
+      keahlian: Array.isArray(item.keahlian) 
+        ? item.keahlian 
+        : (item.keahlian || 'Umum').split(',').map(s => s.trim()).filter(Boolean),
+      kuota_dospem1: Number(item.kuota_dospem1) || 8,
+      kuota_dospem2: Number(item.kuota_dospem2) || 8,
+      status: 'aktif'
+    }));
+
+    setAdvisors(prev => {
+      const mapByNip = new Map();
+      [...formatted, ...prev].forEach(a => mapByNip.set(a.nip, a));
+      const merged = Array.from(mapByNip.values());
+      try { localStorage.setItem('simta_advisors', JSON.stringify(merged)); } catch {}
+      return merged;
+    });
+    return formatted.length;
+  };
+
+  const assignStudentAdvisors = (studentNim, dospem1Nip, dospem2Nip, studentNama = '', judulTa = '') => {
+    setStudentAdvisors(prev => {
+      const existingIdx = prev.findIndex(sa => sa.student_nim === studentNim);
+      let statusPembagian = 'belum';
+      if (dospem1Nip && dospem2Nip) statusPembagian = 'lengkap';
+      else if (dospem1Nip || dospem2Nip) statusPembagian = 'partial';
+
+      const updatedRecord = {
+        id: existingIdx >= 0 ? prev[existingIdx].id : `std-adv-${Date.now()}`,
+        student_nim: studentNim,
+        student_nama: studentNama || (existingIdx >= 0 ? prev[existingIdx].student_nama : 'Mahasiswa'),
+        prodi: 'D3 Manajemen Informatika',
+        judul_ta: judulTa || (existingIdx >= 0 ? prev[existingIdx].judul_ta : 'Judul Tugas Akhir'),
+        dospem1_nip: dospem1Nip || '',
+        dospem2_nip: dospem2Nip || '',
+        status_pembagian: statusPembagian,
+        updated_at: new Date().toISOString()
+      };
+
+      let updatedList;
+      if (existingIdx >= 0) {
+        updatedList = [...prev];
+        updatedList[existingIdx] = updatedRecord;
+      } else {
+        updatedList = [updatedRecord, ...prev];
+      }
+      try { localStorage.setItem('simta_student_advisors', JSON.stringify(updatedList)); } catch {}
+      return updatedList;
+    });
+  };
+
+  const getStudentAdvisors = (studentNim) => {
+    const record = studentAdvisors.find(sa => sa.student_nim === studentNim);
+    if (!record) return { dospem1: null, dospem2: null, record: null };
+
+    const dospem1 = advisors.find(a => a.nip === record.dospem1_nip) || null;
+    const dospem2 = advisors.find(a => a.nip === record.dospem2_nip) || null;
+    return { dospem1, dospem2, record };
+  };
 
   // Departments (Program Studi) database state with dynamic local persistence
   const [departments, setDepartments] = useState(() => {
@@ -749,18 +928,23 @@ export function AuthProvider({ children }) {
   };
 
   const getAllRegisteredStudents = () => {
-    const localReg = getRegisteredUsers();
+    const localReg = getRegisteredUsers().filter(u => u.role === 'mahasiswa');
     const mockMhs = MOCK_USERS.filter(u => u.role === 'mahasiswa');
-    const mapByNim = new Map();
-    [...localReg, ...mockMhs].forEach(u => {
-      if (u && u.nim) {
-        const cleanNim = String(u.nim).trim();
-        if (cleanNim) {
-          mapByNim.set(cleanNim, u);
+    const mapByName = new Map();
+    [...mockMhs, ...localReg].forEach(u => {
+      if (u && u.nim && u.role === 'mahasiswa') {
+        const cleanNim = String(u.nim).trim() === '090108148002' ? '09010182428002' : String(u.nim).trim();
+        const cleanNama = String(u.nama || '').trim();
+        if (cleanNim && cleanNama && !cleanNama.includes('Hendra Kusuma') && !cleanNama.includes('Budi Santoso')) {
+          const normKey = cleanNama.toLowerCase();
+          const obj = { ...u, nim: cleanNim };
+          if (!mapByName.has(normKey) || cleanNim === '09010182428002') {
+            mapByName.set(normKey, obj);
+          }
         }
       }
     });
-    return Array.from(mapByNim.values());
+    return Array.from(mapByName.values());
   };
 
   return (
@@ -796,6 +980,14 @@ export function AuthProvider({ children }) {
       reviewConsultation,
       advisorSchedules,
       updateAdvisorSchedule,
+      advisors,
+      studentAdvisors,
+      addAdvisor,
+      updateAdvisor,
+      deleteAdvisor,
+      bulkImportAdvisors,
+      assignStudentAdvisors,
+      getStudentAdvisors,
       addThesisTitle,
       reviewThesisTitle,
       bulkImportHistorical,

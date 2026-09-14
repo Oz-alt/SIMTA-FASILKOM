@@ -436,20 +436,130 @@ export const MOCK_ADVISOR_SCHEDULES = [
     link_wa_group: 'https://chat.whatsapp.com/BimbTASitiNurhaliza2026',
     no_hp_wa: '081367891200',
     catatan: 'Bimbingan dilakukan secara offline. Draf file revisi (PDF/Word) wajib di-upload ke SIMTA sebelum sesi pertemuan.'
-  },
-  {
-    id: 'adv-sch-3',
-    dosen_nip: '198509152010121004',
-    dosen_nama: 'Budi Santoso, S.Kom., M.Kom.',
-    peran: 'Dosen Pembimbing / Penguji',
-    hari_bimbingan: 'Jumat',
-    jam_bimbingan: '08:30 - 11:30 WIB',
-    lokasi: 'Ruang Admin Sarana & Dosen Diklat Fasilkom',
-    link_wa_group: 'https://chat.whatsapp.com/BimbTABudiSantoso2026',
-    no_hp_wa: '081298765432',
-    catatan: 'Harap hadir tepat waktu sesuai slot waktu bimbingan yang telah disepakati.'
   }
 ];
+
+export const MOCK_ADVISORS = [
+  {
+    id: 'adv-1',
+    nip: '197805122005011002',
+    nama: 'Dr. Ir. Hendra Kusuma, M.T.',
+    email: 'hendra.kusuma@unsri.ac.id',
+    no_hp: '081278901234',
+    prodi: 'D3 Manajemen Informatika',
+    keahlian: ['Sistem Informasi', 'Rekayasa Web', 'Manajemen Basis Data'],
+    kuota_dospem1: 8,
+    kuota_dospem2: 8,
+    status: 'aktif'
+  },
+  {
+    id: 'adv-2',
+    nip: '198804102015042001',
+    nama: 'Siti Nurhaliza, S.Kom., M.Kom.',
+    email: 'siti.nurhaliza@unsri.ac.id',
+    no_hp: '081367891200',
+    prodi: 'D3 Manajemen Informatika',
+    keahlian: ['UI/UX Design', 'Frontend Engineering', 'Mobile Development'],
+    kuota_dospem1: 8,
+    kuota_dospem2: 8,
+    status: 'aktif'
+  },
+  {
+    id: 'adv-3',
+    nip: '198509152010121004',
+    nama: 'Budi Santoso, S.Kom., M.Kom.',
+    email: 'budi.santoso@unsri.ac.id',
+    no_hp: '081298765432',
+    prodi: 'D3 Manajemen Informatika',
+    keahlian: ['Jaringan Komputer', 'Keamanan Siber', 'Cloud Computing'],
+    kuota_dospem1: 6,
+    kuota_dospem2: 6,
+    status: 'aktif'
+  },
+  {
+    id: 'adv-4',
+    nip: '198203112008031003',
+    nama: 'Prof. Dr. Ahmad Dahlan, S.T., M.Kom.',
+    email: 'ahmad.dahlan@unsri.ac.id',
+    no_hp: '081122334455',
+    prodi: 'D3 Manajemen Informatika',
+    keahlian: ['Artificial Intelligence', 'Data Science', 'Machine Learning'],
+    kuota_dospem1: 5,
+    kuota_dospem2: 5,
+    status: 'aktif'
+  },
+  {
+    id: 'adv-5',
+    nip: '199001152019032015',
+    nama: 'Rina Wijaya, M.T.',
+    email: 'rina.wijaya@unsri.ac.id',
+    no_hp: '085211223344',
+    prodi: 'D3 Manajemen Informatika',
+    keahlian: ['E-Business', 'ERP Systems', 'Analisis Proses Bisnis'],
+    kuota_dospem1: 6,
+    kuota_dospem2: 6,
+    status: 'aktif'
+  }
+];
+
+export const MOCK_STUDENT_ADVISORS = [
+  {
+    id: 'std-adv-1',
+    student_nim: '09010182428002',
+    student_nama: 'Aulia Azzahra',
+    prodi: 'D3 Manajemen Informatika',
+    judul_ta: 'Rancang Bangun Sistem Informasi Manajemen Tugas Akhir & Peminjaman Ruang Sidang Berbasis Web',
+    dospem1_nip: '197805122005011002',
+    dospem2_nip: '198804102015042001',
+    status_pembagian: 'lengkap',
+    updated_at: '2026-09-10T10:00:00Z'
+  },
+  {
+    id: 'std-adv-2',
+    student_nim: '09031182328001',
+    student_nama: 'Ahmad Rizky Pratama',
+    prodi: 'D3 Manajemen Informatika',
+    judul_ta: 'Pengembangan Aplikasi Mobile Pemantauan Progres Bimbingan Tugas Akhir',
+    dospem1_nip: '197805122005011002',
+    dospem2_nip: '198509152010121004',
+    status_pembagian: 'lengkap',
+    updated_at: '2026-09-11T11:00:00Z'
+  },
+  {
+    id: 'std-adv-3',
+    student_nim: '09031182328002',
+    student_nama: 'Siti Sarah Rahmawati',
+    prodi: 'D3 Manajemen Informatika',
+    judul_ta: 'Analisis Dan Perancangan UI/UX Portal Alumni Fakultas Ilmu Komputer UNSRI',
+    dospem1_nip: '198804102015042001',
+    dospem2_nip: '',
+    status_pembagian: 'partial',
+    updated_at: '2026-09-12T09:30:00Z'
+  },
+  {
+    id: 'std-adv-4',
+    student_nim: '09031182328003',
+    student_nama: 'Bagus Tri Handoko',
+    prodi: 'D3 Manajemen Informatika',
+    judul_ta: 'Implementasi Algoritma Clustering Untuk Pengelompokan Minat Penelitian Mahasiswa',
+    dospem1_nip: '',
+    dospem2_nip: '',
+    status_pembagian: 'belum',
+    updated_at: '2026-09-12T14:00:00Z'
+  },
+  {
+    id: 'std-adv-5',
+    student_nim: '09031182328004',
+    student_nama: 'Dina Lestari',
+    prodi: 'D3 Manajemen Informatika',
+    judul_ta: 'Sistem Informasi Inventaris Laboratorium Berbasis QR Code Pada Gedung DIPKOM',
+    dospem1_nip: '',
+    dospem2_nip: '',
+    status_pembagian: 'belum',
+    updated_at: '2026-09-13T08:15:00Z'
+  }
+];
+
 
 
 

@@ -15,12 +15,17 @@ import {
 } from 'lucide-react';
 
 export default function DashboardMahasiswa() {
-  const { currentUser, thesisTitles, thesisStages, bookings } = useAuth();
+  const { currentUser, thesisTitles, thesisStages, bookings, getStudentAdvisors } = useAuth();
 
   // Get current student's title
   const myTitle = thesisTitles.find(t => (currentUser?.id && t.profile_id === currentUser.id) || (currentUser?.nim && t.mhs_nim === currentUser.nim)) || thesisTitles[0];
   const myStages = thesisStages.filter(s => s.thesis_title_id === myTitle?.id);
   const myBookings = bookings.filter(b => currentUser?.nim && b.mhs_nim === currentUser.nim);
+
+  // Dynamic Dospem 1 & 2 assigned by Kaprodi
+  const assigned = getStudentAdvisors ? getStudentAdvisors(currentUser?.nim || '09010182428002') : {};
+  const dospem1Nama = assigned?.dospem1?.nama || myTitle?.pembimbing_1 || 'Belum ditentukan Kaprodi';
+  const dospem2Nama = assigned?.dospem2?.nama || myTitle?.pembimbing_2 || 'Belum ditentukan Kaprodi';
 
   return (
     <div className="space-y-6">
@@ -46,7 +51,7 @@ export default function DashboardMahasiswa() {
               </div>
               <div className="min-w-0">
                 <span className="text-[10px] font-bold text-indigo-300 uppercase tracking-wider block">Dosen Pembimbing 1 (Utama)</span>
-                <p className="font-bold text-white truncate">{myTitle?.pembimbing_1 || 'Dr. Ir. Hendra Kusuma, M.T.'}</p>
+                <p className="font-bold text-white truncate">{dospem1Nama}</p>
               </div>
             </div>
 
@@ -56,7 +61,7 @@ export default function DashboardMahasiswa() {
               </div>
               <div className="min-w-0">
                 <span className="text-[10px] font-bold text-purple-300 uppercase tracking-wider block">Dosen Pembimbing 2 (Pendamping)</span>
-                <p className="font-bold text-white truncate">{myTitle?.pembimbing_2 || 'Siti Nurhaliza, S.Kom., M.Kom.'}</p>
+                <p className="font-bold text-white truncate">{dospem2Nama}</p>
               </div>
             </div>
           </div>

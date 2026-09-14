@@ -262,6 +262,35 @@ CREATE TABLE IF NOT EXISTS public.advisor_schedules (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 18. Dosen Pembimbing (Master Advisors Data & Quota)
+CREATE TABLE IF NOT EXISTS public.advisors (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    nip VARCHAR(30) UNIQUE NOT NULL,
+    nama VARCHAR(150) NOT NULL,
+    email VARCHAR(100),
+    no_hp VARCHAR(30),
+    prodi VARCHAR(100) DEFAULT 'D3 Manajemen Informatika',
+    keahlian TEXT[],
+    kuota_dospem1 INT DEFAULT 8,
+    kuota_dospem2 INT DEFAULT 8,
+    status VARCHAR(30) DEFAULT 'aktif' CHECK (status IN ('aktif', 'nonaktif')),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 19. Student Advisor Assignments Table (Pembagian Dospem 1 & 2)
+CREATE TABLE IF NOT EXISTS public.student_advisors (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    student_nim VARCHAR(30) UNIQUE NOT NULL,
+    student_nama VARCHAR(150) NOT NULL,
+    prodi VARCHAR(100) DEFAULT 'D3 Manajemen Informatika',
+    judul_ta TEXT,
+    dospem1_nip VARCHAR(30),
+    dospem2_nip VARCHAR(30),
+    status_pembagian VARCHAR(30) DEFAULT 'belum' CHECK (status_pembagian IN ('belum', 'partial', 'lengkap')),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- ====================================================================
 -- Enable Row Level Security (RLS)
 -- ====================================================================
@@ -274,11 +303,19 @@ ALTER TABLE public.thesis_repositories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.thesis_archives ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.thesis_consultations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.advisor_schedules ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.advisors ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.student_advisors ENABLE ROW LEVEL SECURITY;
 
 -- Basic RLS Policies
 CREATE POLICY "Public profiles read access" ON public.profiles FOR SELECT USING (true);
 CREATE POLICY "Users can insert profiles" ON public.profiles FOR INSERT WITH CHECK (true);
 CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+
+CREATE POLICY "Public read access for advisors" ON public.advisors FOR SELECT USING (true);
+CREATE POLICY "Kaprodi can manage advisors" ON public.advisors FOR ALL USING (true);
+
+CREATE POLICY "Public read access for student_advisors" ON public.student_advisors FOR SELECT USING (true);
+CREATE POLICY "Kaprodi can manage student_advisors" ON public.student_advisors FOR ALL USING (true);
 
 CREATE POLICY "Mahasiswa can insert & read own title" ON public.thesis_titles 
     FOR ALL USING (auth.uid() = profile_id OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('kaprodi', 'admin_sarana')));
