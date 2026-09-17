@@ -468,6 +468,7 @@ export function AuthProvider({ children }) {
       setCurrentUser(localFound);
       if (localFound.role === 'kaprodi') return '/kaprodi/dashboard';
       if (localFound.role === 'admin_sarana') return '/admin/dashboard';
+      if (localFound.role === 'dosen') return '/dosen/dashboard';
       return '/dashboard';
     }
 
@@ -502,6 +503,7 @@ export function AuthProvider({ children }) {
 
           if (activeProfile.role === 'kaprodi') return '/kaprodi/dashboard';
           if (activeProfile.role === 'admin_sarana') return '/admin/dashboard';
+          if (activeProfile.role === 'dosen') return '/dosen/dashboard';
           return '/dashboard';
         }
       }
@@ -518,6 +520,7 @@ export function AuthProvider({ children }) {
       setCurrentUser(foundUser);
       if (foundUser.role === 'kaprodi') return '/kaprodi/dashboard';
       if (foundUser.role === 'admin_sarana') return '/admin/dashboard';
+      if (foundUser.role === 'dosen') return '/dosen/dashboard';
       return '/dashboard';
     }
 

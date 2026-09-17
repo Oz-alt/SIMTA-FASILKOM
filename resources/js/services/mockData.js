@@ -39,6 +39,15 @@ export const MOCK_USERS = [
     role: 'admin_sarana',
     email: 'sarana.fasilkom@unsri.ac.id',
     department_id: 'dept-mi-1'
+  },
+  {
+    id: 'user-dosen',
+    nim: '198001012010011001',
+    nip: '198001012010011001',
+    nama: 'Dr. Budi Dosen, M.Kom.',
+    role: 'dosen',
+    email: 'dosen.pembimbing@unsri.ac.id',
+    department_id: 'dept-mi-1'
   }
 ];
 

@@ -170,6 +170,31 @@ export default function Sidebar() {
           ]
         };
 
+      case 'dosen':
+        return {
+          dashboard: { to: '/dosen/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+          groups: [
+            {
+              id: 'bimbingan',
+              label: 'Bimbingan Mahasiswa',
+              icon: FileCheck,
+              items: [
+                { to: '/dosen/bimbingan', label: 'Manajemen Bimbingan', icon: FileCheck },
+                { to: '/dosen/validasi-judul', label: 'Validasi Judul TA', icon: CheckSquare },
+                { to: '/dosen/jadwal', label: 'Jadwal & Ketersediaan', icon: CalendarDays }
+              ]
+            },
+            {
+              id: 'database',
+              label: 'Database',
+              icon: Database,
+              items: [
+                { to: '/thesis/archive', label: 'Arsip Tugas Akhir', icon: BookOpen }
+              ]
+            }
+          ]
+        };
+
       default:
         return { dashboard: null, groups: [] };
     }

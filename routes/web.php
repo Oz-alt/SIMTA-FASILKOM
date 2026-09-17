@@ -133,6 +133,26 @@ Route::get('/admin/repository/publish', function () {
 });
 
 // ============================================================
+// DOSEN ROUTES
+// ============================================================
+
+Route::get('/dosen/dashboard', function () {
+    return Inertia::render('dosen/DashboardDosen');
+});
+
+Route::get('/dosen/bimbingan', function () {
+    return Inertia::render('dosen/BimbinganPage');
+});
+
+Route::get('/dosen/jadwal', function () {
+    return Inertia::render('dosen/JadwalDosenPage');
+});
+
+Route::get('/dosen/validasi-judul', function () {
+    return Inertia::render('dosen/ValidasiJudulDosenPage');
+});
+
+// ============================================================
 // LARAVEL AUTH (Breeze)
 // ============================================================
 
