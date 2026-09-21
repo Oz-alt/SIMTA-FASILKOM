@@ -21,7 +21,10 @@ import {
   UserCheck,
   LogOut,
   ChevronDown,
-  Printer
+  Printer,
+  FileStack,
+  Layers,
+  LayoutGrid
 } from 'lucide-react';
 
 export default function Sidebar() {
@@ -190,6 +193,23 @@ export default function Sidebar() {
               icon: Database,
               items: [
                 { to: '/thesis/archive', label: 'Arsip Tugas Akhir', icon: BookOpen }
+              ]
+            }
+          ]
+        };
+
+      case 'admin':
+        return {
+          dashboard: { to: '/admin-simta/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+          groups: [
+            {
+              id: 'konten',
+              label: 'Konten & Dokumen',
+              icon: Layers,
+              items: [
+                { to: '/admin-simta/documents', label: 'Dokumen / Surat', icon: FileStack },
+                { to: '/admin-simta/cms', label: 'CMS', icon: LayoutGrid },
+                { to: '/admin-simta/templates', label: 'Template', icon: FileText }
               ]
             }
           ]

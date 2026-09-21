@@ -15,7 +15,10 @@ import {
   MOCK_CONSULTATIONS,
   MOCK_ADVISOR_SCHEDULES,
   MOCK_ADVISORS,
-  MOCK_STUDENT_ADVISORS
+  MOCK_STUDENT_ADVISORS,
+  MOCK_ADMIN_DOCUMENTS,
+  MOCK_ADMIN_CMS,
+  MOCK_ADMIN_TEMPLATES
 } from '../services/mockData.js';
 
 const AuthContext = createContext();
@@ -51,6 +54,18 @@ export function AuthProvider({ children }) {
         nama: cleanNama,
         role: 'admin_sarana',
         kelas: 'Admin Sarana'
+      };
+    }
+
+    if (user.role === 'admin') {
+      if (!cleanNama || cleanNama === 'Mahasiswa UNSRI' || cleanNama === 'Pengguna SIMTA' || cleanNama === 'Aulia Azzahra' || /^\d+$/.test(cleanNama)) {
+        cleanNama = 'Rina Agustina, S.Kom. (Admin SIMTA)';
+      }
+      return {
+        ...user,
+        nama: cleanNama,
+        role: 'admin',
+        kelas: 'Admin SIMTA'
       };
     }
 
@@ -192,6 +207,114 @@ export function AuthProvider({ children }) {
   const [buildings, setBuildings] = useState(MOCK_BUILDINGS);
   const [roomPriorities, setRoomPriorities] = useState(MOCK_ROOM_PRIORITIES);
   const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
+
+  // ── Admin SIMTA: Dokumen, CMS, Template ─────────────────────────────────
+  // State diinisialisasi dari mock; Supabase di-fetch on mount (lihat useEffect)
+  const [adminDocuments, setAdminDocuments] = useState(MOCK_ADMIN_DOCUMENTS);
+
+  const addAdminDocument = async (data) => {
+    const doc = {
+      id: `doc-${Date.now()}`,
+      ...data,
+      tanggal_upload: new Date().toISOString().split('T')[0],
+      uploader: 'Admin SIMTA',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    setAdminDocuments(prev => [doc, ...prev]);
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase.from('admin_documents').insert([doc]);
+      if (error) console.warn('Supabase admin_documents insert warning:', error.message);
+    }
+    return doc;
+  };
+
+  const updateAdminDocument = async (id, fields) => {
+    const updated_at = new Date().toISOString();
+    setAdminDocuments(prev => prev.map(d => d.id === id ? { ...d, ...fields, updated_at } : d));
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase.from('admin_documents').update({ ...fields, updated_at }).eq('id', id);
+      if (error) console.warn('Supabase admin_documents update warning:', error.message);
+    }
+  };
+
+  const deleteAdminDocument = async (id) => {
+    setAdminDocuments(prev => prev.filter(d => d.id !== id));
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase.from('admin_documents').delete().eq('id', id);
+      if (error) console.warn('Supabase admin_documents delete warning:', error.message);
+    }
+  };
+
+  const [adminCmsContents, setAdminCmsContents] = useState(MOCK_ADMIN_CMS);
+
+  const addAdminCms = async (data) => {
+    const item = {
+      id: `cms-${Date.now()}`,
+      ...data,
+      updated_at: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+      penulis: 'Admin SIMTA'
+    };
+    setAdminCmsContents(prev => [item, ...prev]);
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase.from('admin_cms').insert([item]);
+      if (error) console.warn('Supabase admin_cms insert warning:', error.message);
+    }
+    return item;
+  };
+
+  const updateAdminCms = async (id, fields) => {
+    const updated_at = new Date().toISOString();
+    setAdminCmsContents(prev => prev.map(c => c.id === id ? { ...c, ...fields, updated_at } : c));
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase.from('admin_cms').update({ ...fields, updated_at }).eq('id', id);
+      if (error) console.warn('Supabase admin_cms update warning:', error.message);
+    }
+  };
+
+  const deleteAdminCms = async (id) => {
+    setAdminCmsContents(prev => prev.filter(c => c.id !== id));
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase.from('admin_cms').delete().eq('id', id);
+      if (error) console.warn('Supabase admin_cms delete warning:', error.message);
+    }
+  };
+
+  const [adminTemplates, setAdminTemplates] = useState(MOCK_ADMIN_TEMPLATES);
+
+  const addAdminTemplate = async (data) => {
+    const tpl = {
+      id: `tpl-${Date.now()}`,
+      ...data,
+      updated_at: new Date().toISOString(),
+      created_at: new Date().toISOString()
+    };
+    setAdminTemplates(prev => [tpl, ...prev]);
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase.from('admin_templates').insert([tpl]);
+      if (error) console.warn('Supabase admin_templates insert warning:', error.message);
+    }
+    return tpl;
+  };
+
+  const updateAdminTemplate = async (id, fields) => {
+    const updated_at = new Date().toISOString();
+    setAdminTemplates(prev => prev.map(t => t.id === id ? { ...t, ...fields, updated_at } : t));
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase.from('admin_templates').update({ ...fields, updated_at }).eq('id', id);
+      if (error) console.warn('Supabase admin_templates update warning:', error.message);
+    }
+  };
+
+  const deleteAdminTemplate = async (id) => {
+    setAdminTemplates(prev => prev.filter(t => t.id !== id));
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase.from('admin_templates').delete().eq('id', id);
+      if (error) console.warn('Supabase admin_templates delete warning:', error.message);
+    }
+  };
+  // ─────────────────────────────────────────────────────────────────────────
 
   // Published Thesis Archives (Public Library)
   const [thesisArchives, setThesisArchives] = useState(() => {
@@ -409,6 +532,28 @@ export function AuthProvider({ children }) {
 
     // 2. Sync with Supabase Auth if configured
     if (isSupabaseConfigured && supabase) {
+
+      // 2a. Fetch Admin SIMTA data from Supabase on mount
+      supabase.from('admin_documents').select('*').order('tanggal_upload', { ascending: false })
+        .then(({ data, error }) => {
+          if (!error && data && data.length > 0) {
+            setAdminDocuments(data);
+          }
+        });
+      supabase.from('admin_cms').select('*').order('updated_at', { ascending: false })
+        .then(({ data, error }) => {
+          if (!error && data && data.length > 0) {
+            setAdminCmsContents(data);
+          }
+        });
+      supabase.from('admin_templates').select('*').order('updated_at', { ascending: false })
+        .then(({ data, error }) => {
+          if (!error && data && data.length > 0) {
+            setAdminTemplates(data);
+          }
+        });
+
+      // 2b. Supabase Auth session restore
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (session?.user) {
           const registered = getRegisteredUsers();
@@ -468,6 +613,7 @@ export function AuthProvider({ children }) {
       setCurrentUser(localFound);
       if (localFound.role === 'kaprodi') return '/kaprodi/dashboard';
       if (localFound.role === 'admin_sarana') return '/admin/dashboard';
+      if (localFound.role === 'admin') return '/admin-simta/dashboard';
       if (localFound.role === 'dosen') return '/dosen/dashboard';
       return '/dashboard';
     }
@@ -503,6 +649,7 @@ export function AuthProvider({ children }) {
 
           if (activeProfile.role === 'kaprodi') return '/kaprodi/dashboard';
           if (activeProfile.role === 'admin_sarana') return '/admin/dashboard';
+          if (activeProfile.role === 'admin') return '/admin-simta/dashboard';
           if (activeProfile.role === 'dosen') return '/dosen/dashboard';
           return '/dashboard';
         }
@@ -520,6 +667,7 @@ export function AuthProvider({ children }) {
       setCurrentUser(foundUser);
       if (foundUser.role === 'kaprodi') return '/kaprodi/dashboard';
       if (foundUser.role === 'admin_sarana') return '/admin/dashboard';
+      if (foundUser.role === 'admin') return '/admin-simta/dashboard';
       if (foundUser.role === 'dosen') return '/dosen/dashboard';
       return '/dashboard';
     }
@@ -984,7 +1132,19 @@ export function AuthProvider({ children }) {
       reviewThesisTitle,
       bulkImportHistorical,
       addBooking,
-      reviewBooking
+      reviewBooking,
+      adminDocuments,
+      addAdminDocument,
+      updateAdminDocument,
+      deleteAdminDocument,
+      adminCmsContents,
+      addAdminCms,
+      updateAdminCms,
+      deleteAdminCms,
+      adminTemplates,
+      addAdminTemplate,
+      updateAdminTemplate,
+      deleteAdminTemplate
     }}>
       {children}
     </AuthContext.Provider>

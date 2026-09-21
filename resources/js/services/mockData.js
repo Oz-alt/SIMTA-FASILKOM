@@ -48,6 +48,16 @@ export const MOCK_USERS = [
     role: 'dosen',
     email: 'dosen.pembimbing@unsri.ac.id',
     department_id: 'dept-mi-1'
+  },
+  {
+    id: 'user-admin-simta',
+    nim: '199203142018011001',
+    nip: '199203142018011001',
+    nama: 'Rina Agustina, S.Kom. (Admin SIMTA)',
+    role: 'admin',
+    email: 'admin.simta@unsri.ac.id',
+    no_hp: '081234567899',
+    department_id: 'dept-mi-1'
   }
 ];
 
@@ -570,5 +580,201 @@ export const MOCK_STUDENT_ADVISORS = [
 ];
 
 
+// ============================================================
+// ADMIN SIMTA MOCK DATA
+// ============================================================
 
+export const MOCK_ADMIN_DOCUMENTS = [
+  {
+    id: 'doc-1',
+    nama: 'Surat Keterangan Aktif Kuliah',
+    jenis: 'Surat Keterangan',
+    deskripsi: 'Template surat keterangan aktif kuliah untuk mahasiswa aktif semester ini.',
+    file_name: 'surat-keterangan-aktif.pdf',
+    file_url: '#',
+    tanggal_upload: '2026-09-01',
+    status: 'aktif',
+    uploader: 'Rina Agustina'
+  },
+  {
+    id: 'doc-2',
+    nama: 'Surat Pengajuan Judul TA',
+    jenis: 'Surat Pengajuan',
+    deskripsi: 'Formulir pengajuan judul tugas akhir untuk mahasiswa D3 Manajemen Informatika.',
+    file_name: 'form-ajuan-judul-ta.docx',
+    file_url: '#',
+    tanggal_upload: '2026-09-03',
+    status: 'aktif',
+    uploader: 'Rina Agustina'
+  },
+  {
+    id: 'doc-3',
+    nama: 'Berita Acara Seminar Proposal',
+    jenis: 'Berita Acara',
+    deskripsi: 'Dokumen berita acara seminar proposal tugas akhir yang wajib ditandatangani penguji.',
+    file_name: 'berita-acara-sempro.docx',
+    file_url: '#',
+    tanggal_upload: '2026-09-05',
+    status: 'aktif',
+    uploader: 'Rina Agustina'
+  },
+  {
+    id: 'doc-4',
+    nama: 'Surat Pengantar Penelitian',
+    jenis: 'Surat Pengantar',
+    deskripsi: 'Surat pengantar resmi dari fakultas untuk keperluan penelitian lapangan mahasiswa.',
+    file_name: 'surat-pengantar-penelitian.pdf',
+    file_url: '#',
+    tanggal_upload: '2026-09-08',
+    status: 'nonaktif',
+    uploader: 'Rina Agustina'
+  },
+  {
+    id: 'doc-5',
+    nama: 'Lembar Persetujuan Pembimbing',
+    jenis: 'Formulir',
+    deskripsi: 'Lembar persetujuan dosen pembimbing 1 dan 2 untuk naskah tugas akhir.',
+    file_name: 'lembar-persetujuan-pembimbing.docx',
+    file_url: '#',
+    tanggal_upload: '2026-09-10',
+    status: 'aktif',
+    uploader: 'Rina Agustina'
+  },
+  {
+    id: 'doc-6',
+    nama: 'Panduan Penulisan Tugas Akhir',
+    jenis: 'Panduan',
+    deskripsi: 'Buku panduan lengkap tata cara penulisan tugas akhir D3 Manajemen Informatika UNSRI.',
+    file_name: 'panduan-penulisan-ta-2026.pdf',
+    file_url: '#',
+    tanggal_upload: '2026-09-12',
+    status: 'aktif',
+    uploader: 'Rina Agustina'
+  }
+];
 
+export const MOCK_ADMIN_CMS = [
+  {
+    id: 'cms-1',
+    judul: 'Selamat Datang di SIMTA',
+    kategori: 'Beranda',
+    isi: 'Selamat datang di Sistem Informasi Manajemen Tugas Akhir (SIMTA) Fakultas Ilmu Komputer Universitas Sriwijaya. Platform ini dirancang untuk memudahkan proses pengajuan, pembimbingan, dan sidang tugas akhir mahasiswa D3 Manajemen Informatika.',
+    status: 'publikasi',
+    updated_at: '2026-09-01T08:00:00Z',
+    penulis: 'Rina Agustina'
+  },
+  {
+    id: 'cms-2',
+    judul: 'Panduan Pengajuan Judul TA',
+    kategori: 'Panduan',
+    isi: 'Untuk mengajukan judul tugas akhir, mahasiswa harus memiliki minimal 100 SKS yang telah lulus, IPK minimal 2.75, dan telah menyelesaikan mata kuliah Metodologi Penelitian. Selanjutnya, mahasiswa mengisi formulir pengajuan judul melalui menu Ajukan Judul TA dan menunggu persetujuan dari Kaprodi.',
+    status: 'publikasi',
+    updated_at: '2026-09-02T10:30:00Z',
+    penulis: 'Rina Agustina'
+  },
+  {
+    id: 'cms-3',
+    judul: 'Jadwal Seminar Proposal Semester Ganjil 2026/2027',
+    kategori: 'Pengumuman',
+    isi: 'Seminar proposal tugas akhir semester ganjil 2026/2027 akan dilaksanakan mulai 15 Oktober 2026. Mahasiswa yang telah mendapat persetujuan judul dari Kaprodi dapat segera mendaftarkan diri melalui sistem peminjaman ruang sidang.',
+    status: 'draf',
+    updated_at: '2026-09-05T14:00:00Z',
+    penulis: 'Rina Agustina'
+  },
+  {
+    id: 'cms-4',
+    judul: 'Ketentuan Upload Repository TA',
+    kategori: 'Panduan',
+    isi: 'Setelah sidang akhir dinyatakan lulus, mahasiswa wajib mengupload repository tugas akhir dalam format ZIP yang berisi: source code aplikasi, laporan PDF, dan dokumentasi teknis. Ukuran file maksimal 200MB. Repository akan diverifikasi oleh Kaprodi sebelum dipublikasikan.',
+    status: 'publikasi',
+    updated_at: '2026-09-07T09:15:00Z',
+    penulis: 'Rina Agustina'
+  },
+  {
+    id: 'cms-5',
+    judul: 'Kontak dan Layanan Akademik',
+    kategori: 'Informasi',
+    isi: 'Untuk pertanyaan seputar administrasi tugas akhir, silakan menghubungi Admin SIMTA di admin.simta@unsri.ac.id atau datang langsung ke Gedung DIPKOM Lt. 1, Kampus Bukit Palembang, pada hari Senin-Jumat pukul 08.00-16.00 WIB.',
+    status: 'publikasi',
+    updated_at: '2026-09-10T11:00:00Z',
+    penulis: 'Rina Agustina'
+  },
+  {
+    id: 'cms-6',
+    judul: 'FAQ Proses Bimbingan Tugas Akhir',
+    kategori: 'FAQ',
+    isi: 'Q: Berapa kali minimal bimbingan yang harus dilakukan? A: Minimal 8 kali bimbingan dengan Dosen Pembimbing 1 dan 6 kali dengan Dosen Pembimbing 2. Q: Apa yang dimaksud kartu bimbingan digital? A: Kartu bimbingan digital adalah rekap otomatis seluruh sesi bimbingan yang dapat dicetak untuk keperluan administrasi sidang.',
+    status: 'draf',
+    updated_at: '2026-09-15T13:45:00Z',
+    penulis: 'Rina Agustina'
+  }
+];
+
+export const MOCK_ADMIN_TEMPLATES = [
+  {
+    id: 'tpl-1',
+    nama: 'Template Proposal Tugas Akhir',
+    jenis: 'Proposal',
+    deskripsi: 'Template Microsoft Word standar untuk penulisan proposal tugas akhir D3 Manajemen Informatika sesuai panduan terbaru 2026.',
+    file_name: 'template-proposal-ta-2026.docx',
+    file_url: '#',
+    status: 'aktif',
+    updated_at: '2026-09-01',
+    ukuran: '245 KB'
+  },
+  {
+    id: 'tpl-2',
+    nama: 'Template Laporan Akhir Tugas Akhir',
+    jenis: 'Laporan',
+    deskripsi: 'Template resmi laporan tugas akhir lengkap dengan cover, lembar pengesahan, daftar isi otomatis, dan format daftar pustaka IEEE.',
+    file_name: 'template-laporan-ta-2026.docx',
+    file_url: '#',
+    status: 'aktif',
+    updated_at: '2026-09-01',
+    ukuran: '389 KB'
+  },
+  {
+    id: 'tpl-3',
+    nama: 'Template Slide Presentasi Seminar Proposal',
+    jenis: 'Presentasi',
+    deskripsi: 'Template PowerPoint untuk presentasi seminar proposal dengan desain resmi Fasilkom UNSRI.',
+    file_name: 'template-slide-sempro.pptx',
+    file_url: '#',
+    status: 'aktif',
+    updated_at: '2026-09-03',
+    ukuran: '1.2 MB'
+  },
+  {
+    id: 'tpl-4',
+    nama: 'Template Slide Presentasi Sidang Akhir',
+    jenis: 'Presentasi',
+    deskripsi: 'Template PowerPoint untuk presentasi sidang akhir tugas akhir, telah diupdate dengan logo universitas terbaru.',
+    file_name: 'template-slide-sidang.pptx',
+    file_url: '#',
+    status: 'aktif',
+    updated_at: '2026-09-03',
+    ukuran: '1.5 MB'
+  },
+  {
+    id: 'tpl-5',
+    nama: 'Template Berita Acara Sidang (Lama)',
+    jenis: 'Berita Acara',
+    deskripsi: 'Template berita acara sidang versi lama (2024). Sudah tidak digunakan, hanya sebagai arsip.',
+    file_name: 'template-ba-sidang-2024.docx',
+    file_url: '#',
+    status: 'nonaktif',
+    updated_at: '2024-08-15',
+    ukuran: '87 KB'
+  },
+  {
+    id: 'tpl-6',
+    nama: 'Template Jurnal Ilmiah Fasilkom',
+    jenis: 'Jurnal',
+    deskripsi: 'Template artikel jurnal ilmiah Fasilkom UNSRI untuk publikasi hasil penelitian tugas akhir.',
+    file_name: 'template-jurnal-fasilkom.docx',
+    file_url: '#',
+    status: 'aktif',
+    updated_at: '2026-09-10',
+    ukuran: '156 KB'
+  }
+];

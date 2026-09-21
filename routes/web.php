@@ -133,6 +133,26 @@ Route::get('/admin/repository/publish', function () {
 });
 
 // ============================================================
+// ADMIN SIMTA ROUTES (Dokumen, CMS, Template)
+// ============================================================
+
+Route::get('/admin-simta/dashboard', function () {
+    return Inertia::render('admin/DashboardAdminSimta');
+});
+
+Route::get('/admin-simta/documents', function () {
+    return Inertia::render('admin/DokumenAdminPage');
+});
+
+Route::get('/admin-simta/cms', function () {
+    return Inertia::render('admin/CmsAdminPage');
+});
+
+Route::get('/admin-simta/templates', function () {
+    return Inertia::render('admin/TemplateAdminPage');
+});
+
+// ============================================================
 // DOSEN ROUTES
 // ============================================================
 
