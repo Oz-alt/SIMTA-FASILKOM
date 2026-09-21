@@ -82,8 +82,7 @@ export default function Sidebar() {
               icon: FileCheck,
               items: [
                 { to: '/thesis/consultations', label: 'Bimbingan & Konsultasi', icon: FileCheck },
-                { to: '/thesis/consultations/card', label: 'Kartu Bimbingan Digital', icon: Printer },
-                { to: '/thesis/consultations/schedule', label: 'Jadwal Bimbingan', icon: CalendarDays }
+                { to: '/thesis/consultations/card', label: 'Kartu Bimbingan Digital', icon: Printer }
               ]
             },
             {
@@ -126,8 +125,7 @@ export default function Sidebar() {
               label: 'Bimbingan',
               icon: FileCheck,
               items: [
-                { to: '/thesis/consultations', label: 'Bimbingan & Konsultasi', icon: FileCheck },
-                { to: '/thesis/consultations/schedule', label: 'Jadwal Bimbingan', icon: CalendarDays }
+                { to: '/thesis/consultations', label: 'Bimbingan & Konsultasi', icon: FileCheck }
               ]
             },
             {
@@ -154,8 +152,7 @@ export default function Sidebar() {
               label: 'Bimbingan',
               icon: FileCheck,
               items: [
-                { to: '/thesis/consultations', label: 'Bimbingan & Konsultasi', icon: FileCheck },
-                { to: '/thesis/consultations/schedule', label: 'Jadwal Bimbingan', icon: CalendarDays }
+                { to: '/thesis/consultations', label: 'Bimbingan & Konsultasi', icon: FileCheck }
               ]
             },
             {

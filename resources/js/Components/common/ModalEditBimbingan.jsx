@@ -2,24 +2,23 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { 
   X, 
-  Calendar, 
-  Clock, 
   BookOpen, 
-  Link2, 
   AlertCircle, 
   Loader2, 
   CheckCircle2,
+  Edit3,
+  Link2,
   ExternalLink
 } from 'lucide-react';
 
-export default function ModalAjukanBimbingan({ isOpen, onClose }) {
-  const { addConsultation } = useAuth();
+export default function ModalEditBimbingan({ isOpen, onClose, consultation, onSaved }) {
+  const { updateConsultation } = useAuth();
 
   const [formData, setFormData] = useState({
     pembimbing: 'Pembimbing 1',
-    dosen_nama: 'Dr. Ir. Hendra Kusuma, M.T.',
-    tanggal: new Date().toISOString().split('T')[0],
-    waktu: '09:00',
+    dosen_nama: '',
+    tanggal: '',
+    waktu: '',
     bab_topik: '',
     catatan_mahasiswa: '',
     file_revisi_url: ''
@@ -27,6 +26,21 @@ export default function ModalAjukanBimbingan({ isOpen, onClose }) {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  useEffect(() => {
+    if (consultation) {
+      setFormData({
+        pembimbing: consultation.pembimbing || 'Pembimbing 1',
+        dosen_nama: consultation.dosen_nama || '',
+        tanggal: consultation.tanggal || '',
+        waktu: consultation.waktu || '09:00',
+        bab_topik: consultation.bab_topik || '',
+        catatan_mahasiswa: consultation.catatan_mahasiswa || '',
+        file_revisi_url: consultation.file_revisi_url || ''
+      });
+      setErrorMsg('');
+    }
+  }, [consultation]);
 
   // Lock background scroll when modal is open
   useEffect(() => {
@@ -40,20 +54,11 @@ export default function ModalAjukanBimbingan({ isOpen, onClose }) {
     };
   }, [isOpen]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !consultation) return null;
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    if (name === 'pembimbing') {
-      const isPemb2 = value === 'Pembimbing 2';
-      setFormData(prev => ({
-        ...prev,
-        pembimbing: value,
-        dosen_nama: isPemb2 ? 'Siti Nurhaliza, S.Kom., M.Kom.' : 'Dr. Ir. Hendra Kusuma, M.T.'
-      }));
-    } else {
-      setFormData(prev => ({ ...prev, [name]: value }));
-    }
+    setFormData(prev => ({ ...prev, [name]: value }));
     setErrorMsg('');
   };
 
@@ -74,7 +79,7 @@ export default function ModalAjukanBimbingan({ isOpen, onClose }) {
     setErrorMsg('');
 
     try {
-      await addConsultation({
+      await updateConsultation(consultation.id, {
         pembimbing: formData.pembimbing,
         dosen_nama: formData.dosen_nama,
         tanggal: formData.tanggal,
@@ -85,11 +90,12 @@ export default function ModalAjukanBimbingan({ isOpen, onClose }) {
       });
 
       setIsSubmitting(false);
+      if (onSaved) onSaved('Catatan bimbingan berhasil diperbarui!');
       onClose();
 
     } catch (err) {
       setIsSubmitting(false);
-      setErrorMsg(err.message || 'Gagal mengajukan bimbingan.');
+      setErrorMsg(err.message || 'Gagal memperbarui catatan bimbingan.');
     }
   };
 
@@ -110,12 +116,12 @@ export default function ModalAjukanBimbingan({ isOpen, onClose }) {
         {/* Modal Header */}
         <div className="flex items-start justify-between border-b border-slate-100 pb-4">
           <div className="space-y-1">
-            <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[11px] font-bold border border-blue-200">
-              <BookOpen className="w-3 h-3" />
-              <span>Sesi Bimbingan Baru</span>
+            <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 text-[11px] font-bold border border-amber-200">
+              <Edit3 className="w-3 h-3 text-amber-600" />
+              <span>Edit Catatan Bimbingan</span>
             </div>
             <h2 className="text-xl font-bold text-slate-900 tracking-tight">
-              Catat Sesi Bimbingan &amp; Tautan Dokumen
+              Ubah Catatan &amp; Link Dokumen
             </h2>
           </div>
 
@@ -138,64 +144,40 @@ export default function ModalAjukanBimbingan({ isOpen, onClose }) {
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           
-          {/* 1. Pilih Pembimbing */}
+          {/* Info Dosen */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="font-bold text-slate-700">Pilih Pembimbing *</label>
-              <select
-                name="pembimbing"
-                value={formData.pembimbing}
-                onChange={handleChange}
-                className="w-full px-3 py-2 rounded-xl border border-slate-300 font-semibold text-slate-900 bg-white"
-              >
-                <option value="Pembimbing 1">Pembimbing 1 (Utama)</option>
-                <option value="Pembimbing 2">Pembimbing 2 (Pendamping)</option>
-              </select>
-            </div>
-
-            <div className="space-y-1">
-              <label className="font-bold text-slate-700">Nama Dosen Pembimbing</label>
+              <label className="font-bold text-slate-700">Dosen Pembimbing</label>
               <input
                 type="text"
                 readOnly
-                value={formData.dosen_nama}
+                value={`${formData.pembimbing} - ${formData.dosen_nama}`}
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 font-bold text-slate-700 bg-slate-50"
               />
             </div>
-          </div>
 
-          {/* 2. Tanggal & Waktu */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="font-bold text-slate-700">Tanggal Bimbingan *</label>
-              <div className="relative">
+              <label className="font-bold text-slate-700">Tanggal &amp; Waktu</label>
+              <div className="flex items-center space-x-2">
                 <input
                   type="date"
                   name="tanggal"
                   value={formData.tanggal}
                   onChange={handleChange}
-                  className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-300 font-semibold text-slate-900 bg-white"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 font-semibold text-slate-900 bg-white"
                 />
-                <Calendar className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <label className="font-bold text-slate-700">Waktu Bimbingan *</label>
-              <div className="relative">
                 <input
                   type="time"
                   name="waktu"
                   value={formData.waktu}
                   onChange={handleChange}
-                  className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-300 font-semibold text-slate-900 bg-white"
+                  className="w-28 px-3 py-2 rounded-xl border border-slate-300 font-semibold text-slate-900 bg-white"
                 />
-                <Clock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               </div>
             </div>
           </div>
 
-          {/* 3. Bab / Topik Consultation */}
+          {/* Bab / Topik */}
           <div className="space-y-1">
             <label className="font-bold text-slate-700">
               Bab / Topik Bimbingan <span className="text-rose-500">*</span>
@@ -205,27 +187,27 @@ export default function ModalAjukanBimbingan({ isOpen, onClose }) {
               name="bab_topik"
               value={formData.bab_topik}
               onChange={handleChange}
-              placeholder="Ketik Bab atau Topik Bimbingan (misal: Bab 4 - Hasil & Pembahasan)"
+              placeholder="Contoh: Bab 1 - Pendahuluan & Latar Belakang"
               className="w-full px-3 py-2 rounded-xl border border-slate-300 font-semibold text-slate-900 bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none"
             />
           </div>
 
-          {/* 4. Catatan Mahasiswa */}
+          {/* Catatan Mahasiswa */}
           <div className="space-y-1">
             <label className="font-bold text-slate-700">
-              Catatan Konsultasi &amp; Poin Progres *
+              Catatan Progres Mahasiswa <span className="text-rose-500">*</span>
             </label>
             <textarea
               name="catatan_mahasiswa"
               value={formData.catatan_mahasiswa}
               onChange={handleChange}
               rows={4}
-              placeholder="Tuliskan poin-poin yang dikonsultasikan atau pertanyaan untuk pembimbing..."
+              placeholder="Tuliskan poin-poin progres konsultasi terbaru..."
               className="w-full p-3 rounded-xl border border-slate-300 font-medium text-slate-900 bg-white leading-relaxed focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none"
             />
           </div>
 
-          {/* 5. Link Google Drive / Dokumen Draf */}
+          {/* Link Google Drive / Dokumen */}
           <div className="space-y-1.5 pt-2 border-t border-slate-100">
             <div className="flex items-center justify-between">
               <label className="font-bold text-slate-700">
@@ -241,7 +223,7 @@ export default function ModalAjukanBimbingan({ isOpen, onClose }) {
                 value={formData.file_revisi_url}
                 onChange={handleChange}
                 placeholder="https://drive.google.com/... atau https://docs.google.com/..."
-                className="w-full pl-9 pr-12 py-2.5 rounded-xl border border-slate-300 font-medium text-slate-900 bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none"
+                className="w-full pl-9 pr-12 py-2.5 rounded-xl border border-slate-300 font-medium text-slate-900 bg-white focus:border-amber-600 focus:ring-2 focus:ring-amber-100 outline-none"
               />
               <Link2 className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               
@@ -250,7 +232,7 @@ export default function ModalAjukanBimbingan({ isOpen, onClose }) {
                   href={formData.file_revisi_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-[10px] font-bold flex items-center space-x-1 transition-colors"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-lg text-[10px] font-bold flex items-center space-x-1 transition-colors"
                   title="Uji buka link"
                 >
                   <ExternalLink className="w-3 h-3" />
@@ -276,17 +258,17 @@ export default function ModalAjukanBimbingan({ isOpen, onClose }) {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md shadow-blue-600/30 flex items-center space-x-2 disabled:opacity-75 cursor-pointer"
+              className="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold shadow-md shadow-amber-600/30 flex items-center space-x-2 disabled:opacity-75 cursor-pointer"
             >
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin text-white" />
-                  <span>Menyimpan...</span>
+                  <span>Menyimpan Perubahan...</span>
                 </>
               ) : (
                 <>
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>Simpan Sesi Bimbingan</span>
+                  <span>Simpan Perubahan</span>
                 </>
               )}
             </button>

@@ -84,8 +84,7 @@ export default function Sidebar() {
               icon: FileCheck,
               items: [
                 { to: '/thesis/consultations', label: 'Bimbingan & Konsultasi', icon: FileCheck },
-                { to: '/thesis/consultations/card', label: 'Kartu Bimbingan Digital', icon: Printer },
-                { to: '/thesis/consultations/schedule', label: 'Jadwal Bimbingan', icon: CalendarDays }
+                { to: '/thesis/consultations/card', label: 'Kartu Bimbingan Digital', icon: Printer }
               ]
             },
             {
@@ -118,8 +117,7 @@ export default function Sidebar() {
               label: 'Bimbingan',
               icon: FileCheck,
               items: [
-                { to: '/thesis/consultations', label: 'Bimbingan & Konsultasi', icon: FileCheck },
-                { to: '/thesis/consultations/schedule', label: 'Jadwal Bimbingan', icon: CalendarDays }
+                { to: '/thesis/consultations', label: 'Bimbingan & Konsultasi', icon: FileCheck }
               ]
             },
             {
@@ -146,8 +144,7 @@ export default function Sidebar() {
               label: 'Bimbingan',
               icon: FileCheck,
               items: [
-                { to: '/thesis/consultations', label: 'Bimbingan & Konsultasi', icon: FileCheck },
-                { to: '/thesis/consultations/schedule', label: 'Jadwal Bimbingan', icon: CalendarDays }
+                { to: '/thesis/consultations', label: 'Bimbingan & Konsultasi', icon: FileCheck }
               ]
             },
             {
@@ -222,11 +219,41 @@ export default function Sidebar() {
 
   const menuData = getMenuGroups();
 
+  const isRouteActive = (targetTo) => {
+    if (!targetTo || !url) return false;
+    const currentPath = url.split('?')[0].replace(/\/+$/, '') || '/';
+    const targetPath = targetTo.split('?')[0].replace(/\/+$/, '') || '/';
+
+    if (currentPath === targetPath) return true;
+
+    // For nested subpaths (e.g. /booking/apply/proposal matching /booking/apply):
+    // Only match prefix if no other item in the sidebar has an exact match or a longer prefix match.
+    if (currentPath.startsWith(targetPath + '/')) {
+      const allItems = [
+        ...(menuData.dashboard ? [menuData.dashboard] : []),
+        ...(menuData.groups?.flatMap(g => g.items) || [])
+      ];
+      const hasExactMatch = allItems.some(i => {
+        const p = (i.to || '').split('?')[0].replace(/\/+$/, '') || '/';
+        return p === currentPath;
+      });
+      if (hasExactMatch) return false;
+
+      const hasMoreSpecificPrefix = allItems.some(i => {
+        const p = (i.to || '').split('?')[0].replace(/\/+$/, '') || '/';
+        return p !== targetPath && p.length > targetPath.length && currentPath.startsWith(p);
+      });
+      return !hasMoreSpecificPrefix;
+    }
+
+    return false;
+  };
+
   // Auto expand group containing the active page route
   useEffect(() => {
     if (menuData.groups) {
       menuData.groups.forEach(group => {
-        if (group.items.some(item => url === item.to || url.startsWith(item.to + '/'))) {
+        if (group.items.some(item => isRouteActive(item.to))) {
           setOpenGroups(prev => ({ ...prev, [group.id]: true }));
         }
       });
@@ -257,7 +284,7 @@ export default function Sidebar() {
             <Link
               href={menuData.dashboard.to}
               className={`flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                url === menuData.dashboard.to || url.startsWith(menuData.dashboard.to + '/')
+                isRouteActive(menuData.dashboard.to)
                   ? 'bg-indigo-50 text-indigo-700 border-l-4 border-indigo-600 shadow-2xs'
                   : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
               }`}
@@ -301,7 +328,7 @@ export default function Sidebar() {
                   <div className="min-h-0 pl-2 space-y-1 border-l-2 border-slate-100 ml-4">
                     {group.items.map((item) => {
                       const Icon = item.icon;
-                      const isActive = url === item.to || url.startsWith(item.to + '/');
+                      const isActive = isRouteActive(item.to);
                       return (
                         <Link
                           key={item.to}
