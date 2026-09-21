@@ -11,11 +11,12 @@ import {
   Users, 
   UserCheck,
   CheckCircle2, 
-  Building2 
+  Building2,
+  CalendarDays 
 } from 'lucide-react';
 
 export default function DashboardKaprodi() {
-  const { thesisTitles, thesisStages, bookings } = useAuth();
+  const { thesisTitles, thesisStages, bookings, defenseSchedules } = useAuth();
 
   const pendingTitles = thesisTitles.filter(t => t.status === 'diajukan');
   const approvedTitles = thesisTitles.filter(t => t.status === 'disetujui');
@@ -35,7 +36,7 @@ export default function DashboardKaprodi() {
       </div>
 
       {/* Metrics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         
         <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs space-y-1">
           <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Menunggu Tinjauan</div>
@@ -56,21 +57,35 @@ export default function DashboardKaprodi() {
         </div>
 
         <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs space-y-1">
-          <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Ruang Sidang Approved</div>
+          <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Ruang Approved</div>
           <div className="text-2xl font-extrabold text-blue-600 flex items-center justify-between">
             <span>{bookings.filter(b => b.status === 'disetujui').length} Sidang</span>
             <Building2 className="w-6 h-6 text-blue-500/30" />
           </div>
-          <p className="text-[11px] text-slate-500">Jadwal seminar/sidang telah disetujui</p>
+          <p className="text-[11px] text-slate-500">Jadwal seminar/sidang disetujui</p>
         </div>
 
-        <Link href="/kaprodi/check-accounts" className="bg-gradient-to-br from-indigo-50 to-indigo-100/60 border border-indigo-200 rounded-xl p-5 shadow-2xs space-y-1 hover:border-indigo-400 hover:shadow-md transition-all group block">
+        <Link href="/kaprodi/defense-schedules" className="bg-gradient-to-br from-blue-50 to-indigo-100/70 border border-blue-200 rounded-xl p-5 shadow-2xs space-y-1 hover:border-indigo-400 hover:shadow-md transition-all group block">
           <div className="text-xs font-bold text-indigo-700 uppercase tracking-wider flex items-center justify-between">
+            <span>Jadwal Sidang TA</span>
+            <CalendarDays className="w-5 h-5 text-indigo-600 group-hover:scale-110 transition-transform" />
+          </div>
+          <div className="text-2xl font-extrabold text-slate-900 pt-0.5">
+            {defenseSchedules ? defenseSchedules.length : 0} Sidang
+          </div>
+          <p className="text-[11px] text-indigo-600/80 font-medium flex items-center space-x-1">
+            <span>Atur ruang &amp; dewan penguji</span>
+            <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+          </p>
+        </Link>
+
+        <Link href="/kaprodi/check-accounts" className="bg-gradient-to-br from-slate-50 to-slate-100/70 border border-slate-200 rounded-xl p-5 shadow-2xs space-y-1 hover:border-indigo-400 hover:shadow-md transition-all group block">
+          <div className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
             <span>Cek Akun Mahasiswa</span>
-            <UserCheck className="w-5 h-5 text-indigo-600 group-hover:scale-110 transition-transform" />
+            <UserCheck className="w-5 h-5 text-slate-600 group-hover:scale-110 transition-transform" />
           </div>
           <div className="text-sm font-bold text-slate-900 pt-1">Audit NIM Excel/PDF</div>
-          <p className="text-[11px] text-indigo-600/80 font-medium flex items-center space-x-1">
+          <p className="text-[11px] text-slate-500 font-medium flex items-center space-x-1">
             <span>Periksa status registrasi</span>
             <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
           </p>

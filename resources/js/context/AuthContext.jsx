@@ -17,7 +17,8 @@ import {
   MOCK_STUDENT_ADVISORS,
   MOCK_ADMIN_DOCUMENTS,
   MOCK_ADMIN_CMS,
-  MOCK_ADMIN_TEMPLATES
+  MOCK_ADMIN_TEMPLATES,
+  MOCK_DEFENSE_SCHEDULES
 } from '../services/mockData.js';
 
 const AuthContext = createContext();
@@ -206,6 +207,46 @@ export function AuthProvider({ children }) {
   const [buildings, setBuildings] = useState(MOCK_BUILDINGS);
   const [roomPriorities, setRoomPriorities] = useState(MOCK_ROOM_PRIORITIES);
   const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
+
+  // ── Manajemen Jadwal Sidang (Kaprodi / Dosen / Mahasiswa) ────────────────
+  const [defenseSchedules, setDefenseSchedules] = useState(() => {
+    try {
+      const saved = localStorage.getItem('simta_defense_schedules');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return MOCK_DEFENSE_SCHEDULES;
+  });
+
+  const addDefenseSchedule = (data) => {
+    const newSchedule = {
+      id: `sch-${Date.now()}`,
+      created_at: new Date().toISOString(),
+      status: data.status || 'terjadwal',
+      ...data
+    };
+    setDefenseSchedules(prev => {
+      const updated = [newSchedule, ...prev];
+      try { localStorage.setItem('simta_defense_schedules', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+    return newSchedule;
+  };
+
+  const updateDefenseSchedule = (id, fields) => {
+    setDefenseSchedules(prev => {
+      const updated = prev.map(s => s.id === id ? { ...s, ...fields, updated_at: new Date().toISOString() } : s);
+      try { localStorage.setItem('simta_defense_schedules', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+  };
+
+  const deleteDefenseSchedule = (id) => {
+    setDefenseSchedules(prev => {
+      const updated = prev.filter(s => s.id !== id);
+      try { localStorage.setItem('simta_defense_schedules', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+  };
 
   // ── Admin SIMTA: Dokumen, CMS, Template ─────────────────────────────────
   // State diinisialisasi dari mock; Supabase di-fetch on mount (lihat useEffect)
@@ -471,6 +512,38 @@ export function AuthProvider({ children }) {
       try { localStorage.setItem('simta_student_advisors', JSON.stringify(updatedList)); } catch {}
       return updatedList;
     });
+  };
+
+  const bulkAssignStudentAdvisors = (assignments) => {
+    setStudentAdvisors(prev => {
+      const map = new Map(prev.map(sa => [sa.student_nim, { ...sa }]));
+      assignments.forEach(item => {
+        const studentNim = String(item.student_nim || '').trim();
+        if (!studentNim) return;
+        const dospem1Nip = String(item.dospem1_nip || '').trim();
+        const dospem2Nip = String(item.dospem2_nip || '').trim();
+        let statusPembagian = 'belum';
+        if (dospem1Nip && dospem2Nip) statusPembagian = 'lengkap';
+        else if (dospem1Nip || dospem2Nip) statusPembagian = 'partial';
+
+        const existing = map.get(studentNim);
+        map.set(studentNim, {
+          id: existing ? existing.id : `std-adv-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+          student_nim: studentNim,
+          student_nama: item.student_nama || (existing ? existing.student_nama : 'Mahasiswa'),
+          prodi: existing?.prodi || 'D3 Manajemen Informatika',
+          judul_ta: item.judul_ta || existing?.judul_ta || 'Judul Tugas Akhir',
+          dospem1_nip: dospem1Nip,
+          dospem2_nip: dospem2Nip,
+          status_pembagian: statusPembagian,
+          updated_at: new Date().toISOString()
+        });
+      });
+      const updatedList = Array.from(map.values());
+      try { localStorage.setItem('simta_student_advisors', JSON.stringify(updatedList)); } catch {}
+      return updatedList;
+    });
+    return assignments.length;
   };
 
   const getStudentAdvisors = (studentNim) => {
@@ -1192,6 +1265,7 @@ export function AuthProvider({ children }) {
       deleteAdvisor,
       bulkImportAdvisors,
       assignStudentAdvisors,
+      bulkAssignStudentAdvisors,
       getStudentAdvisors,
       addThesisTitle,
       validateThesisTitleDosen,
@@ -1210,7 +1284,11 @@ export function AuthProvider({ children }) {
       adminTemplates,
       addAdminTemplate,
       updateAdminTemplate,
-      deleteAdminTemplate
+      deleteAdminTemplate,
+      defenseSchedules,
+      addDefenseSchedule,
+      updateDefenseSchedule,
+      deleteDefenseSchedule
     }}>
       {children}
     </AuthContext.Provider>

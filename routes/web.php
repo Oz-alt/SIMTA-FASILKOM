@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -86,6 +85,10 @@ Route::get('/kaprodi/titles', function () {
 
 Route::get('/kaprodi/advisors', function () {
     return Inertia::render('kaprodi/KelolaDospemPage');
+});
+
+Route::get('/kaprodi/defense-schedules', function () {
+    return Inertia::render('kaprodi/KelolaJadwalSidangPage');
 });
 
 Route::get('/kaprodi/repository/review', function () {

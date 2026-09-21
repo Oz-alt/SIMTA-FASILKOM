@@ -15,7 +15,11 @@ import {
   MOCK_CONSULTATIONS,
   MOCK_ADVISOR_SCHEDULES,
   MOCK_ADVISORS,
-  MOCK_STUDENT_ADVISORS
+  MOCK_STUDENT_ADVISORS,
+  MOCK_ADMIN_DOCUMENTS,
+  MOCK_ADMIN_CMS,
+  MOCK_ADMIN_TEMPLATES,
+  MOCK_DEFENSE_SCHEDULES
 } from '../services/mockData.js';
 
 const AuthContext = createContext();
@@ -51,6 +55,18 @@ export function AuthProvider({ children }) {
         nama: cleanNama,
         role: 'admin_sarana',
         kelas: 'Admin Sarana'
+      };
+    }
+
+    if (user.role === 'admin') {
+      if (!cleanNama || cleanNama === 'Mahasiswa UNSRI' || cleanNama === 'Pengguna SIMTA' || cleanNama === 'Aulia Azzahra' || /^\d+$/.test(cleanNama)) {
+        cleanNama = 'Rina Agustina, S.Kom. (Admin SIMTA)';
+      }
+      return {
+        ...user,
+        nama: cleanNama,
+        role: 'admin',
+        kelas: 'Admin SIMTA'
       };
     }
 
@@ -192,6 +208,154 @@ export function AuthProvider({ children }) {
   const [buildings, setBuildings] = useState(MOCK_BUILDINGS);
   const [roomPriorities, setRoomPriorities] = useState(MOCK_ROOM_PRIORITIES);
   const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
+
+  // ── Manajemen Jadwal Sidang (Kaprodi / Dosen / Mahasiswa) ────────────────
+  const [defenseSchedules, setDefenseSchedules] = useState(() => {
+    try {
+      const saved = localStorage.getItem('simta_defense_schedules');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return MOCK_DEFENSE_SCHEDULES;
+  });
+
+  const addDefenseSchedule = (data) => {
+    const newSchedule = {
+      id: `sch-${Date.now()}`,
+      created_at: new Date().toISOString(),
+      status: data.status || 'terjadwal',
+      ...data
+    };
+    setDefenseSchedules(prev => {
+      const updated = [newSchedule, ...prev];
+      try { localStorage.setItem('simta_defense_schedules', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+    return newSchedule;
+  };
+
+  const updateDefenseSchedule = (id, fields) => {
+    setDefenseSchedules(prev => {
+      const updated = prev.map(s => s.id === id ? { ...s, ...fields, updated_at: new Date().toISOString() } : s);
+      try { localStorage.setItem('simta_defense_schedules', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+  };
+
+  const deleteDefenseSchedule = (id) => {
+    setDefenseSchedules(prev => {
+      const updated = prev.filter(s => s.id !== id);
+      try { localStorage.setItem('simta_defense_schedules', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+  };
+
+  // ── Admin SIMTA: Dokumen, CMS, Template ─────────────────────────────────
+  // State diinisialisasi dari mock; Supabase di-fetch on mount (lihat useEffect)
+  const [adminDocuments, setAdminDocuments] = useState(MOCK_ADMIN_DOCUMENTS);
+
+  const addAdminDocument = async (data) => {
+    const doc = {
+      id: `doc-${Date.now()}`,
+      ...data,
+      tanggal_upload: new Date().toISOString().split('T')[0],
+      uploader: 'Admin SIMTA',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    setAdminDocuments(prev => [doc, ...prev]);
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase.from('admin_documents').insert([doc]);
+      if (error) console.warn('Supabase admin_documents insert warning:', error.message);
+    }
+    return doc;
+  };
+
+  const updateAdminDocument = async (id, fields) => {
+    const updated_at = new Date().toISOString();
+    setAdminDocuments(prev => prev.map(d => d.id === id ? { ...d, ...fields, updated_at } : d));
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase.from('admin_documents').update({ ...fields, updated_at }).eq('id', id);
+      if (error) console.warn('Supabase admin_documents update warning:', error.message);
+    }
+  };
+
+  const deleteAdminDocument = async (id) => {
+    setAdminDocuments(prev => prev.filter(d => d.id !== id));
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase.from('admin_documents').delete().eq('id', id);
+      if (error) console.warn('Supabase admin_documents delete warning:', error.message);
+    }
+  };
+
+  const [adminCmsContents, setAdminCmsContents] = useState(MOCK_ADMIN_CMS);
+
+  const addAdminCms = async (data) => {
+    const item = {
+      id: `cms-${Date.now()}`,
+      ...data,
+      updated_at: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+      penulis: 'Admin SIMTA'
+    };
+    setAdminCmsContents(prev => [item, ...prev]);
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase.from('admin_cms').insert([item]);
+      if (error) console.warn('Supabase admin_cms insert warning:', error.message);
+    }
+    return item;
+  };
+
+  const updateAdminCms = async (id, fields) => {
+    const updated_at = new Date().toISOString();
+    setAdminCmsContents(prev => prev.map(c => c.id === id ? { ...c, ...fields, updated_at } : c));
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase.from('admin_cms').update({ ...fields, updated_at }).eq('id', id);
+      if (error) console.warn('Supabase admin_cms update warning:', error.message);
+    }
+  };
+
+  const deleteAdminCms = async (id) => {
+    setAdminCmsContents(prev => prev.filter(c => c.id !== id));
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase.from('admin_cms').delete().eq('id', id);
+      if (error) console.warn('Supabase admin_cms delete warning:', error.message);
+    }
+  };
+
+  const [adminTemplates, setAdminTemplates] = useState(MOCK_ADMIN_TEMPLATES);
+
+  const addAdminTemplate = async (data) => {
+    const tpl = {
+      id: `tpl-${Date.now()}`,
+      ...data,
+      updated_at: new Date().toISOString(),
+      created_at: new Date().toISOString()
+    };
+    setAdminTemplates(prev => [tpl, ...prev]);
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase.from('admin_templates').insert([tpl]);
+      if (error) console.warn('Supabase admin_templates insert warning:', error.message);
+    }
+    return tpl;
+  };
+
+  const updateAdminTemplate = async (id, fields) => {
+    const updated_at = new Date().toISOString();
+    setAdminTemplates(prev => prev.map(t => t.id === id ? { ...t, ...fields, updated_at } : t));
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase.from('admin_templates').update({ ...fields, updated_at }).eq('id', id);
+      if (error) console.warn('Supabase admin_templates update warning:', error.message);
+    }
+  };
+
+  const deleteAdminTemplate = async (id) => {
+    setAdminTemplates(prev => prev.filter(t => t.id !== id));
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase.from('admin_templates').delete().eq('id', id);
+      if (error) console.warn('Supabase admin_templates delete warning:', error.message);
+    }
+  };
+  // ─────────────────────────────────────────────────────────────────────────
 
   // Published Thesis Archives (Public Library)
   const [thesisArchives, setThesisArchives] = useState(() => {
@@ -362,6 +526,38 @@ export function AuthProvider({ children }) {
     });
   };
 
+  const bulkAssignStudentAdvisors = (assignments) => {
+    setStudentAdvisors(prev => {
+      const map = new Map(prev.map(sa => [sa.student_nim, { ...sa }]));
+      assignments.forEach(item => {
+        const studentNim = String(item.student_nim || '').trim();
+        if (!studentNim) return;
+        const dospem1Nip = String(item.dospem1_nip || '').trim();
+        const dospem2Nip = String(item.dospem2_nip || '').trim();
+        let statusPembagian = 'belum';
+        if (dospem1Nip && dospem2Nip) statusPembagian = 'lengkap';
+        else if (dospem1Nip || dospem2Nip) statusPembagian = 'partial';
+
+        const existing = map.get(studentNim);
+        map.set(studentNim, {
+          id: existing ? existing.id : `std-adv-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+          student_nim: studentNim,
+          student_nama: item.student_nama || (existing ? existing.student_nama : 'Mahasiswa'),
+          prodi: existing?.prodi || 'D3 Manajemen Informatika',
+          judul_ta: item.judul_ta || existing?.judul_ta || 'Judul Tugas Akhir',
+          dospem1_nip: dospem1Nip,
+          dospem2_nip: dospem2Nip,
+          status_pembagian: statusPembagian,
+          updated_at: new Date().toISOString()
+        });
+      });
+      const updatedList = Array.from(map.values());
+      try { localStorage.setItem('simta_student_advisors', JSON.stringify(updatedList)); } catch {}
+      return updatedList;
+    });
+    return assignments.length;
+  };
+
   const getStudentAdvisors = (studentNim) => {
     const record = studentAdvisors.find(sa => sa.student_nim === studentNim);
     if (!record) return { dospem1: null, dospem2: null, record: null };
@@ -409,6 +605,28 @@ export function AuthProvider({ children }) {
 
     // 2. Sync with Supabase Auth if configured
     if (isSupabaseConfigured && supabase) {
+
+      // 2a. Fetch Admin SIMTA data from Supabase on mount
+      supabase.from('admin_documents').select('*').order('tanggal_upload', { ascending: false })
+        .then(({ data, error }) => {
+          if (!error && data && data.length > 0) {
+            setAdminDocuments(data);
+          }
+        });
+      supabase.from('admin_cms').select('*').order('updated_at', { ascending: false })
+        .then(({ data, error }) => {
+          if (!error && data && data.length > 0) {
+            setAdminCmsContents(data);
+          }
+        });
+      supabase.from('admin_templates').select('*').order('updated_at', { ascending: false })
+        .then(({ data, error }) => {
+          if (!error && data && data.length > 0) {
+            setAdminTemplates(data);
+          }
+        });
+
+      // 2b. Supabase Auth session restore
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (session?.user) {
           const registered = getRegisteredUsers();
@@ -468,6 +686,8 @@ export function AuthProvider({ children }) {
       setCurrentUser(localFound);
       if (localFound.role === 'kaprodi') return '/kaprodi/dashboard';
       if (localFound.role === 'admin_sarana') return '/admin/dashboard';
+      if (localFound.role === 'admin') return '/admin-simta/dashboard';
+      if (localFound.role === 'dosen') return '/dosen/dashboard';
       return '/dashboard';
     }
 
@@ -502,6 +722,8 @@ export function AuthProvider({ children }) {
 
           if (activeProfile.role === 'kaprodi') return '/kaprodi/dashboard';
           if (activeProfile.role === 'admin_sarana') return '/admin/dashboard';
+          if (activeProfile.role === 'admin') return '/admin-simta/dashboard';
+          if (activeProfile.role === 'dosen') return '/dosen/dashboard';
           return '/dashboard';
         }
       }
@@ -518,22 +740,13 @@ export function AuthProvider({ children }) {
       setCurrentUser(foundUser);
       if (foundUser.role === 'kaprodi') return '/kaprodi/dashboard';
       if (foundUser.role === 'admin_sarana') return '/admin/dashboard';
+      if (foundUser.role === 'admin') return '/admin-simta/dashboard';
+      if (foundUser.role === 'dosen') return '/dosen/dashboard';
       return '/dashboard';
     }
 
-    // 4. If no match found, create custom user resolving exact registered name
-    const isDigitsOnly = /^\d+$/.test(term);
-    const matchedReg = registered[0];
-    const customUser = {
-      id: `user-${Date.now()}`,
-      nama: isDigitsOnly ? (matchedReg?.nama || 'Aulia Azzahra') : (term.includes('@') ? term.split('@')[0] : term),
-      email: term.includes('@') ? term : `${term}@student.unsri.ac.id`,
-      nim: isDigitsOnly ? term : (matchedReg?.nim || '09010182428002'),
-      role: 'mahasiswa',
-      kelas: 'MI 5A'
-    };
-    setCurrentUser(customUser);
-    return '/dashboard';
+    // 4. If no match found in registered users, Supabase, or mock users, throw invalid credential error
+    throw new Error('NIM / NIP atau kata sandi yang Anda masukkan tidak terdaftar dalam sistem.');
   };
 
   // Register new account (Mahasiswa / Kaprodi)
@@ -629,10 +842,10 @@ export function AuthProvider({ children }) {
     const newId = `title-${Date.now()}`;
     const createdTitle = {
       id: newId,
-      profile_id: currentUser.id,
-      mhs_nama: currentUser.nama,
-      mhs_nim: currentUser.nim,
-      mhs_kelas: currentUser.kelas,
+      profile_id: currentUser?.id || 'user-mhs-aulia',
+      mhs_nama: currentUser?.nama || 'Aulia Azzahra',
+      mhs_nim: currentUser?.nim || '09010182428002',
+      mhs_kelas: currentUser?.kelas || 'MI 5A',
       ...newTitleData,
       status: 'diajukan',
       created_at: new Date().toISOString(),
@@ -649,7 +862,7 @@ export function AuthProvider({ children }) {
         profile_id: kaprodiUser.id,
         related_type: 'thesis_title',
         title: 'Pengajuan Judul Baru',
-        message: `${currentUser.nama} (${currentUser.nim}) mengajukan judul: "${newTitleData.judul}"`,
+        message: `${currentUser?.nama || 'Mahasiswa'} (${currentUser?.nim || ''}) mengajukan judul: "${newTitleData.judul}"`,
         is_read: false,
         created_at: new Date().toISOString()
       };
@@ -987,12 +1200,29 @@ export function AuthProvider({ children }) {
       deleteAdvisor,
       bulkImportAdvisors,
       assignStudentAdvisors,
+      bulkAssignStudentAdvisors,
       getStudentAdvisors,
       addThesisTitle,
       reviewThesisTitle,
       bulkImportHistorical,
       addBooking,
-      reviewBooking
+      reviewBooking,
+      adminDocuments,
+      addAdminDocument,
+      updateAdminDocument,
+      deleteAdminDocument,
+      adminCmsContents,
+      addAdminCms,
+      updateAdminCms,
+      deleteAdminCms,
+      adminTemplates,
+      addAdminTemplate,
+      updateAdminTemplate,
+      deleteAdminTemplate,
+      defenseSchedules,
+      addDefenseSchedule,
+      updateDefenseSchedule,
+      deleteDefenseSchedule
     }}>
       {children}
     </AuthContext.Provider>

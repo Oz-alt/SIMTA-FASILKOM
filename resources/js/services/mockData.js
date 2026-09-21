@@ -791,3 +791,55 @@ export const MOCK_ADMIN_TEMPLATES = [
     ukuran: '156 KB'
   }
 ];
+
+export const MOCK_DEFENSE_SCHEDULES = [
+  {
+    id: 'sch-1',
+    mhs_nim: '09031182328001',
+    mhs_nama: 'Ahmad Rizky Pratama',
+    prodi: 'D3 Manajemen Informatika',
+    judul: 'Rancang Bangun Sistem Informasi Manajemen Tugas Akhir & Peminjaman Ruang Sidang FASILKOM UNSRI',
+    jenis_sidang: 'Sidang Akhir',
+    tanggal: '2026-10-25',
+    waktu_mulai: '09:00',
+    waktu_selesai: '10:30',
+    ruangan: 'Ruang Sidang Utama DIPKOM',
+    ketua_penguji_nama: 'Dr. Ir. Hendra Kusuma, M.T.',
+    ketua_penguji_nip: '197805122005011002',
+    sekretaris_nama: 'Dr. Ahmad Fauzi, S.Kom., M.T.',
+    sekretaris_nip: '198001012005011001',
+    penguji1_nama: 'Nurul Hidayah, M.Kom.',
+    penguji1_nip: '198502022010122002',
+    penguji2_nama: 'Prof. Dr. Ahmad Dahlan, S.T., M.Kom.',
+    penguji2_nip: '198203112008031003',
+    status: 'terjadwal',
+    catatan: 'Mahasiswa wajib membawa berkas draft rangkap 4 dan slide presentasi 15 menit.',
+    link_berkas: '',
+    created_at: '2026-09-20T10:00:00.000Z'
+  },
+  {
+    id: 'sch-2',
+    mhs_nim: '09031182328002',
+    mhs_nama: 'Siti Sarah Rahmawati',
+    prodi: 'D3 Manajemen Informatika',
+    judul: 'Pengembangan Dashboard Monitoring Log Aktivitas Server Kampus Berbasis Web',
+    jenis_sidang: 'Seminar Proposal',
+    tanggal: '2026-10-26',
+    waktu_mulai: '13:00',
+    waktu_selesai: '14:30',
+    ruangan: 'Ruang Seminar DIPKOM Lt. 2',
+    ketua_penguji_nama: 'Budi Santoso, S.Kom., M.Kom.',
+    ketua_penguji_nip: '198509152010121004',
+    sekretaris_nama: 'Nurul Hidayah, M.Kom.',
+    sekretaris_nip: '198502022010122002',
+    penguji1_nama: 'Dr. Ir. Hendra Kusuma, M.T.',
+    penguji1_nip: '197805122005011002',
+    penguji2_nama: 'Rina Wijaya, M.T.',
+    penguji2_nip: '199001152019032015',
+    status: 'terjadwal',
+    catatan: 'Fokus pengujian pada bab 1-3 dan rancangan metodologi penelitian.',
+    link_berkas: '',
+    created_at: '2026-09-21T08:30:00.000Z'
+  }
+];
+

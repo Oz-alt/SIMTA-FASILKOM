@@ -1,15 +1,39 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { CalendarDays, Bell, Mail, Clock } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 
 export default function JadwalSidangDosenPage() {
-  const { currentUser } = useAuth();
+  const { currentUser, defenseSchedules } = useAuth();
 
-  // Simulasi data jadwal sidang
-  const jadwalSidang = [
-    { id: 1, mhs_nama: 'Budi Santoso', mhs_nim: '09010582024001', tanggal: '25 Okt 2026', waktu: '09:00 - 10:30', ruangan: 'Ruang Sidang 1', jenis: 'Sidang Akhir', peran: 'Ketua Penguji' },
-    { id: 2, mhs_nama: 'Siti Aminah', mhs_nim: '09010582024022', tanggal: '26 Okt 2026', waktu: '13:00 - 14:30', ruangan: 'Ruang Seminar 2', jenis: 'Seminar Proposal', peran: 'Anggota Penguji' },
-  ];
+  const userNip = currentUser?.nip || currentUser?.nim || '';
+  const userNama = currentUser?.nama || '';
+
+  const jadwalSidang = useMemo(() => {
+    if (!defenseSchedules || defenseSchedules.length === 0) return [];
+    return defenseSchedules.map(sch => {
+      let peran = 'Dewan Penguji';
+      if (sch.ketua_penguji_nip === userNip || (userNama && sch.ketua_penguji_nama?.toLowerCase().includes(userNama.toLowerCase()))) {
+        peran = 'Ketua Penguji';
+      } else if (sch.sekretaris_nip === userNip || (userNama && sch.sekretaris_nama?.toLowerCase().includes(userNama.toLowerCase()))) {
+        peran = 'Sekretaris (Dospem 1)';
+      } else if (sch.penguji1_nip === userNip || (userNama && sch.penguji1_nama?.toLowerCase().includes(userNama.toLowerCase()))) {
+        peran = 'Anggota Penguji 1';
+      } else if (sch.penguji2_nip === userNip || (userNama && sch.penguji2_nama?.toLowerCase().includes(userNama.toLowerCase()))) {
+        peran = 'Anggota Penguji 2';
+      }
+
+      return {
+        id: sch.id,
+        mhs_nama: sch.mhs_nama,
+        mhs_nim: sch.mhs_nim,
+        tanggal: sch.tanggal,
+        waktu: `${sch.waktu_mulai || '09:00'} - ${sch.waktu_selesai || '10:30'} WIB`,
+        ruangan: sch.ruangan,
+        jenis: sch.jenis_sidang || 'Sidang Akhir',
+        peran
+      };
+    });
+  }, [defenseSchedules, userNip, userNama]);
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">

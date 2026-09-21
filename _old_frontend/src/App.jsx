@@ -21,6 +21,7 @@ import StatusPeminjamanPage from './pages/mahasiswa/StatusPeminjamanPage.jsx';
 import DashboardKaprodi from './pages/kaprodi/DashboardKaprodi.jsx';
 import TinjauJudulPage from './pages/kaprodi/TinjauJudulPage.jsx';
 import KelolaDospemPage from './pages/kaprodi/KelolaDospemPage.jsx';
+import KelolaJadwalSidangPage from './pages/kaprodi/KelolaJadwalSidangPage.jsx';
 import TinjauRepositoryKaprodi from './pages/kaprodi/TinjauRepositoryKaprodi.jsx';
 import BulkImportPage from './pages/kaprodi/BulkImportPage.jsx';
 import AnalitikPage from './pages/kaprodi/AnalitikPage.jsx';
@@ -68,6 +69,7 @@ export default function App() {
               <Route path="/kaprodi/dashboard" element={<DashboardKaprodi />} />
               <Route path="/kaprodi/titles" element={<TinjauJudulPage />} />
               <Route path="/kaprodi/advisors" element={<KelolaDospemPage />} />
+              <Route path="/kaprodi/defense-schedules" element={<KelolaJadwalSidangPage />} />
               <Route path="/kaprodi/repository/review" element={<TinjauRepositoryKaprodi />} />
               <Route path="/kaprodi/import" element={<BulkImportPage />} />
               <Route path="/kaprodi/check-accounts" element={<CekAkunMahasiswaPage />} />

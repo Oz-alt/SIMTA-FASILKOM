@@ -109,7 +109,8 @@ export default function Sidebar() {
               icon: GraduationCap,
               items: [
                 { to: '/kaprodi/titles', label: 'Tinjau Judul TA', icon: CheckSquare },
-                { to: '/kaprodi/advisors', label: 'Pendataan & Pembagian Dospem', icon: UserCheck }
+                { to: '/kaprodi/advisors', label: 'Pendataan & Pembagian Dospem', icon: UserCheck },
+                { to: '/kaprodi/defense-schedules', label: 'Manajemen Jadwal Sidang', icon: CalendarDays }
               ]
             },
             {
