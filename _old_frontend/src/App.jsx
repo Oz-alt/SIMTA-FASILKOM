@@ -37,7 +37,6 @@ import ArsipTAPage from './pages/ArsipTAPage.jsx';
 import UploadRepositoryPage from './pages/UploadRepositoryPage.jsx';
 import BimbinganTAPage from './pages/mahasiswa/BimbinganTAPage.jsx';
 import KartuBimbinganPage from './pages/mahasiswa/KartuBimbinganPage.jsx';
-import JadwalBimbinganPage from './pages/JadwalBimbinganPage.jsx';
 
 export default function App() {
   return (
@@ -59,7 +58,6 @@ export default function App() {
               <Route path="/thesis/status" element={<StatusJudulPage />} />
               <Route path="/thesis/consultations" element={<BimbinganTAPage />} />
               <Route path="/thesis/consultations/card" element={<KartuBimbinganPage />} />
-              <Route path="/thesis/consultations/schedule" element={<JadwalBimbinganPage />} />
               <Route path="/thesis/archive" element={<ArsipTAPage />} />
               <Route path="/thesis/repository/upload" element={<UploadRepositoryPage />} />
               <Route path="/schedule" element={<JadwalRuangPage />} />

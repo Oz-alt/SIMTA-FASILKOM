@@ -12,13 +12,19 @@ import {
   GraduationCap, 
   FileCheck, 
   MessageSquare, 
-  Calendar
+  Calendar,
+  Edit3,
+  Link2,
+  ExternalLink
 } from 'lucide-react';
 import ModalAjukanBimbingan from '../../components/common/ModalAjukanBimbingan.jsx';
+import ModalEditBimbingan from '../../components/common/ModalEditBimbingan.jsx';
 
 export default function BimbinganTAPage() {
   const { currentUser, consultations, reviewConsultation } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingConsultation, setEditingConsultation] = useState(null);
+  const [toastMsg, setToastMsg] = useState('');
   const [feedbackInput, setFeedbackInput] = useState({});
 
   // Filter consultations for current student
@@ -48,6 +54,25 @@ export default function BimbinganTAPage() {
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
       />
+
+      {/* Modal Edit Catatan Bimbingan */}
+      <ModalEditBimbingan
+        isOpen={Boolean(editingConsultation)}
+        onClose={() => setEditingConsultation(null)}
+        consultation={editingConsultation}
+        onSaved={(msg) => {
+          setToastMsg(msg);
+          setTimeout(() => setToastMsg(''), 4000);
+        }}
+      />
+
+      {/* Toast Notification */}
+      {toastMsg && (
+        <div className="fixed top-20 right-6 z-50 bg-emerald-600 text-white px-5 py-3 rounded-xl shadow-xl flex items-center space-x-3 animate-bounce">
+          <CheckCircle2 className="w-5 h-5 text-white shrink-0" />
+          <span className="text-sm font-semibold">{toastMsg}</span>
+        </div>
+      )}
 
       {/* Top Banner Header */}
       <div className="bg-gradient-to-r from-blue-950 via-indigo-900 to-slate-900 rounded-2xl p-6 sm:p-8 text-white shadow-lg relative overflow-hidden">
@@ -203,24 +228,53 @@ export default function BimbinganTAPage() {
                   </div>
                 )}
 
-                {/* Attached File Revisi */}
-                {item.file_revisi_url && (
-                  <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
-                    <div className="flex items-center space-x-2 text-slate-600">
-                      <FileText className="w-4 h-4 text-blue-600" />
-                      <span className="font-semibold text-slate-800">Dokumen Draf / Hasil Revisi PDF/Word</span>
+                {/* Link Dokumen Drive & Action Buttons (Edit Catatan & Buka Link) */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-2.5 border-t border-slate-100 text-xs">
+                  <div className="flex items-center space-x-2 text-slate-600 truncate max-w-sm sm:max-w-md">
+                    <Link2 className="w-4 h-4 text-blue-600 shrink-0" />
+                    <div className="truncate">
+                      <span className="font-semibold text-slate-800 mr-1.5">Tautan Dokumen / Drive:</span>
+                      {item.file_revisi_url ? (
+                        <a
+                          href={item.file_revisi_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 font-medium underline inline-flex items-center space-x-0.5 truncate"
+                        >
+                          <span className="truncate">{item.file_revisi_url}</span>
+                        </a>
+                      ) : (
+                        <span className="text-slate-400 italic">Belum ada tautan</span>
+                      )}
                     </div>
-                    <a
-                      href={item.file_revisi_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-[11px] transition-all flex items-center space-x-1 shadow-2xs"
-                    >
-                      <Download className="w-3 h-3" />
-                      <span>Unduh Berkas</span>
-                    </a>
                   </div>
-                )}
+
+                  <div className="flex items-center space-x-2 self-end sm:self-auto shrink-0">
+                    {/* Tombol Edit Catatan */}
+                    <button
+                      type="button"
+                      onClick={() => setEditingConsultation(item)}
+                      className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold text-[11px] transition-all flex items-center space-x-1.5 shadow-2xs cursor-pointer hover:shadow-xs"
+                      title="Ubah Catatan &amp; Tautan Bimbingan"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                      <span>Edit Catatan</span>
+                    </button>
+
+                    {/* Tombol Buka Link Drive */}
+                    {item.file_revisi_url && (
+                      <a
+                        href={item.file_revisi_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-[11px] transition-all flex items-center space-x-1.5 shadow-2xs hover:shadow-xs"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        <span>Buka Link Drive</span>
+                      </a>
+                    )}
+                  </div>
+                </div>
 
               </div>
             ))}

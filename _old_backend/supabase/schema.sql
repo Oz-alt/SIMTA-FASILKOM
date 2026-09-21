@@ -246,22 +246,6 @@ CREATE TABLE IF NOT EXISTS public.thesis_consultations (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 17. Advisor Offline Schedules & WhatsApp Group Links Table
-CREATE TABLE IF NOT EXISTS public.advisor_schedules (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    dosen_nip VARCHAR(50) UNIQUE NOT NULL,
-    dosen_nama VARCHAR(255) NOT NULL,
-    peran VARCHAR(100) DEFAULT 'Dosen Pembimbing',
-    hari_bimbingan VARCHAR(100) NOT NULL,
-    jam_bimbingan VARCHAR(100) NOT NULL,
-    lokasi VARCHAR(255) NOT NULL,
-    link_wa_group TEXT,
-    no_hp_wa VARCHAR(30),
-    catatan TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
 -- 18. Dosen Pembimbing (Master Advisors Data & Quota)
 CREATE TABLE IF NOT EXISTS public.advisors (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -302,7 +286,6 @@ ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.thesis_repositories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.thesis_archives ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.thesis_consultations ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.advisor_schedules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.advisors ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.student_advisors ENABLE ROW LEVEL SECURITY;
 
@@ -329,9 +312,6 @@ CREATE POLICY "Admins can insert thesis archives" ON public.thesis_archives FOR 
 CREATE POLICY "Public read access for consultations" ON public.thesis_consultations FOR SELECT USING (true);
 CREATE POLICY "Authenticated users can insert consultations" ON public.thesis_consultations FOR INSERT WITH CHECK (true);
 CREATE POLICY "Users can update consultations" ON public.thesis_consultations FOR UPDATE USING (true);
-
-CREATE POLICY "Public read access for advisor_schedules" ON public.advisor_schedules FOR SELECT USING (true);
-CREATE POLICY "Dosen and admins can insert and update advisor_schedules" ON public.advisor_schedules FOR ALL USING (true);
 
 -- ====================================================================
 -- SEED DATA FOR KAPRODI ACCOUNT (Safe insert/update avoiding ON CONFLICT email error)

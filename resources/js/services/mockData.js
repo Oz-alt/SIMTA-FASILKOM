@@ -172,8 +172,16 @@ export const MOCK_THESIS_TITLES = [
     mhs_nama: 'Ahmad Rizky Pratama',
     mhs_nim: '09031182328001',
     mhs_kelas: 'MI 5A',
+    pembimbing_1_nip: '197805122005011002',
+    pembimbing_1_nama: 'Dr. Ir. Hendra Kusuma, M.T.',
+    pembimbing_2_nip: '198804102015042001',
+    pembimbing_2_nama: 'Siti Nurhaliza, S.Kom., M.Kom.',
     pembimbing_1: 'Dr. Ir. Hendra Kusuma, M.T.',
-    pembimbing_2: 'Siti Nurhaliza, S.Kom., M.Kom.'
+    pembimbing_2: 'Siti Nurhaliza, S.Kom., M.Kom.',
+    rekomendasi_dospem_status: 'direkomendasikan',
+    catatan_dospem: 'Topik inovatif dan arsitektur sistem sudah matang.',
+    rekomendasi_oleh: 'Dr. Ir. Hendra Kusuma, M.T.',
+    catatan_kaprodi: 'Judul disetujui. Silakan persiapkan proposal.'
   },
   {
     id: 'title-102',
@@ -188,8 +196,40 @@ export const MOCK_THESIS_TITLES = [
     mhs_nama: 'Siti Sarah Rahmawati',
     mhs_nim: '09031182328002',
     mhs_kelas: 'MI 5B',
-    pembimbing_1: 'Dr. Ir. Hendra Kusuma, M.T.',
-    pembimbing_2: 'Prof. Dr. Ir. Ahmad Zaki, M.Sc.'
+    pembimbing_1_nip: '198804102015042001',
+    pembimbing_1_nama: 'Siti Nurhaliza, S.Kom., M.Kom.',
+    pembimbing_2_nip: '198509152010121004',
+    pembimbing_2_nama: 'Prof. Dr. Ir. Ahmad Zaki, M.Sc.',
+    pembimbing_1: 'Siti Nurhaliza, S.Kom., M.Kom.',
+    pembimbing_2: 'Prof. Dr. Ir. Ahmad Zaki, M.Sc.',
+    rekomendasi_dospem_status: 'direkomendasikan',
+    catatan_dospem: 'Usulan topik relevan dengan kebutuhan prodi. Direkomendasikan untuk persetujuan Kaprodi.',
+    rekomendasi_oleh: 'Siti Nurhaliza, S.Kom., M.Kom.',
+    catatan_kaprodi: ''
+  },
+  {
+    id: 'title-103',
+    profile_id: 'user-mhs-3',
+    judul: 'Implementasi Algoritma Clustering Untuk Pengelompokan Minat Penelitian Mahasiswa',
+    deskripsi: 'Sistem pemetaan minat penelitian mahasiswa menggunakan algoritma K-Means.',
+    judul_processed: 'clustering minat penelitian mahasiswa',
+    status: 'diajukan',
+    skor_kemiripan_terakhir: 22.0,
+    created_at: '2026-09-12T14:00:00Z',
+    updated_at: '2026-09-12T14:00:00Z',
+    mhs_nama: 'Bagus Tri Handoko',
+    mhs_nim: '09031182328003',
+    mhs_kelas: 'MI 5A',
+    pembimbing_1_nip: '198001012010011001',
+    pembimbing_1_nama: 'Dr. Budi Dosen, M.Kom.',
+    pembimbing_2_nip: '199001152019032015',
+    pembimbing_2_nama: 'Rina Wijaya, M.T.',
+    pembimbing_1: 'Dr. Budi Dosen, M.Kom.',
+    pembimbing_2: 'Rina Wijaya, M.T.',
+    rekomendasi_dospem_status: 'menunggu_validasi',
+    catatan_dospem: '',
+    rekomendasi_oleh: '',
+    catatan_kaprodi: ''
   }
 ];
 
@@ -428,33 +468,6 @@ export const MOCK_CONSULTATIONS = [
     file_revisi_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
     status: 'perlu_revisi',
     created_at: '2026-09-10T14:00:00Z'
-  }
-];
-
-export const MOCK_ADVISOR_SCHEDULES = [
-  {
-    id: 'adv-sch-1',
-    dosen_nip: '197805122005011002',
-    dosen_nama: 'Dr. Ir. Hendra Kusuma, M.T.',
-    peran: 'Pembimbing 1 & Kaprodi',
-    hari_bimbingan: 'Senin & Rabu',
-    jam_bimbingan: '09:00 - 12:00 WIB',
-    lokasi: 'Ruang Dosen Gedung DIPKOM Lt. 2 (Ruang 204)',
-    link_wa_group: 'https://chat.whatsapp.com/BimbTAHendraKusuma2026',
-    no_hp_wa: '081278901234',
-    catatan: 'Wajib konfirmasi H-1 melalui WA. Silakan bawa draf yang sudah di-print dan lembar kendali bimbingan.'
-  },
-  {
-    id: 'adv-sch-2',
-    dosen_nip: '198804102015042001',
-    dosen_nama: 'Siti Nurhaliza, S.Kom., M.Kom.',
-    peran: 'Pembimbing 2',
-    hari_bimbingan: 'Selasa & Kamis',
-    jam_bimbingan: '13:00 - 16:00 WIB',
-    lokasi: 'Laboratorium Rekayasa Perangkat Lunak / Ruang Dosen Lt. 1',
-    link_wa_group: 'https://chat.whatsapp.com/BimbTASitiNurhaliza2026',
-    no_hp_wa: '081367891200',
-    catatan: 'Bimbingan dilakukan secara offline. Draf file revisi (PDF/Word) wajib di-upload ke SIMTA sebelum sesi pertemuan.'
   }
 ];
 

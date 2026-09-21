@@ -13,7 +13,6 @@ import {
   MOCK_THESIS_ARCHIVES,
   MOCK_THESIS_REPOSITORIES,
   MOCK_CONSULTATIONS,
-  MOCK_ADVISOR_SCHEDULES,
   MOCK_ADVISORS,
   MOCK_STUDENT_ADVISORS,
   MOCK_ADMIN_DOCUMENTS,
@@ -352,17 +351,6 @@ export function AuthProvider({ children }) {
     return MOCK_CONSULTATIONS;
   });
 
-  // Advisor Offline Consultation Schedules & WA Link state with local persistence
-  const [advisorSchedules, setAdvisorSchedules] = useState(() => {
-    try {
-      const saved = localStorage.getItem('simta_advisor_schedules');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch {}
-    return MOCK_ADVISOR_SCHEDULES;
-  });
 
   // Dosen Pembimbing (Advisors) master dataset with local persistence
   const [advisors, setAdvisors] = useState(() => {
@@ -764,17 +752,35 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // Add new Title Submission
+  // Add new Title Submission (Mahasiswa proposes title + dospem 1 & 2)
   const addThesisTitle = (newTitleData) => {
     const newId = `title-${Date.now()}`;
+    const d1Nip = newTitleData.pembimbing_1_nip || '';
+    const d2Nip = newTitleData.pembimbing_2_nip || '';
+    const d1Obj = advisors.find(a => a.nip === d1Nip);
+    const d2Obj = advisors.find(a => a.nip === d2Nip);
+
+    const d1Nama = newTitleData.pembimbing_1_nama || d1Obj?.nama || newTitleData.pembimbing_1 || '';
+    const d2Nama = newTitleData.pembimbing_2_nama || d2Obj?.nama || newTitleData.pembimbing_2 || '';
+
     const createdTitle = {
       id: newId,
       profile_id: currentUser?.id || 'user-mhs-aulia',
       mhs_nama: currentUser?.nama || 'Aulia Azzahra',
       mhs_nim: currentUser?.nim || '09010182428002',
       mhs_kelas: currentUser?.kelas || 'MI 5A',
+      pembimbing_1_nip: d1Nip,
+      pembimbing_1_nama: d1Nama,
+      pembimbing_2_nip: d2Nip,
+      pembimbing_2_nama: d2Nama,
+      pembimbing_1: d1Nama,
+      pembimbing_2: d2Nama,
+      rekomendasi_dospem_status: 'menunggu_validasi', // 'menunggu_validasi' | 'direkomendasikan' | 'perlu_revisi'
+      catatan_dospem: '',
+      rekomendasi_oleh: '',
+      catatan_kaprodi: '',
       ...newTitleData,
-      status: 'diajukan',
+      status: 'diajukan', // Status final kaprodi: 'diajukan' | 'disetujui' | 'ditolak'
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
@@ -785,11 +791,11 @@ export function AuthProvider({ children }) {
     const kaprodiUser = MOCK_USERS.find(u => u.role === 'kaprodi');
     if (kaprodiUser) {
       const newNotif = {
-        id: `notif-${Date.now()}`,
+        id: `notif-${Date.now()}-kaprodi`,
         profile_id: kaprodiUser.id,
         related_type: 'thesis_title',
         title: 'Pengajuan Judul Baru',
-        message: `${currentUser?.nama || 'Mahasiswa'} (${currentUser?.nim || ''}) mengajukan judul: "${newTitleData.judul}"`,
+        message: `${currentUser?.nama || 'Mahasiswa'} (${currentUser?.nim || ''}) mengajukan judul: "${newTitleData.judul}" dengan usulan pembimbing ${d1Nama || '-'}.`,
         is_read: false,
         created_at: new Date().toISOString()
       };
@@ -799,18 +805,80 @@ export function AuthProvider({ children }) {
     return createdTitle;
   };
 
-  // Review Title (Kaprodi ACC / Reject)
-  const reviewThesisTitle = (titleId, status, catatan) => {
+  // Dosen Review / Rekomendasi (Validasi Akademik Awal dari Dospem, ACC Tetap Kaprodi)
+  const validateThesisTitleDosen = (titleId, statusRekomendasi, catatanDosen = '') => {
+    let affectedTitle = null;
     setThesisTitles(prev => prev.map(t => {
       if (t.id === titleId) {
-        return { ...t, status, catatan_kaprodi: catatan, updated_at: new Date().toISOString() };
+        affectedTitle = {
+          ...t,
+          rekomendasi_dospem_status: statusRekomendasi, // 'direkomendasikan' | 'perlu_revisi'
+          catatan_dospem: catatanDosen,
+          rekomendasi_oleh: currentUser?.nama || 'Dosen Pembimbing',
+          rekomendasi_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        return affectedTitle;
       }
       return t;
     }));
 
-    const targetTitle = thesisTitles.find(t => t.id === titleId);
+    if (affectedTitle) {
+      // Notifikasi ke Mahasiswa
+      const notifMhs = {
+        id: `notif-${Date.now()}-mhs`,
+        profile_id: affectedTitle.profile_id,
+        related_type: 'thesis_title',
+        title: statusRekomendasi === 'direkomendasikan' ? 'Usulan Judul Direkomendasikan Dosen' : 'Catatan Masukan Topik dari Dosen',
+        message: `${currentUser?.nama || 'Dosen Pembimbing'} telah memeriksa usulan judul Anda: "${catatanDosen || (statusRekomendasi === 'direkomendasikan' ? 'Direkomendasikan untuk persetujuan Kaprodi.' : 'Perlu revisi topik.')}"`,
+        is_read: false,
+        created_at: new Date().toISOString()
+      };
+      setNotifications(prev => [notifMhs, ...prev]);
+    }
+  };
+
+  // Review Title Final ACC / Tolak (Strictly KAPRODI)
+  const reviewThesisTitle = (titleId, status, catatan, confirmedDospem1Nip, confirmedDospem2Nip) => {
+    let targetTitle = null;
+    setThesisTitles(prev => prev.map(t => {
+      if (t.id === titleId) {
+        const d1Nip = confirmedDospem1Nip !== undefined && confirmedDospem1Nip !== null ? confirmedDospem1Nip : t.pembimbing_1_nip;
+        const d2Nip = confirmedDospem2Nip !== undefined && confirmedDospem2Nip !== null ? confirmedDospem2Nip : t.pembimbing_2_nip;
+        const d1 = advisors.find(a => a.nip === d1Nip);
+        const d2 = advisors.find(a => a.nip === d2Nip);
+
+        const d1Nama = d1?.nama || t.pembimbing_1_nama || t.pembimbing_1 || '';
+        const d2Nama = d2?.nama || t.pembimbing_2_nama || t.pembimbing_2 || '';
+
+        targetTitle = { 
+          ...t, 
+          status, 
+          catatan_kaprodi: catatan,
+          pembimbing_1_nip: d1Nip || '',
+          pembimbing_1_nama: d1Nama,
+          pembimbing_2_nip: d2Nip || '',
+          pembimbing_2_nama: d2Nama,
+          pembimbing_1: d1Nama,
+          pembimbing_2: d2Nama,
+          updated_at: new Date().toISOString() 
+        };
+        return targetTitle;
+      }
+      return t;
+    }));
+
     if (targetTitle && status === 'disetujui') {
-      // Auto-create Thesis Stages (Sempro, Semhas, Sidang)
+      // 1. Auto-assign student advisors in student_advisors record
+      assignStudentAdvisors(
+        targetTitle.mhs_nim,
+        targetTitle.pembimbing_1_nip,
+        targetTitle.pembimbing_2_nip,
+        targetTitle.mhs_nama,
+        targetTitle.judul
+      );
+
+      // 2. Auto-create Thesis Stages (Sempro, Semhas, Sidang)
       const stages = [
         { id: `stage-prop-${Date.now()}`, thesis_title_id: titleId, stage_type: 'seminar_proposal', status: 'menunggu_jadwal', urutan: 1 },
         { id: `stage-has-${Date.now()}`, thesis_title_id: titleId, stage_type: 'seminar_hasil', status: 'belum_diajukan', urutan: 2 },
@@ -818,13 +886,13 @@ export function AuthProvider({ children }) {
       ];
       setThesisStages(prev => [...stages, ...prev]);
 
-      // Add student notification
+      // 3. Add student notification
       const notif = {
         id: `notif-${Date.now()}`,
         profile_id: targetTitle.profile_id,
         related_type: 'thesis_title',
-        title: 'Judul TA Disetujui!',
-        message: `Selamat! Judul "${targetTitle.judul}" telah disetujui Kaprodi. Anda sekarang dapat mengajukan ruang untuk Seminar Proposal.`,
+        title: 'Judul TA Disetujui Kaprodi (ACC)!',
+        message: `Selamat! Judul "${targetTitle.judul}" telah disetujui resmi oleh Kaprodi dengan Dospem 1: ${targetTitle.pembimbing_1_nama || '-'} & Dospem 2: ${targetTitle.pembimbing_2_nama || '-'}. Anda sekarang dapat mengajukan ruang untuk Seminar Proposal.`,
         is_read: false,
         created_at: new Date().toISOString()
       };
@@ -1027,45 +1095,43 @@ export function AuthProvider({ children }) {
     });
   };
 
-  // Update or Add Advisor Offline Schedule & Link WA (Dosen / Kaprodi)
-  const updateAdvisorSchedule = async (scheduleData) => {
-    const updatedObj = {
-      id: scheduleData.id || `adv-sch-${Date.now()}`,
-      dosen_nip: scheduleData.dosen_nip || currentUser?.nip || '197805122005011002',
-      dosen_nama: scheduleData.dosen_nama || currentUser?.nama || 'Dr. Ir. Hendra Kusuma, M.T.',
-      peran: scheduleData.peran || 'Dosen Pembimbing',
-      hari_bimbingan: scheduleData.hari_bimbingan || 'Senin & Rabu',
-      jam_bimbingan: scheduleData.jam_bimbingan || '09:00 - 12:00 WIB',
-      lokasi: scheduleData.lokasi || 'Ruang Dosen Gedung DIPKOM Lt. 2',
-      link_wa_group: scheduleData.link_wa_group || '',
-      no_hp_wa: scheduleData.no_hp_wa || '',
-      catatan: scheduleData.catatan || ''
-    };
-
-    setAdvisorSchedules(prev => {
-      const existingIdx = prev.findIndex(s => s.id === updatedObj.id || s.dosen_nip === updatedObj.dosen_nip || s.dosen_nama === updatedObj.dosen_nama);
-      let nextState;
-      if (existingIdx >= 0) {
-        nextState = [...prev];
-        nextState[existingIdx] = updatedObj;
-      } else {
-        nextState = [updatedObj, ...prev];
-      }
-      try { localStorage.setItem('simta_advisor_schedules', JSON.stringify(nextState)); } catch {}
-      return nextState;
+  // Update consultation note/details (Mahasiswa / Dosen)
+  const updateConsultation = async (consultationId, updatedFields) => {
+    let finalItem = null;
+    setConsultations(prev => {
+      const updated = prev.map(c => {
+        if (c.id === consultationId) {
+          finalItem = {
+            ...c,
+            ...updatedFields,
+            updated_at: new Date().toISOString()
+          };
+          return finalItem;
+        }
+        return c;
+      });
+      try { localStorage.setItem('simta_consultations', JSON.stringify(updated)); } catch {}
+      return updated;
     });
 
     if (isSupabaseConfigured && supabase) {
       try {
-        const { error } = await supabase.from('advisor_schedules').upsert(updatedObj, { onConflict: 'dosen_nip' });
-        if (error) console.warn('Supabase advisor_schedules upsert warning:', error.message);
+        const { error } = await supabase
+          .from('thesis_consultations')
+          .update({
+            ...updatedFields,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', consultationId);
+        if (error) console.warn('Supabase consultation update warning:', error.message);
       } catch (err) {
-        console.warn('Failed to sync advisor schedule to Supabase:', err);
+        console.warn('Failed to update consultation in Supabase:', err);
       }
     }
 
-    return updatedObj;
+    return finalItem;
   };
+
 
   const getAllRegisteredStudents = () => {
     const localReg = getRegisteredUsers().filter(u => u.role === 'mahasiswa');
@@ -1117,9 +1183,8 @@ export function AuthProvider({ children }) {
       publishRepositoryAdmin,
       consultations,
       addConsultation,
+      updateConsultation,
       reviewConsultation,
-      advisorSchedules,
-      updateAdvisorSchedule,
       advisors,
       studentAdvisors,
       addAdvisor,
@@ -1129,6 +1194,7 @@ export function AuthProvider({ children }) {
       assignStudentAdvisors,
       getStudentAdvisors,
       addThesisTitle,
+      validateThesisTitleDosen,
       reviewThesisTitle,
       bulkImportHistorical,
       addBooking,

@@ -9,11 +9,13 @@ import { FileText, Send, AlertTriangle, ShieldCheck, Info, CheckCircle2 } from '
 import { supabase, isSupabaseConfigured } from '../../services/supabase.js';
 
 export default function AjukanJudulPage() {
-  const { currentUser, thesisTitles, historicalTitles, addThesisTitle } = useAuth();
+  const { currentUser, thesisTitles, historicalTitles, advisors, addThesisTitle } = useAuth();
   const navigate = (url) => router.visit(url);
 
   const [judul, setJudul] = useState('');
   const [deskripsi, setDeskripsi] = useState('');
+  const [pembimbing1Nip, setPembimbing1Nip] = useState('');
+  const [pembimbing2Nip, setPembimbing2Nip] = useState('');
   const [similarityResult, setSimilarityResult] = useState({ highestScore: 0, processedInput: '', matches: [] });
   const [isChecking, setIsChecking] = useState(false);
   const [showWarningModal, setShowWarningModal] = useState(false);
@@ -88,6 +90,8 @@ export default function AjukanJudulPage() {
     }
 
     const processedText = preProcessTitle(judul);
+    const selectedDospem1 = advisors.find(a => a.nip === pembimbing1Nip);
+    const selectedDospem2 = advisors.find(a => a.nip === pembimbing2Nip);
 
     // Save to real Supabase thesis_titles table
     if (isSupabaseConfigured && supabase && currentUser?.id) {
@@ -101,6 +105,10 @@ export default function AjukanJudulPage() {
           judul_processed: processedText,
           abstrak: deskripsi.trim(),
           skor_similarity: similarityResult.highestScore,
+          pembimbing_1_nip: pembimbing1Nip,
+          pembimbing_1_nama: selectedDospem1?.nama || '',
+          pembimbing_2_nip: pembimbing2Nip,
+          pembimbing_2_nama: selectedDospem2?.nama || '',
           status: 'diajukan'
         });
       } catch (err) {
@@ -112,7 +120,11 @@ export default function AjukanJudulPage() {
       judul,
       deskripsi,
       judul_processed: processedText,
-      skor_kemiripan_terakhir: similarityResult.highestScore
+      skor_kemiripan_terakhir: similarityResult.highestScore,
+      pembimbing_1_nip: pembimbing1Nip,
+      pembimbing_1_nama: selectedDospem1?.nama || '',
+      pembimbing_2_nip: pembimbing2Nip,
+      pembimbing_2_nama: selectedDospem2?.nama || ''
     });
 
     navigate('/thesis/status');
@@ -179,6 +191,72 @@ export default function AjukanJudulPage() {
               />
             </div>
 
+            {/* Usulan Dosen Pembimbing */}
+            <div className="border-t border-slate-200 pt-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold text-slate-800">
+                  Usulan Dosen Pembimbing
+                </label>
+                <span className="text-[10px] text-slate-400 font-medium">Opsional / Direkomendasikan</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Pembimbing 1 */}
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                    Usulan Pembimbing 1:
+                  </label>
+                  <select
+                    value={pembimbing1Nip}
+                    onChange={(e) => setPembimbing1Nip(e.target.value)}
+                    className="w-full text-xs p-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                  >
+                    <option value="">-- Pilih Usulan Pembimbing 1 --</option>
+                    {advisors.map(adv => (
+                      <option 
+                        key={adv.id || adv.nip} 
+                        value={adv.nip}
+                        disabled={adv.nip === pembimbing2Nip}
+                      >
+                        {adv.nama} ({adv.prodi || 'MI'})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Pembimbing 2 */}
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                    Usulan Pembimbing 2:
+                  </label>
+                  <select
+                    value={pembimbing2Nip}
+                    onChange={(e) => setPembimbing2Nip(e.target.value)}
+                    className="w-full text-xs p-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                  >
+                    <option value="">-- Pilih Usulan Pembimbing 2 --</option>
+                    {advisors.map(adv => (
+                      <option 
+                        key={adv.id || adv.nip} 
+                        value={adv.nip}
+                        disabled={adv.nip === pembimbing1Nip}
+                      >
+                        {adv.nama} ({adv.prodi || 'MI'})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Info Alur Persetujuan */}
+              <div className="bg-indigo-50/70 border border-indigo-100 rounded-lg p-2.5 text-[11px] text-indigo-900 flex items-start space-x-2">
+                <Info className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
+                <div className="leading-relaxed">
+                  <span className="font-bold">Alur Verifikasi:</span> Usulan dosen pembimbing akan ditinjau & divalidasi oleh dosen bersangkutan. <strong>Persetujuan final (ACC Judul & Penetapan Pembimbing) tetap diputuskan oleh Kaprodi</strong>.
+                </div>
+              </div>
+            </div>
+
             {/* Submit Button */}
             <div className="pt-2">
               <button
@@ -191,7 +269,7 @@ export default function AjukanJudulPage() {
                 }`}
               >
                 <Send className="w-4 h-4" />
-                <span>Ajukan Judul Ke Kaprodi</span>
+                <span>Ajukan Judul Tugas Akhir</span>
               </button>
             </div>
 

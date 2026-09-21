@@ -50,10 +50,6 @@ Route::get('/thesis/consultations/card', function () {
     return Inertia::render('mahasiswa/KartuBimbinganPage');
 });
 
-Route::get('/thesis/consultations/schedule', function () {
-    return Inertia::render('JadwalBimbinganPage');
-});
-
 Route::get('/thesis/archive', function () {
     return Inertia::render('ArsipTAPage');
 });
@@ -164,8 +160,8 @@ Route::get('/dosen/bimbingan', function () {
     return Inertia::render('dosen/BimbinganPage');
 });
 
-Route::get('/dosen/jadwal', function () {
-    return Inertia::render('dosen/JadwalDosenPage');
+Route::get('/dosen/jadwal-sidang', function () {
+    return Inertia::render('dosen/JadwalSidangDosenPage');
 });
 
 Route::get('/dosen/validasi-judul', function () {
