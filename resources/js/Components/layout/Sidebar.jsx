@@ -182,9 +182,9 @@ export default function Sidebar() {
               label: 'Bimbingan Mahasiswa',
               icon: FileCheck,
               items: [
-                { to: '/dosen/bimbingan', label: 'Manajemen Bimbingan', icon: FileCheck },
+                { to: '/dosen/bimbingan', label: 'Room Bimbingan', icon: FileCheck },
                 { to: '/dosen/validasi-judul', label: 'Validasi Judul TA', icon: CheckSquare },
-                { to: '/dosen/jadwal', label: 'Jadwal & Ketersediaan', icon: CalendarDays }
+                { to: '/dosen/jadwal-sidang', label: 'Notifikasi & Jadwal', icon: CalendarDays }
               ]
             },
             {
