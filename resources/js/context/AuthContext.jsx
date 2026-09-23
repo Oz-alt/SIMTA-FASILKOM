@@ -1233,6 +1233,75 @@ export function AuthProvider({ children }) {
     return Array.from(mapByName.values());
   };
 
+  const addStudentUser = async (studentData) => {
+    const newStudent = {
+      id: `user-mhs-${Date.now()}`,
+      nim: (studentData.nim || '').trim(),
+      nip: (studentData.nim || '').trim(),
+      nama: (studentData.nama || '').trim(),
+      email: (studentData.email || '').toLowerCase().trim(),
+      no_hp: (studentData.no_hp || '').trim(),
+      prodi: studentData.prodi || 'D3 Manajemen Informatika',
+      kelas: studentData.kelas || 'MI 5A',
+      role: 'mahasiswa',
+      status: studentData.status || 'aktif'
+    };
+
+    saveRegisteredUser(newStudent);
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { error } = await supabase.from('profiles').upsert(newStudent, { onConflict: 'id' });
+        if (error) console.warn('Supabase add student warning:', error.message);
+      } catch (e) {
+        console.warn('Failed to sync new student to Supabase:', e);
+      }
+    }
+
+    return newStudent;
+  };
+
+  const updateStudentUser = async (id, updatedFields) => {
+    try {
+      const users = getRegisteredUsers();
+      const existingIdx = users.findIndex(u => u.id === id || u.nim === id || u.email === id);
+      if (existingIdx >= 0) {
+        users[existingIdx] = { ...users[existingIdx], ...updatedFields };
+        localStorage.setItem('simta_registered_users', JSON.stringify(users));
+      }
+    } catch (e) {
+      console.warn('Failed to update student user locally:', e);
+    }
+
+    if (isSupabaseConfigured && supabase && id) {
+      try {
+        const { error } = await supabase.from('profiles').update(updatedFields).eq('id', id);
+        if (error) console.warn('Supabase student update warning:', error.message);
+      } catch (e) {
+        console.warn('Failed to update student in Supabase:', e);
+      }
+    }
+  };
+
+  const deleteStudentUser = async (id) => {
+    try {
+      const users = getRegisteredUsers();
+      const updatedUsers = users.filter(u => u.id !== id && u.nim !== id && u.email !== id);
+      localStorage.setItem('simta_registered_users', JSON.stringify(updatedUsers));
+    } catch (e) {
+      console.warn('Failed to delete student user locally:', e);
+    }
+
+    if (isSupabaseConfigured && supabase && id) {
+      try {
+        const { error } = await supabase.from('profiles').delete().eq('id', id);
+        if (error) console.warn('Supabase student delete warning:', error.message);
+      } catch (e) {
+        console.warn('Failed to delete student from Supabase:', e);
+      }
+    }
+  };
+
   return (
     <AuthContext.Provider value={{
       currentUser,
@@ -1244,6 +1313,9 @@ export function AuthProvider({ children }) {
       registerStudent,
       switchRole,
       getAllRegisteredStudents,
+      addStudentUser,
+      updateStudentUser,
+      deleteStudentUser,
       thesisTitles,
       historicalTitles,
       thesisStages,

@@ -19,6 +19,7 @@ import {
   Settings,
   User,
   UserCheck,
+  Users,
   LogOut,
   ChevronDown,
   Printer,
@@ -126,6 +127,7 @@ export default function Sidebar() {
               label: 'Database',
               icon: Database,
               items: [
+                { to: '/kaprodi/master-data', label: 'Data Master (Mhs & Dosen)', icon: Users },
                 { to: '/thesis/archive', label: 'Arsip Tugas Akhir', icon: BookOpen },
                 { to: '/kaprodi/check-accounts', label: 'Cek Akun Mahasiswa', icon: UserCheck },
                 { to: '/kaprodi/repository/review', label: 'Verifikasi Repositori TA', icon: FileCheck },

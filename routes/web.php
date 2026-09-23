@@ -103,6 +103,10 @@ Route::get('/kaprodi/check-accounts', function () {
     return Inertia::render('kaprodi/CekAkunMahasiswaPage');
 });
 
+Route::get('/kaprodi/master-data', function () {
+    return Inertia::render('kaprodi/MasterDataKaprodi');
+});
+
 Route::get('/kaprodi/analytics', function () {
     return Inertia::render('kaprodi/AnalitikPage');
 });
