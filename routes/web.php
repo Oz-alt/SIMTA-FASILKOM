@@ -176,6 +176,16 @@ Route::get('/dosen/validasi-judul', function () {
 });
 
 // ============================================================
+// VERIFICATION ROUTES (QR Code Scan)
+// ============================================================
+
+Route::get('/verify/bimbingan/{nim}', function ($nim) {
+    return Inertia::render('VerifyBimbinganPage', [
+        'nim' => $nim,
+    ]);
+});
+
+// ============================================================
 // LARAVEL AUTH (Breeze)
 // ============================================================
 

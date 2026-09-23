@@ -1,153 +1,146 @@
 import React, { useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { 
-  Printer, 
-  ShieldCheck, 
-  BookOpen, 
-  CheckCircle2, 
-  AlertCircle, 
-  Clock,
-  ArrowLeft
-} from 'lucide-react';
+import { ArrowLeft, Printer } from 'lucide-react';
 import { Link } from '@inertiajs/react';
 
 export default function KartuBimbinganPage() {
   const { currentUser, consultations } = useAuth();
 
-  // Filter consultations for current student
+  // Filter consultations for current student, only approved ones
   const studentConsultations = useMemo(() => {
-    return consultations.filter(c => !currentUser?.nim || c.mhs_nim === currentUser.nim);
+    const list = consultations.filter(c => !currentUser?.nim || c.mhs_nim === currentUser.nim);
+    return list.filter(c => c.status === 'disetujui').reverse();
   }, [consultations, currentUser]);
 
-  const totalApproved = studentConsultations.filter(c => c.status === 'disetujui').length;
-  const minRequired = 8;
-  const isEligibleForDefense = totalApproved >= minRequired;
+  const ROWS_COUNT = 25;
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 select-none">
+    <div className="max-w-4xl mx-auto space-y-6 select-none bg-slate-50 p-6 min-h-screen">
       
-      {/* Back Link & Page Title Header */}
-      <div className="flex items-center justify-between">
+      {/* Top Action Bar (Not printed) */}
+      <div className="flex items-center justify-between print:hidden">
         <Link
           href="/thesis/consultations"
-          className="inline-flex items-center space-x-2 text-xs font-bold text-slate-600 hover:text-blue-600 transition-colors"
+          className="inline-flex items-center space-x-2 text-sm font-bold text-slate-600 hover:text-blue-600 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Kembali ke Form Bimbingan</span>
+          <span>Kembali</span>
         </Link>
+        <button
+          onClick={() => window.print()}
+          className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-md transition-all flex items-center space-x-2 cursor-pointer"
+        >
+          <Printer className="w-4 h-4" />
+          <span>Cetak Kartu Bimbingan</span>
+        </button>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-10 shadow-md space-y-6">
+      {/* Printable Area */}
+      <div className="bg-white p-10 sm:p-12 shadow-sm border border-slate-200 print:p-0 print:shadow-none print:border-none print:m-0 mx-auto" style={{ width: '100%', maxWidth: '210mm', minHeight: '297mm' }}>
         
-        <div className="flex items-center justify-between border-b border-slate-200 pb-4 flex-wrap gap-4">
-          <div>
-            <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[11px] font-bold border border-blue-200 mb-1">
-              <Printer className="w-3 h-3" />
-              <span>Dokumen Kendali Resmi</span>
-            </div>
-            <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
-              Kartu Bimbingan Tugas Akhir Digital
-            </h1>
-            <p className="text-xs text-slate-500">Lembar kontrol bimbingan terverifikasi digital FASILKOM UNSRI</p>
-          </div>
+        <h1 className="text-center text-lg sm:text-xl font-bold uppercase text-black mb-8 tracking-wide">
+          CATATAN KEGIATAN KONSULTASI AKADEMIK/PRIBADI
+        </h1>
 
-          <button
-            onClick={() => window.print()}
-            className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-600/30 transition-all flex items-center space-x-2 cursor-pointer"
-          >
-            <Printer className="w-4 h-4" />
-            <span>Cetak Kartu Bimbingan</span>
-          </button>
-        </div>
-
-        {/* Format Cetak Kartu Bimbingan */}
-        <div className="border border-slate-300 rounded-xl p-6 sm:p-8 space-y-6 bg-slate-50/30">
-          
-          {/* Header Instansi */}
-          <div className="text-center border-b-2 border-slate-900 pb-4 space-y-1">
-            <h3 className="font-extrabold text-base sm:text-lg text-slate-900 uppercase tracking-wide">FAKULTAS ILMU KOMPUTER - UNIVERSITAS SRIWIJAYA</h3>
-            <h4 className="font-bold text-sm text-slate-800 uppercase tracking-wider">LEMBAR KONTROL &amp; KARTU BIMBINGAN TUGAS AKHIR</h4>
-            <p className="text-xs text-slate-600">Kampus Palembang / Indralaya • SIMTA Integrated System</p>
-          </div>
-
-          {/* Student Metadata Table */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-semibold text-slate-800">
-            <div className="space-y-1.5">
-              <p><span className="text-slate-500 font-normal">Nama Mahasiswa:</span> {currentUser?.nama || 'Aulia Azzahra'}</p>
-              <p><span className="text-slate-500 font-normal">NIM:</span> {currentUser?.nim || '09010182428002'}</p>
-              <p><span className="text-slate-500 font-normal">Program Studi:</span> {currentUser?.prodi || 'D3 Manajemen Informatika'}</p>
-              <p><span className="text-slate-500 font-normal">Kelas:</span> {currentUser?.kelas || 'MI 5A'}</p>
-            </div>
-            <div className="space-y-1.5">
-              <p><span className="text-slate-500 font-normal">Pembimbing 1:</span> Dr. Ir. Hendra Kusuma, M.T.</p>
-              <p><span className="text-slate-500 font-normal">Pembimbing 2:</span> Siti Nurhaliza, S.Kom., M.Kom.</p>
-              <p><span className="text-slate-500 font-normal">Total Sesi Disetujui:</span> {totalApproved} Sesi</p>
-              <p><span className="text-slate-500 font-normal">Status Kelayakan Sidang:</span> <strong className={isEligibleForDefense ? 'text-emerald-700' : 'text-amber-700'}>{isEligibleForDefense ? 'MEMENUHI SYARAT (MIN. 8 SESI)' : 'BELUM MEMENUHI SYARAT'}</strong></p>
-            </div>
-          </div>
-
-          {/* Rekapitulasi Table */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left border-collapse border border-slate-300">
-              <thead>
-                <tr className="bg-slate-200 text-slate-900 font-bold uppercase text-[10px]">
-                  <th className="border border-slate-300 p-2 text-center">No</th>
-                  <th className="border border-slate-300 p-2">Tanggal &amp; Waktu</th>
-                  <th className="border border-slate-300 p-2">Pembimbing</th>
-                  <th className="border border-slate-300 p-2">Bab / Materi Konsultasi</th>
-                  <th className="border border-slate-300 p-2">Masukan Pembimbing</th>
-                  <th className="border border-slate-300 p-2 text-center">Status</th>
+        <table className="w-full border-collapse border border-black text-xs sm:text-sm text-black">
+          <thead>
+            <tr>
+              <th className="border border-black py-2 px-1 text-center w-12">No</th>
+              <th className="border border-black py-2 px-3 text-center w-32">Tanggal<br/>Pertemuan</th>
+              <th className="border border-black py-2 px-3 text-center">Materi<br/>Konsultasi</th>
+              <th className="border border-black py-2 px-2 text-center w-24">Paraf<br/>Mahasiswa</th>
+              <th className="border border-black py-2 px-2 text-center w-24">Paraf<br/>Pembimbing<br/>1</th>
+              <th className="border border-black py-2 px-2 text-center w-24">Paraf<br/>Pembimbing<br/>2</th>
+            </tr>
+          </thead>
+          <tbody>
+            {Array.from({ length: ROWS_COUNT }).map((_, index) => {
+              const data = studentConsultations[index];
+              return (
+                <tr key={index} className="h-8">
+                  <td className="border border-black py-1 px-1 text-center font-semibold">{index + 1}</td>
+                  <td className="border border-black py-1 px-2 text-center">{data ? data.tanggal : ''}</td>
+                  <td className="border border-black py-1 px-3 text-left">{data ? data.bab_topik : ''}</td>
+                  <td className="border border-black py-1 px-2 text-center">
+                    {data ? <span className="text-gray-400 italic text-[10px]">Ttd.</span> : ''}
+                  </td>
+                  <td className="border border-black py-1 px-2 text-center">
+                    {data && data.pembimbing === 'Pembimbing 1' ? <span className="text-gray-400 italic text-[10px]">Ttd.</span> : ''}
+                  </td>
+                  <td className="border border-black py-1 px-2 text-center">
+                    {data && data.pembimbing === 'Pembimbing 2' ? <span className="text-gray-400 italic text-[10px]">Ttd.</span> : ''}
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-300">
-                {studentConsultations.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="p-4 text-center text-slate-400">Belum ada data bimbingan</td>
-                  </tr>
-                ) : (
-                  studentConsultations.map((c, idx) => (
-                    <tr key={c.id} className="bg-white">
-                      <td className="border border-slate-300 p-2 text-center font-bold">{idx + 1}</td>
-                      <td className="border border-slate-300 p-2 font-medium">{c.tanggal} ({c.waktu})</td>
-                      <td className="border border-slate-300 p-2 font-semibold">{c.pembimbing}</td>
-                      <td className="border border-slate-300 p-2 font-medium">{c.bab_topik}</td>
-                      <td className="border border-slate-300 p-2 italic">{c.masukan_dosen || '-'}</td>
-                      <td className="border border-slate-300 p-2 text-center font-bold uppercase text-[10px]">
-                        {c.status === 'disetujui' ? (
-                          <span className="text-emerald-700">Valid</span>
-                        ) : c.status === 'perlu_revisi' ? (
-                          <span className="text-amber-700">Revisi</span>
-                        ) : (
-                          <span className="text-blue-700">Pending</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+              );
+            })}
+          </tbody>
+        </table>
 
-          {/* Signature Validation Seal */}
-          <div className="flex items-end justify-between pt-6 border-t border-slate-200 text-xs flex-wrap gap-4">
-            <div className="space-y-1">
-              <span className="text-slate-400 font-medium">Verifikasi Sistem SIMTA:</span>
-              <p className="text-emerald-700 font-bold flex items-center space-x-1">
-                <ShieldCheck className="w-4 h-4" />
-                <span>Terverifikasi Digital FASILKOM UNSRI</span>
-              </p>
+        <div className="mt-16 flex justify-between items-end text-sm text-black">
+          <div className="w-64">
+            <p className="mb-2 font-medium">Dosen Pembimbing Akademik,</p>
+            <div className="flex justify-center mb-2">
+               {/* QR Code for Verification */}
+               <img 
+                 src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(window.location.origin + '/verify/bimbingan/' + (currentUser?.nim || '09010182428002'))}`}
+                 alt="QR Code Verifikasi" 
+                 className="w-20 h-20"
+               />
             </div>
-
-            <div className="text-center space-y-12 shrink-0">
-              <p className="font-semibold text-slate-800">Mengetahui, Ketua Program Studi</p>
-              <p className="font-extrabold text-slate-900 border-b border-slate-900 pb-0.5">Dr. Ir. Hendra Kusuma, M.T.</p>
-            </div>
+            <div className="border-b border-dotted border-black w-full mb-1"></div>
+            <p className="font-medium">NIP</p>
           </div>
-
+          
+          <div className="w-64">
+            <p className="mb-1 font-medium">Palembang,</p>
+            <p className="mb-16 font-medium">Mahasiswa Ybs,</p>
+            <div className="border-b border-dotted border-black w-full mb-1"></div>
+            <p className="font-medium">NIM {currentUser?.nim || ''}</p>
+          </div>
         </div>
 
       </div>
 
+      <style dangerouslySetInnerHTML={{__html: `
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          .print\\:hidden {
+            display: none !important;
+          }
+          .print\\:shadow-none {
+            box-shadow: none !important;
+          }
+          .print\\:border-none {
+            border: none !important;
+          }
+          .print\\:p-0 {
+            padding: 0 !important;
+          }
+          .print\\:m-0 {
+            margin: 0 !important;
+          }
+          .max-w-4xl {
+            max-width: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: white !important;
+          }
+          .bg-slate-50 {
+            background-color: white !important;
+          }
+          .bg-white > * {
+            visibility: visible;
+          }
+          .bg-white {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+          }
+        }
+      `}} />
     </div>
   );
 }
