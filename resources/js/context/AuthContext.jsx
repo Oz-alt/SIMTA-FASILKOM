@@ -359,10 +359,10 @@ export function AuthProvider({ children }) {
   // Published Thesis Archives (Public Library)
   const [thesisArchives, setThesisArchives] = useState(() => {
     try {
-      const saved = localStorage.getItem('simta_thesis_archives');
+      const saved = localStorage.getItem('simta_thesis_archives_v2');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length >= 300) return parsed;
       }
     } catch {}
     return MOCK_THESIS_ARCHIVES;
@@ -611,6 +611,13 @@ export function AuthProvider({ children }) {
         .then(({ data, error }) => {
           if (!error && data && data.length > 0) {
             setAdminTemplates(data);
+          }
+        });
+      supabase.from('thesis_repositories').select('*')
+        .then(({ data, error }) => {
+          if (!error && data && data.length > 0) {
+            setThesisArchives(data);
+            setThesisRepositories(data);
           }
         });
 
