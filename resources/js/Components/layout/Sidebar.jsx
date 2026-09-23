@@ -39,6 +39,7 @@ export default function Sidebar() {
   const [openGroups, setOpenGroups] = useState({
     tugas_akhir: true,
     bimbingan: true,
+    data_master: true,
     database: true,
     ruangan: true
   });
@@ -123,15 +124,20 @@ export default function Sidebar() {
               ]
             },
             {
+              id: 'data_master',
+              label: 'Data Master',
+              icon: Users,
+              items: [
+                { to: '/kaprodi/master-data/mahasiswa', label: 'Data Mahasiswa', icon: GraduationCap },
+                { to: '/kaprodi/master-data/dosen', label: 'Data Dosen', icon: UserCheck }
+              ]
+            },
+            {
               id: 'database',
               label: 'Database',
               icon: Database,
               items: [
-                { to: '/kaprodi/master-data', label: 'Data Master (Mhs & Dosen)', icon: Users },
                 { to: '/thesis/archive', label: 'Arsip Tugas Akhir', icon: BookOpen },
-                { to: '/kaprodi/check-accounts', label: 'Cek Akun Mahasiswa', icon: UserCheck },
-                { to: '/kaprodi/repository/review', label: 'Verifikasi Repositori TA', icon: FileCheck },
-                { to: '/kaprodi/import', label: 'Bulk Import Historis', icon: UploadCloud },
                 { to: '/kaprodi/analytics', label: 'Analitik & Tren Topik', icon: BarChart3 }
               ]
             }

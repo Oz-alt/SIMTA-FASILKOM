@@ -13,11 +13,22 @@ import {
 } from 'lucide-react';
 
 export default function ModalAjukanBimbingan({ isOpen, onClose }) {
-  const { addConsultation } = useAuth();
+  const { currentUser, studentAdvisors, advisors, addConsultation } = useAuth();
+
+  // Dynamic Dospem 1 & 2 assigned for current logged-in student
+  const sa = useMemo(() => {
+    return studentAdvisors?.find(s => currentUser?.nim && String(s.student_nim).trim() === String(currentUser.nim).trim());
+  }, [studentAdvisors, currentUser]);
+
+  const dospem1 = useMemo(() => sa ? advisors?.find(a => a.nip === sa.dospem1_nip) : null, [advisors, sa]);
+  const dospem2 = useMemo(() => sa ? advisors?.find(a => a.nip === sa.dospem2_nip) : null, [advisors, sa]);
+
+  const dospem1Nama = dospem1?.nama || 'Dosen Pembimbing 1';
+  const dospem2Nama = dospem2?.nama || 'Dosen Pembimbing 2';
 
   const [formData, setFormData] = useState({
     pembimbing: 'Pembimbing 1',
-    dosen_nama: 'Dr. Ir. Hendra Kusuma, M.T.',
+    dosen_nama: dospem1Nama,
     tanggal: new Date().toISOString().split('T')[0],
     waktu: '09:00',
     bab_topik: '',
@@ -27,6 +38,14 @@ export default function ModalAjukanBimbingan({ isOpen, onClose }) {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Synchronize dynamic advisor names when student changes selection or state updates
+  useEffect(() => {
+    setFormData(prev => ({
+      ...prev,
+      dosen_nama: prev.pembimbing === 'Pembimbing 2' ? dospem2Nama : dospem1Nama
+    }));
+  }, [dospem1Nama, dospem2Nama]);
 
   // Lock background scroll when modal is open
   useEffect(() => {
@@ -49,7 +68,7 @@ export default function ModalAjukanBimbingan({ isOpen, onClose }) {
       setFormData(prev => ({
         ...prev,
         pembimbing: value,
-        dosen_nama: isPemb2 ? 'Siti Nurhaliza, S.Kom., M.Kom.' : 'Dr. Ir. Hendra Kusuma, M.T.'
+        dosen_nama: isPemb2 ? dospem2Nama : dospem1Nama
       }));
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));

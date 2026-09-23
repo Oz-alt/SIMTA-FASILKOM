@@ -112,12 +112,12 @@ export function AuthProvider({ children }) {
     const defaultRegistered = [
       {
         id: 'user-mhs-aulia',
-        nama: 'Aulia Azzahra',
+        nama: 'AULIA AZZAHRA',
         nim: '09010182428002',
-        email: '09010182428001@student.unsri.ac.id',
-        no_hp: '121920129102933',
+        email: '09010182428002@student.unsri.ac.id',
+        no_hp: '0812781011',
         role: 'mahasiswa',
-        kelas: 'MI 5A'
+        kelas: 'MI 2024'
       }
     ];
     try {
@@ -426,6 +426,7 @@ export function AuthProvider({ children }) {
       email: (advisorData.email || '').trim(),
       no_hp: (advisorData.no_hp || '').trim(),
       prodi: advisorData.prodi || 'D3 Manajemen Informatika',
+      jabatan_fungsional: advisorData.jabatan_fungsional || 'Asisten Ahli',
       keahlian: Array.isArray(advisorData.keahlian) 
         ? advisorData.keahlian 
         : (advisorData.keahlian || '').split(',').map(s => s.trim()).filter(Boolean),
@@ -594,7 +595,37 @@ export function AuthProvider({ children }) {
     // 2. Sync with Supabase Auth if configured
     if (isSupabaseConfigured && supabase) {
 
-      // 2a. Fetch Admin SIMTA data from Supabase on mount
+      // 2a. Fetch all core SIMTA datasets live from Supabase PostgreSQL on mount
+      supabase.from('advisors').select('*').order('nama', { ascending: true })
+        .then(({ data, error }) => {
+          if (!error && data && data.length > 0) {
+            setAdvisors(data);
+          }
+        });
+      supabase.from('student_advisors').select('*')
+        .then(({ data, error }) => {
+          if (!error && data && data.length > 0) {
+            setStudentAdvisors(data);
+          }
+        });
+      supabase.from('consultations').select('*').order('tanggal', { ascending: false })
+        .then(({ data, error }) => {
+          if (!error && data && data.length > 0) {
+            setConsultations(data);
+          }
+        });
+      supabase.from('thesis_titles').select('*')
+        .then(({ data, error }) => {
+          if (!error && data && data.length > 0) {
+            setThesisTitles(data);
+          }
+        });
+      supabase.from('bookings').select('*')
+        .then(({ data, error }) => {
+          if (!error && data && data.length > 0) {
+            setBookings(data);
+          }
+        });
       supabase.from('admin_documents').select('*').order('tanggal_upload', { ascending: false })
         .then(({ data, error }) => {
           if (!error && data && data.length > 0) {
@@ -634,10 +665,10 @@ export function AuthProvider({ children }) {
               const meta = session.user.user_metadata;
               const resolvedUser = sanitizeProfile({
                 id: session.user.id,
-                nama: meta.nama || meta.full_name || matchedReg?.nama || 'Aulia Azzahra',
+                nama: meta.nama || meta.full_name || matchedReg?.nama || 'Mahasiswa',
                 email: session.user.email,
-                nim: meta.nim || matchedReg?.nim || '09010182428002',
-                no_hp: meta.no_hp || matchedReg?.no_hp || '121920129102933',
+                nim: meta.nim || matchedReg?.nim || '',
+                no_hp: meta.no_hp || matchedReg?.no_hp || '',
                 role: meta.role || matchedReg?.role || 'mahasiswa',
                 kelas: meta.kelas || matchedReg?.kelas || 'MI 5A'
               });
@@ -668,16 +699,43 @@ export function AuthProvider({ children }) {
   // Authenticate user strictly by NIM or NIP credential & password
   const login = async (credential = '', password = '') => {
     const term = String(credential).trim();
+    const termLower = term.toLowerCase();
+    const inputPass = String(password).trim();
 
-    // 1. Check local registered users list FIRST by NIM, NIP, or ID
+    // Helper to validate input password against user object
+    const isValidPassword = (user) => {
+      // If user is selecting role directly without password for demo (e.g. credential = 'kaprodi' and no password typed), allow
+      if (user.role === termLower && !inputPass) return true;
+
+      // Must have entered a password
+      if (!inputPass) return false;
+
+      // Expected default password is user.password || user.nim || user.nip
+      const userPass = String(user.password || '').trim().toLowerCase();
+      const userNim = String(user.nim || '').trim().toLowerCase();
+      const userNip = String(user.nip || '').trim().toLowerCase();
+      const inputPassLower = inputPass.toLowerCase();
+
+      return (
+        (userPass && inputPassLower === userPass) ||
+        (userNim && inputPassLower === userNim) ||
+        (userNip && inputPassLower === userNip)
+      );
+    };
+
+    // 1. Check local registered users list FIRST by NIM, NIP, Email, or ID
     const registered = getRegisteredUsers();
     const localFound = registered.find(u => 
-      (u.nim && u.nim === term) || 
-      (u.nip && u.nip === term) || 
-      (u.id && u.id === term)
+      (u.nim && u.nim.toLowerCase() === termLower) || 
+      (u.nip && u.nip.toLowerCase() === termLower) || 
+      (u.email && u.email.toLowerCase() === termLower) ||
+      (u.id && u.id.toLowerCase() === termLower)
     );
 
     if (localFound) {
+      if (!isValidPassword(localFound)) {
+        throw new Error('Kata sandi yang Anda masukkan salah. Kata sandi default untuk mahasiswa adalah NIM Anda.');
+      }
       setCurrentUser(localFound);
       if (localFound.role === 'kaprodi') return '/kaprodi/dashboard';
       if (localFound.role === 'admin_sarana') return '/admin/dashboard';
@@ -688,10 +746,12 @@ export function AuthProvider({ children }) {
 
     // 2. Try Real Supabase Auth if configured & password provided
     if (isSupabaseConfigured && supabase && password) {
-      let emailToUse = '';
-      const { data: prof } = await supabase.from('profiles').select('email').or(`nim.eq.${term},nip.eq.${term}`).single();
-      if (prof && prof.email) {
-        emailToUse = prof.email;
+      let emailToUse = termLower.includes('@') ? termLower : '';
+      if (!emailToUse) {
+        const { data: prof } = await supabase.from('profiles').select('email').or(`nim.eq.${term},nip.eq.${term}`).single();
+        if (prof && prof.email) {
+          emailToUse = prof.email;
+        }
       }
 
       if (emailToUse) {
@@ -705,12 +765,12 @@ export function AuthProvider({ children }) {
           const matchedReg = registered.find(r => r.email === authData.user.email || r.id === authData.user.id) || registered[0];
           const activeProfile = profile || {
             id: authData.user.id,
-            nama: authData.user.user_metadata?.nama || authData.user.user_metadata?.full_name || matchedReg?.nama || 'Aulia Azzahra',
+            nama: authData.user.user_metadata?.nama || authData.user.user_metadata?.full_name || matchedReg?.nama || 'AULIA AZZAHRA',
             email: authData.user.email,
             nim: term,
-            no_hp: authData.user.user_metadata?.no_hp || matchedReg?.no_hp || '121920129102933',
+            no_hp: authData.user.user_metadata?.no_hp || matchedReg?.no_hp || '0812781011',
             role: authData.user.user_metadata?.role || matchedReg?.role || 'mahasiswa',
-            kelas: authData.user.user_metadata?.kelas || matchedReg?.kelas || 'MI 5A'
+            kelas: authData.user.user_metadata?.kelas || matchedReg?.kelas || 'MI 2024'
           };
 
           setCurrentUser(activeProfile);
@@ -724,14 +784,19 @@ export function AuthProvider({ children }) {
       }
     }
 
-    // 3. Fallback to Mock Dataset Matching by NIM / NIP
+    // 3. Fallback to Mock Dataset Matching by NIM / NIP / Email / Role
     const foundUser = MOCK_USERS.find(u => 
-      u.nim === term || 
-      u.nip === term ||
-      u.role === term
+      (u.nim && u.nim.toLowerCase() === termLower) || 
+      (u.nip && u.nip.toLowerCase() === termLower) ||
+      (u.email && u.email.toLowerCase() === termLower) ||
+      u.role === termLower
     );
 
     if (foundUser) {
+      if (!isValidPassword(foundUser)) {
+        throw new Error('Kata sandi yang Anda masukkan salah. Kata sandi default untuk mahasiswa adalah NIM Anda.');
+      }
+
       setCurrentUser(foundUser);
       if (foundUser.role === 'kaprodi') return '/kaprodi/dashboard';
       if (foundUser.role === 'admin_sarana') return '/admin/dashboard';
@@ -741,7 +806,7 @@ export function AuthProvider({ children }) {
     }
 
     // 4. If no match found in registered users, Supabase, or mock users, throw invalid credential error
-    throw new Error('NIM / NIP atau kata sandi yang Anda masukkan tidak terdaftar dalam sistem.');
+    throw new Error('NIM / NIP atau Email yang Anda masukkan tidak terdaftar dalam sistem.');
   };
 
   // Register new account (Mahasiswa / Kaprodi)

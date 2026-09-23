@@ -17,13 +17,13 @@ import {
 export default function DashboardMahasiswa() {
   const { currentUser, thesisTitles, thesisStages, bookings, getStudentAdvisors } = useAuth();
 
-  // Get current student's title
-  const myTitle = thesisTitles.find(t => (currentUser?.id && t.profile_id === currentUser.id) || (currentUser?.nim && t.mhs_nim === currentUser.nim)) || thesisTitles[0];
-  const myStages = thesisStages.filter(s => s.thesis_title_id === myTitle?.id);
+  // Get current student's title dynamically
+  const myTitle = thesisTitles.find(t => (currentUser?.id && t.profile_id === currentUser.id) || (currentUser?.nim && t.mhs_nim === currentUser.nim)) || null;
+  const myStages = myTitle ? thesisStages.filter(s => s.thesis_title_id === myTitle.id) : [];
   const myBookings = bookings.filter(b => currentUser?.nim && b.mhs_nim === currentUser.nim);
 
   // Dynamic Dospem 1 & 2 assigned by Kaprodi
-  const assigned = getStudentAdvisors ? getStudentAdvisors(currentUser?.nim || '09010182428002') : {};
+  const assigned = (getStudentAdvisors && currentUser?.nim) ? getStudentAdvisors(currentUser.nim) : {};
   const dospem1Nama = assigned?.dospem1?.nama || myTitle?.pembimbing_1 || 'Belum ditentukan Kaprodi';
   const dospem2Nama = assigned?.dospem2?.nama || myTitle?.pembimbing_2 || 'Belum ditentukan Kaprodi';
 

@@ -25,6 +25,12 @@ Route::get('/profile', function () {
     return Inertia::render('ProfilePage');
 });
 
+Route::get('/verify/bimbingan/{nim}', function ($nim) {
+    return Inertia::render('VerifyBimbinganPage', [
+        'nim' => $nim,
+    ]);
+});
+
 // ============================================================
 // MAHASISWA ROUTES
 // ============================================================
@@ -104,7 +110,15 @@ Route::get('/kaprodi/check-accounts', function () {
 });
 
 Route::get('/kaprodi/master-data', function () {
-    return Inertia::render('kaprodi/MasterDataKaprodi');
+    return Inertia::render('kaprodi/MasterMahasiswaPage');
+});
+
+Route::get('/kaprodi/master-data/mahasiswa', function () {
+    return Inertia::render('kaprodi/MasterMahasiswaPage');
+});
+
+Route::get('/kaprodi/master-data/dosen', function () {
+    return Inertia::render('kaprodi/MasterDosenPage');
 });
 
 Route::get('/kaprodi/analytics', function () {

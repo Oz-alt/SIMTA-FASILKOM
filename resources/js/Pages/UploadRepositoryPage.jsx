@@ -21,16 +21,21 @@ import { supabase, isSupabaseConfigured } from '../services/supabase.js';
 
 export default function UploadRepositoryPage() {
   const navigate = (url) => router.visit(url);
-  const { currentUser, uploadThesisRepository, departments } = useAuth();
+  const { currentUser, uploadThesisRepository, departments, studentAdvisors, advisors } = useAuth();
+
+  // Find advisor assignment for current student dynamically
+  const sa = studentAdvisors?.find(s => currentUser?.nim && String(s.student_nim).trim() === String(currentUser.nim).trim());
+  const dospem1 = sa ? advisors?.find(a => a.nip === sa.dospem1_nip) : null;
+  const dospem2 = sa ? advisors?.find(a => a.nip === sa.dospem2_nip) : null;
 
   const [formData, setFormData] = useState({
     judul: '',
     abstrak: '',
     abstrak_en: '',
-    pembimbing_1: 'Dr. Ir. Hendra Kusuma, M.T. (NIP. 197805122005011002)',
-    pembimbing_2: 'Siti Nurhaliza, S.Kom., M.Kom. (NIP. 198804102015042001)',
-    penguji_1: 'Prof. Dr. Ir. Ahmad Zaki, M.Sc.',
-    penguji_2: 'Rina Kartika, S.T., M.T.',
+    pembimbing_1: dospem1 ? `${dospem1.nama} (NIP. ${dospem1.nip})` : '',
+    pembimbing_2: dospem2 ? `${dospem2.nama} (NIP. ${dospem2.nip})` : '',
+    penguji_1: '',
+    penguji_2: '',
     kata_kunci: '',
     tahun_angkatan: '2022',
     tahun_lulus: new Date().getFullYear().toString()

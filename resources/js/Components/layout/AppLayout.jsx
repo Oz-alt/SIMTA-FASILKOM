@@ -10,8 +10,9 @@ export default function AppLayout({ children }) {
   const isHomePage = url === '/';
   const isDokumenPage = url === '/documents';
   const isAuthPage = url === '/login' || url === '/register';
+  const isVerifyPage = url.startsWith('/verify');
 
-  if (isAuthPage) {
+  if (isAuthPage || isVerifyPage) {
     return (
       <div className="min-h-screen bg-slate-900 font-sans">
         {children}
