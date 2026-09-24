@@ -726,6 +726,54 @@ export function AuthProvider({ children }) {
           }
         )
         .subscribe();
+
+      // Real-time WebSocket listener for cross-device student advisor assignments
+      const studentAdvisorsChannel = supabase
+        .channel('schema-db-changes-student-advisors')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'student_advisors' },
+          (payload) => {
+            if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+              if (payload.new) {
+                setStudentAdvisors(prev => {
+                  const nim = String(payload.new.student_nim).trim();
+                  const existsIdx = prev.findIndex(sa => String(sa.student_nim).trim() === nim);
+                  const d1 = payload.new.dospem1_nip || null;
+                  const d2 = payload.new.dospem2_nip || null;
+                  let st = 'belum';
+                  if (d1 && d2) st = 'lengkap';
+                  else if (d1 || d2) st = 'partial';
+
+                  const updatedItem = {
+                    ...(existsIdx >= 0 ? prev[existsIdx] : {}),
+                    ...payload.new,
+                    dospem1_nip: d1,
+                    dospem2_nip: d2,
+                    status_pembagian: st
+                  };
+
+                  let updatedList;
+                  if (existsIdx >= 0) {
+                    updatedList = [...prev];
+                    updatedList[existsIdx] = updatedItem;
+                  } else {
+                    updatedList = [updatedItem, ...prev];
+                  }
+                  try { localStorage.setItem('simta_student_advisors', JSON.stringify(updatedList)); } catch {}
+                  return updatedList;
+                });
+              }
+            } else if (payload.eventType === 'DELETE' && payload.old) {
+              setStudentAdvisors(prev => {
+                const updated = prev.filter(sa => String(sa.student_nim).trim() !== String(payload.old.student_nim).trim());
+                try { localStorage.setItem('simta_student_advisors', JSON.stringify(updated)); } catch {}
+                return updated;
+              });
+            }
+          }
+        )
+        .subscribe();
       supabase.from('thesis_titles').select('*')
         .then(({ data, error }) => {
           if (!error && data && data.length > 0) {
