@@ -78,7 +78,11 @@ export default function KelolaDospemPage() {
       };
 
       // Find approved or submitted thesis title
-      const titleObj = thesisTitles.find(t => t.mhs_nim === std.nim || t.profile_id === std.id);
+      const titleObj = thesisTitles.find(t => (t.mhs_nim && t.mhs_nim === std.nim) || (t.profile_id && t.profile_id === std.id));
+
+      const existingJudul = (assignment.judul_ta && assignment.judul_ta !== 'Judul Tugas Akhir' && assignment.judul_ta !== 'Rancang Bangun Sistem Informasi Manajemen Tugas Akhir & Peminjaman Ruang Sidang')
+        ? assignment.judul_ta
+        : '';
 
       return {
         id: std.id,
@@ -86,7 +90,7 @@ export default function KelolaDospemPage() {
         nama: std.nama,
         prodi: std.prodi || 'D3 Manajemen Informatika',
         kelas: std.kelas || 'MI 5A',
-        judul: titleObj?.judul || 'Rancang Bangun Sistem Informasi Manajemen Tugas Akhir & Peminjaman Ruang Sidang',
+        judul: titleObj?.judul || existingJudul || '',
         dospem1_nip: assignment.dospem1_nip,
         dospem2_nip: assignment.dospem2_nip,
         status_pembagian: assignment.status_pembagian || 'belum'
@@ -347,7 +351,7 @@ export default function KelolaDospemPage() {
             nim: cleanNim,
             rawNim,
             nama: rawNama || matchedStudent?.nama || 'Mahasiswa',
-            judul: matchedStudent?.judul || 'Judul Tugas Akhir',
+            judul: matchedStudent?.judul || '',
             dospem1_nip: adv1 ? adv1.nip : cleanD1Nip,
             dospem1_nama: adv1 ? adv1.nama : (cleanD1Nip ? `NIP: ${cleanD1Nip} (Tidak Terdaftar)` : '-'),
             dospem2_nip: adv2 ? adv2.nip : cleanD2Nip,
@@ -802,9 +806,15 @@ export default function KelolaDospemPage() {
 
                         {/* Thesis Title */}
                         <td className="py-2.5 px-3 align-top">
-                          <p className="text-[11px] text-slate-800 font-medium leading-relaxed italic line-clamp-2" title={std.judul}>
-                            "{std.judul}"
-                          </p>
+                          {std.judul ? (
+                            <p className="text-[11px] text-slate-800 font-medium leading-relaxed italic line-clamp-2" title={std.judul}>
+                              "{std.judul}"
+                            </p>
+                          ) : (
+                            <span className="text-[11px] text-slate-400 italic">
+                              Belum mengajukan judul
+                            </span>
+                          )}
                         </td>
 
                         {/* Dospem 1 Select */}

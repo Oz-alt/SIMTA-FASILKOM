@@ -122,8 +122,8 @@ export default function DashboardDosen() {
                         <div className="font-semibold text-slate-900">{student.student_nama}</div>
                         <div className="text-[10px] text-slate-500 font-mono">{student.student_nim}</div>
                       </td>
-                      <td className="py-3 px-3 text-slate-800 font-medium max-w-[250px] truncate" title={student.judul_ta}>
-                        {student.judul_ta || 'Belum mengajukan'}
+                      <td className="py-3 px-3 text-slate-800 font-medium max-w-[250px] truncate" title={title?.judul || student.judul_ta || 'Belum mengajukan'}>
+                        {title?.judul || (student.judul_ta && student.judul_ta !== 'Judul Tugas Akhir' && student.judul_ta !== 'Rancang Bangun Sistem Informasi Manajemen Tugas Akhir & Peminjaman Ruang Sidang' ? student.judul_ta : 'Belum mengajukan')}
                       </td>
                       <td className="py-3 px-3">
                         <span className="bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full font-semibold border border-blue-100">

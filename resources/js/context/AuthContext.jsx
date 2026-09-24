@@ -412,7 +412,12 @@ export function AuthProvider({ children }) {
       const saved = localStorage.getItem('simta_student_advisors');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map(item => ({
+            ...item,
+            judul_ta: (item.judul_ta === 'Judul Tugas Akhir' || item.judul_ta === 'Rancang Bangun Sistem Informasi Manajemen Tugas Akhir & Peminjaman Ruang Sidang') ? '' : (item.judul_ta || '')
+          }));
+        }
       }
     } catch {}
     return MOCK_STUDENT_ADVISORS;
@@ -493,12 +498,16 @@ export function AuthProvider({ children }) {
       if (dospem1Nip && dospem2Nip) statusPembagian = 'lengkap';
       else if (dospem1Nip || dospem2Nip) statusPembagian = 'partial';
 
+      const existingJudul = (existingIdx >= 0 && prev[existingIdx].judul_ta && prev[existingIdx].judul_ta !== 'Judul Tugas Akhir' && prev[existingIdx].judul_ta !== 'Rancang Bangun Sistem Informasi Manajemen Tugas Akhir & Peminjaman Ruang Sidang')
+        ? prev[existingIdx].judul_ta
+        : '';
+
       updatedRecord = {
         id: existingIdx >= 0 ? prev[existingIdx].id : `std-adv-${Date.now()}`,
         student_nim: studentNim,
         student_nama: studentNama || (existingIdx >= 0 ? prev[existingIdx].student_nama : 'Mahasiswa'),
         prodi: 'D3 Manajemen Informatika',
-        judul_ta: judulTa || (existingIdx >= 0 ? prev[existingIdx].judul_ta : 'Judul Tugas Akhir'),
+        judul_ta: judulTa || existingJudul || '',
         dospem1_nip: dospem1Nip || null,
         dospem2_nip: dospem2Nip || null,
         status_pembagian: statusPembagian,
@@ -546,12 +555,16 @@ export function AuthProvider({ children }) {
         else if (dospem1Nip || dospem2Nip) statusPembagian = 'partial';
 
         const existing = map.get(studentNim);
+        const existingJudul = (existing && existing.judul_ta && existing.judul_ta !== 'Judul Tugas Akhir' && existing.judul_ta !== 'Rancang Bangun Sistem Informasi Manajemen Tugas Akhir & Peminjaman Ruang Sidang')
+          ? existing.judul_ta
+          : '';
+
         map.set(studentNim, {
           id: existing ? existing.id : `std-adv-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
           student_nim: studentNim,
           student_nama: item.student_nama || (existing ? existing.student_nama : 'Mahasiswa'),
           prodi: existing?.prodi || 'D3 Manajemen Informatika',
-          judul_ta: item.judul_ta || existing?.judul_ta || 'Judul Tugas Akhir',
+          judul_ta: item.judul_ta || existingJudul || '',
           dospem1_nip: dospem1Nip || null,
           dospem2_nip: dospem2Nip || null,
           status_pembagian: statusPembagian,
