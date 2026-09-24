@@ -3128,11 +3128,12 @@ export const MOCK_USERS = [
   },
   {
     "id": "user-kaprodi",
-    "nim": "197805122005011002",
-    "nip": "197805122005011002",
-    "nama": "Dr. Ir. Hendra Kusuma, M.T.",
+    "nim": "198410012009121005",
+    "nip": "198410012009121005",
+    "nama": "Dr. Abdiansah, S.Kom., M.Cs.",
     "role": "kaprodi",
-    "email": "kaprodi.mi@unsri.ac.id",
+    "email": "abdiansah@unsri.ac.id",
+    "password": "198410012009121005",
     "department_id": "dept-mi-1"
   },
   {
@@ -3145,12 +3146,123 @@ export const MOCK_USERS = [
     "department_id": "dept-mi-1"
   },
   {
-    "id": "user-dosen",
+    "id": "user-dosen-abdiansah",
     "nim": "198410012009121005",
     "nip": "198410012009121005",
     "nama": "Dr. Abdiansah, S.Kom., M.Cs.",
     "role": "dosen",
     "email": "abdiansah@unsri.ac.id",
+    "password": "198410012009121005",
+    "department_id": "dept-mi-1"
+  },
+  {
+    "id": "user-dosen-alfiqnufiq",
+    "nim": "197903202024211001",
+    "nip": "197903202024211001",
+    "nama": "Alfiqnufiq, S.Kom., M.T.",
+    "role": "dosen",
+    "email": "alfiqnufiq@unsri.ac.id",
+    "password": "197903202024211001",
+    "department_id": "dept-mi-1"
+  },
+  {
+    "id": "user-dosen-bayu",
+    "nim": "198604122024211002",
+    "nip": "198604122024211002",
+    "nama": "Bayu Wisata, S.Kom., M.T.",
+    "role": "dosen",
+    "email": "bayuwisata@gmail.com",
+    "password": "198604122024211002",
+    "department_id": "dept-mi-1"
+  },
+  {
+    "id": "user-dosen-dewi",
+    "nim": "199012222024062001",
+    "nip": "199012222024062001",
+    "nama": "Dewi Sartika, S.Kom., M.Kom.",
+    "role": "dosen",
+    "email": "dewisartika@unsri.ac.id",
+    "password": "199012222024062001",
+    "department_id": "dept-mi-1"
+  },
+  {
+    "id": "user-dosen-hasnan",
+    "nim": "198910142023211013",
+    "nip": "198910142023211013",
+    "nama": "Hasnan Afif, S.Kom., M.Kom.",
+    "role": "dosen",
+    "email": "hasnanafif@unsri.ac.id",
+    "password": "198910142023211013",
+    "department_id": "dept-mi-1"
+  },
+  {
+    "id": "user-dosen-iin",
+    "nim": "198303182023212034",
+    "nip": "198303182023212034",
+    "nama": "Iin Seprina, M.Kom.",
+    "role": "dosen",
+    "email": "iinseprina@unsri.ac.id",
+    "password": "198303182023212034",
+    "department_id": "dept-mi-1"
+  },
+  {
+    "id": "user-dosen-junia",
+    "nim": "198906262024212001",
+    "nip": "198906262024212001",
+    "nama": "Junia Kurniati, S.Kom., M.Kom.",
+    "role": "dosen",
+    "email": "niyaamnz@gmail.com",
+    "password": "198906262024212001",
+    "department_id": "dept-mi-1"
+  },
+  {
+    "id": "user-dosen-qurhanul",
+    "nim": "198712032022031006",
+    "nip": "198712032022031006",
+    "nama": "M. Qurhanul Rizkie, Ph.D",
+    "role": "dosen",
+    "email": "qurhanul.rizqie@ilkom.unsri.ac.id",
+    "password": "198712032022031006",
+    "department_id": "dept-mi-1"
+  },
+  {
+    "id": "user-dosen-purwita",
+    "nim": "199206092019032025",
+    "nip": "199206092019032025",
+    "nama": "Purwita Sari, S.Si., M.Kom.",
+    "role": "dosen",
+    "email": "witasari92@gmail.com",
+    "password": "199206092019032025",
+    "department_id": "dept-mi-1"
+  },
+  {
+    "id": "user-dosen-rusdi",
+    "nim": "198201022024211001",
+    "nip": "198201022024211001",
+    "nama": "Rusdi Efendi, S.Pd., M.Kom.",
+    "role": "dosen",
+    "email": "rusdie@unsri.ac.id",
+    "password": "198201022024211001",
+    "department_id": "dept-mi-1"
+  },
+  {
+    "id": "user-dosen-willy",
+    "nim": "198710092024211001",
+    "nip": "198710092024211001",
+    "nama": "Willy, S.Kom., M.Kom.",
+    "role": "dosen",
+    "email": "willy@unsri.ac.id",
+    "password": "198710092024211001",
+    "department_id": "dept-mi-1"
+  },
+  {
+    "id": "user-dosen-yesinta",
+    "nim": "199306042024062006",
+    "nip": "199306042024062006",
+    "nama": "Yesinta Florensia, S.Kom., M.Kom.",
+    "role": "dosen",
+    "email": "yesintaflorensia@unsri.ac.id",
+    "password": "199306042024062006",
     "department_id": "dept-mi-1"
   },
   {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { router } from '@inertiajs/react';
-import SimilarityGauge from '../../components/common/SimilarityGauge.jsx';
+import SimilarityGauge from '../../Components/common/SimilarityGauge.jsx';
 import { checkClientSimilarity } from '../../lib/similarityEngine.js';
 import { preProcessTitle, getSimilarityThreshold } from '@backend/services/titleService.js';
 import { FileText, Send, AlertTriangle, ShieldCheck, Info, CheckCircle2 } from 'lucide-react';

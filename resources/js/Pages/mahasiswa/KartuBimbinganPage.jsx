@@ -13,20 +13,68 @@ export default function KartuBimbinganPage() {
     return studentAdvisors.find(s => String(s.student_nim).trim() === String(studentNim).trim());
   }, [studentAdvisors, studentNim]);
 
-  const dospem1 = useMemo(() => {
-    return sa ? advisors.find(a => a.nip === sa.dospem1_nip) : null;
-  }, [advisors, sa]);
+  const dospem1Nama = useMemo(() => {
+    if (sa?.dospem1_nip) {
+      const found = advisors.find(a => a.nip === sa.dospem1_nip);
+      if (found) return found.nama;
+    }
+    const cons1 = consultations.find(c => String(c.mhs_nim).trim() === String(studentNim).trim() && c.pembimbing === 'Pembimbing 1');
+    if (cons1?.dosen_nama) return cons1.dosen_nama;
+    return '-';
+  }, [advisors, sa, consultations, studentNim]);
 
-  const dospem2 = useMemo(() => {
-    return sa ? advisors.find(a => a.nip === sa.dospem2_nip) : null;
-  }, [advisors, sa]);
+  const dospem2Nama = useMemo(() => {
+    if (sa?.dospem2_nip) {
+      const found = advisors.find(a => a.nip === sa.dospem2_nip);
+      if (found) return found.nama;
+    }
+    const cons2 = consultations.find(c => String(c.mhs_nim).trim() === String(studentNim).trim() && c.pembimbing === 'Pembimbing 2');
+    if (cons2?.dosen_nama) return cons2.dosen_nama;
+    return '-';
+  }, [advisors, sa, consultations, studentNim]);
 
-  // Filter consultations for current student, only approved ones in chronological order (oldest to newest)
+  // Filter consultations for current student, only approved ones in strict chronological order (oldest to newest: Bimbingan 1, 2, 3...)
   const studentConsultations = useMemo(() => {
     if (!studentNim) return [];
+    
+    const parseIdNum = (idStr) => {
+      const match = String(idStr).match(/\d+/);
+      return match ? Number(match[0]) : 0;
+    };
+
     return consultations
       .filter(c => String(c.mhs_nim).trim() === String(studentNim).trim() && c.status === 'disetujui')
-      .sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
+      .sort((a, b) => {
+        // 1. Primary: Compare tanggal (YYYY-MM-DD)
+        const dateA = a.tanggal || '';
+        const dateB = b.tanggal || '';
+        if (dateA !== dateB) {
+          return dateA.localeCompare(dateB);
+        }
+
+        // 2. Secondary: Compare creation timestamp (created_at) for entries submitted on same day
+        const createdA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const createdB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        if (createdA !== 0 && createdB !== 0 && createdA !== createdB) {
+          return createdA - createdB;
+        }
+
+        // 3. Tertiary: Compare numeric ID timestamp (cons-1, cons-2, cons-174028...)
+        const numA = parseIdNum(a.id);
+        const numB = parseIdNum(b.id);
+        if (numA !== 0 && numB !== 0 && numA !== numB) {
+          return numA - numB;
+        }
+
+        // 4. Quaternary: Compare waktu (HH:MM)
+        const waktuA = a.waktu || '';
+        const waktuB = b.waktu || '';
+        if (waktuA !== waktuB) {
+          return waktuA.localeCompare(waktuB);
+        }
+
+        return String(a.id).localeCompare(String(b.id));
+      });
   }, [consultations, studentNim]);
 
   const verifyUrl = typeof window !== 'undefined' 
@@ -81,8 +129,8 @@ export default function KartuBimbinganPage() {
             <p><span className="w-28 inline-block font-bold">Program Studi</span>: {currentUser?.prodi || 'D3 Manajemen Informatika'}</p>
           </div>
           <div className="space-y-1">
-            <p><span className="w-24 inline-block font-bold">Dospem 1</span>: {dospem1?.nama || '-'}</p>
-            <p><span className="w-24 inline-block font-bold">Dospem 2</span>: {dospem2?.nama || '-'}</p>
+            <p><span className="w-24 inline-block font-bold">Dospem 1</span>: {dospem1Nama}</p>
+            <p><span className="w-24 inline-block font-bold">Dospem 2</span>: {dospem2Nama}</p>
           </div>
         </div>
 

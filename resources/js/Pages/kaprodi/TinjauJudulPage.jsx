@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
-import SimilarityGauge from '../../components/common/SimilarityGauge.jsx';
+import SimilarityGauge from '../../Components/common/SimilarityGauge.jsx';
 import { 
   CheckSquare, 
   CheckCircle2, 

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
-import RoomScheduleTimeline from '../../components/common/RoomScheduleTimeline.jsx';
+import RoomScheduleTimeline from '../../Components/common/RoomScheduleTimeline.jsx';
 
 export default function JadwalRuangPage() {
   const { rooms, bookings, buildings } = useAuth();

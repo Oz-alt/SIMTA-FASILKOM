@@ -17,8 +17,8 @@ import {
   Link2,
   ExternalLink
 } from 'lucide-react';
-import ModalAjukanBimbingan from '../../components/common/ModalAjukanBimbingan.jsx';
-import ModalEditBimbingan from '../../components/common/ModalEditBimbingan.jsx';
+import ModalAjukanBimbingan from '../../Components/common/ModalAjukanBimbingan.jsx';
+import ModalEditBimbingan from '../../Components/common/ModalEditBimbingan.jsx';
 
 export default function BimbinganTAPage() {
   const { currentUser, consultations, reviewConsultation } = useAuth();
@@ -27,10 +27,33 @@ export default function BimbinganTAPage() {
   const [toastMsg, setToastMsg] = useState('');
   const [feedbackInput, setFeedbackInput] = useState({});
 
-  // Filter consultations for current student
+  const isStudentRole = currentUser?.role === 'mahasiswa';
+
+  // Filter consultations based on logged-in user role
   const studentConsultations = useMemo(() => {
-    return consultations.filter(c => !currentUser?.nim || c.mhs_nim === currentUser.nim);
-  }, [consultations, currentUser]);
+    if (!currentUser) return [];
+
+    if (isStudentRole) {
+      return consultations.filter(c => String(c.mhs_nim).trim() === String(currentUser.nim || '').trim());
+    }
+
+    // Dosen & Kaprodi: Only see consultations directed to THEM
+    const cleanUserNama = (currentUser.nama || '').toLowerCase().replace(/dr\.|ir\.|prof\.|s\.kom\.|m\.cs\.|m\.t\.|m\.kom\.|ph\.d\.|st\.|s\.t\./gi, '').trim();
+    const userNip = String(currentUser.nip || '').trim();
+
+    return consultations.filter(c => {
+      if (c.dosen_nip && userNip && String(c.dosen_nip).trim() === userNip) {
+        return true;
+      }
+      if (c.dosen_nama && cleanUserNama) {
+        const cleanConsNama = c.dosen_nama.toLowerCase().replace(/dr\.|ir\.|prof\.|s\.kom\.|m\.cs\.|m\.t\.|m\.kom\.|ph\.d\.|st\.|s\.t\./gi, '').trim();
+        if (cleanConsNama.includes(cleanUserNama) || cleanUserNama.includes(cleanConsNama)) {
+          return true;
+        }
+      }
+      return false;
+    });
+  }, [consultations, currentUser, isStudentRole]);
 
   // Recap stats
   const totalApproved = studentConsultations.filter(c => c.status === 'disetujui').length;
@@ -49,22 +72,26 @@ export default function BimbinganTAPage() {
   return (
     <div className="max-w-7xl mx-auto space-y-6 select-none">
       
-      {/* Modal Ajukan Bimbingan */}
-      <ModalAjukanBimbingan 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
-      />
+      {/* Modal Ajukan Bimbingan (Mahasiswa Only) */}
+      {isStudentRole && (
+        <ModalAjukanBimbingan 
+          isOpen={isModalOpen} 
+          onClose={() => setIsModalOpen(false)} 
+        />
+      )}
 
-      {/* Modal Edit Catatan Bimbingan */}
-      <ModalEditBimbingan
-        isOpen={Boolean(editingConsultation)}
-        onClose={() => setEditingConsultation(null)}
-        consultation={editingConsultation}
-        onSaved={(msg) => {
-          setToastMsg(msg);
-          setTimeout(() => setToastMsg(''), 4000);
-        }}
-      />
+      {/* Modal Edit Catatan Bimbingan (Mahasiswa Only) */}
+      {isStudentRole && (
+        <ModalEditBimbingan
+          isOpen={Boolean(editingConsultation)}
+          onClose={() => setEditingConsultation(null)}
+          consultation={editingConsultation}
+          onSaved={(msg) => {
+            setToastMsg(msg);
+            setTimeout(() => setToastMsg(''), 4000);
+          }}
+        />
+      )}
 
       {/* Toast Notification */}
       {toastMsg && (
@@ -85,18 +112,23 @@ export default function BimbinganTAPage() {
             Form Bimbingan Tugas Akhir
           </h1>
           <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-normal">
-            Catat riwayat pertemuan konsultasi, unggah berkas draf revisi, dapatkan masukan dosen pembimbing, dan pantau kelayakan pendaftaran sidang TA secara real-time.
+            {isStudentRole 
+              ? 'Catat riwayat pertemuan konsultasi, unggah berkas draf revisi, dapatkan masukan dosen pembimbing, dan pantau kelayakan pendaftaran sidang TA secara real-time.'
+              : 'Tinjau dan validasi catatan konsultasi bimbingan yang diajukan oleh mahasiswa bimbingan Anda.'
+            }
           </p>
 
-          <div className="pt-2 flex flex-wrap items-center gap-3">
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md shadow-blue-600/30 transition-all flex items-center space-x-2 cursor-pointer"
-            >
-              <PlusCircle className="w-4 h-4" />
-              <span>Catat Sesi Bimbingan Baru</span>
-            </button>
-          </div>
+          {isStudentRole && (
+            <div className="pt-2 flex flex-wrap items-center gap-3">
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md shadow-blue-600/30 transition-all flex items-center space-x-2 cursor-pointer"
+              >
+                <PlusCircle className="w-4 h-4" />
+                <span>Catat Sesi Bimbingan Baru</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -140,22 +172,31 @@ export default function BimbinganTAPage() {
       <div className="space-y-4">
         
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-bold text-slate-900">Riwayat Pertemuan Konsultasi</h2>
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-2xs transition-all flex items-center space-x-1.5 cursor-pointer"
-          >
-            <PlusCircle className="w-3.5 h-3.5" />
-            <span>Tambah Catatan Bimbingan</span>
-          </button>
+          <h2 className="text-sm font-bold text-slate-900">
+            {isStudentRole ? 'Riwayat Pertemuan Konsultasi' : 'Daftar Pengajuan Bimbingan Mahasiswa'}
+          </h2>
+          {isStudentRole && (
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-2xs transition-all flex items-center space-x-1.5 cursor-pointer"
+            >
+              <PlusCircle className="w-3.5 h-3.5" />
+              <span>Tambah Catatan Bimbingan</span>
+            </button>
+          )}
         </div>
 
         {studentConsultations.length === 0 ? (
           <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center space-y-3">
             <BookOpen className="w-10 h-10 text-slate-300 mx-auto" />
-            <h3 className="text-base font-bold text-slate-800">Belum Ada Sesi Bimbingan Dicatat</h3>
+            <h3 className="text-base font-bold text-slate-800">
+              {isStudentRole ? 'Belum Ada Sesi Bimbingan Dicatat' : 'Belum Ada Bimbingan Masuk'}
+            </h3>
             <p className="text-xs text-slate-500 max-w-md mx-auto">
-              Klik tombol "Tambah Catatan Bimbingan" di atas untuk mulai mencatat riwayat konsultasi dan mengunggah berkas revisi Anda.
+              {isStudentRole 
+                ? 'Klik tombol "Tambah Catatan Bimbingan" di atas untuk mulai mencatat riwayat konsultasi dan mengunggah berkas revisi Anda.'
+                : 'Belum ada catatan konsultasi yang diajukan oleh mahasiswa bimbingan Anda.'
+              }
             </p>
           </div>
         ) : (
@@ -173,7 +214,14 @@ export default function BimbinganTAPage() {
                     }`}>
                       {item.pembimbing}
                     </span>
-                    <h3 className="text-sm font-bold text-slate-900">{item.dosen_nama}</h3>
+                    <div className="flex items-center space-x-2">
+                      {!isStudentRole && item.mhs_nama && (
+                        <span className="text-xs font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-800">
+                          {item.mhs_nama} ({item.mhs_nim})
+                        </span>
+                      )}
+                      <h3 className="text-sm font-bold text-slate-900">{item.dosen_nama}</h3>
+                    </div>
                   </div>
 
                   <div className="flex items-center space-x-3 text-xs">
@@ -228,7 +276,7 @@ export default function BimbinganTAPage() {
                   </div>
                 )}
 
-                {/* Link Dokumen Drive & Action Buttons (Edit Catatan & Buka Link) */}
+                {/* Link Dokumen Drive & Action Buttons */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-2.5 border-t border-slate-100 text-xs">
                   <div className="flex items-center space-x-2 text-slate-600 truncate max-w-sm sm:max-w-md">
                     <Link2 className="w-4 h-4 text-blue-600 shrink-0" />
@@ -250,16 +298,18 @@ export default function BimbinganTAPage() {
                   </div>
 
                   <div className="flex items-center space-x-2 self-end sm:self-auto shrink-0">
-                    {/* Tombol Edit Catatan */}
-                    <button
-                      type="button"
-                      onClick={() => setEditingConsultation(item)}
-                      className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold text-[11px] transition-all flex items-center space-x-1.5 shadow-2xs cursor-pointer hover:shadow-xs"
-                      title="Ubah Catatan &amp; Tautan Bimbingan"
-                    >
-                      <Edit3 className="w-3.5 h-3.5" />
-                      <span>Edit Catatan</span>
-                    </button>
+                    {/* Tombol Edit Catatan (Khusus Mahasiswa Pemilik Log) */}
+                    {isStudentRole && (
+                      <button
+                        type="button"
+                        onClick={() => setEditingConsultation(item)}
+                        className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold text-[11px] transition-all flex items-center space-x-1.5 shadow-2xs cursor-pointer hover:shadow-xs"
+                        title="Ubah Catatan &amp; Tautan Bimbingan"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                        <span>Edit Catatan</span>
+                      </button>
+                    )}
 
                     {/* Tombol Buka Link Drive */}
                     {item.file_revisi_url && (
@@ -276,66 +326,43 @@ export default function BimbinganTAPage() {
                   </div>
                 </div>
 
+                {/* PANEL RESPONS DOSEN (Tampil jika Login Sebagai Dosen/Kaprodi dan Status Menunggu Tanggapan) */}
+                {!isStudentRole && item.status === 'menunggu_tanggapan' && (
+                  <div className="mt-3 p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+                    <span className="font-bold text-slate-800 text-xs block">Form Validasi / Masukan Dosen Pembimbing:</span>
+                    <input
+                      type="text"
+                      placeholder="Tuliskan masukan / catatan revisi dosen di sini..."
+                      value={feedbackInput[item.id] || ''}
+                      onChange={(e) => setFeedbackInput(prev => ({ ...prev, [item.id]: e.target.value }))}
+                      className="w-full px-3 py-2 text-xs font-medium border border-slate-300 rounded-lg bg-white outline-none focus:border-blue-600"
+                    />
+
+                    <div className="flex items-center justify-end space-x-2">
+                      <button
+                        type="button"
+                        onClick={() => handleFeedbackSubmit(item.id, 'perlu_revisi')}
+                        className="px-3 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold text-xs transition-all cursor-pointer"
+                      >
+                        Minta Revisi
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleFeedbackSubmit(item.id, 'disetujui')}
+                        className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-2xs transition-all cursor-pointer"
+                      >
+                        Setujui Bimbingan
+                      </button>
+                    </div>
+                  </div>
+                )}
+
               </div>
             ))}
           </div>
         )}
 
       </div>
-
-      {/* TINJAUAN DOSEN PEMBIMBING (Khusus Dosen / Kaprodi) */}
-      {currentUser?.role !== 'mahasiswa' && (
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 shadow-xs space-y-6">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <h2 className="text-base font-bold text-slate-900 flex items-center space-x-2">
-              <UserCheck className="w-5 h-5 text-blue-600" />
-              <span>Panel Verifikasi Dosen Pembimbing</span>
-            </h2>
-            <span className="text-xs text-slate-400 font-medium">Mode Dosen Pembimbing</span>
-          </div>
-
-          <div className="space-y-4">
-            {studentConsultations.map((c) => (
-              <div key={c.id} className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-bold text-slate-900">{c.mhs_nama} ({c.mhs_nim}) — {c.pembimbing}</span>
-                  <span className="text-slate-500 font-medium">{c.tanggal}</span>
-                </div>
-
-                <p className="text-xs font-semibold text-slate-800">{c.bab_topik}</p>
-                <p className="text-xs text-slate-600 bg-white p-3 rounded-lg border border-slate-100">{c.catatan_mahasiswa}</p>
-
-                {/* Input Feedback */}
-                <div className="space-y-2 pt-2">
-                  <input
-                    type="text"
-                    placeholder="Tuliskan masukan / catatan revisi dosen di sini..."
-                    value={feedbackInput[c.id] || ''}
-                    onChange={(e) => setFeedbackInput(prev => ({ ...prev, [c.id]: e.target.value }))}
-                    className="w-full px-3 py-2 text-xs font-medium border border-slate-300 rounded-lg bg-white outline-none focus:border-blue-600"
-                  />
-
-                  <div className="flex items-center justify-end space-x-2">
-                    <button
-                      onClick={() => handleFeedbackSubmit(c.id, 'perlu_revisi')}
-                      className="px-3 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold text-xs transition-all cursor-pointer"
-                    >
-                      Minta Revisi
-                    </button>
-                    <button
-                      onClick={() => handleFeedbackSubmit(c.id, 'disetujui')}
-                      className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-2xs transition-all cursor-pointer"
-                    >
-                      Setujui Bimbingan
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-        </div>
-      )}
 
     </div>
   );

@@ -185,10 +185,10 @@ export default function Sidebar() {
           groups: [
             {
               id: 'bimbingan',
-              label: 'Bimbingan Mahasiswa',
+              label: 'Bimbingan',
               icon: FileCheck,
               items: [
-                { to: '/dosen/bimbingan', label: 'Room Bimbingan', icon: FileCheck },
+                { to: '/dosen/bimbingan', label: 'Bimbingan & Konsultasi', icon: FileCheck },
                 { to: '/dosen/validasi-judul', label: 'Validasi Judul TA', icon: CheckSquare },
                 { to: '/dosen/jadwal-sidang', label: 'Notifikasi & Jadwal', icon: CalendarDays }
               ]

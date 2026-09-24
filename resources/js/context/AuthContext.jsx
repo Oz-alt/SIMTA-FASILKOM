@@ -32,15 +32,16 @@ export function AuthProvider({ children }) {
     let cleanNama = user.nama;
 
     if (user.role === 'kaprodi') {
-      if (!cleanNama || cleanNama === 'Mahasiswa UNSRI' || cleanNama === 'Pengguna SIMTA' || cleanNama === 'Aulia Azzahra' || /^\d+$/.test(cleanNama)) {
-        cleanNama = 'Dr. Ir. Hendra Kusuma, M.T.';
+      if (!cleanNama || cleanNama === 'Mahasiswa UNSRI' || cleanNama === 'Pengguna SIMTA' || cleanNama === 'Aulia Azzahra' || cleanNama === 'Dr. Ir. Hendra Kusuma, M.T.' || /^\d+$/.test(cleanNama)) {
+        cleanNama = 'Dr. Abdiansah, S.Kom., M.Cs.';
       }
       return {
         ...user,
         nama: cleanNama,
         role: 'kaprodi',
-        nip: user.nip || user.nim || '197805122005011002',
-        nim: user.nip || user.nim || '197805122005011002',
+        email: user.email || 'abdiansah@unsri.ac.id',
+        nip: user.nip || user.nim || '198410012009121005',
+        nim: user.nip || user.nim || '198410012009121005',
         kelas: 'Dosen / Kaprodi'
       };
     }
@@ -71,7 +72,7 @@ export function AuthProvider({ children }) {
 
     // Default for Mahasiswa
     if (!cleanNama || cleanNama === 'Mahasiswa UNSRI' || cleanNama === 'Pengguna SIMTA' || cleanNama === 'Dr. Ir. Hendra Kusuma, M.T.' || /^\d+$/.test(cleanNama)) {
-      cleanNama = 'Aulia Azzahra';
+      cleanNama = 'AULIA AZZAHRA';
     }
 
     let cleanNim = user.nim || '09010182428002';
@@ -484,21 +485,22 @@ export function AuthProvider({ children }) {
     return formatted.length;
   };
 
-  const assignStudentAdvisors = (studentNim, dospem1Nip, dospem2Nip, studentNama = '', judulTa = '') => {
+  const assignStudentAdvisors = async (studentNim, dospem1Nip, dospem2Nip, studentNama = '', judulTa = '') => {
+    let updatedRecord = null;
     setStudentAdvisors(prev => {
       const existingIdx = prev.findIndex(sa => sa.student_nim === studentNim);
       let statusPembagian = 'belum';
       if (dospem1Nip && dospem2Nip) statusPembagian = 'lengkap';
       else if (dospem1Nip || dospem2Nip) statusPembagian = 'partial';
 
-      const updatedRecord = {
+      updatedRecord = {
         id: existingIdx >= 0 ? prev[existingIdx].id : `std-adv-${Date.now()}`,
         student_nim: studentNim,
         student_nama: studentNama || (existingIdx >= 0 ? prev[existingIdx].student_nama : 'Mahasiswa'),
         prodi: 'D3 Manajemen Informatika',
         judul_ta: judulTa || (existingIdx >= 0 ? prev[existingIdx].judul_ta : 'Judul Tugas Akhir'),
-        dospem1_nip: dospem1Nip || '',
-        dospem2_nip: dospem2Nip || '',
+        dospem1_nip: dospem1Nip || null,
+        dospem2_nip: dospem2Nip || null,
         status_pembagian: statusPembagian,
         updated_at: new Date().toISOString()
       };
@@ -513,9 +515,25 @@ export function AuthProvider({ children }) {
       try { localStorage.setItem('simta_student_advisors', JSON.stringify(updatedList)); } catch {}
       return updatedList;
     });
+
+    if (isSupabaseConfigured && supabase && updatedRecord) {
+      try {
+        const payload = {
+          student_nim: studentNim,
+          student_nama: updatedRecord.student_nama,
+          dospem1_nip: dospem1Nip || null,
+          dospem2_nip: dospem2Nip || null,
+          status_pembagian: updatedRecord.status_pembagian,
+          updated_at: new Date().toISOString()
+        };
+        await supabase.from('student_advisors').upsert(payload, { onConflict: 'student_nim' });
+      } catch (err) {
+        console.warn('Failed to persist student advisor assignment to Supabase:', err);
+      }
+    }
   };
 
-  const bulkAssignStudentAdvisors = (assignments) => {
+  const bulkAssignStudentAdvisors = async (assignments) => {
     setStudentAdvisors(prev => {
       const map = new Map(prev.map(sa => [sa.student_nim, { ...sa }]));
       assignments.forEach(item => {
@@ -534,8 +552,8 @@ export function AuthProvider({ children }) {
           student_nama: item.student_nama || (existing ? existing.student_nama : 'Mahasiswa'),
           prodi: existing?.prodi || 'D3 Manajemen Informatika',
           judul_ta: item.judul_ta || existing?.judul_ta || 'Judul Tugas Akhir',
-          dospem1_nip: dospem1Nip,
-          dospem2_nip: dospem2Nip,
+          dospem1_nip: dospem1Nip || null,
+          dospem2_nip: dospem2Nip || null,
           status_pembagian: statusPembagian,
           updated_at: new Date().toISOString()
         });
@@ -544,6 +562,21 @@ export function AuthProvider({ children }) {
       try { localStorage.setItem('simta_student_advisors', JSON.stringify(updatedList)); } catch {}
       return updatedList;
     });
+
+    if (isSupabaseConfigured && supabase && assignments.length > 0) {
+      try {
+        const payload = assignments.map(a => ({
+          student_nim: String(a.student_nim).trim(),
+          dospem1_nip: a.dospem1_nip ? String(a.dospem1_nip).trim() : null,
+          dospem2_nip: a.dospem2_nip ? String(a.dospem2_nip).trim() : null,
+          updated_at: new Date().toISOString()
+        }));
+        await supabase.from('student_advisors').upsert(payload, { onConflict: 'student_nim' });
+      } catch (err) {
+        console.warn('Failed to bulk upsert student advisors to Supabase:', err);
+      }
+    }
+
     return assignments.length;
   };
 
@@ -605,10 +638,36 @@ export function AuthProvider({ children }) {
       supabase.from('student_advisors').select('*')
         .then(({ data, error }) => {
           if (!error && data && data.length > 0) {
-            setStudentAdvisors(data);
+            setStudentAdvisors(prev => {
+              const localMap = new Map(prev.map(item => [String(item.student_nim).trim(), item]));
+              const merged = data.map(remoteItem => {
+                const nim = String(remoteItem.student_nim).trim();
+                const local = localMap.get(nim);
+                const d1 = remoteItem.dospem1_nip || local?.dospem1_nip || null;
+                const d2 = remoteItem.dospem2_nip || local?.dospem2_nip || null;
+                let st = 'belum';
+                if (d1 && d2) st = 'lengkap';
+                else if (d1 || d2) st = 'partial';
+                return {
+                  ...remoteItem,
+                  dospem1_nip: d1,
+                  dospem2_nip: d2,
+                  status_pembagian: st
+                };
+              });
+
+              localMap.forEach((localItem, nim) => {
+                if (!data.some(r => String(r.student_nim).trim() === nim)) {
+                  merged.push(localItem);
+                }
+              });
+
+              try { localStorage.setItem('simta_student_advisors', JSON.stringify(merged)); } catch {}
+              return merged;
+            });
           }
         });
-      supabase.from('consultations').select('*').order('tanggal', { ascending: false })
+      supabase.from('thesis_consultations').select('*').order('tanggal', { ascending: false })
         .then(({ data, error }) => {
           if (!error && data && data.length > 0) {
             setConsultations(data);
@@ -723,6 +782,23 @@ export function AuthProvider({ children }) {
       );
     };
 
+    const getInvalidPasswordErrorMessage = (user) => {
+      const role = user?.role;
+      if (role === 'kaprodi') {
+        return 'Kata sandi yang Anda masukkan salah. Kata sandi default untuk Kaprodi adalah NIP Anda.';
+      }
+      if (role === 'dosen') {
+        return 'Kata sandi yang Anda masukkan salah. Kata sandi default untuk Dosen adalah NIP Anda.';
+      }
+      if (role === 'admin' || role === 'admin_sarana') {
+        return 'Kata sandi yang Anda masukkan salah. Kata sandi default untuk Admin adalah NIP Anda.';
+      }
+      if (role === 'mahasiswa') {
+        return 'Kata sandi yang Anda masukkan salah. Kata sandi default untuk mahasiswa adalah NIM Anda.';
+      }
+      return 'Kata sandi yang Anda masukkan salah. Silakan periksa kembali kata sandi Anda.';
+    };
+
     // 1. Check local registered users list FIRST by NIM, NIP, Email, or ID
     const registered = getRegisteredUsers();
     const localFound = registered.find(u => 
@@ -734,7 +810,7 @@ export function AuthProvider({ children }) {
 
     if (localFound) {
       if (!isValidPassword(localFound)) {
-        throw new Error('Kata sandi yang Anda masukkan salah. Kata sandi default untuk mahasiswa adalah NIM Anda.');
+        throw new Error(getInvalidPasswordErrorMessage(localFound));
       }
       setCurrentUser(localFound);
       if (localFound.role === 'kaprodi') return '/kaprodi/dashboard';
@@ -785,16 +861,36 @@ export function AuthProvider({ children }) {
     }
 
     // 3. Fallback to Mock Dataset Matching by NIM / NIP / Email / Role
-    const foundUser = MOCK_USERS.find(u => 
+    let foundUser = MOCK_USERS.find(u => 
       (u.nim && u.nim.toLowerCase() === termLower) || 
       (u.nip && u.nip.toLowerCase() === termLower) ||
       (u.email && u.email.toLowerCase() === termLower) ||
       u.role === termLower
     );
 
+    // If not found in MOCK_USERS, check advisors master list for dynamically added Dosen
+    if (!foundUser) {
+      const advMatch = advisors.find(a => 
+        (a.nip && String(a.nip).toLowerCase() === termLower) || 
+        (a.email && String(a.email).toLowerCase() === termLower)
+      );
+      if (advMatch) {
+        foundUser = {
+          id: `user-dosen-${advMatch.nip}`,
+          nim: advMatch.nip,
+          nip: advMatch.nip,
+          nama: advMatch.nama,
+          email: advMatch.email,
+          password: advMatch.nip,
+          role: 'dosen',
+          prodi: advMatch.prodi || 'D3 Manajemen Informatika'
+        };
+      }
+    }
+
     if (foundUser) {
       if (!isValidPassword(foundUser)) {
-        throw new Error('Kata sandi yang Anda masukkan salah. Kata sandi default untuk mahasiswa adalah NIM Anda.');
+        throw new Error(getInvalidPasswordErrorMessage(foundUser));
       }
 
       setCurrentUser(foundUser);

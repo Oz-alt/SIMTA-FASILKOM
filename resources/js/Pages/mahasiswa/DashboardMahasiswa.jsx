@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { Link } from '@inertiajs/react';
-import ThesisStepper from '../../components/common/ThesisStepper.jsx';
+import ThesisStepper from '../../Components/common/ThesisStepper.jsx';
 import { 
   FileText, 
   CalendarDays, 

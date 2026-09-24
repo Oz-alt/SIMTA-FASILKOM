@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { 
   Users, 
@@ -13,12 +13,54 @@ import {
 export default function BimbinganPage() {
   const { currentUser, studentAdvisors, consultations, reviewConsultation } = useAuth();
   
-  // Dapatkan daftar mahasiswa bimbingan dari dosen ini
+  // Dapatkan daftar mahasiswa bimbingan dari dosen ini / kaprodi
   const myStudents = useMemo(() => {
-    return studentAdvisors.filter(sa => sa.dospem1_nip === currentUser.nip || sa.dospem2_nip === currentUser.nip);
-  }, [studentAdvisors, currentUser]);
+    if (!currentUser) return [];
 
-  const [selectedStudent, setSelectedStudent] = useState(myStudents.length > 0 ? myStudents[0] : null);
+    const cleanName = (currentUser.nama || '').split(',')[0].toLowerCase().trim();
+
+    // 1. Direct assignments from studentAdvisors
+    const assignedNims = studentAdvisors
+      .filter(sa => sa.dospem1_nip === currentUser.nip || sa.dospem2_nip === currentUser.nip)
+      .map(sa => String(sa.student_nim));
+
+    // 2. Students who submitted consultations to this dosen
+    const consNims = consultations
+      .filter(c => 
+        (c.dosen_nip && String(c.dosen_nip).trim() === String(currentUser.nip || '').trim()) ||
+        (c.dosen_nama && cleanName && c.dosen_nama.toLowerCase().includes(cleanName))
+      )
+      .map(c => String(c.mhs_nim));
+
+    let targetNims = [];
+    if (currentUser.role === 'kaprodi' || currentUser.role === 'admin') {
+      const allNims = new Set([
+        ...consultations.map(c => String(c.mhs_nim)),
+        ...studentAdvisors.map(sa => String(sa.student_nim))
+      ]);
+      targetNims = Array.from(allNims);
+    } else {
+      targetNims = Array.from(new Set([...assignedNims, ...consNims]));
+    }
+
+    return targetNims.map(nim => {
+      const sa = studentAdvisors.find(s => String(s.student_nim) === nim);
+      const cons = consultations.find(c => String(c.mhs_nim) === nim);
+      return {
+        id: `std-${nim}`,
+        student_nim: nim,
+        student_nama: sa?.student_nama || cons?.mhs_nama || `Mahasiswa (${nim})`,
+      };
+    });
+  }, [studentAdvisors, consultations, currentUser]);
+
+  const [selectedStudent, setSelectedStudent] = useState(null);
+
+  useEffect(() => {
+    if (!selectedStudent && myStudents.length > 0) {
+      setSelectedStudent(myStudents[0]);
+    }
+  }, [myStudents, selectedStudent]);
   const [feedbackInput, setFeedbackInput] = useState({});
 
   // Filter consultations for the selected student that involve the current dosen

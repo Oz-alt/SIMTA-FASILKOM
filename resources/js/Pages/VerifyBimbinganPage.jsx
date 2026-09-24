@@ -41,12 +41,48 @@ export default function VerifyBimbinganPage({ nim: propNim }) {
     };
   }, [allStudents, nim]);
 
-  // Approved consultations for this student in chronological order
+  // Approved consultations for this student in strict chronological order (oldest to newest: Bimbingan 1, 2, 3...)
   const approvedConsultations = useMemo(() => {
     if (!nim) return [];
+
+    const parseIdNum = (idStr) => {
+      const match = String(idStr).match(/\d+/);
+      return match ? Number(match[0]) : 0;
+    };
+
     return consultations
       .filter(c => String(c.mhs_nim).trim() === String(nim).trim() && c.status === 'disetujui')
-      .sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
+      .sort((a, b) => {
+        // 1. Primary: Compare tanggal (YYYY-MM-DD)
+        const dateA = a.tanggal || '';
+        const dateB = b.tanggal || '';
+        if (dateA !== dateB) {
+          return dateA.localeCompare(dateB);
+        }
+
+        // 2. Secondary: Compare creation timestamp (created_at) for entries submitted on same day
+        const createdA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const createdB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        if (createdA !== 0 && createdB !== 0 && createdA !== createdB) {
+          return createdA - createdB;
+        }
+
+        // 3. Tertiary: Compare numeric ID timestamp (cons-1, cons-2, cons-174028...)
+        const numA = parseIdNum(a.id);
+        const numB = parseIdNum(b.id);
+        if (numA !== 0 && numB !== 0 && numA !== numB) {
+          return numA - numB;
+        }
+
+        // 4. Quaternary: Compare waktu (HH:MM)
+        const waktuA = a.waktu || '';
+        const waktuB = b.waktu || '';
+        if (waktuA !== waktuB) {
+          return waktuA.localeCompare(waktuB);
+        }
+
+        return String(a.id).localeCompare(String(b.id));
+      });
   }, [consultations, nim]);
 
   // Specific target log session
