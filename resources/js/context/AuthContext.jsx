@@ -80,7 +80,15 @@ export function AuthProvider({ children }) {
       cleanNim = '09010182428002';
     }
 
-    return { ...user, nama: cleanNama, nim: cleanNim };
+    let cleanEmail = user.email;
+    // Ensure student email matches their actual NIM
+    if (user.role === 'mahasiswa' || !user.role) {
+      if (!cleanEmail || cleanEmail.includes('@student.unsri.ac.id')) {
+        cleanEmail = `${cleanNim}@student.unsri.ac.id`;
+      }
+    }
+
+    return { ...user, nama: cleanNama, nim: cleanNim, email: cleanEmail };
   };
 
   // Helper to read all registered user accounts from localStorage

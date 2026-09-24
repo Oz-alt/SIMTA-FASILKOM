@@ -224,7 +224,7 @@ export default function ProfilePage() {
                 {currentRole.label}
               </span>
             </div>
-            <p className="text-xs text-slate-500 font-medium">{currentUser?.email}</p>
+            <p className="text-xs text-slate-500 font-medium">{currentUser?.email || (currentUser?.nim ? `${currentUser.nim}@student.unsri.ac.id` : '-')}</p>
             <div className="text-[11px] text-slate-400 font-medium pt-0.5 flex items-center space-x-1">
               <span>Fakultas Ilmu Komputer • Universitas Sriwijaya</span>
             </div>
@@ -310,7 +310,7 @@ export default function ProfilePage() {
               </div>
               <div className="flex items-center space-x-2 text-slate-700 font-semibold pt-0.5">
                 <CreditCard className="w-4 h-4 text-slate-400" />
-                <span>{currentUser?.nim || currentUser?.nip || '09010182428001'}</span>
+                <span>{currentUser?.nim || currentUser?.nip || '09010182428002'}</span>
               </div>
             </div>
 
@@ -325,7 +325,7 @@ export default function ProfilePage() {
               </div>
               <div className="flex items-center space-x-2 text-slate-700 font-semibold pt-0.5">
                 <Mail className="w-4 h-4 text-slate-400" />
-                <span>{currentUser?.email}</span>
+                <span>{currentUser?.email || (currentUser?.nim ? `${currentUser.nim}@student.unsri.ac.id` : '-')}</span>
               </div>
             </div>
 
