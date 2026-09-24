@@ -93,9 +93,12 @@ export default function ModalAjukanBimbingan({ isOpen, onClose }) {
     setErrorMsg('');
 
     try {
+      const selectedDosenNip = formData.pembimbing === 'Pembimbing 2' ? dospem2?.nip : dospem1?.nip;
+
       await addConsultation({
         pembimbing: formData.pembimbing,
         dosen_nama: formData.dosen_nama,
+        dosen_nip: selectedDosenNip || '',
         tanggal: formData.tanggal,
         waktu: formData.waktu,
         bab_topik: formData.bab_topik.trim(),

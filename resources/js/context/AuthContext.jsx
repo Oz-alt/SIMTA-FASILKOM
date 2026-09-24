@@ -1322,14 +1322,26 @@ export function AuthProvider({ children }) {
     });
   };
 
+  const generateUUID = () => {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return crypto.randomUUID();
+    }
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = (Math.random() * 16) | 0;
+      const v = c === 'x' ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
+  };
+
   // Add new consultation / revision submission (Mahasiswa)
   const addConsultation = async (consData) => {
     const newEntry = {
-      id: `cons-${Date.now()}`,
+      id: generateUUID(),
       mhs_nim: currentUser?.nim || '09010182428002',
       mhs_nama: currentUser?.nama || 'Aulia Azzahra',
       pembimbing: consData.pembimbing || 'Pembimbing 1',
       dosen_nama: consData.dosen_nama || 'Dr. Ir. Hendra Kusuma, M.T.',
+      dosen_nip: consData.dosen_nip || '',
       tanggal: consData.tanggal || new Date().toISOString().split('T')[0],
       waktu: consData.waktu || '10:00',
       bab_topik: consData.bab_topik,
