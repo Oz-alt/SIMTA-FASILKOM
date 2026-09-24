@@ -175,7 +175,7 @@ export default function MasterDosenPage() {
           <div>
             <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">Dosen Aktif</p>
             <p className="text-2xl font-black text-slate-900">
-              {advisors.filter(a => a.status === 'aktif').length}
+              {advisors.filter(a => String(a.status || 'aktif').toLowerCase() === 'aktif').length}
             </p>
           </div>
         </div>
@@ -308,16 +308,20 @@ export default function MasterDosenPage() {
                       </div>
                     </td>
                     <td className="py-3.5 px-4">
-                      <span className={`inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-[11px] font-bold ${
-                        (adv.status || 'aktif') === 'aktif'
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                          : 'bg-rose-50 text-rose-700 border border-rose-200'
-                      }`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${
-                          (adv.status || 'aktif') === 'aktif' ? 'bg-emerald-500' : 'bg-rose-500'
-                        }`} />
-                        <span className="capitalize">{adv.status || 'aktif'}</span>
-                      </span>
+                      {(() => {
+                        const s = String(adv.status || 'aktif').toLowerCase().trim();
+                        const isAktif = s === 'aktif';
+                        return (
+                          <span className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${
+                            isAktif
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : 'bg-rose-50 text-rose-700 border-rose-200'
+                          }`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${isAktif ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                            <span className="capitalize">{adv.status || 'Aktif'}</span>
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td className="py-3.5 px-4 text-right">
                       <div className="flex items-center justify-end space-x-1">

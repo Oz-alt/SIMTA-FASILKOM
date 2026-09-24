@@ -177,7 +177,7 @@ export default function MasterMahasiswaPage() {
           <div>
             <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">Mahasiswa Aktif</p>
             <p className="text-2xl font-black text-slate-900">
-              {registeredStudents.filter(s => (s.status || 'aktif') === 'aktif').length}
+              {registeredStudents.filter(s => String(s.status || 'aktif').toLowerCase() === 'aktif').length}
             </p>
           </div>
         </div>
@@ -295,16 +295,35 @@ export default function MasterMahasiswaPage() {
                       </span>
                     </td>
                     <td className="py-3.5 px-4">
-                      <span className={`inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-[11px] font-bold ${
-                        (std.status || 'aktif') === 'aktif'
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                          : 'bg-rose-50 text-rose-700 border border-rose-200'
-                      }`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${
-                          (std.status || 'aktif') === 'aktif' ? 'bg-emerald-500' : 'bg-rose-500'
-                        }`} />
-                        <span className="capitalize">{std.status || 'aktif'}</span>
-                      </span>
+                      {(() => {
+                        const s = String(std.status || 'aktif').toLowerCase().trim();
+                        const isAktif = s === 'aktif';
+                        const isUndur = s.includes('pengunduran') || s.includes('undur');
+                        const isLulus = s === 'lulus';
+
+                        const badgeColor = isAktif
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : isUndur
+                          ? 'bg-amber-50 text-amber-700 border-amber-200'
+                          : isLulus
+                          ? 'bg-blue-50 text-blue-700 border-blue-200'
+                          : 'bg-rose-50 text-rose-700 border-rose-200';
+
+                        const dotColor = isAktif
+                          ? 'bg-emerald-500'
+                          : isUndur
+                          ? 'bg-amber-500'
+                          : isLulus
+                          ? 'bg-blue-500'
+                          : 'bg-rose-500';
+
+                        return (
+                          <span className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${badgeColor}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
+                            <span className="capitalize">{std.status || 'Aktif'}</span>
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td className="py-3.5 px-4 text-right">
                       <div className="flex items-center justify-end space-x-1">

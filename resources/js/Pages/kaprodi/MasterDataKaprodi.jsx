@@ -527,11 +527,11 @@ export default function MasterDataKaprodi() {
                       </td>
                       <td className="py-3 px-4 text-center">
                         <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
-                          adv.status === 'aktif' 
+                          String(adv.status || 'aktif').toLowerCase() === 'aktif' 
                             ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
                             : 'bg-rose-50 text-rose-700 border-rose-200'
                         }`}>
-                          {adv.status === 'aktif' ? 'Aktif' : 'Non-aktif'}
+                          {String(adv.status || 'aktif').toLowerCase() === 'aktif' ? 'Aktif' : 'Non-aktif'}
                         </span>
                       </td>
                       <td className="py-3 px-4 text-center">
