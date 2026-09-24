@@ -667,12 +667,52 @@ export function AuthProvider({ children }) {
             });
           }
         });
-      supabase.from('thesis_consultations').select('*').order('tanggal', { ascending: false })
+      supabase.from('thesis_consultations').select('*')
         .then(({ data, error }) => {
           if (!error && data && data.length > 0) {
-            setConsultations(data);
+            setConsultations(prev => {
+              const localMap = new Map(prev.map(c => [String(c.id), c]));
+              data.forEach(remoteItem => {
+                localMap.set(String(remoteItem.id), remoteItem);
+              });
+              const merged = Array.from(localMap.values());
+              try { localStorage.setItem('simta_consultations', JSON.stringify(merged)); } catch {}
+              return merged;
+            });
           }
         });
+
+      // Real-time WebSocket listener for cross-device live bimbingan updates
+      const consultationsChannel = supabase
+        .channel('schema-db-changes-consultations')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'thesis_consultations' },
+          (payload) => {
+            if (payload.eventType === 'INSERT' && payload.new) {
+              setConsultations(prev => {
+                const exists = prev.some(c => String(c.id) === String(payload.new.id));
+                if (exists) return prev;
+                const updated = [payload.new, ...prev];
+                try { localStorage.setItem('simta_consultations', JSON.stringify(updated)); } catch {}
+                return updated;
+              });
+            } else if (payload.eventType === 'UPDATE' && payload.new) {
+              setConsultations(prev => {
+                const updated = prev.map(c => String(c.id) === String(payload.new.id) ? { ...c, ...payload.new } : c);
+                try { localStorage.setItem('simta_consultations', JSON.stringify(updated)); } catch {}
+                return updated;
+              });
+            } else if (payload.eventType === 'DELETE' && payload.old) {
+              setConsultations(prev => {
+                const updated = prev.filter(c => String(c.id) !== String(payload.old.id));
+                try { localStorage.setItem('simta_consultations', JSON.stringify(updated)); } catch {}
+                return updated;
+              });
+            }
+          }
+        )
+        .subscribe();
       supabase.from('thesis_titles').select('*')
         .then(({ data, error }) => {
           if (!error && data && data.length > 0) {
@@ -1319,7 +1359,7 @@ export function AuthProvider({ children }) {
   };
 
   // Review consultation / feedback (Dosen / Kaprodi)
-  const reviewConsultation = (consultationId, status, feedbackNotes) => {
+  const reviewConsultation = async (consultationId, status, feedbackNotes) => {
     setConsultations(prev => {
       const updated = prev.map(c => {
         if (c.id === consultationId) {
@@ -1334,6 +1374,21 @@ export function AuthProvider({ children }) {
       try { localStorage.setItem('simta_consultations', JSON.stringify(updated)); } catch {}
       return updated;
     });
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { error } = await supabase
+          .from('thesis_consultations')
+          .update({
+            status: status,
+            masukan_dosen: feedbackNotes || ''
+          })
+          .eq('id', consultationId);
+        if (error) console.warn('Supabase consultation review warning:', error.message);
+      } catch (err) {
+        console.warn('Failed to review consultation in Supabase:', err);
+      }
+    }
   };
 
   // Update consultation note/details (Mahasiswa / Dosen)
