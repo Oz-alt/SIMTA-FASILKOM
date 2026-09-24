@@ -1360,7 +1360,9 @@ export function AuthProvider({ children }) {
 
     if (isSupabaseConfigured && supabase) {
       try {
-        const { error } = await supabase.from('thesis_consultations').insert([newEntry]);
+        // Only send columns that exist in the Supabase table (exclude dosen_nip which is local-only)
+        const { dosen_nip, ...supabasePayload } = newEntry;
+        const { error } = await supabase.from('thesis_consultations').insert([supabasePayload]);
         if (error) console.warn('Supabase consultation insert warning:', error.message);
       } catch (err) {
         console.warn('Failed to insert consultation to Supabase:', err);
