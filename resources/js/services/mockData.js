@@ -6960,6 +6960,9 @@ export const MOCK_NOTIFICATIONS = [
     title: 'Judul TA Disetujui!',
     message: 'Selamat! Judul TA Anda telah disetujui Kaprodi. Tombol Pengajuan Ruang Seminar Proposal kini sudah aktif.',
     is_read: false,
+    is_email_sent: true,
+    email_to: '09010182428002@student.unsri.ac.id',
+    email_sent_at: '2026-08-16T14:30:05Z',
     created_at: '2026-08-16T14:30:00Z'
   },
   {
@@ -6969,6 +6972,9 @@ export const MOCK_NOTIFICATIONS = [
     title: 'Peminjaman Ruangan Disetujui',
     message: 'Peminjaman Ruang Sidang Utama DIPKOM untuk Seminar Proposal pada 12 Sep 2026 (09:00 - 11:00) telah disetujui Admin Sarana.',
     is_read: true,
+    is_email_sent: true,
+    email_to: '09010182428002@student.unsri.ac.id',
+    email_sent_at: '2026-09-02T11:00:05Z',
     created_at: '2026-09-02T11:00:00Z'
   }
 ];
@@ -15244,7 +15250,7 @@ export const MOCK_ADMIN_CMS = [
     id: 'cms-6',
     judul: 'FAQ Proses Bimbingan Tugas Akhir',
     kategori: 'FAQ',
-    isi: 'Q: Berapa kali minimal bimbingan yang harus dilakukan? A: Minimal 8 kali bimbingan dengan Dosen Pembimbing 1 dan 6 kali dengan Dosen Pembimbing 2. Q: Apa yang dimaksud kartu bimbingan digital? A: Kartu bimbingan digital adalah rekap otomatis seluruh sesi bimbingan yang dapat dicetak untuk keperluan administrasi sidang.',
+    isi: 'Q: Berapa kali minimal bimbingan yang harus dilakukan? A: Minimal 12 kali bimbingan dengan Dosen Pembimbing. Q: Apa yang dimaksud kartu bimbingan digital? A: Kartu bimbingan digital adalah rekap otomatis seluruh sesi bimbingan yang dapat dicetak untuk keperluan administrasi sidang.',
     status: 'draf',
     updated_at: '2026-09-15T13:45:00Z',
     penulis: 'Rina Agustina'

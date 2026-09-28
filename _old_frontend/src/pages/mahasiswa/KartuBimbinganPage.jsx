@@ -20,7 +20,7 @@ export default function KartuBimbinganPage() {
   }, [consultations, currentUser]);
 
   const totalApproved = studentConsultations.filter(c => c.status === 'disetujui').length;
-  const minRequired = 8;
+  const minRequired = 12;
   const isEligibleForDefense = totalApproved >= minRequired;
 
   return (

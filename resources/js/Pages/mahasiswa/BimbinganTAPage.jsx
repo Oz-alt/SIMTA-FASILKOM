@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import ModalAjukanBimbingan from '../../Components/common/ModalAjukanBimbingan.jsx';
 import ModalEditBimbingan from '../../Components/common/ModalEditBimbingan.jsx';
+import BimbinganReminderBanner from '../../Components/common/BimbinganReminderBanner.jsx';
+import { calculateBimbinganReminder } from '../../lib/bimbinganReminder.js';
 
 export default function BimbinganTAPage() {
   const { currentUser, consultations, reviewConsultation } = useAuth();
@@ -28,6 +30,11 @@ export default function BimbinganTAPage() {
   const [feedbackInput, setFeedbackInput] = useState({});
 
   const isStudentRole = currentUser?.role === 'mahasiswa';
+
+  // Automatic 2x/month reminder calculation
+  const reminderStatus = useMemo(() => {
+    return calculateBimbinganReminder(consultations, currentUser?.nim, 2);
+  }, [consultations, currentUser?.nim]);
 
   // Filter consultations based on logged-in user role
   const studentConsultations = useMemo(() => {
@@ -59,7 +66,7 @@ export default function BimbinganTAPage() {
   const totalApproved = studentConsultations.filter(c => c.status === 'disetujui').length;
   const countPemb1 = studentConsultations.filter(c => c.pembimbing === 'Pembimbing 1' && c.status === 'disetujui').length;
   const countPemb2 = studentConsultations.filter(c => c.pembimbing === 'Pembimbing 2' && c.status === 'disetujui').length;
-  const minRequired = 8;
+  const minRequired = 12;
   const progressPercent = Math.min(100, Math.round((totalApproved / minRequired) * 100));
   const isEligibleForDefense = totalApproved >= minRequired;
 
@@ -131,6 +138,16 @@ export default function BimbinganTAPage() {
           )}
         </div>
       </div>
+
+      {/* Automatic Bimbingan Cadence Reminder Banner for Mahasiswa (Min. 2x/Bulan) */}
+      {isStudentRole && (
+        <BimbinganReminderBanner 
+          reminder={reminderStatus} 
+          studentEmail={currentUser?.email}
+          studentUser={currentUser}
+          onAddBimbingan={() => setIsModalOpen(true)}
+        />
+      )}
 
       {/* Rekapitulasi Quick Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-xs font-semibold">

@@ -30,7 +30,7 @@ export default function BimbinganTAPage() {
   const totalApproved = studentConsultations.filter(c => c.status === 'disetujui').length;
   const countPemb1 = studentConsultations.filter(c => c.pembimbing === 'Pembimbing 1' && c.status === 'disetujui').length;
   const countPemb2 = studentConsultations.filter(c => c.pembimbing === 'Pembimbing 2' && c.status === 'disetujui').length;
-  const minRequired = 8;
+  const minRequired = 12;
   const progressPercent = Math.min(100, Math.round((totalApproved / minRequired) * 100));
   const isEligibleForDefense = totalApproved >= minRequired;
 
