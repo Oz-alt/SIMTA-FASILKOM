@@ -8,7 +8,8 @@ import {
   ChevronDown, 
   CheckCircle2, 
   BookOpen, 
-  Building2 
+  Building2,
+  Mail
 } from 'lucide-react';
 
 import unsriLogo from '../../assets/photo/unsri logo.png';
@@ -68,11 +69,25 @@ export default function Navbar() {
               </button>
 
               {showNotif && (
-                <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-xl bg-white shadow-xl border border-slate-200 py-2 z-50">
+                <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-xl bg-white shadow-xl border border-slate-200 py-2 z-50 overflow-hidden">
                   <div className="px-4 py-2 border-b border-slate-100 flex items-center justify-between">
                     <span className="font-bold text-sm text-slate-800">Notifikasi System</span>
                     <span className="text-xs text-indigo-600 font-medium">{unreadCount} baru</span>
                   </div>
+
+                  {/* Email Sync Status Banner for Mahasiswa */}
+                  {userRole === 'mahasiswa' && (
+                    <div className="px-4 py-2 bg-indigo-50/90 border-b border-indigo-100 flex items-center justify-between text-[11px] text-indigo-950">
+                      <div className="flex items-center space-x-1.5 font-medium truncate mr-2">
+                        <Mail className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                        <span className="truncate">Email Terintegrasi: <strong className="font-semibold text-indigo-700">{currentUser?.email || '09010182428002@student.unsri.ac.id'}</strong></span>
+                      </div>
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-800 shrink-0">
+                        <CheckCircle2 className="w-3 h-3 mr-1 text-emerald-600" />
+                        Auto-Email
+                      </span>
+                    </div>
+                  )}
 
                   <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
                     {notifications.length === 0 ? (
@@ -80,11 +95,21 @@ export default function Navbar() {
                     ) : (
                       notifications.map(n => (
                         <div key={n.id} className="p-3 hover:bg-slate-50 transition-colors">
-                          <p className="text-xs font-semibold text-slate-800">{n.title}</p>
-                          <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">{n.message}</p>
-                          <span className="text-[10px] text-slate-400 mt-1 block">
-                            {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs font-semibold text-slate-800">{n.title}</p>
+                            <span className="text-[10px] text-slate-400">
+                              {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">{n.message}</p>
+                          
+                          {/* Email notification confirmation pill */}
+                          {userRole === 'mahasiswa' && (
+                            <div className="mt-2 flex items-center space-x-1 text-[10px] text-emerald-700 font-medium bg-emerald-50 border border-emerald-200/60 rounded px-1.5 py-0.5 w-fit">
+                              <Mail className="w-3 h-3 text-emerald-600 shrink-0" />
+                              <span>Salinan otomatis terkirim ke email ({n.email_to || currentUser?.email || '09010182428002@student.unsri.ac.id'})</span>
+                            </div>
+                          )}
                         </div>
                       ))
                     )}

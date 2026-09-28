@@ -78,7 +78,7 @@ export default function Sidebar() {
               label: 'Tugas Akhir',
               icon: GraduationCap,
               items: [
-                { to: '/thesis/submit', label: 'Ajukan Judul TA', icon: FileText },
+                { to: '/thesis/submit', label: 'Ajukan Tugas Akhir', icon: FileText },
                 { to: '/thesis/status', label: 'Status Judul', icon: Clock }
               ]
             },
@@ -96,8 +96,7 @@ export default function Sidebar() {
               label: 'Database',
               icon: Database,
               items: [
-                { to: '/thesis/archive', label: 'Arsip Tugas Akhir', icon: BookOpen },
-                { to: '/thesis/repository/upload', label: 'Upload Repository TA', icon: UploadCloud }
+                { to: '/thesis/archive', label: 'Arsip Tugas Akhir', icon: BookOpen }
               ]
             }
           ]

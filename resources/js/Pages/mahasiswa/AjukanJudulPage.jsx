@@ -137,7 +137,7 @@ export default function AjukanJudulPage() {
       <div>
         <h1 className="text-xl font-bold text-slate-900 flex items-center space-x-2">
           <FileText className="w-5 h-5 text-indigo-600" />
-          <span>Pengajuan Judul Tugas Akhir & Real-Time Similarity Check</span>
+          <span>Pengajuan Tugas Akhir & Dosen Pembimbing</span>
         </h1>
         <p className="text-xs text-slate-500 mt-1">
           Sistem akan memeriksa kemiripan judul Anda secara otomatis terhadap arsip historis D3 MI UNSRI.
@@ -161,29 +161,27 @@ export default function AjukanJudulPage() {
             {/* Title Input */}
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                Judul Tugas Akhir <span className="text-rose-500">*</span>
+                Judul Tugas Akhir <span className="text-slate-400 font-normal">(Opsional)</span>
               </label>
               <textarea
                 rows={3}
-                required
                 value={judul}
                 onChange={(e) => setJudul(e.target.value)}
                 placeholder="Contoh: Rancang Bangun Sistem Informasi Manajemen Penjualan Alat Kesehatan Berbasis Web..."
                 className="w-full text-xs p-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 leading-relaxed font-medium"
               />
               <p className="text-[10px] text-slate-400 mt-1">
-                * Minimal 5 kata. Pre-processing otomatis akan menghapus kata umum (stop-words).
+                Pre-processing otomatis akan menghapus kata umum (stop-words) dan memeriksa kemiripan jika judul diisi.
               </p>
             </div>
 
             {/* Abstract / Description */}
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                Deskripsi / Ringkasan Topik <span className="text-rose-500">*</span>
+                Deskripsi / Ringkasan Topik <span className="text-slate-400 font-normal">(Opsional)</span>
               </label>
               <textarea
                 rows={4}
-                required
                 value={deskripsi}
                 onChange={(e) => setDeskripsi(e.target.value)}
                 placeholder="Jelaskan secara singkat latar belakang, masalah, dan metode yang digunakan dalam TA ini..."
@@ -261,15 +259,15 @@ export default function AjukanJudulPage() {
             <div className="pt-2">
               <button
                 type="submit"
-                disabled={!threshold.allowSubmit || !judul.trim()}
+                disabled={!threshold.allowSubmit}
                 className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold text-white transition-all flex items-center justify-center space-x-2 cursor-pointer ${
-                  !threshold.allowSubmit || !judul.trim()
+                  !threshold.allowSubmit
                     ? 'bg-slate-300 cursor-not-allowed'
                     : 'bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-500/20'
                 }`}
               >
                 <Send className="w-4 h-4" />
-                <span>Ajukan Judul Tugas Akhir</span>
+                <span>Ajukan Tugas Akhir</span>
               </button>
             </div>
 

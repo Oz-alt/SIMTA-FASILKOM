@@ -2,12 +2,17 @@ import React, { useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { ArrowLeft, Printer } from 'lucide-react';
 import { Link } from '@inertiajs/react';
+import BimbinganReminderBanner from '../../Components/common/BimbinganReminderBanner.jsx';
+import { calculateBimbinganReminder } from '../../lib/bimbinganReminder.js';
 
 export default function KartuBimbinganPage() {
   const { currentUser, consultations, studentAdvisors, advisors } = useAuth();
 
   // Find advisor assignment for current student dynamically
   const studentNim = currentUser?.nim || '';
+  const reminderStatus = useMemo(() => {
+    return calculateBimbinganReminder(consultations, studentNim, 2);
+  }, [consultations, studentNim]);
   const sa = useMemo(() => {
     if (!studentNim) return null;
     return studentAdvisors.find(s => String(s.student_nim).trim() === String(studentNim).trim());
@@ -88,23 +93,33 @@ export default function KartuBimbinganPage() {
     <div className="max-w-4xl mx-auto space-y-6 select-none bg-slate-50 p-6 min-h-screen">
       
       {/* Top Action Bar (Not printed) */}
-      <div className="flex items-center justify-between print:hidden">
-        <Link
-          href="/thesis/consultations"
-          className="inline-flex items-center space-x-2 text-sm font-bold text-slate-600 hover:text-blue-600 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Kembali ke Log Bimbingan</span>
-        </Link>
-        <div className="flex items-center space-x-3">
-          <button
-            onClick={() => window.print()}
-            className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition-all flex items-center space-x-2 cursor-pointer"
+      <div className="space-y-4 print:hidden">
+        <div className="flex items-center justify-between">
+          <Link
+            href="/thesis/consultations"
+            className="inline-flex items-center space-x-2 text-sm font-bold text-slate-600 hover:text-blue-600 transition-colors"
           >
-            <Printer className="w-4 h-4" />
-            <span>Cetak Kartu Bimbingan</span>
-          </button>
+            <ArrowLeft className="w-4 h-4" />
+            <span>Kembali ke Log Bimbingan</span>
+          </Link>
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={() => window.print()}
+              className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition-all flex items-center space-x-2 cursor-pointer"
+            >
+              <Printer className="w-4 h-4" />
+              <span>Cetak Kartu Bimbingan</span>
+            </button>
+          </div>
         </div>
+
+        {/* Cadence Reminder Banner */}
+        <BimbinganReminderBanner 
+          reminder={reminderStatus} 
+          studentEmail={currentUser?.email}
+          studentUser={currentUser}
+          showAction={false}
+        />
       </div>
 
       {/* Printable Area */}

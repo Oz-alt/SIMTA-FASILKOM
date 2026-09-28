@@ -20,6 +20,7 @@ import {
   MOCK_ADMIN_TEMPLATES,
   MOCK_DEFENSE_SCHEDULES
 } from '../services/mockData.js';
+import { calculateBimbinganReminder } from '../lib/bimbinganReminder.js';
 
 const AuthContext = createContext();
 
@@ -901,6 +902,37 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  // Automatic Bimbingan Reminder Dispatcher for Mahasiswa (Min. 2x/Bulan terhitung dari kartu bimbingan terakhir)
+  useEffect(() => {
+    if (currentUser?.role === 'mahasiswa' && currentUser?.nim) {
+      const reminder = calculateBimbinganReminder(consultations, currentUser.nim, 2);
+      if (reminder.isReminderActive && (reminder.severity === 'critical' || reminder.severity === 'warning')) {
+        const studentEmail = currentUser.email || `${currentUser.nim}@student.unsri.ac.id`;
+        setNotifications(prev => {
+          const alreadyNotified = prev.some(n => n.related_type === 'bimbingan_reminder' && String(n.profile_id) === String(currentUser.id));
+          if (alreadyNotified) return prev;
+
+          const notif = {
+            id: `notif-reminder-${Date.now()}`,
+            profile_id: currentUser.id,
+            related_type: 'bimbingan_reminder',
+            title: reminder.severity === 'critical' 
+              ? 'Peringatan Kritis: Bimbingan Terhenti > 1 Bulan' 
+              : 'Pengingat: Jadwal Bimbingan Rutin (Min. 2x/Bulan)',
+            message: `${reminder.message}. ${reminder.subMessage}`,
+            is_read: false,
+            is_email_sent: true,
+            email_to: studentEmail,
+            email_sent_at: new Date().toISOString(),
+            created_at: new Date().toISOString()
+          };
+          sendEmailNotification(studentEmail, notif.title, notif.message);
+          return [notif, ...prev];
+        });
+      }
+    }
+  }, [currentUser, consultations]);
+
   // Authenticate user strictly by NIM or NIP credential & password
   const login = async (credential = '', password = '') => {
     const term = String(credential).trim();
@@ -1235,6 +1267,11 @@ export function AuthProvider({ children }) {
     return createdTitle;
   };
 
+  // Helper for simulating real email notification dispatch
+  const sendEmailNotification = (toEmail, subject, content) => {
+    console.info(`[SIMTA EMAIL GATEWAY] 📧 Notifikasi email otomatis berhasil dikirim ke: ${toEmail} | Subjek: "${subject}"`);
+  };
+
   // Dosen Review / Rekomendasi (Validasi Akademik Awal dari Dospem, ACC Tetap Kaprodi)
   const validateThesisTitleDosen = (titleId, statusRekomendasi, catatanDosen = '') => {
     let affectedTitle = null;
@@ -1254,17 +1291,26 @@ export function AuthProvider({ children }) {
     }));
 
     if (affectedTitle) {
-      // Notifikasi ke Mahasiswa
+      // Notifikasi ke Mahasiswa dengan Integrasi Email
+      const studentUser = MOCK_USERS.find(u => u.nim === affectedTitle.mhs_nim);
+      const studentEmail = studentUser?.email || (affectedTitle.mhs_nim ? `${affectedTitle.mhs_nim}@student.unsri.ac.id` : '09010182428002@student.unsri.ac.id');
+      const notifTitle = statusRekomendasi === 'direkomendasikan' ? 'Usulan Judul Direkomendasikan Dosen' : 'Catatan Masukan Topik dari Dosen';
+      const notifMessage = `${currentUser?.nama || 'Dosen Pembimbing'} telah memeriksa usulan judul Anda: "${catatanDosen || (statusRekomendasi === 'direkomendasikan' ? 'Direkomendasikan untuk persetujuan Kaprodi.' : 'Perlu revisi topik.')}"`;
+
       const notifMhs = {
         id: `notif-${Date.now()}-mhs`,
         profile_id: affectedTitle.profile_id,
         related_type: 'thesis_title',
-        title: statusRekomendasi === 'direkomendasikan' ? 'Usulan Judul Direkomendasikan Dosen' : 'Catatan Masukan Topik dari Dosen',
-        message: `${currentUser?.nama || 'Dosen Pembimbing'} telah memeriksa usulan judul Anda: "${catatanDosen || (statusRekomendasi === 'direkomendasikan' ? 'Direkomendasikan untuk persetujuan Kaprodi.' : 'Perlu revisi topik.')}"`,
+        title: notifTitle,
+        message: notifMessage,
         is_read: false,
+        is_email_sent: true,
+        email_to: studentEmail,
+        email_sent_at: new Date().toISOString(),
         created_at: new Date().toISOString()
       };
       setNotifications(prev => [notifMhs, ...prev]);
+      sendEmailNotification(studentEmail, notifTitle, notifMessage);
     }
   };
 
@@ -1316,17 +1362,26 @@ export function AuthProvider({ children }) {
       ];
       setThesisStages(prev => [...stages, ...prev]);
 
-      // 3. Add student notification
+      // 3. Add student notification with Email Integration
+      const studentUser = MOCK_USERS.find(u => u.nim === targetTitle.mhs_nim);
+      const studentEmail = studentUser?.email || (targetTitle.mhs_nim ? `${targetTitle.mhs_nim}@student.unsri.ac.id` : '09010182428002@student.unsri.ac.id');
+      const notifTitle = 'Judul TA Disetujui Kaprodi (ACC)!';
+      const notifMessage = `Selamat! Judul "${targetTitle.judul}" telah disetujui resmi oleh Kaprodi dengan Dospem 1: ${targetTitle.pembimbing_1_nama || '-'} & Dospem 2: ${targetTitle.pembimbing_2_nama || '-'}. Anda sekarang dapat mengajukan ruang untuk Seminar Proposal.`;
+
       const notif = {
         id: `notif-${Date.now()}`,
         profile_id: targetTitle.profile_id,
         related_type: 'thesis_title',
-        title: 'Judul TA Disetujui Kaprodi (ACC)!',
-        message: `Selamat! Judul "${targetTitle.judul}" telah disetujui resmi oleh Kaprodi dengan Dospem 1: ${targetTitle.pembimbing_1_nama || '-'} & Dospem 2: ${targetTitle.pembimbing_2_nama || '-'}. Anda sekarang dapat mengajukan ruang untuk Seminar Proposal.`,
+        title: notifTitle,
+        message: notifMessage,
         is_read: false,
+        is_email_sent: true,
+        email_to: studentEmail,
+        email_sent_at: new Date().toISOString(),
         created_at: new Date().toISOString()
       };
       setNotifications(prev => [notif, ...prev]);
+      sendEmailNotification(studentEmail, notifTitle, notifMessage);
     }
   };
 
@@ -1366,18 +1421,45 @@ export function AuthProvider({ children }) {
 
   // Approve / Reject Room Booking (Admin Sarana)
   const reviewBooking = (bookingId, status, rejectionReason = '') => {
+    let targetBooking = null;
     setBookings(prev => prev.map(b => {
       if (b.id === bookingId) {
-        return {
+        targetBooking = {
           ...b,
           status,
           rejection_reason: rejectionReason,
           approved_by: currentUser?.nama,
           updated_at: new Date().toISOString()
         };
+        return targetBooking;
       }
       return b;
     }));
+
+    // Notifikasi Mahasiswa terintegrasi Email
+    if (targetBooking) {
+      const studentUser = MOCK_USERS.find(u => u.nim === targetBooking.mhs_nim);
+      const studentEmail = studentUser?.email || (targetBooking.mhs_nim ? `${targetBooking.mhs_nim}@student.unsri.ac.id` : '09010182428002@student.unsri.ac.id');
+      const notifTitle = status === 'disetujui' ? 'Peminjaman Ruang Sidang Disetujui' : 'Peminjaman Ruang Ditolak';
+      const notifMessage = status === 'disetujui' 
+        ? `Peminjaman ruang ${targetBooking.room_name} untuk ${targetBooking.stage_label || 'Sidang'} pada ${targetBooking.booking_date} (${targetBooking.start_time} - ${targetBooking.end_time}) telah disetujui Admin Sarana.`
+        : `Peminjaman ruang ${targetBooking.room_name} tidak disetujui. Alasan: ${rejectionReason || 'Jadwal bentrok atau ruang tidak tersedia.'}`;
+
+      const notif = {
+        id: `notif-${Date.now()}-booking`,
+        profile_id: targetBooking.profile_id || studentUser?.id || 'user-mhs-aulia',
+        related_type: 'booking',
+        title: notifTitle,
+        message: notifMessage,
+        is_read: false,
+        is_email_sent: true,
+        email_to: studentEmail,
+        email_sent_at: new Date().toISOString(),
+        created_at: new Date().toISOString()
+      };
+      setNotifications(prev => [notif, ...prev]);
+      sendEmailNotification(studentEmail, notifTitle, notifMessage);
+    }
   };
 
   // Upload new Thesis Repository Report (Submitted by Mahasiswa with status 'menunggu_review_kaprodi')
@@ -1620,20 +1702,44 @@ export function AuthProvider({ children }) {
 
   // Review consultation / feedback (Dosen / Kaprodi)
   const reviewConsultation = async (consultationId, status, feedbackNotes) => {
+    let targetCons = null;
     setConsultations(prev => {
       const updated = prev.map(c => {
         if (c.id === consultationId) {
-          return {
+          targetCons = {
             ...c,
             status: status,
             masukan_dosen: feedbackNotes || c.masukan_dosen
           };
+          return targetCons;
         }
         return c;
       });
       try { localStorage.setItem('simta_consultations', JSON.stringify(updated)); } catch {}
       return updated;
     });
+
+    if (targetCons) {
+      const studentUser = MOCK_USERS.find(u => u.nim === targetCons.mhs_nim);
+      const studentEmail = studentUser?.email || (targetCons.mhs_nim ? `${targetCons.mhs_nim}@student.unsri.ac.id` : '09010182428002@student.unsri.ac.id');
+      const notifTitle = status === 'disetujui' ? 'Bimbingan Tugas Akhir Disetujui (ACC)' : 'Masukan & Catatan Bimbingan Tugas Akhir';
+      const notifMessage = `${currentUser?.nama || targetCons.dosen_nama || 'Dosen Pembimbing'} telah memberikan tanggapan bimbingan: "${feedbackNotes || 'Silakan periksa catatan dan kartu bimbingan Anda.'}"`;
+
+      const notif = {
+        id: `notif-${Date.now()}-cons`,
+        profile_id: studentUser?.id || 'user-mhs-aulia',
+        related_type: 'consultation',
+        title: notifTitle,
+        message: notifMessage,
+        is_read: false,
+        is_email_sent: true,
+        email_to: studentEmail,
+        email_sent_at: new Date().toISOString(),
+        created_at: new Date().toISOString()
+      };
+      setNotifications(prev => [notif, ...prev]);
+      sendEmailNotification(studentEmail, notifTitle, notifMessage);
+    }
 
     if (isSupabaseConfigured && supabase) {
       try {
