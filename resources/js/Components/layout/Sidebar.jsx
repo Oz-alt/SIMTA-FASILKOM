@@ -37,6 +37,8 @@ export default function Sidebar() {
 
   // Group accordion toggle state
   const [openGroups, setOpenGroups] = useState({
+    manajemen_akun: true,
+    konten: true,
     tugas_akhir: true,
     bimbingan: true,
     data_master: true,
@@ -209,6 +211,15 @@ export default function Sidebar() {
           dashboard: { to: '/admin-simta/dashboard', label: 'Dashboard', icon: LayoutDashboard },
           groups: [
             {
+              id: 'manajemen_akun',
+              label: 'Manajemen Akun',
+              icon: Users,
+              items: [
+                { to: '/admin-simta/accounts/mahasiswa', label: 'Akun Mahasiswa', icon: GraduationCap },
+                { to: '/admin-simta/accounts/dosen', label: 'Akun Dosen', icon: UserCheck }
+              ]
+            },
+            {
               id: 'konten',
               label: 'Konten & Dokumen',
               icon: Layers,
@@ -216,6 +227,15 @@ export default function Sidebar() {
                 { to: '/admin-simta/documents', label: 'Dokumen / Surat', icon: FileStack },
                 { to: '/admin-simta/cms', label: 'CMS', icon: LayoutGrid },
                 { to: '/admin-simta/templates', label: 'Template', icon: FileText }
+              ]
+            },
+            {
+              id: 'database',
+              label: 'Database & Repositori',
+              icon: Database,
+              items: [
+                { to: '/admin-simta/repository', label: 'Manajemen Repositori', icon: Database },
+                { to: '/thesis/archive', label: 'Arsip Tugas Akhir', icon: BookOpen }
               ]
             }
           ]

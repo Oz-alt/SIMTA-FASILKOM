@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 
 
-export default function LoginPage() {
+export default function LoginPage({ status }) {
   const navigate = (url) => router.visit(url);
   const { login } = useAuth();
 
@@ -195,6 +195,14 @@ export default function LoginPage() {
             </p>
           </div>
 
+          {/* Status Message (e.g. from password reset) */}
+          {status && (
+            <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center space-x-2 animate-in fade-in">
+              <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+              <span>{status}</span>
+            </div>
+          )}
+
           {/* Error Message Alert */}
           {errorMessage && (
             <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center space-x-2 animate-in fade-in">
@@ -259,13 +267,12 @@ export default function LoginPage() {
                 <span>Ingat Saya</span>
               </label>
 
-              <button
-                type="button"
-                onClick={() => alert('Sistem reset password: Silakan hubungi Laboran / Admin ICT FASILKOM UNSRI.')}
+              <Link
+                href="/forgot-password"
                 className="text-blue-600 hover:text-blue-800 font-semibold transition-colors cursor-pointer"
               >
                 Lupa Kata Sandi?
-              </button>
+              </Link>
             </div>
 
             {/* Submit Button */}
@@ -285,14 +292,6 @@ export default function LoginPage() {
             </button>
 
           </form>
-
-          {/* Register Link */}
-          <div className="text-center text-xs text-slate-600 pt-2 border-t border-slate-100">
-            Belum memiliki akun?{' '}
-            <Link href="/register" className="text-blue-600 hover:text-blue-800 font-bold transition-colors">
-              Daftar Akun Mahasiswa
-            </Link>
-          </div>
 
         </div>
 

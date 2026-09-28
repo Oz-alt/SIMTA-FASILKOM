@@ -11,7 +11,7 @@ use Inertia\Inertia;
 Route::get('/', function () {
     return Inertia::render('BerandaPage', [
         'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
+        'canRegister' => false,
         'laravelVersion' => Application::VERSION,
         'phpVersion' => PHP_VERSION,
     ]);
@@ -150,11 +150,19 @@ Route::get('/admin/repository/publish', function () {
 });
 
 // ============================================================
-// ADMIN SIMTA ROUTES (Dokumen, CMS, Template)
+// ADMIN SIMTA ROUTES (Manajemen Akun, Dokumen, CMS, Template)
 // ============================================================
 
 Route::get('/admin-simta/dashboard', function () {
     return Inertia::render('admin/DashboardAdminSimta');
+});
+
+Route::get('/admin-simta/accounts/mahasiswa', function () {
+    return Inertia::render('admin/AkunMahasiswaAdminPage');
+});
+
+Route::get('/admin-simta/accounts/dosen', function () {
+    return Inertia::render('admin/AkunDosenAdminPage');
 });
 
 Route::get('/admin-simta/documents', function () {
@@ -167,6 +175,10 @@ Route::get('/admin-simta/cms', function () {
 
 Route::get('/admin-simta/templates', function () {
     return Inertia::render('admin/TemplateAdminPage');
+});
+
+Route::get('/admin-simta/repository', function () {
+    return Inertia::render('admin/ManajemenRepositoryAdminPage');
 });
 
 // ============================================================
