@@ -3127,6 +3127,17 @@ export const MOCK_USERS = [
     "no_hp": "0812781222"
   },
   {
+    "id": "user-kaprodi-hendra",
+    "nim": "197805122005011002",
+    "nip": "197805122005011002",
+    "nama": "Dr. Ir. Hendra Kusuma, M.T.",
+    "role": "kaprodi",
+    "email": "kaprodi.mi@unsri.ac.id",
+    "password": "Kaprodi123!",
+    "prodi": "D3 Manajemen Informatika",
+    "department_id": "dept-mi-1"
+  },
+  {
     "id": "user-kaprodi",
     "nim": "198410012009121005",
     "nip": "198410012009121005",
@@ -14075,6 +14086,19 @@ export const MOCK_CONSULTATIONS = [
 ];
 
 export const MOCK_ADVISORS = [
+  {
+    id: 'adv-mi-000',
+    nip: '197805122005011002',
+    nama: 'Dr. Ir. Hendra Kusuma, M.T.',
+    email: 'kaprodi.mi@unsri.ac.id',
+    no_hp: '081278901000',
+    prodi: 'D3 Manajemen Informatika',
+    jabatan_fungsional: 'Lektor Kepala / Kaprodi',
+    keahlian: ['Sistem Informasi', 'Arsitektur Enterprise'],
+    kuota_dospem1: 8,
+    kuota_dospem2: 8,
+    status: 'aktif'
+  },
   {
     id: 'adv-mi-001',
     nip: '198410012009121005',

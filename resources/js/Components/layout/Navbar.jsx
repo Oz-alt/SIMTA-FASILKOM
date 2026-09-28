@@ -15,11 +15,34 @@ import {
 import unsriLogo from '../../assets/photo/unsri logo.png';
 
 export default function Navbar() {
-  const { currentUser, switchRole, notifications } = useAuth();
+  const { currentUser, switchRole, notifications, markAllNotificationsAsRead } = useAuth();
   const [showNotif, setShowNotif] = useState(false);
   const [showRoleMenu, setShowRoleMenu] = useState(false);
 
-  const unreadCount = notifications.filter(n => !n.is_read).length;
+  // Filter notifications relevant to the current active user
+  const userNotifications = notifications.filter(n => {
+    if (!currentUser) return true;
+    if (currentUser.role === 'kaprodi' || currentUser.role === 'admin') return true;
+    if (currentUser.role === 'mahasiswa') {
+      return (
+        !n.recipient_role || 
+        n.recipient_role === 'mahasiswa' || 
+        (currentUser.nim && n.recipient_nim === currentUser.nim) ||
+        (n.profile_id && n.profile_id === currentUser.id)
+      );
+    }
+    if (currentUser.role === 'dosen') {
+      return (
+        !n.recipient_role ||
+        n.recipient_role === 'dosen' ||
+        (currentUser.nip && n.recipient_nip === currentUser.nip) ||
+        (currentUser.nim && n.recipient_nip === currentUser.nim)
+      );
+    }
+    return true;
+  });
+
+  const unreadCount = userNotifications.filter(n => !n.is_read).length;
 
   const roleBadges = {
     mahasiswa: { label: 'Mahasiswa', color: 'bg-emerald-100 text-emerald-800 border-emerald-300', icon: GraduationCap },
@@ -69,10 +92,24 @@ export default function Navbar() {
               </button>
 
               {showNotif && (
-                <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-xl bg-white shadow-xl border border-slate-200 py-2 z-50 overflow-hidden">
-                  <div className="px-4 py-2 border-b border-slate-100 flex items-center justify-between">
-                    <span className="font-bold text-sm text-slate-800">Notifikasi System</span>
-                    <span className="text-xs text-indigo-600 font-medium">{unreadCount} baru</span>
+                <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-white shadow-2xl border border-slate-200 py-2 z-50 animate-in fade-in">
+                  <div className="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between">
+                    <div>
+                      <span className="font-bold text-sm text-slate-800">Notifikasi</span>
+                      {unreadCount > 0 && (
+                        <span className="ml-2 px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-600 font-bold text-[10px] border border-indigo-200">
+                          {unreadCount} baru
+                        </span>
+                      )}
+                    </div>
+                    {unreadCount > 0 && (
+                      <button 
+                        onClick={markAllNotificationsAsRead}
+                        className="text-[11px] text-indigo-600 hover:text-indigo-800 font-semibold cursor-pointer transition-colors"
+                      >
+                        Tandai dibaca
+                      </button>
+                    )}
                   </div>
 
                   {/* Email Sync Status Banner for Mahasiswa */}
@@ -90,16 +127,16 @@ export default function Navbar() {
                   )}
 
                   <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
-                    {notifications.length === 0 ? (
-                      <div className="p-4 text-center text-xs text-slate-400">Tidak ada notifikasi</div>
+                    {userNotifications.length === 0 ? (
+                      <div className="p-6 text-center text-xs text-slate-400">Tidak ada notifikasi baru</div>
                     ) : (
-                      notifications.map(n => (
-                        <div key={n.id} className="p-3 hover:bg-slate-50 transition-colors">
+                      userNotifications.map(n => (
+                        <div key={n.id} className={`p-3.5 hover:bg-slate-50 transition-colors ${!n.is_read ? 'bg-indigo-50/20' : ''}`}>
                           <div className="flex items-center justify-between">
-                            <p className="text-xs font-semibold text-slate-800">{n.title}</p>
-                            <span className="text-[10px] text-slate-400">
-                              {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </span>
+                            <p className="text-xs font-bold text-slate-900">{n.title}</p>
+                            {!n.is_read && (
+                              <span className="w-2 h-2 rounded-full bg-indigo-600 shrink-0"></span>
+                            )}
                           </div>
                           <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">{n.message}</p>
                           
@@ -110,6 +147,10 @@ export default function Navbar() {
                               <span>Salinan otomatis terkirim ke email ({n.email_to || currentUser?.email || '09010182428002@student.unsri.ac.id'})</span>
                             </div>
                           )}
+
+                          <span className="text-[10px] text-slate-400 mt-1.5 block">
+                            {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {new Date(n.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+                          </span>
                         </div>
                       ))
                     )}

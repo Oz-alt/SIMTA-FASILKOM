@@ -111,8 +111,10 @@ export default function Sidebar() {
               label: 'Tugas Akhir',
               icon: GraduationCap,
               items: [
-                { to: '/kaprodi/titles', label: 'Tinjau Judul TA', icon: CheckSquare },
-                { to: '/kaprodi/advisors', label: 'Pendataan & Pembagian Dospem', icon: UserCheck },
+                { to: '/kaprodi/titles', label: 'Tinjau Pengajuan TA', icon: CheckSquare },
+                { to: '/kaprodi/thesis-management', label: 'Manajemen Tugas Akhir', icon: BookOpen },
+                { to: '/kaprodi/submission-status', label: 'Peninjauan Pengajuan Mhs', icon: FileStack },
+                { to: '/kaprodi/advisors', label: 'Pembagian Dosen Pembimbing', icon: UserCheck },
                 { to: '/kaprodi/defense-schedules', label: 'Manajemen Jadwal Sidang', icon: CalendarDays }
               ]
             },

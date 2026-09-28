@@ -17,6 +17,7 @@ import {
   RefreshCw,
   Check
 } from 'lucide-react';
+import { getStudentSemester, AVAILABLE_SEMESTERS } from '../../lib/academicUtils.js';
 
 export default function MasterMahasiswaPage() {
   const { 
@@ -29,6 +30,7 @@ export default function MasterMahasiswaPage() {
   // Search & Filter States
   const [searchQuery, setSearchQuery] = useState('');
   const [classFilter, setClassFilter] = useState('ALL');
+  const [semesterFilter, setSemesterFilter] = useState('Semua Semester');
 
   // Modal States
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -75,9 +77,10 @@ export default function MasterMahasiswaPage() {
         std.no_hp?.toLowerCase().includes(q);
 
       const matchClass = classFilter === 'ALL' || std.kelas === classFilter;
-      return matchQuery && matchClass;
+      const matchSemester = semesterFilter === 'Semua Semester' || getStudentSemester(std) === semesterFilter;
+      return matchQuery && matchClass && matchSemester;
     });
-  }, [registeredStudents, searchQuery, classFilter]);
+  }, [registeredStudents, searchQuery, classFilter, semesterFilter]);
 
   // Handle Save Student (Add / Edit)
   const handleSaveStudent = async (e) => {
@@ -212,18 +215,33 @@ export default function MasterMahasiswaPage() {
               />
             </div>
 
-            <div className="flex items-center space-x-2 shrink-0">
-              <Filter className="w-4 h-4 text-slate-400" />
-              <select
-                value={classFilter}
-                onChange={(e) => setClassFilter(e.target.value)}
-                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 cursor-pointer"
-              >
-                <option value="ALL">Semua Kelas</option>
-                {availableClasses.filter(c => c !== 'ALL').map(cls => (
-                  <option key={cls} value={cls}>Kelas {cls}</option>
-                ))}
-              </select>
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <div className="flex items-center space-x-1.5">
+                <GraduationCap className="w-4 h-4 text-indigo-600" />
+                <select
+                  value={semesterFilter}
+                  onChange={(e) => setSemesterFilter(e.target.value)}
+                  className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                >
+                  {AVAILABLE_SEMESTERS.map(sem => (
+                    <option key={sem} value={sem}>{sem}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center space-x-1.5">
+                <Filter className="w-4 h-4 text-slate-400" />
+                <select
+                  value={classFilter}
+                  onChange={(e) => setClassFilter(e.target.value)}
+                  className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                >
+                  <option value="ALL">Semua Kelas</option>
+                  {availableClasses.filter(c => c !== 'ALL').map(cls => (
+                    <option key={cls} value={cls}>Kelas {cls}</option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
 

@@ -89,6 +89,14 @@ Route::get('/kaprodi/titles', function () {
     return Inertia::render('kaprodi/TinjauJudulPage');
 });
 
+Route::get('/kaprodi/thesis-management', function () {
+    return Inertia::render('kaprodi/ManajemenTAPage');
+});
+
+Route::get('/kaprodi/submission-status', function () {
+    return Inertia::render('kaprodi/PeninjauanPengajuanPage');
+});
+
 Route::get('/kaprodi/advisors', function () {
     return Inertia::render('kaprodi/KelolaDospemPage');
 });

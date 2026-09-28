@@ -47,14 +47,17 @@ export default function DashboardKaprodi() {
           <p className="text-[11px] text-slate-500">Judul baru perlu verifikasi Kaprodi</p>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs space-y-1">
-          <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Judul Disetujui</div>
+        <Link href="/kaprodi/thesis-management" className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs space-y-1 hover:border-emerald-400 hover:shadow-md transition-all group block">
+          <div className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+            <span>Manajemen TA (ACC)</span>
+            <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-600 group-hover:translate-x-0.5 transition-all" />
+          </div>
           <div className="text-2xl font-extrabold text-emerald-600 flex items-center justify-between">
             <span>{approvedTitles.length} Judul</span>
             <CheckCircle2 className="w-6 h-6 text-emerald-500/30" />
           </div>
-          <p className="text-[11px] text-slate-500">Mahasiswa telah mengunci topik TA</p>
-        </div>
+          <p className="text-[11px] text-slate-500">Kelola &amp; konfirmasi dospem aktif</p>
+        </Link>
 
         <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs space-y-1">
           <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Ruang Approved</div>
@@ -108,7 +111,7 @@ export default function DashboardKaprodi() {
           </div>
 
           <Link href="/kaprodi/titles" className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center space-x-1">
-            <span>Buka Halaman Tinjau Judul</span>
+            <span>Buka Halaman Tinjau Pengajuan TA</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>

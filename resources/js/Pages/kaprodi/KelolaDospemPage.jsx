@@ -30,8 +30,10 @@ import {
   ChevronDown,
   ChevronUp,
   Copy,
-  CalendarDays
+  CalendarDays,
+  ClipboardList
 } from 'lucide-react';
+import { getStudentSemester, AVAILABLE_SEMESTERS } from '../../lib/academicUtils.js';
 
 export default function KelolaDospemPage() {
   const {
@@ -50,6 +52,8 @@ export default function KelolaDospemPage() {
   const [activeTab, setActiveTab] = useState('pendataan'); // 'pendataan' | 'pembagian'
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [semesterFilter, setSemesterFilter] = useState('Semua Semester');
+  const [submissionFilter, setSubmissionFilter] = useState('all');
 
   // Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -90,6 +94,8 @@ export default function KelolaDospemPage() {
         nama: std.nama,
         prodi: std.prodi || 'D3 Manajemen Informatika',
         kelas: std.kelas || 'MI 5A',
+        semester: getStudentSemester(std),
+        hasSubmitted: !!titleObj,
         judul: titleObj?.judul || existingJudul || '',
         dospem1_nip: assignment.dospem1_nip,
         dospem2_nip: assignment.dospem2_nip,
@@ -401,7 +407,7 @@ export default function KelolaDospemPage() {
   // Filtered Students for Tab 2
   const filteredStudents = useMemo(() => {
     return registeredStudents.filter(std => {
-      const matchText = (std.nama + ' ' + std.nim + ' ' + std.judul).toLowerCase();
+      const matchText = (std.nama + ' ' + std.nim + ' ' + std.judul + ' ' + std.kelas).toLowerCase();
       const matchStatus =
         statusFilter === 'all'
           ? true
@@ -411,9 +417,18 @@ export default function KelolaDospemPage() {
           ? std.status_pembagian === 'partial'
           : std.status_pembagian === 'belum';
 
-      return matchText.includes(searchTerm.toLowerCase()) && matchStatus;
+      const matchSemester = semesterFilter === 'Semua Semester' || std.semester === semesterFilter;
+
+      const matchSubmission =
+        submissionFilter === 'all'
+          ? true
+          : submissionFilter === 'sudah'
+          ? std.hasSubmitted
+          : !std.hasSubmitted;
+
+      return matchText.includes(searchTerm.toLowerCase()) && matchStatus && matchSemester && matchSubmission;
     });
-  }, [registeredStudents, searchTerm, statusFilter]);
+  }, [registeredStudents, searchTerm, statusFilter, semesterFilter, submissionFilter]);
 
   return (
     <div className="space-y-8 pb-16 font-sans">
@@ -734,9 +749,33 @@ export default function KelolaDospemPage() {
       {activeTab === 'pembagian' && (
         <div className="space-y-6">
 
+          {/* Banner Akses Peninjauan Pengajuan Terpisah */}
+          <div className="bg-gradient-to-r from-indigo-50 via-blue-50 to-slate-50 border border-indigo-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                <ClipboardList className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-xs sm:text-sm font-bold text-slate-900">
+                  Sistem Peninjauan Status Pengajuan TA Mahasiswa
+                </h4>
+                <p className="text-[11px] text-slate-500">
+                  Pantau daftar terpisah mahasiswa yang sudah melakukan submit judul TA vs yang belum mengajukan per semester.
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/kaprodi/submission-status"
+              className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all shadow-xs flex items-center space-x-1.5 shrink-0"
+            >
+              <span>Buka Peninjauan Terpisah</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
           {/* Search & Filter Header */}
           <div className="flex flex-col md:flex-row items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
-            <div className="relative w-full md:w-80">
+            <div className="relative w-full md:w-72">
               <input
                 type="text"
                 value={searchTerm}
@@ -747,17 +786,42 @@ export default function KelolaDospemPage() {
               <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             </div>
 
-            <div className="flex items-center space-x-2 w-full md:w-auto">
-              <Filter className="w-4 h-4 text-slate-400 shrink-0" />
+            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
+              {/* Semester Filter */}
+              <div className="flex items-center space-x-1.5">
+                <GraduationCap className="w-4 h-4 text-indigo-600 shrink-0" />
+                <select
+                  value={semesterFilter}
+                  onChange={(e) => setSemesterFilter(e.target.value)}
+                  className="px-2.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 bg-white outline-none focus:border-indigo-600 cursor-pointer"
+                >
+                  {AVAILABLE_SEMESTERS.map(sem => (
+                    <option key={sem} value={sem}>{sem}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Status Pengajuan Filter */}
+              <select
+                value={submissionFilter}
+                onChange={(e) => setSubmissionFilter(e.target.value)}
+                className="px-2.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 bg-white outline-none focus:border-indigo-600 cursor-pointer"
+              >
+                <option value="all">Semua Pengajuan</option>
+                <option value="sudah">Sudah Submit Judul ({registeredStudents.filter(s => s.hasSubmitted).length})</option>
+                <option value="belum">Belum Submit ({registeredStudents.filter(s => !s.hasSubmitted).length})</option>
+              </select>
+
+              {/* Status Pembagian Dospem Filter */}
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 bg-white outline-none focus:border-indigo-600 cursor-pointer"
+                className="px-2.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 bg-white outline-none focus:border-indigo-600 cursor-pointer"
               >
-                <option value="all">Semua Status Pembagian</option>
+                <option value="all">Semua Status Dospem</option>
                 <option value="belum">Belum Ada Dospem ({registeredStudents.filter(s => s.status_pembagian === 'belum').length})</option>
                 <option value="partial">Baru 1 Dospem ({registeredStudents.filter(s => s.status_pembagian === 'partial').length})</option>
-                <option value="lengkap">Sudah Lengkap (Dospem 1 &amp; 2) ({registeredStudents.filter(s => s.status_pembagian === 'lengkap').length})</option>
+                <option value="lengkap">Lengkap (D1 &amp; D2) ({registeredStudents.filter(s => s.status_pembagian === 'lengkap').length})</option>
               </select>
 
               <button
@@ -802,6 +866,20 @@ export default function KelolaDospemPage() {
                           <div className="font-bold text-slate-900 leading-snug">{std.nama}</div>
                           <div className="text-[10px] text-slate-500 font-mono">NIM. {std.nim}</div>
                           <div className="text-[10px] text-indigo-600 font-semibold">{std.prodi} ({std.kelas})</div>
+                          <div className="mt-1 flex items-center space-x-1">
+                            <span className="px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-700 text-[9px] font-bold border border-indigo-200">
+                              {std.semester}
+                            </span>
+                            {std.hasSubmitted ? (
+                              <span className="px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 text-[9px] font-medium border border-emerald-200">
+                                Sudah Submit
+                              </span>
+                            ) : (
+                              <span className="px-1.5 py-0.2 rounded bg-amber-50 text-amber-700 text-[9px] font-medium border border-amber-200">
+                                Belum Submit
+                              </span>
+                            )}
+                          </div>
                         </td>
 
                         {/* Thesis Title */}
@@ -874,21 +952,28 @@ export default function KelolaDospemPage() {
                         {/* Status Badge */}
                         <td className="py-2.5 px-2 align-top text-center">
                           {isSameAdvisor ? (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300 inline-block">
-                              Dospem Sama
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-rose-500/10 text-rose-800 border border-rose-500/30 whitespace-nowrap shadow-2xs">
+                              <span className="h-1.5 w-1.5 rounded-full bg-rose-500"></span>
+                              <span>Dospem Sama</span>
                             </span>
                           ) : std.status_pembagian === 'lengkap' ? (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-emerald-100 text-emerald-800 border border-emerald-300 inline-flex items-center space-x-1">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-gradient-to-r from-emerald-500/10 to-teal-500/10 text-emerald-800 border border-emerald-500/30 whitespace-nowrap shadow-2xs">
+                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
                               <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                               <span>Lengkap</span>
                             </span>
                           ) : std.status_pembagian === 'partial' ? (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-purple-100 text-purple-800 border border-purple-300 inline-flex items-center space-x-1">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-gradient-to-r from-purple-500/10 to-indigo-500/10 text-purple-800 border border-purple-500/30 whitespace-nowrap shadow-2xs">
+                              <span className="h-1.5 w-1.5 rounded-full bg-purple-500"></span>
                               <Clock className="w-3 h-3 text-purple-600" />
                               <span>Baru 1</span>
                             </span>
                           ) : (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-amber-100 text-amber-800 border border-amber-300 inline-flex items-center space-x-1">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-gradient-to-r from-amber-500/10 to-orange-500/10 text-amber-900 border border-amber-500/30 whitespace-nowrap shadow-2xs">
+                              <span className="relative flex h-1.5 w-1.5 shrink-0">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-500"></span>
+                              </span>
                               <AlertCircle className="w-3 h-3 text-amber-600" />
                               <span>Belum Ada</span>
                             </span>
