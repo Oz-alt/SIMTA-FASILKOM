@@ -1544,6 +1544,93 @@ export function AuthProvider({ children }) {
     setNotifications(prev => [...newNotifs, ...prev]);
   };
 
+  // Konfirmasi Semua Dospem Sekaligus (Batch Confirm All)
+  const confirmAllThesisAdvisors = (titleIds = []) => {
+    if (!titleIds.length) return;
+    const idSet = new Set(titleIds);
+    const nowIso = new Date().toISOString();
+    const newNotifs = [];
+
+    setThesisTitles(prev => prev.map((t, idx) => {
+      if (!idSet.has(t.id) || t.dospem_confirmed) return t;
+
+      const updated = {
+        ...t,
+        dospem_confirmed: true,
+        dospem_confirmed_at: nowIso
+      };
+
+      // Resolve NIPs and names for Pembimbing 1 & 2
+      let d1Nip = updated.pembimbing_1_nip;
+      let d2Nip = updated.pembimbing_2_nip;
+
+      if (!d1Nip && (updated.pembimbing_1_nama || updated.pembimbing_1)) {
+        const clean1 = String(updated.pembimbing_1_nama || updated.pembimbing_1).toLowerCase().trim();
+        const match1 = advisors.find(a => a.nama.toLowerCase().includes(clean1) || clean1.includes(a.nama.toLowerCase()));
+        if (match1) d1Nip = match1.nip;
+      }
+
+      if (!d2Nip && (updated.pembimbing_2_nama || updated.pembimbing_2)) {
+        const clean2 = String(updated.pembimbing_2_nama || updated.pembimbing_2).toLowerCase().trim();
+        const match2 = advisors.find(a => a.nama.toLowerCase().includes(clean2) || clean2.includes(a.nama.toLowerCase()));
+        if (match2) d2Nip = match2.nip;
+      }
+
+      const d1 = advisors.find(a => a.nip === d1Nip);
+      const d2 = advisors.find(a => a.nip === d2Nip);
+      const d1Nama = d1?.nama || updated.pembimbing_1_nama || updated.pembimbing_1 || '-';
+      const d2Nama = d2?.nama || updated.pembimbing_2_nama || updated.pembimbing_2 || '-';
+
+      // 1. Notifikasi ke Mahasiswa
+      newNotifs.push({
+        id: `notif-mhs-${Date.now()}-${idx}`,
+        profile_id: updated.profile_id,
+        recipient_nim: updated.mhs_nim,
+        recipient_name: updated.mhs_nama,
+        recipient_role: 'mahasiswa',
+        related_type: 'thesis_advisor_confirmed',
+        title: 'Penetapan Resmi Dosen Pembimbing TA',
+        message: `Dosen Pembimbing Tugas Akhir Anda untuk judul "${updated.judul}" telah resmi dikonfirmasi oleh Kaprodi: Pembimbing 1: ${d1Nama} | Pembimbing 2: ${d2Nama}. Silakan segera memulai konsultasi bimbingan.`,
+        is_read: false,
+        created_at: nowIso
+      });
+
+      // 2. Notifikasi ke Dosen Pembimbing 1
+      newNotifs.push({
+        id: `notif-d1-${Date.now()}-${idx}`,
+        profile_id: d1Nip ? `user-dosen-${d1Nip}` : `user-dosen-p1`,
+        recipient_nip: d1Nip || '',
+        recipient_name: d1Nama,
+        recipient_role: 'dosen',
+        related_type: 'thesis_advisor_assigned',
+        title: 'Penugasan Pembimbing 1 Tugas Akhir',
+        message: `Anda telah resmi ditetapkan oleh Kaprodi sebagai Dosen Pembimbing 1 untuk mahasiswa ${updated.mhs_nama} (${updated.mhs_nim}) dengan judul "${updated.judul}".`,
+        is_read: false,
+        created_at: nowIso
+      });
+
+      // 3. Notifikasi ke Dosen Pembimbing 2
+      newNotifs.push({
+        id: `notif-d2-${Date.now()}-${idx}`,
+        profile_id: d2Nip ? `user-dosen-${d2Nip}` : `user-dosen-p2`,
+        recipient_nip: d2Nip || '',
+        recipient_name: d2Nama,
+        recipient_role: 'dosen',
+        related_type: 'thesis_advisor_assigned',
+        title: 'Penugasan Pembimbing 2 Tugas Akhir',
+        message: `Anda telah resmi ditetapkan oleh Kaprodi sebagai Dosen Pembimbing 2 untuk mahasiswa ${updated.mhs_nama} (${updated.mhs_nim}) dengan judul "${updated.judul}".`,
+        is_read: false,
+        created_at: nowIso
+      });
+
+      return updated;
+    }));
+
+    if (newNotifs.length > 0) {
+      setNotifications(prev => [...newNotifs, ...prev]);
+    }
+  };
+
   // Mark all notifications as read
   const markAllNotificationsAsRead = () => {
     setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
@@ -2586,6 +2673,7 @@ export function AuthProvider({ children }) {
       reviewThesisTitle,
       updateThesisTitleAdvisors,
       confirmThesisAdvisors,
+      confirmAllThesisAdvisors,
       markAllNotificationsAsRead,
       bulkImportHistorical,
       addBooking,

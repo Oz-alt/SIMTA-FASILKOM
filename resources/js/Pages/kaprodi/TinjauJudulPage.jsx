@@ -155,15 +155,20 @@ export default function TinjauJudulPage() {
         </div>
       )}
 
-      {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold text-slate-900 flex items-center space-x-2">
-          <CheckSquare className="w-5 h-5 text-indigo-600" />
-          <span>Tinjauan &amp; Persetujuan Pengajuan TA Mahasiswa (ACC Kaprodi)</span>
-        </h1>
-        <p className="text-xs text-slate-500 mt-1">
-          Verifikasi skor similarity check engine, evaluasi rekomendasi dosen pembimbing, dan tetapkan keputusan final persetujuan pengajuan TA mahasiswa D3 MI.
-        </p>
+      {/* Header Banner */}
+      <div className="relative rounded-3xl bg-gradient-to-r from-blue-900 via-blue-800 to-blue-950 text-white p-6 sm:p-8 overflow-hidden shadow-xl border border-blue-700/40">
+        <div className="relative z-10 max-w-3xl space-y-3">
+          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-200 border border-blue-400/30 text-xs font-bold uppercase tracking-wider">
+            <GraduationCap className="w-3.5 h-3.5 text-blue-300" />
+            <span>Portal Kaprodi FASILKOM UNSRI</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+            Tinjauan &amp; Persetujuan Pengajuan TA Mahasiswa
+          </h1>
+          <p className="text-xs sm:text-sm text-blue-100/90 leading-relaxed font-normal">
+            Verifikasi skor similarity check engine, evaluasi rekomendasi dosen pembimbing, dan tetapkan keputusan final persetujuan pengajuan TA mahasiswa D3 MI.
+          </p>
+        </div>
       </div>
 
       {/* Filter and Search Bar */}

@@ -25,7 +25,7 @@ export default function DashboardKaprodi() {
     <div className="space-y-6">
       
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 rounded-2xl p-6 text-white shadow-lg">
+      <div className="bg-gradient-to-r from-blue-900 via-blue-800 to-blue-950 rounded-2xl p-6 text-white shadow-lg border border-blue-700/40">
         <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-200 text-xs font-semibold backdrop-blur-sm mb-3 border border-blue-400/20">
           <span>Portal Akses Kaprodi D3 Manajemen Informatika</span>
         </div>

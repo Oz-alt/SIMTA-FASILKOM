@@ -800,10 +800,7 @@ export default function JadwalSidangSection({ showHeaderBanner = true }) {
         <div className="space-y-6 animate-in fade-in duration-200">
           {/* Optional Header Banner */}
           {showHeaderBanner && (
-            <div className="relative rounded-3xl bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white p-6 sm:p-8 overflow-hidden shadow-xl border border-blue-800/40">
-              <div className="absolute right-0 top-0 opacity-15 translate-x-10 -translate-y-10 pointer-events-none">
-                <CalendarDays className="w-96 h-96 text-white" />
-              </div>
+            <div className="relative rounded-3xl bg-gradient-to-r from-blue-900 via-blue-800 to-blue-950 text-white p-6 sm:p-8 overflow-hidden shadow-xl border border-blue-700/40">
               <div className="relative z-10 max-w-3xl space-y-3">
                 <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-200 border border-blue-400/30 text-xs font-bold uppercase tracking-wider">
                   <Sparkles className="w-3.5 h-3.5 text-amber-300" />

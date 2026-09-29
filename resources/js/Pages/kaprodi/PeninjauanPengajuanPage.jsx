@@ -155,10 +155,7 @@ export default function PeninjauanPengajuanPage() {
       )}
 
       {/* Header Banner */}
-      <div className="relative rounded-3xl bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white p-6 sm:p-8 overflow-hidden shadow-xl border border-blue-800/40">
-        <div className="absolute right-0 top-0 opacity-15 translate-x-8 -translate-y-8 pointer-events-none">
-          <ClipboardList className="w-80 h-80 text-white" />
-        </div>
+      <div className="relative rounded-3xl bg-gradient-to-r from-blue-900 via-blue-800 to-blue-950 text-white p-6 sm:p-8 overflow-hidden shadow-xl border border-blue-700/40">
         <div className="relative z-10 max-w-3xl space-y-3">
           <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-200 border border-blue-400/30 text-xs font-bold uppercase tracking-wider">
             <GraduationCap className="w-3.5 h-3.5 text-blue-300" />
@@ -170,23 +167,6 @@ export default function PeninjauanPengajuanPage() {
           <p className="text-xs sm:text-sm text-blue-100/90 leading-relaxed font-normal">
             Sistem monitoring terpisah untuk memantau mahasiswa yang <strong>sudah mengajukan</strong> judul Tugas Akhir dan mahasiswa yang <strong>belum melakukan pengajuan</strong> per semester.
           </p>
-
-          <div className="flex flex-wrap gap-2.5 pt-2">
-            <Link
-              href="/kaprodi/titles"
-              className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-md flex items-center space-x-1.5"
-            >
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Buka Tinjau Pengajuan TA (ACC)</span>
-            </Link>
-            <Link
-              href="/kaprodi/advisors"
-              className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/20 text-xs font-bold transition-all flex items-center space-x-1.5 backdrop-blur-xs"
-            >
-              <UserCheck className="w-3.5 h-3.5 text-blue-300" />
-              <span>Buka Pembagian Dospem</span>
-            </Link>
-          </div>
         </div>
       </div>
 

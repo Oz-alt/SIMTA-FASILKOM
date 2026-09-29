@@ -79,7 +79,7 @@ export default function TinjauRepositoryKaprodi() {
       )}
 
       {/* Banner Card */}
-      <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 rounded-2xl p-6 sm:p-8 text-white shadow-xl">
+      <div className="bg-gradient-to-r from-blue-900 via-blue-800 to-blue-950 rounded-2xl p-6 sm:p-8 text-white shadow-xl border border-blue-700/40">
         <div className="max-w-3xl space-y-2">
           <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 text-xs font-bold border border-blue-400/30">
             <FileCheck className="w-4 h-4" />

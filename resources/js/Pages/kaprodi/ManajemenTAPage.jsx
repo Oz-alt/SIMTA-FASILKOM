@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 
 export default function ManajemenTAPage() {
-  const { thesisTitles, advisors, updateThesisTitleAdvisors, confirmThesisAdvisors } = useAuth();
+  const { thesisTitles, advisors, updateThesisTitleAdvisors, confirmThesisAdvisors, confirmAllThesisAdvisors } = useAuth();
 
   // Search & Filter
   const [searchQuery, setSearchQuery] = useState('');
@@ -39,6 +39,7 @@ export default function ManajemenTAPage() {
   const [editError, setEditError] = useState('');
 
   const [confirmingTitle, setConfirmingTitle] = useState(null);
+  const [isConfirmAllModalOpen, setIsConfirmAllModalOpen] = useState(false);
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -92,6 +93,11 @@ export default function ManajemenTAPage() {
   const confirmedCount = useMemo(() => approvedTitles.filter(t => t.dospem_confirmed).length, [approvedTitles]);
   const unconfirmedCount = approvedTitles.length - confirmedCount;
 
+  // Unconfirmed titles in the current filtered view
+  const unconfirmedInView = useMemo(() => {
+    return filteredTitles.filter(t => !t.dospem_confirmed);
+  }, [filteredTitles]);
+
   // Open Edit Dospem Modal
   const handleOpenEdit = (t) => {
     setEditingTitle(t);
@@ -122,13 +128,37 @@ export default function ManajemenTAPage() {
     setConfirmingTitle(t);
   };
 
-  // Confirm Thesis Advisors
+  // Confirm Thesis Advisors (Single)
   const handleExecuteConfirm = () => {
     if (!confirmingTitle) return;
 
     confirmThesisAdvisors(confirmingTitle.id);
     showToast(`Penetapan Dospem untuk ${confirmingTitle.mhs_nama} berhasil dikonfirmasi! Notifikasi resmi telah dikirim ke Dosen & Mahasiswa.`);
     setConfirmingTitle(null);
+  };
+
+  // Open Confirm All Modal
+  const handleOpenConfirmAll = () => {
+    if (unconfirmedInView.length === 0) {
+      showToast('Semua mahasiswa pada filter ini sudah dikonfirmasi.');
+      return;
+    }
+    setIsConfirmAllModalOpen(true);
+  };
+
+  // Execute Confirm All (Batch)
+  const handleExecuteConfirmAll = () => {
+    if (unconfirmedInView.length === 0) return;
+
+    const idsToConfirm = unconfirmedInView.map(t => t.id);
+    if (typeof confirmAllThesisAdvisors === 'function') {
+      confirmAllThesisAdvisors(idsToConfirm);
+    } else {
+      idsToConfirm.forEach(id => confirmThesisAdvisors(id));
+    }
+
+    showToast(`Berhasil mengonfirmasi penetapan Dospem untuk ${idsToConfirm.length} mahasiswa sekaligus! Notifikasi resmi telah dikirim ke semua dosen & mahasiswa.`);
+    setIsConfirmAllModalOpen(false);
   };
 
   return (
@@ -142,15 +172,20 @@ export default function ManajemenTAPage() {
         </div>
       )}
 
-      {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold text-slate-900 flex items-center space-x-2">
-          <BookOpen className="w-5 h-5 text-indigo-600" />
-          <span>Manajemen Tugas Akhir Mahasiswa</span>
-        </h1>
-        <p className="text-xs text-slate-500 mt-1">
-          Kelola tugas akhir aktif mahasiswa yang telah disetujui, sesuaikan dosen pembimbing, dan konfirmasi penetapan resmi untuk mengirimkan notifikasi penugasan ke dosen dan mahasiswa.
-        </p>
+      {/* Header Banner */}
+      <div className="relative rounded-3xl bg-gradient-to-r from-blue-900 via-blue-800 to-blue-950 text-white p-6 sm:p-8 overflow-hidden shadow-xl border border-blue-700/40">
+        <div className="relative z-10 max-w-3xl space-y-3">
+          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-200 border border-blue-400/30 text-xs font-bold uppercase tracking-wider">
+            <GraduationCap className="w-3.5 h-3.5 text-blue-300" />
+            <span>Portal Kaprodi FASILKOM UNSRI</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+            Manajemen Tugas Akhir Mahasiswa
+          </h1>
+          <p className="text-xs sm:text-sm text-blue-100/90 leading-relaxed font-normal">
+            Kelola tugas akhir aktif mahasiswa yang telah disetujui, sesuaikan dosen pembimbing, dan konfirmasi penetapan resmi untuk mengirimkan notifikasi penugasan ke dosen dan mahasiswa.
+          </p>
+        </div>
       </div>
 
       {/* Metrics Stat Cards */}
@@ -226,6 +261,31 @@ export default function ManajemenTAPage() {
               <option value="confirmed">Sudah Dikonfirmasi ({confirmedCount})</option>
             </select>
           </div>
+
+          {/* Tombol Confirm All */}
+          <button
+            type="button"
+            onClick={handleOpenConfirmAll}
+            disabled={unconfirmedInView.length === 0}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-all shadow-sm ${
+              unconfirmedInView.length > 0
+                ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20 hover:scale-[1.02] cursor-pointer'
+                : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-75'
+            }`}
+            title={
+              unconfirmedInView.length > 0
+                ? `Konfirmasi semua (${unconfirmedInView.length}) dospem pada tampilan ini`
+                : 'Semua dospem pada tampilan ini sudah dikonfirmasi'
+            }
+          >
+            <CheckCheck className="w-4 h-4 shrink-0" />
+            <span>Confirm All</span>
+            {unconfirmedInView.length > 0 && (
+              <span className="px-1.5 py-0.5 text-[10px] font-extrabold bg-emerald-800 text-white rounded-full leading-none">
+                {unconfirmedInView.length}
+              </span>
+            )}
+          </button>
         </div>
       </div>
 
@@ -582,6 +642,93 @@ export default function ManajemenTAPage() {
               >
                 <CheckCircle2 className="w-4 h-4" />
                 <span>Ya, Konfirmasi &amp; Kirim Notifikasi</span>
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* MODAL KONFIRMASI MASSAL (CONFIRM ALL) */}
+      {isConfirmAllModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in" data-lenis-prevent>
+          <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-4 border border-emerald-100">
+            
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center space-x-2 text-emerald-700 font-bold text-sm">
+                <CheckCheck className="w-5 h-5 text-emerald-600" />
+                <span>Konfirmasi Massal Penetapan Dosen Pembimbing</span>
+              </div>
+              <button 
+                type="button"
+                onClick={() => setIsConfirmAllModalOpen(false)} 
+                className="text-slate-400 hover:text-slate-600 text-xs font-bold p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-xs text-slate-600">
+                Apakah Anda yakin ingin mengonfirmasi penetapan dosen pembimbing untuk seluruh <strong className="text-emerald-700 font-bold">{unconfirmedInView.length} mahasiswa</strong> di bawah ini secara bersamaan?
+              </p>
+
+              {/* Scrollable list preview */}
+              <div className="max-h-60 overflow-y-auto space-y-2 pr-1 divide-y divide-slate-100 border border-slate-200/80 rounded-xl p-2 bg-slate-50/50">
+                {unconfirmedInView.map((item, idx) => (
+                  <div key={item.id} className="pt-2 first:pt-0 bg-white p-3 rounded-lg border border-slate-200/60 text-xs space-y-1 shadow-2xs">
+                    <div className="flex items-center justify-between">
+                      <div className="font-bold text-slate-900 flex items-center space-x-1.5">
+                        <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-[10px] font-bold">
+                          {idx + 1}
+                        </span>
+                        <span>{item.mhs_nama}</span>
+                      </div>
+                      <span className="text-[11px] font-mono text-slate-500">{item.mhs_nim} • {item.mhs_kelas}</span>
+                    </div>
+
+                    <div className="text-[11px] text-slate-600 italic line-clamp-1">
+                      "{item.judul}"
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-1 text-[11px] text-slate-700 border-t border-slate-100 font-medium">
+                      <div className="flex items-center space-x-1">
+                        <span className="text-emerald-700 font-bold">P1:</span>
+                        <span className="truncate max-w-[200px]">{item.pembimbing_1_nama || item.pembimbing_1 || '-'}</span>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <span className="text-emerald-700 font-bold">P2:</span>
+                        <span className="truncate max-w-[200px]">{item.pembimbing_2_nama || item.pembimbing_2 || '-'}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Info banner */}
+              <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl text-emerald-800 text-[11px] flex items-start space-x-2">
+                <Send className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                <span>
+                  Sistem akan secara otomatis mengirimkan notifikasi penugasan resmi ke akun masing-masing <strong>Dosen Pembimbing 1</strong>, <strong>Dosen Pembimbing 2</strong>, serta <strong>Mahasiswa</strong> terkait.
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setIsConfirmAllModalOpen(false)}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-bold transition-colors cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleExecuteConfirmAll}
+                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-md shadow-emerald-600/20 flex items-center space-x-1.5 transition-all cursor-pointer"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Ya, Konfirmasi Semua ({unconfirmedInView.length})</span>
               </button>
             </div>
 
