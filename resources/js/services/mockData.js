@@ -6849,13 +6849,27 @@ export const MOCK_THESIS_TITLES = [
     judul: 'Sistem Informasi Manajemen Tugas Akhir dan Peminjaman Ruang Sidang Terpadu (SIMTA)',
     deskripsi: 'Aplikasi portal terpadu untuk pengajuan judul TA dengan similarity check engine serta penjadwalan otomatis ruang sidang berdasarkan prioritas jurusan.',
     judul_processed: 'penjadwalan ruang sidang',
-    status: 'disetujui',
+    status: 'disetujui', // Status Judul Fix
     skor_kemiripan_terakhir: 28.5,
     created_at: '2026-08-15T09:00:00Z',
     updated_at: '2026-08-16T14:30:00Z',
     mhs_nama: 'Ahmad Rizky Pratama',
     mhs_nim: '09031182328001',
     mhs_kelas: 'MI 5A',
+    prodi: 'D3 Manajemen Informatika',
+    angkatan: '2023',
+    status_kelulusan: 'lulus', // LULUS SIDANG AKHIR D3
+    status_sidang: 'selesai',
+    nilai_sidang: '88.5 (A)',
+    tanggal_lulus: '2026-09-28',
+    no_sk_lulus: '0482/UN9.1.8/AK/2026',
+    jadwal_sidang: {
+      tanggal: '2026-09-28',
+      waktu: '09:00 - 10:30',
+      ruangan: 'Ruang Sidang Utama DIPKOM',
+      ketua_penguji: 'Dr. Ir. Hendra Kusuma, M.T.',
+      penguji: 'Nurul Hidayah, M.Kom.'
+    },
     pembimbing_1_nip: '197805122005011002',
     pembimbing_1_nama: 'Dr. Ir. Hendra Kusuma, M.T.',
     pembimbing_2_nip: '198804102015042001',
@@ -6865,21 +6879,48 @@ export const MOCK_THESIS_TITLES = [
     rekomendasi_dospem_status: 'direkomendasikan',
     catatan_dospem: 'Topik inovatif dan arsitektur sistem sudah matang.',
     rekomendasi_oleh: 'Dr. Ir. Hendra Kusuma, M.T.',
-    catatan_kaprodi: 'Judul disetujui. Silakan persiapkan proposal.'
+    catatan_kaprodi: 'Judul resmi disetujui FIX dalam rapat Prodi.',
+    riwayat_revisi: [
+      {
+        id: 'rev-101-1',
+        tanggal: '2026-08-15T09:00:00Z',
+        tipe: 'pengajuan_awal',
+        judul: 'Sistem Informasi Manajemen Tugas Akhir dan Peminjaman Ruang Sidang Terpadu (SIMTA)',
+        skor_similarity: 28.5,
+        catatan: 'Pengajuan usulan judul pertama. Otomatis masuk ke tahap peninjauan Prodi.',
+        oleh: 'Ahmad Rizky Pratama'
+      },
+      {
+        id: 'rev-101-2',
+        tanggal: '2026-08-16T14:30:00Z',
+        tipe: 'judul_fix',
+        judul: 'Sistem Informasi Manajemen Tugas Akhir dan Peminjaman Ruang Sidang Terpadu (SIMTA)',
+        skor_similarity: 28.5,
+        catatan: 'Judul telah ditinjau dan dinyatakan resmi JUDUL FIX dalam rapat Prodi.',
+        oleh: 'Dr. Abdiansah, S.Kom., M.Cs. (Kaprodi)'
+      }
+    ]
   },
   {
     id: 'title-102',
     profile_id: 'user-mhs-2',
-    judul: 'Rancang Bangun Sistem Informasi Pendataan Alumni dan Tracert Study D3 MI',
-    deskripsi: 'Sistem web portal untuk melacak jejak alumni dan survei kepuasan penggunan lulusan.',
-    judul_processed: 'pendataan alumni tracert study',
-    status: 'diajukan',
+    judul: 'Rancang Bangun Sistem Informasi Pendataan Alumni dan Tracer Study D3 MI',
+    deskripsi: 'Sistem web portal untuk melacak jejak alumni dan survei kepuasan penggunan lulusan prodi D3 MI.',
+    judul_processed: 'pendataan alumni tracer study',
+    status: 'perlu_revisi', // Status Perlu Revisi (Kuning)
     skor_kemiripan_terakhir: 58.0,
     created_at: '2026-09-01T10:15:00Z',
-    updated_at: '2026-09-01T10:15:00Z',
+    updated_at: '2026-09-03T11:20:00Z',
     mhs_nama: 'Siti Sarah Rahmawati',
     mhs_nim: '09031182328002',
     mhs_kelas: 'MI 5B',
+    prodi: 'D3 Manajemen Informatika',
+    angkatan: '2023',
+    status_kelulusan: 'aktif_proses', // MASIH AKTIF / PROSES
+    status_sidang: 'bimbingan',
+    nilai_sidang: null,
+    tanggal_lulus: null,
+    jadwal_sidang: null,
     pembimbing_1_nip: '198804102015042001',
     pembimbing_1_nama: 'Siti Nurhaliza, S.Kom., M.Kom.',
     pembimbing_2_nip: '198509152010121004',
@@ -6889,7 +6930,27 @@ export const MOCK_THESIS_TITLES = [
     rekomendasi_dospem_status: 'direkomendasikan',
     catatan_dospem: 'Usulan topik relevan dengan kebutuhan prodi. Direkomendasikan untuk persetujuan Kaprodi.',
     rekomendasi_oleh: 'Siti Nurhaliza, S.Kom., M.Kom.',
-    catatan_kaprodi: ''
+    catatan_kaprodi: 'Hasil rapat Prodi: Skor similarity terdeteksi 58% (melebihi batas aman rekomendasi). Disarankan mengganti studi kasus atau objek penelitian bersama dosen pembimbing.',
+    riwayat_revisi: [
+      {
+        id: 'rev-102-1',
+        tanggal: '2026-09-01T10:15:00Z',
+        tipe: 'pengajuan_awal',
+        judul: 'Rancang Bangun Sistem Informasi Pendataan Alumni dan Tracer Study D3 MI',
+        skor_similarity: 58.0,
+        catatan: 'Pengajuan usulan judul pertama. Otomatis masuk ke tahap peninjauan Prodi.',
+        oleh: 'Siti Sarah Rahmawati'
+      },
+      {
+        id: 'rev-102-2',
+        tanggal: '2026-09-03T11:20:00Z',
+        tipe: 'catatan_prodi',
+        judul: 'Rancang Bangun Sistem Informasi Pendataan Alumni dan Tracer Study D3 MI',
+        skor_similarity: 58.0,
+        catatan: 'Hasil rapat Prodi: Skor similarity terdeteksi 58% (melebihi batas aman). Disarankan mengganti studi kasus atau objek penelitian bersama dosen pembimbing.',
+        oleh: 'Prodi (Rapat Pembahasan)'
+      }
+    ]
   },
   {
     id: 'title-103',
@@ -6897,13 +6958,20 @@ export const MOCK_THESIS_TITLES = [
     judul: 'Implementasi Algoritma Clustering Untuk Pengelompokan Minat Penelitian Mahasiswa',
     deskripsi: 'Sistem pemetaan minat penelitian mahasiswa menggunakan algoritma K-Means.',
     judul_processed: 'clustering minat penelitian mahasiswa',
-    status: 'diajukan',
+    status: 'tinjauan', // Status Otomatis Dalam Tinjauan (Kuning)
     skor_kemiripan_terakhir: 22.0,
     created_at: '2026-09-12T14:00:00Z',
     updated_at: '2026-09-12T14:00:00Z',
     mhs_nama: 'Bagus Tri Handoko',
     mhs_nim: '09031182328003',
     mhs_kelas: 'MI 5A',
+    prodi: 'D3 Manajemen Informatika',
+    angkatan: '2023',
+    status_kelulusan: 'aktif_proses', // MASIH AKTIF / PROSES
+    status_sidang: 'bimbingan',
+    nilai_sidang: null,
+    tanggal_lulus: null,
+    jadwal_sidang: null,
     pembimbing_1_nip: '198001012010011001',
     pembimbing_1_nama: 'Dr. Budi Dosen, M.Kom.',
     pembimbing_2_nip: '199001152019032015',
@@ -6913,7 +6981,295 @@ export const MOCK_THESIS_TITLES = [
     rekomendasi_dospem_status: 'menunggu_validasi',
     catatan_dospem: '',
     rekomendasi_oleh: '',
-    catatan_kaprodi: ''
+    catatan_kaprodi: '',
+    riwayat_revisi: [
+      {
+        id: 'rev-103-1',
+        tanggal: '2026-09-12T14:00:00Z',
+        tipe: 'pengajuan_awal',
+        judul: 'Implementasi Algoritma Clustering Untuk Pengelompokan Minat Penelitian Mahasiswa',
+        skor_similarity: 22.0,
+        catatan: 'Pengajuan usulan judul baru. Otomatis masuk ke tahap peninjauan Prodi.',
+        oleh: 'Bagus Tri Handoko'
+      }
+    ]
+  },
+  {
+    id: 'title-104',
+    profile_id: 'user-mhs-4',
+    judul: 'Sistem Pendukung Keputusan Penilaian Kinerja Asisten Laboratorium Komputer Berbasis Web',
+    deskripsi: 'Aplikasi SPK menggunakan metode SAW untuk evaluasi kinerja asisten lab di Fasilkom Unsri.',
+    judul_processed: 'sistem pendukung keputusan asisten laboratorium',
+    status: 'disetujui',
+    skor_kemiripan_terakhir: 19.5,
+    skor_awal: 82.0,
+    created_at: '2026-09-05T08:30:00Z',
+    updated_at: '2026-09-10T16:45:00Z',
+    mhs_nama: 'Dewi Sartika Lestari',
+    mhs_nim: '09031182328004',
+    mhs_kelas: 'MI 5B',
+    prodi: 'D3 Manajemen Informatika',
+    angkatan: '2023',
+    status_kelulusan: 'aktif_proses', // MASIH AKTIF / PROSES (SIAP DAFTAR SIDANG)
+    status_sidang: 'siap_daftar',
+    nilai_sidang: null,
+    tanggal_lulus: null,
+    jadwal_sidang: null,
+    pembimbing_1_nip: '197805122005011002',
+    pembimbing_1_nama: 'Dr. Ir. Hendra Kusuma, M.T.',
+    pembimbing_2_nip: '198001012010011001',
+    pembimbing_2_nama: 'Dr. Budi Dosen, M.Kom.',
+    pembimbing_1: 'Dr. Ir. Hendra Kusuma, M.T.',
+    pembimbing_2: 'Dr. Budi Dosen, M.Kom.',
+    rekomendasi_dospem_status: 'direkomendasikan',
+    catatan_dospem: 'Telah direvisi formulasi judul dan metodologinya. Bimbingan lengkap dan siap daftar Sidang Akhir.',
+    rekomendasi_oleh: 'Dr. Ir. Hendra Kusuma, M.T.',
+    catatan_kaprodi: 'Similarity sudah turun drastis ke 19.5% (aman). Silakan lanjutkan pendaftaran Sidang Akhir D3.',
+    riwayat_revisi: [
+      {
+        id: 'rev-104-3',
+        tanggal: '2026-09-10T16:45:00Z',
+        tipe: 'revisi_mahasiswa',
+        judul: 'Sistem Pendukung Keputusan Penilaian Kinerja Asisten Laboratorium Komputer Berbasis Web',
+        judul_lama: 'Sistem Penilaian Kinerja Asisten Laboratorium Fasilkom Unsri',
+        skor_similarity: 19.5,
+        catatan: 'Revisi judul: Menambahkan metode SPK SAW dan fokus evaluasi kinerja sesuai arahan dosen pembimbing. Similarity turun drastis dari 82% menjadi 19.5%.',
+        oleh: 'Dewi Sartika Lestari'
+      },
+      {
+        id: 'rev-104-2',
+        tanggal: '2026-09-07T10:15:00Z',
+        tipe: 'catatan_prodi',
+        judul: 'Sistem Penilaian Kinerja Asisten Laboratorium Fasilkom Unsri',
+        skor_similarity: 82.0,
+        catatan: 'Catatan Rapat Prodi: Similarity terdeteksi 82% (melebihi batas aman 30%). Ditemukan kemiripan tinggi dengan arsip TA alumni 2023. Mohon konsultasi bersama dospem untuk ganti judul.',
+        oleh: 'Dr. Abdiansah, S.Kom., M.Cs. (Kaprodi)'
+      },
+      {
+        id: 'rev-104-1',
+        tanggal: '2026-09-05T08:30:00Z',
+        tipe: 'pengajuan_awal',
+        judul: 'Sistem Penilaian Kinerja Asisten Laboratorium Fasilkom Unsri',
+        skor_similarity: 82.0,
+        catatan: 'Usulan awal judul TA.',
+        oleh: 'Dewi Sartika Lestari'
+      }
+    ]
+  },
+  {
+    id: 'title-105',
+    profile_id: 'user-mhs-5',
+    judul: 'Aplikasi Mobile Pengenalan Kampus Menggunakan Augmented Reality Berbasis Markerless',
+    deskripsi: 'Aplikasi navigasi dan tur virtual gedung kampus berbasis AR untuk mahasiswa baru.',
+    judul_processed: 'aplikasi mobile pengenalan kampus augmented reality',
+    status: 'perlu_revisi',
+    skor_kemiripan_terakhir: 74.0,
+    created_at: '2026-09-15T11:00:00Z',
+    updated_at: '2026-09-16T09:30:00Z',
+    mhs_nama: 'Rian Hidayatulloh',
+    mhs_nim: '09031182328005',
+    mhs_kelas: 'MI 5A',
+    prodi: 'D3 Manajemen Informatika',
+    angkatan: '2023',
+    status_kelulusan: 'aktif_proses', // MASIH AKTIF / PROSES
+    status_sidang: 'bimbingan',
+    nilai_sidang: null,
+    tanggal_lulus: null,
+    jadwal_sidang: null,
+    pembimbing_1_nip: '198509152010121004',
+    pembimbing_1_nama: 'Prof. Dr. Ir. Ahmad Zaki, M.Sc.',
+    pembimbing_2_nip: '199001152019032015',
+    pembimbing_2_nama: 'Rina Wijaya, M.T.',
+    pembimbing_1: 'Prof. Dr. Ir. Ahmad Zaki, M.Sc.',
+    pembimbing_2: 'Rina Wijaya, M.T.',
+    rekomendasi_dospem_status: 'menunggu_validasi',
+    catatan_dospem: '',
+    rekomendasi_oleh: '',
+    catatan_kaprodi: 'Hasil rapat: Similarity 74% sangat tinggi. Perlu penajaman objek dan studi kasus baru bersama dosen pembimbing.',
+    riwayat_revisi: [
+      {
+        id: 'rev-105-1',
+        tanggal: '2026-09-15T11:00:00Z',
+        tipe: 'pengajuan_awal',
+        judul: 'Aplikasi Mobile Pengenalan Kampus Menggunakan Augmented Reality Berbasis Markerless',
+        skor_similarity: 74.0,
+        catatan: 'Pengajuan judul awal.',
+        oleh: 'Rian Hidayatulloh'
+      }
+    ]
+  },
+  {
+    id: 'title-106',
+    profile_id: 'user-mhs-6',
+    judul: 'Sistem Informasi Manajemen Arsip Dokumen Akreditasi Program Studi Berbasis Cloud',
+    deskripsi: 'Platform repositori dokumen standar borang akreditasi prodi dengan penataan hak akses.',
+    judul_processed: 'manajemen arsip dokumen akreditasi prodi cloud',
+    status: 'disetujui',
+    skor_kemiripan_terakhir: 24.0,
+    created_at: '2026-08-20T13:00:00Z',
+    updated_at: '2026-08-22T10:00:00Z',
+    mhs_nama: 'Putri Melani',
+    mhs_nim: '09031182328006',
+    mhs_kelas: 'MI 5B',
+    prodi: 'D3 Manajemen Informatika',
+    angkatan: '2023',
+    status_kelulusan: 'aktif_proses', // MASIH AKTIF / PROSES (TERJADWAL SIDANG AKHIR)
+    status_sidang: 'terjadwal',
+    nilai_sidang: null,
+    tanggal_lulus: null,
+    jadwal_sidang: {
+      tanggal: '2026-10-25',
+      waktu: '09:00 - 10:30',
+      ruangan: 'Ruang Sidang Utama DIPKOM',
+      ketua_penguji: 'Dr. Ir. Hendra Kusuma, M.T.',
+      penguji: 'Prof. Dr. Ahmad Dahlan, S.T., M.Kom.'
+    },
+    pembimbing_1_nip: '198804102015042001',
+    pembimbing_1_nama: 'Siti Nurhaliza, S.Kom., M.Kom.',
+    pembimbing_2_nip: '198001012010011001',
+    pembimbing_2_nama: 'Dr. Budi Dosen, M.Kom.',
+    pembimbing_1: 'Siti Nurhaliza, S.Kom., M.Kom.',
+    pembimbing_2: 'Dr. Budi Dosen, M.Kom.',
+    rekomendasi_dospem_status: 'direkomendasikan',
+    catatan_dospem: 'Siap untuk maju Sidang Akhir D3.',
+    rekomendasi_oleh: 'Siti Nurhaliza, S.Kom., M.Kom.',
+    catatan_kaprodi: 'Judul FIX. Skor 24% aman di bawah ambang batas prodi. Jadwal Sidang Akhir telah ditetapkan.',
+    riwayat_revisi: [
+      {
+        id: 'rev-106-1',
+        tanggal: '2026-08-20T13:00:00Z',
+        tipe: 'pengajuan_awal',
+        judul: 'Sistem Informasi Manajemen Arsip Dokumen Akreditasi Program Studi Berbasis Cloud',
+        skor_similarity: 24.0,
+        catatan: 'Pengajuan usulan judul pertama.',
+        oleh: 'Putri Melani'
+      },
+      {
+        id: 'rev-106-2',
+        tanggal: '2026-08-22T10:00:00Z',
+        tipe: 'judul_fix',
+        judul: 'Sistem Informasi Manajemen Arsip Dokumen Akreditasi Program Studi Berbasis Cloud',
+        skor_similarity: 24.0,
+        catatan: 'Ditetapkan Judul Fix oleh Kaprodi.',
+        oleh: 'Dr. Abdiansah, S.Kom., M.Cs. (Kaprodi)'
+      }
+    ]
+  },
+  {
+    id: 'title-107',
+    profile_id: 'user-mhs-7',
+    judul: 'Sistem Informasi Inventaris Alat dan Laboratorium Komputer Berbasis Barcode',
+    deskripsi: 'Aplikasi pencatatan dan sirkulasi peminjaman perangkat laboratorium menggunakan barcode scanner.',
+    judul_processed: 'inventaris alat lab komputer barcode',
+    status: 'disetujui',
+    skor_kemiripan_terakhir: 18.0,
+    created_at: '2026-08-10T08:00:00Z',
+    updated_at: '2026-08-12T11:00:00Z',
+    mhs_nama: 'Fadhilah Nur Aini',
+    mhs_nim: '09031182328007',
+    mhs_kelas: 'MI 5A',
+    prodi: 'D3 Manajemen Informatika',
+    angkatan: '2023',
+    status_kelulusan: 'lulus', // LULUS SIDANG AKHIR D3
+    status_sidang: 'selesai',
+    nilai_sidang: '85.5 (A)',
+    tanggal_lulus: '2026-09-25',
+    no_sk_lulus: '0479/UN9.1.8/AK/2026',
+    jadwal_sidang: {
+      tanggal: '2026-09-25',
+      waktu: '13:00 - 14:30',
+      ruangan: 'Ruang Sidang 2 Fasilkom',
+      ketua_penguji: 'Dr. Budi Dosen, M.Kom.',
+      penguji: 'Rina Wijaya, M.T.'
+    },
+    pembimbing_1_nip: '198001012010011001',
+    pembimbing_1_nama: 'Dr. Budi Dosen, M.Kom.',
+    pembimbing_2_nip: '199001152019032015',
+    pembimbing_2_nama: 'Rina Wijaya, M.T.',
+    pembimbing_1: 'Dr. Budi Dosen, M.Kom.',
+    pembimbing_2: 'Rina Wijaya, M.T.',
+    rekomendasi_dospem_status: 'direkomendasikan',
+    catatan_dospem: 'Telah menyelesaikan pengujian sistem dan dinyatakan lulus sidang akhir.',
+    rekomendasi_oleh: 'Dr. Budi Dosen, M.Kom.',
+    catatan_kaprodi: 'Telah lulus Sidang Akhir Tugas Akhir D3 dengan predikat Sangat Memuaskan.',
+    riwayat_revisi: [
+      {
+        id: 'rev-107-1',
+        tanggal: '2026-08-10T08:00:00Z',
+        tipe: 'pengajuan_awal',
+        judul: 'Sistem Informasi Inventaris Alat dan Laboratorium Komputer Berbasis Barcode',
+        skor_similarity: 18.0,
+        catatan: 'Pengajuan usulan judul pertama.',
+        oleh: 'Fadhilah Nur Aini'
+      },
+      {
+        id: 'rev-107-2',
+        tanggal: '2026-08-12T11:00:00Z',
+        tipe: 'judul_fix',
+        judul: 'Sistem Informasi Inventaris Alat dan Laboratorium Komputer Berbasis Barcode',
+        skor_similarity: 18.0,
+        catatan: 'Judul Fix. Lanjut Sidang Akhir.',
+        oleh: 'Dr. Abdiansah, S.Kom., M.Cs. (Kaprodi)'
+      }
+    ]
+  },
+  {
+    id: 'title-108',
+    profile_id: 'user-mhs-8',
+    judul: 'Pengembangan Portal Sistem Layanan Pengaduan Sarana Kampus Terintegrasi Telegram Bot',
+    deskripsi: 'Sistem ticketing dan penanganan pengaduan fasilitas perkuliahan terintegrasi bot telegram.',
+    judul_processed: 'layanan pengaduan sarana kampus telegram bot',
+    status: 'disetujui',
+    skor_kemiripan_terakhir: 21.0,
+    created_at: '2026-08-05T09:30:00Z',
+    updated_at: '2026-08-08T15:00:00Z',
+    mhs_nama: 'Muhammad Ilham Saputra',
+    mhs_nim: '09031182328008',
+    mhs_kelas: 'MI 5B',
+    prodi: 'D3 Manajemen Informatika',
+    angkatan: '2023',
+    status_kelulusan: 'lulus', // LULUS SIDANG AKHIR D3
+    status_sidang: 'selesai',
+    nilai_sidang: '83.0 (A-)',
+    tanggal_lulus: '2026-09-22',
+    no_sk_lulus: '0471/UN9.1.8/AK/2026',
+    jadwal_sidang: {
+      tanggal: '2026-09-22',
+      waktu: '10:00 - 11:30',
+      ruangan: 'Ruang Sidang Utama DIPKOM',
+      ketua_penguji: 'Prof. Dr. Ir. Ahmad Zaki, M.Sc.',
+      penguji: 'Siti Nurhaliza, S.Kom., M.Kom.'
+    },
+    pembimbing_1_nip: '198509152010121004',
+    pembimbing_1_nama: 'Prof. Dr. Ir. Ahmad Zaki, M.Sc.',
+    pembimbing_2_nip: '198804102015042001',
+    pembimbing_2_nama: 'Siti Nurhaliza, S.Kom., M.Kom.',
+    pembimbing_1: 'Prof. Dr. Ir. Ahmad Zaki, M.Sc.',
+    pembimbing_2: 'Siti Nurhaliza, S.Kom., M.Kom.',
+    rekomendasi_dospem_status: 'direkomendasikan',
+    catatan_dospem: 'Lulus Sidang Akhir dengan perbaikan minor dokumentasi.',
+    rekomendasi_oleh: 'Prof. Dr. Ir. Ahmad Zaki, M.Sc.',
+    catatan_kaprodi: 'Telah lulus Sidang Akhir Tugas Akhir D3.',
+    riwayat_revisi: [
+      {
+        id: 'rev-108-1',
+        tanggal: '2026-08-05T09:30:00Z',
+        tipe: 'pengajuan_awal',
+        judul: 'Pengembangan Portal Sistem Layanan Pengaduan Sarana Kampus Terintegrasi Telegram Bot',
+        skor_similarity: 21.0,
+        catatan: 'Pengajuan usulan judul pertama.',
+        oleh: 'Muhammad Ilham Saputra'
+      },
+      {
+        id: 'rev-108-2',
+        tanggal: '2026-08-08T15:00:00Z',
+        tipe: 'judul_fix',
+        judul: 'Pengembangan Portal Sistem Layanan Pengaduan Sarana Kampus Terintegrasi Telegram Bot',
+        skor_similarity: 21.0,
+        catatan: 'Judul disetujui. Lanjut Sidang Akhir.',
+        oleh: 'Dr. Abdiansah, S.Kom., M.Cs. (Kaprodi)'
+      }
+    ]
   }
 ];
 
@@ -6921,23 +7277,37 @@ export const MOCK_THESIS_STAGES = [
   {
     id: 'stage-1',
     thesis_title_id: 'title-101',
-    stage_type: 'seminar_proposal',
-    status: 'disetujui',
+    stage_type: 'sidang_akhir',
+    status: 'selesai',
     urutan: 1
   },
   {
     id: 'stage-2',
-    thesis_title_id: 'title-101',
-    stage_type: 'seminar_hasil',
-    status: 'menunggu_jadwal',
-    urutan: 2
+    thesis_title_id: 'title-106',
+    stage_type: 'sidang_akhir',
+    status: 'terjadwal',
+    urutan: 1
   },
   {
     id: 'stage-3',
-    thesis_title_id: 'title-101',
+    thesis_title_id: 'title-104',
     stage_type: 'sidang_akhir',
-    status: 'belum_diajukan',
-    urutan: 3
+    status: 'siap_daftar',
+    urutan: 1
+  },
+  {
+    id: 'stage-4',
+    thesis_title_id: 'title-107',
+    stage_type: 'sidang_akhir',
+    status: 'selesai',
+    urutan: 1
+  },
+  {
+    id: 'stage-5',
+    thesis_title_id: 'title-108',
+    stage_type: 'sidang_akhir',
+    status: 'selesai',
+    urutan: 1
   }
 ];
 
@@ -14082,6 +14452,152 @@ export const MOCK_CONSULTATIONS = [
     file_revisi_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
     status: 'perlu_revisi',
     created_at: '2026-09-10T14:00:00Z'
+  },
+  {
+    id: 'cons-5',
+    mhs_nim: '09031182328001',
+    mhs_nama: 'Ahmad Rizky Pratama',
+    pembimbing: 'Pembimbing 1',
+    dosen_nama: 'Dr. Ir. Hendra Kusuma, M.T.',
+    tanggal: '2026-09-22',
+    waktu: '09:30',
+    bab_topik: 'Bab 1 - Pendahuluan & Latar Belakang SIMTA',
+    catatan_mahasiswa: 'Konsultasi formulasi masalah dan batasan sistem TA.',
+    masukan_dosen: 'Bab 1 disetujui. Lanjutkan Bab 2 kajian literatur.',
+    status: 'disetujui',
+    created_at: '2026-09-22T09:30:00Z'
+  },
+  {
+    id: 'cons-6',
+    mhs_nim: '09031182328001',
+    mhs_nama: 'Ahmad Rizky Pratama',
+    pembimbing: 'Pembimbing 2',
+    dosen_nama: 'Siti Nurhaliza, S.Kom., M.Kom.',
+    tanggal: '2026-10-02',
+    waktu: '11:00',
+    bab_topik: 'Bab 2 - Kajian Pustaka & Desain Arsitektur',
+    catatan_mahasiswa: 'Pembahasan arsitektur basis data dan diagram relasi modul.',
+    masukan_dosen: 'Arsitektur disetujui. Siap bimbingan Bab 3.',
+    status: 'disetujui',
+    created_at: '2026-10-02T11:00:00Z'
+  },
+  {
+    id: 'cons-7',
+    mhs_nim: '09031182328002',
+    mhs_nama: 'Siti Sarah Rahmawati',
+    pembimbing: 'Pembimbing 1',
+    dosen_nama: 'Siti Nurhaliza, S.Kom., M.Kom.',
+    tanggal: '2026-09-18',
+    waktu: '10:00',
+    bab_topik: 'Bab 1 - Rumusan Masalah Tracert Study Alumni',
+    catatan_mahasiswa: 'Konsultasi identifikasi objek alumni D3 MI.',
+    masukan_dosen: 'Perjelas metodologi kuesioner pada Bab 3 nantinya.',
+    status: 'disetujui',
+    created_at: '2026-09-18T10:00:00Z'
+  },
+  {
+    id: 'cons-8',
+    mhs_nim: '09031182328005',
+    mhs_nama: 'Rian Hidayatulloh',
+    pembimbing: 'Pembimbing 1',
+    dosen_nama: 'Prof. Dr. Ir. Ahmad Zaki, M.Sc.',
+    tanggal: '2026-08-25',
+    waktu: '14:00',
+    bab_topik: 'Bab 1 - Pengenalan Kampus AR',
+    catatan_mahasiswa: 'Pengajuan konsep markerless tracking.',
+    masukan_dosen: 'Perlu kajian similarity lebih lanjut karena kemiripan tinggi.',
+    status: 'disetujui',
+    created_at: '2026-08-25T14:00:00Z'
+  },
+  {
+    id: 'cons-9',
+    mhs_nim: '09031182328004',
+    mhs_nama: 'Dewi Sartika Lestari',
+    pembimbing: 'Pembimbing 1',
+    dosen_nama: 'Dr. Ir. Hendra Kusuma, M.T.',
+    tanggal: '2026-09-24',
+    waktu: '13:00',
+    bab_topik: 'Bab 1 - SPK Asisten Lab dengan Metode SAW',
+    catatan_mahasiswa: 'Revisi formulasi judul dan pengantar SPK.',
+    masukan_dosen: 'Sudah tepat. Similarity turun drastis ke 19.5%. Lanjutkan Bab 2.',
+    status: 'disetujui',
+    created_at: '2026-09-24T13:00:00Z'
+  },
+  {
+    id: 'cons-10',
+    mhs_nim: '09031182328004',
+    mhs_nama: 'Dewi Sartika Lestari',
+    pembimbing: 'Pembimbing 2',
+    dosen_nama: 'Dr. Budi Dosen, M.Kom.',
+    tanggal: '2026-10-04',
+    waktu: '15:30',
+    bab_topik: 'Bab 2 - Landasan Teori Multi-Attribute Decision Making',
+    catatan_mahasiswa: 'Penjelasan matematis pembobotan kriteria SAW.',
+    masukan_dosen: 'Teori lengkap. Siapkan rancangan tabel kriteria.',
+    status: 'disetujui',
+    created_at: '2026-10-04T15:30:00Z'
+  }
+];
+
+export const MOCK_BIMBINGAN_REMINDER_LOGS = [
+  {
+    id: 'rem-log-001',
+    tanggal_kirim: '2026-10-01T09:15:00Z',
+    student_nim: '09031182328005',
+    student_nama: 'Rian Hidayatulloh',
+    student_email: '09031182328005@student.unsri.ac.id',
+    student_kelas: 'MI 5A',
+    judul_ta: 'Aplikasi Mobile Pengenalan Kampus Menggunakan Augmented Reality Berbasis Markerless',
+    dospem_1_nip: '198509152010121004',
+    dospem_1_nama: 'Prof. Dr. Ir. Ahmad Zaki, M.Sc.',
+    dospem_1_email: '198509152010121004@unsri.ac.id',
+    dospem_2_nip: '199001152019032015',
+    dospem_2_nama: 'Rina Wijaya, M.T.',
+    dospem_2_email: '199001152019032015@unsri.ac.id',
+    target_penerima: 'both',
+    recipients_emails: [
+      '09031182328005@student.unsri.ac.id',
+      '198509152010121004@unsri.ac.id',
+      '199001152019032015@unsri.ac.id'
+    ],
+    status_kepatuhan: 'critical',
+    hari_sejak_terakhir: 37,
+    jumlah_bimbingan_bulan_ini: 0,
+    subjek_email: '[Peringatan Kritis Prodi D3 MI] Kewajiban Pembimbingan TA (Minimal 2x/Bulan)',
+    isi_pesan: 'Pemberitahuan resmi Prodi: Berdasarkan pemantauan SIMTA, mahasiswa Rian Hidayatulloh (09031182328005) telah melewati 37 hari sejak sesi bimbingan terakhir (25 Agustus 2026). Sesuai ketentuan akademik D3 Manajemen Informatika, mahasiswa diwajibkan melakukan bimbingan minimal 2 kali per bulan. Mohon agar mahasiswa dan dosen pembimbing segera menjadwalkan sesi bimbingan.',
+    status_pengiriman: 'terkirim',
+    channel: 'Gmail & Notifikasi SIMTA',
+    pengirim_nama: 'Dr. Abdiansah, S.Kom., M.Cs.',
+    pengirim_role: 'Ketua Program Studi D3 Manajemen Informatika'
+  },
+  {
+    id: 'rem-log-002',
+    tanggal_kirim: '2026-10-04T14:30:00Z',
+    student_nim: '09031182328002',
+    student_nama: 'Siti Sarah Rahmawati',
+    student_email: '09031182328002@student.unsri.ac.id',
+    student_kelas: 'MI 5B',
+    judul_ta: 'Rancang Bangun Sistem Informasi Pendataan Alumni dan Tracert Study D3 MI',
+    dospem_1_nip: '198804102015042001',
+    dospem_1_nama: 'Siti Nurhaliza, S.Kom., M.Kom.',
+    dospem_1_email: '198804102015042001@unsri.ac.id',
+    dospem_2_nip: '198509152010121004',
+    dospem_2_nama: 'Prof. Dr. Ir. Ahmad Zaki, M.Sc.',
+    dospem_2_email: '198509152010121004@unsri.ac.id',
+    target_penerima: 'both',
+    recipients_emails: [
+      '09031182328002@student.unsri.ac.id',
+      '198804102015042001@unsri.ac.id'
+    ],
+    status_kepatuhan: 'warning',
+    hari_sejak_terakhir: 16,
+    jumlah_bimbingan_bulan_ini: 1,
+    subjek_email: '[Pengingat Rutin Prodi D3 MI] Pemenuhan Target 2x Bimbingan Bulanan',
+    isi_pesan: 'Pemberitahuan Prodi: Bimbingan terakhir tercatat pada 18 September 2026 (16 hari yang lalu). Untuk memenuhi standar kelulusan tepat waktu, mohon laksanakan sesi bimbingan ke-2 bulan ini.',
+    status_pengiriman: 'terkirim',
+    channel: 'Gmail & Notifikasi SIMTA',
+    pengirim_nama: 'Dr. Abdiansah, S.Kom., M.Cs.',
+    pengirim_role: 'Ketua Program Studi D3 Manajemen Informatika'
   }
 ];
 
@@ -15377,25 +15893,25 @@ export const MOCK_DEFENSE_SCHEDULES = [
   },
   {
     id: 'sch-2',
-    mhs_nim: '09031182328002',
-    mhs_nama: 'Siti Sarah Rahmawati',
+    mhs_nim: '09031182328006',
+    mhs_nama: 'Putri Melani',
     prodi: 'D3 Manajemen Informatika',
-    judul: 'Pengembangan Dashboard Monitoring Log Aktivitas Server Kampus Berbasis Web',
-    jenis_sidang: 'Seminar Proposal',
-    tanggal: '2026-10-26',
-    waktu_mulai: '13:00',
-    waktu_selesai: '14:30',
-    ruangan: 'Ruang Seminar DIPKOM Lt. 2',
-    ketua_penguji_nama: 'Budi Santoso, S.Kom., M.Kom.',
-    ketua_penguji_nip: '198509152010121004',
+    judul: 'Sistem Informasi Manajemen Arsip Dokumen Akreditasi Program Studi Berbasis Cloud',
+    jenis_sidang: 'Sidang Akhir',
+    tanggal: '2026-10-25',
+    waktu_mulai: '09:00',
+    waktu_selesai: '10:30',
+    ruangan: 'Ruang Sidang Utama DIPKOM',
+    ketua_penguji_nama: 'Dr. Ir. Hendra Kusuma, M.T.',
+    ketua_penguji_nip: '197805122005011002',
     sekretaris_nama: 'Nurul Hidayah, M.Kom.',
     sekretaris_nip: '198502022010122002',
-    penguji1_nama: 'Dr. Ir. Hendra Kusuma, M.T.',
-    penguji1_nip: '197805122005011002',
+    penguji1_nama: 'Prof. Dr. Ahmad Dahlan, S.T., M.Kom.',
+    penguji1_nip: '198203112008031003',
     penguji2_nama: 'Rina Wijaya, M.T.',
     penguji2_nip: '199001152019032015',
     status: 'terjadwal',
-    catatan: 'Fokus pengujian pada bab 1-3 dan rancangan metodologi penelitian.',
+    catatan: 'Mahasiswa wajib membawa berkas draft rangkap 4 dan slide presentasi 15 menit.',
     link_berkas: '',
     created_at: '2026-09-21T08:30:00.000Z'
   }

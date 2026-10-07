@@ -276,7 +276,109 @@ export default function KelolaDospemPage() {
     }
 
     assignStudentAdvisors(student.nim, newDospem1, newDospem2, student.nama, student.judul);
-    showToast(`Pembagian Dospem untuk ${student.nama} berhasil diperbarui.`);
+    showToast(`Pembagian Dospem untuk ${student.nama} langsung diperbarui & aktif di portal mahasiswa.`);
+  };
+
+  // Download Rekap Pembagian Dospem ke Excel / CSV (Point 26)
+  const downloadAdvisorDistributionCsv = () => {
+    const today = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    
+    // Header row with UTF-8 BOM so Excel opens it cleanly
+    const headers = [
+      'No',
+      'NIM',
+      'Nama Mahasiswa',
+      'Program Studi',
+      'Kelas',
+      'Semester',
+      'Judul Tugas Akhir',
+      'Pembimbing 1 (Nama)',
+      'Pembimbing 1 (NIP)',
+      'Pembimbing 2 (Nama)',
+      'Pembimbing 2 (NIP)',
+      'Status Pembagian',
+      'Status Pengajuan Judul',
+      'Tanggal Update'
+    ];
+
+    const escape = (str) => `"${String(str || '').replace(/"/g, '""').trim()}"`;
+
+    const rows = filteredStudents.map((std, idx) => {
+      const d1 = advisors.find(a => a.nip === std.dospem1_nip);
+      const d2 = advisors.find(a => a.nip === std.dospem2_nip);
+      const d1Nama = d1?.nama || (std.dospem1_nip ? `NIP. ${std.dospem1_nip}` : '-');
+      const d2Nama = d2?.nama || (std.dospem2_nip ? `NIP. ${std.dospem2_nip}` : '-');
+      const statusText = std.status_pembagian === 'lengkap' ? 'Lengkap (D1 & D2)' : std.status_pembagian === 'partial' ? 'Baru 1 Dospem' : 'Belum Ada Dospem';
+      const submissionText = std.hasSubmitted ? 'Sudah Mengajukan' : 'Belum Mengajukan';
+
+      return [
+        idx + 1,
+        `'${std.nim}`,
+        escape(std.nama),
+        escape(std.prodi || 'D3 Manajemen Informatika'),
+        escape(std.kelas || 'MI 5A'),
+        escape(std.semester || 'Semester 5'),
+        escape(std.judul || 'Belum mengajukan judul'),
+        escape(d1Nama),
+        d1?.nip ? `'${d1.nip}` : (std.dospem1_nip ? `'${std.dospem1_nip}` : '-'),
+        escape(d2Nama),
+        d2?.nip ? `'${d2.nip}` : (std.dospem2_nip ? `'${std.dospem2_nip}` : '-'),
+        escape(statusText),
+        escape(submissionText),
+        escape(today)
+      ].join(',');
+    });
+
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `rekap_pembagian_dospem_d3_mi_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    showToast(`File Rekap Pembagian Dospem (${filteredStudents.length} mahasiswa) berhasil di-download! Siap dibagikan ke grup.`);
+  };
+
+  // Salin Format Chat Pengumuman Grup (WhatsApp / Telegram) - Point 26 & 27
+  const copyGroupAnnouncementText = () => {
+    const today = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    const assignedList = filteredStudents.filter(s => s.dospem1_nip || s.dospem2_nip);
+    
+    if (assignedList.length === 0) {
+      showToast('Belum ada mahasiswa yang memiliki dosen pembimbing pada tampilan saat ini.');
+      return;
+    }
+
+    let text = `📢 *PENGUMUMAN PEMBAGIAN DOSEN PEMBIMBING TUGAS AKHIR*\n`;
+    text += `Program Studi D3 Manajemen Informatika - FASILKOM UNSRI\n`;
+    text += `Tanggal: ${today}\n`;
+    text += `----------------------------------------------------\n\n`;
+
+    assignedList.forEach((std, idx) => {
+      const d1 = advisors.find(a => a.nip === std.dospem1_nip);
+      const d2 = advisors.find(a => a.nip === std.dospem2_nip);
+      const d1Nama = d1?.nama || (std.dospem1_nip ? `NIP. ${std.dospem1_nip}` : '-');
+      const d2Nama = d2?.nama || (std.dospem2_nip ? `NIP. ${std.dospem2_nip}` : '-');
+
+      text += `${idx + 1}. *${std.nama}* (${std.nim} • ${std.kelas})\n`;
+      if (std.judul) {
+        text += `   Judul: "${std.judul}"\n`;
+      }
+      text += `   • Pembimbing 1: ${d1Nama}\n`;
+      text += `   • Pembimbing 2: ${d2Nama}\n\n`;
+    });
+
+    text += `----------------------------------------------------\n`;
+    text += `Total Terbagi: ${assignedList.length} Mahasiswa\n`;
+    text += `Catatan: Mohon mahasiswa segera berkoordinasi dengan Dosen Pembimbing masing-masing untuk proses bimbingan minimal 2x dalam sebulan.\n\n`;
+    text += `Terima kasih.\n_Ketua Program Studi D3 Manajemen Informatika_`;
+
+    navigator.clipboard.writeText(text);
+    showToast(`Format chat pengumuman grup (${assignedList.length} mahasiswa) berhasil disalin ke clipboard! Siap di-paste ke grup WhatsApp/Telegram.`);
   };
 
   // Helper to extract clean numeric digits (Number) and handle Excel scientific notation
@@ -561,14 +663,37 @@ export default function KelolaDospemPage() {
             </button>
           </div>
         ) : (
-          <div className="flex items-center space-x-2 w-full sm:w-auto justify-end">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
+            {/* Download Rekap CSV / Excel Button (Point 26) */}
+            <button
+              type="button"
+              onClick={downloadAdvisorDistributionCsv}
+              className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-600/20 transition-all flex items-center space-x-1.5 cursor-pointer"
+              title="Download data rekapitulasi pembagian dospem ke format CSV / Excel untuk dibagikan ke grup"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Download Rekap (CSV/Excel)</span>
+            </button>
+
+            {/* Salin Format Chat Grup WhatsApp / Telegram (Point 26 & 27) */}
+            <button
+              type="button"
+              onClick={copyGroupAnnouncementText}
+              className="px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold transition-all flex items-center space-x-1.5 cursor-pointer shadow-xs"
+              title="Salin rekapitulasi pembagian dospem berformat pesan WhatsApp / Telegram untuk dibagikan ke grup kelas"
+            >
+              <Copy className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Salin Format Chat Grup</span>
+            </button>
+
+            {/* Upload Excel / CSV */}
             <button
               type="button"
               onClick={() => setIsAssignCsvModalOpen(true)}
-              className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-600/20 transition-all flex items-center space-x-1.5 cursor-pointer"
+              className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold shadow-sm transition-all flex items-center space-x-1.5 cursor-pointer"
             >
-              <FileSpreadsheet className="w-3.5 h-3.5" />
-              <span>Upload Excel / CSV Pembagian</span>
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Upload CSV / Excel</span>
             </button>
           </div>
         )}
@@ -823,11 +948,66 @@ export default function KelolaDospemPage() {
 
               <button
                 type="button"
-                onClick={() => setIsAssignCsvModalOpen(true)}
-                className="px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-bold transition-all flex items-center space-x-1.5 cursor-pointer shrink-0"
+                onClick={downloadAdvisorDistributionCsv}
+                className="px-3 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold transition-all flex items-center space-x-1.5 cursor-pointer shrink-0"
+                title="Download data pembagian dospem untuk dibagikan ke grup"
               >
-                <Upload className="w-3.5 h-3.5 text-emerald-600" />
+                <Download className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Download Rekap</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={copyGroupAnnouncementText}
+                className="px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold transition-all flex items-center space-x-1.5 cursor-pointer shrink-0"
+                title="Salin pesan rekap pembagian ke grup WhatsApp / Telegram"
+              >
+                <Copy className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Format Grup</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsAssignCsvModalOpen(true)}
+                className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-xs font-bold transition-all flex items-center space-x-1.5 cursor-pointer shrink-0"
+              >
+                <Upload className="w-3.5 h-3.5 text-slate-600" />
                 <span>Upload Excel</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Banner Informasi Praktis: Manual Assignment, Direct Update & Group Share (Points 24-27) */}
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50/70 border border-blue-200 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs shadow-2xs">
+            <div className="flex items-start space-x-3">
+              <span className="p-2 rounded-xl bg-blue-100 text-blue-700 shrink-0 mt-0.5">
+                <Info className="w-4 h-4" />
+              </span>
+              <div className="space-y-1">
+                <div className="font-bold text-blue-950">
+                  Pembagian Dosen Pembimbing Langsung Aktif &amp; Siap Dibagikan ke Grup
+                </div>
+                <p className="text-blue-800 leading-relaxed text-[11px]">
+                  Pembagian pembimbing dapat diatur langsung secara manual melalui dropdown di bawah atau upload massal. Setiap perubahan <strong>langsung otomatis diperbarui di akun mahasiswa</strong>. Untuk efisiensi, data dapat di-download ke CSV/Excel atau disalin formatnya untuk dibagikan ke grup WhatsApp/Telegram tanpa perlu mengirim email berulang.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2 shrink-0 self-end md:self-center">
+              <button
+                type="button"
+                onClick={downloadAdvisorDistributionCsv}
+                className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center space-x-1.5 shadow-xs cursor-pointer transition-all"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Download CSV</span>
+              </button>
+              <button
+                type="button"
+                onClick={copyGroupAnnouncementText}
+                className="px-3 py-1.5 rounded-xl bg-white hover:bg-blue-50 text-blue-700 border border-blue-300 font-bold text-xs flex items-center space-x-1.5 shadow-xs cursor-pointer transition-all"
+              >
+                <Copy className="w-3.5 h-3.5 text-blue-600" />
+                <span>Salin Chat Grup</span>
               </button>
             </div>
           </div>

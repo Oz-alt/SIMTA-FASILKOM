@@ -25,7 +25,8 @@ import {
   Printer,
   FileStack,
   Layers,
-  LayoutGrid
+  LayoutGrid,
+  Bell
 } from 'lucide-react';
 
 export default function Sidebar() {
@@ -123,7 +124,8 @@ export default function Sidebar() {
               label: 'Bimbingan',
               icon: FileCheck,
               items: [
-                { to: '/thesis/consultations', label: 'Bimbingan & Konsultasi', icon: FileCheck }
+                { to: '/thesis/consultations', label: 'Bimbingan & Konsultasi', icon: FileCheck },
+                { to: '/kaprodi/reminders', label: 'Reminder Pembimbingan', icon: Bell }
               ]
             },
             {

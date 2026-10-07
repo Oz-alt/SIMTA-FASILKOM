@@ -105,6 +105,14 @@ Route::get('/kaprodi/defense-schedules', function () {
     return Inertia::render('kaprodi/KelolaJadwalSidangPage');
 });
 
+Route::get('/kaprodi/reminders', function () {
+    return Inertia::render('kaprodi/ReminderPembimbinganPage');
+});
+
+Route::get('/kaprodi/reminder-pembimbingan', function () {
+    return Inertia::render('kaprodi/ReminderPembimbinganPage');
+});
+
 Route::get('/kaprodi/repository/review', function () {
     return Inertia::render('kaprodi/TinjauRepositoryKaprodi');
 });

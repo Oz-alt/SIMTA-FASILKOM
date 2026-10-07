@@ -13,34 +13,52 @@ export default function ThesisStepper({ currentTitle, stages = [] }) {
     );
   }
 
+  const isGraduated = currentTitle.status_kelulusan === 'lulus' || currentTitle.status_sidang === 'selesai';
+  const isTitleFix = currentTitle.status === 'disetujui' || currentTitle.status === 'judul_fix';
+  const isReadyOrScheduled = currentTitle.status_sidang === 'siap_daftar' || currentTitle.status_sidang === 'terjadwal';
+
   const steps = [
     {
       key: 'title',
-      label: '1. Pengajuan Judul TA',
-      isCompleted: currentTitle.status === 'disetujui',
-      isPending: currentTitle.status === 'diajukan',
-      statusText: currentTitle.status === 'disetujui' ? 'Judul Disetujui' : currentTitle.status === 'diajukan' ? 'Ditinjau Kaprodi' : 'Belum Disetujui'
+      label: '1. Usulan & Judul Fix',
+      isCompleted: isTitleFix,
+      isPending: currentTitle.status === 'tinjauan' || currentTitle.status === 'diajukan' || currentTitle.status === 'perlu_revisi',
+      statusText: isTitleFix
+        ? 'Judul Fix'
+        : currentTitle.status === 'perlu_revisi'
+        ? 'Perlu Revisi'
+        : 'Dalam Tinjauan'
     },
     {
-      key: 'seminar_proposal',
-      label: '2. Seminar Proposal',
-      isCompleted: stages.some(s => s.stage_type === 'seminar_proposal' && (s.status === 'disetujui' || s.status === 'selesai')),
-      isPending: stages.some(s => s.stage_type === 'seminar_proposal' && s.status === 'menunggu_jadwal'),
-      statusText: stages.find(s => s.stage_type === 'seminar_proposal')?.status === 'selesai' ? 'Selesai' : 'Belum Selesai'
-    },
-    {
-      key: 'seminar_hasil',
-      label: '3. Seminar Hasil',
-      isCompleted: stages.some(s => s.stage_type === 'seminar_hasil' && (s.status === 'disetujui' || s.status === 'selesai')),
-      isPending: stages.some(s => s.stage_type === 'seminar_hasil' && s.status === 'menunggu_jadwal'),
-      statusText: stages.find(s => s.stage_type === 'seminar_hasil')?.status === 'selesai' ? 'Selesai' : 'Belum Selesai'
+      key: 'bimbingan',
+      label: '2. Bimbingan Intensif TA',
+      isCompleted: isReadyOrScheduled || isGraduated,
+      isPending: isTitleFix && !isReadyOrScheduled && !isGraduated,
+      statusText: (isReadyOrScheduled || isGraduated)
+        ? 'Memenuhi Syarat (>=2x/Bln)'
+        : isTitleFix
+        ? 'Proses Pembimbingan'
+        : 'Menunggu Judul Fix'
     },
     {
       key: 'sidang_akhir',
-      label: '4. Sidang Akhir',
-      isCompleted: stages.some(s => s.stage_type === 'sidang_akhir' && (s.status === 'disetujui' || s.status === 'selesai')),
-      isPending: stages.some(s => s.stage_type === 'sidang_akhir' && s.status === 'menunggu_jadwal'),
-      statusText: stages.find(s => s.stage_type === 'sidang_akhir')?.status === 'selesai' ? 'Selesai' : 'Belum Selesai'
+      label: '3. Sidang Akhir D3',
+      isCompleted: isGraduated,
+      isPending: currentTitle.status_sidang === 'terjadwal' || currentTitle.status_sidang === 'siap_daftar',
+      statusText: isGraduated
+        ? `Lulus (${currentTitle.nilai_sidang || 'Nilai A'})`
+        : currentTitle.status_sidang === 'terjadwal'
+        ? 'Terjadwal Sidang'
+        : currentTitle.status_sidang === 'siap_daftar'
+        ? 'Siap Daftar Sidang'
+        : 'Belum Terjadwal'
+    },
+    {
+      key: 'kelulusan',
+      label: '4. Status Kelulusan',
+      isCompleted: isGraduated,
+      isPending: !isGraduated,
+      statusText: isGraduated ? 'LULUS TA D3' : 'Aktif / Dalam Proses'
     }
   ];
 
@@ -48,8 +66,13 @@ export default function ThesisStepper({ currentTitle, stages = [] }) {
     <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-sm font-bold text-slate-900">Perjalanan Tugas Akhir Saya (Thesis Journey)</h3>
-          <p className="text-xs text-slate-500 mt-0.5">Alur otomatis dari persetujuan judul hingga sidang akhir</p>
+          <h3 className="text-sm font-bold text-slate-900 flex items-center space-x-2">
+            <span>Perjalanan Tugas Akhir D3 Manajemen Informatika</span>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
+              Alur D3 Terpadu
+            </span>
+          </h3>
+          <p className="text-xs text-slate-500 mt-0.5">Alur terfokus: Usulan Judul &rarr; Bimbingan Intensif &rarr; Sidang Akhir &rarr; Kelulusan</p>
         </div>
         {currentUser?.prodi && (
           <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700">

@@ -109,7 +109,7 @@ export default function AjukanJudulPage() {
           pembimbing_1_nama: selectedDospem1?.nama || '',
           pembimbing_2_nip: pembimbing2Nip,
           pembimbing_2_nama: selectedDospem2?.nama || '',
-          status: 'diajukan'
+          status: 'tinjauan'
         });
       } catch (err) {
         console.error('Supabase insert title error:', err);
