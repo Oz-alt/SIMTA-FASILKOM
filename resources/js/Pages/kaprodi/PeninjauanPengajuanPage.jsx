@@ -31,8 +31,7 @@ export default function PeninjauanPengajuanPage() {
     getAllRegisteredStudents,
     studentAdvisors,
     thesisTitles,
-    advisors,
-    sendBroadcastSubmissionReminder
+    advisors
   } = useAuth();
 
   // Search & Filter States
@@ -43,13 +42,7 @@ export default function PeninjauanPengajuanPage() {
   const [copiedText, setCopiedText] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
-  // Broadcast Modal State (Point 23)
-  const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState(false);
-  const [broadcastSubject, setBroadcastSubject] = useState('[Pemberitahuan Prodi D3 MI] Pengingat Batas Pengajuan Usulan Judul Tugas Akhir');
-  const [broadcastCustomMessage, setBroadcastCustomMessage] = useState(
-    'Yth. Mahasiswa Program Studi D3 Manajemen Informatika,\n\nBerdasarkan pantauan sistem SIMTA, Anda tercatat belum mengusulkan judul Tugas Akhir untuk semester ini. Mohon segera menyusun usulan judul dan mengajukannya melalui sistem SIMTA agar proses peninjauan topik dan penetapan dosen pembimbing dapat segera dilakukan.\n\nTerima kasih,\nKetua Program Studi D3 Manajemen Informatika\nFakultas Ilmu Komputer, Universitas Sriwijaya'
-  );
-  const [isSendingBroadcast, setIsSendingBroadcast] = useState(false);
+
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -316,21 +309,7 @@ export default function PeninjauanPengajuanPage() {
             <span>Salin NIM Belum Ajukan</span>
           </button>
 
-          {/* Single Broadcast Reminder Button (Point 23) */}
-          <button
-            type="button"
-            onClick={() => setIsBroadcastModalOpen(true)}
-            disabled={stats.totalBelum === 0}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 shadow-xs shrink-0 ${
-              stats.totalBelum > 0
-                ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-amber-500/20 cursor-pointer'
-                : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-70'
-            }`}
-            title="Kirim pengingat pengajuan judul serentak ke seluruh mahasiswa yang belum mengajukan"
-          >
-            <BellRing className="w-3.5 h-3.5 shrink-0" />
-            <span>Kirim Reminder Pengajuan Serentak ({stats.totalBelum})</span>
-          </button>
+
 
         </div>
       </div>
@@ -453,20 +432,14 @@ export default function PeninjauanPengajuanPage() {
                       <td className="py-3 px-3 align-top text-right">
                         {std.hasSubmitted ? (
                           <Link
-                            href="/kaprodi/titles"
+                            href={std.title?.id ? `/kaprodi/titles/${std.title.id}` : "/kaprodi/titles"}
                             className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold text-[11px] rounded-lg transition-colors inline-flex items-center space-x-1"
                           >
                             <span>Detail &amp; Catatan</span>
                             <ExternalLink className="w-3 h-3 text-indigo-600" />
                           </Link>
                         ) : (
-                          <span 
-                            className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 font-semibold text-[10px] inline-flex items-center space-x-1"
-                            title="Tercakup dalam tombol 'Kirim Reminder Pengajuan Serentak' di atas"
-                          >
-                            <BellRing className="w-3 h-3 text-amber-600" />
-                            <span>Serentak</span>
-                          </span>
+                          <span className="text-slate-400 font-medium text-xs">-</span>
                         )}
                       </td>
 
@@ -479,116 +452,7 @@ export default function PeninjauanPengajuanPage() {
         </div>
       </div>
 
-      {/* MODAL REMINDER PENGAJUAN SERENTAK (Point 23) */}
-      {isBroadcastModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in" data-lenis-prevent>
-          <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-7 shadow-2xl space-y-4 border border-amber-200">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center space-x-2 text-amber-700 font-extrabold text-sm sm:text-base">
-                <BellRing className="w-4 h-4" />
-                <span>Kirim Reminder Pengajuan Judul Serentak</span>
-              </div>
-              <button 
-                type="button"
-                onClick={() => setIsBroadcastModalOpen(false)} 
-                className="text-slate-400 hover:text-slate-600 text-sm font-bold p-1 cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
 
-            <div className="space-y-4">
-              <div className="bg-amber-50/70 border border-amber-200/80 rounded-2xl p-4 text-xs space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-extrabold text-amber-950 uppercase tracking-wide text-[10px]">
-                    Target Penerima Pengingat
-                  </span>
-                  <span className="px-2 py-0.5 rounded-full bg-amber-600 text-white font-extrabold text-[10px]">
-                    {stats.totalBelum} Mahasiswa
-                  </span>
-                </div>
-                <p className="text-amber-900 leading-relaxed text-[11px]">
-                  Pengingat akan dikirim <strong>sekaligus secara serentak</strong> ke seluruh mahasiswa D3 Manajemen Informatika yang belum mengajukan judul Tugas Akhir via Notifikasi SIMTA &amp; Email resmi.
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Subjek Pengingat:
-                </label>
-                <input
-                  type="text"
-                  value={broadcastSubject}
-                  onChange={(e) => setBroadcastSubject(e.target.value)}
-                  className="w-full text-xs p-2.5 border border-slate-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 font-medium text-slate-800"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Pesan Pengingat Serentak:
-                </label>
-                <textarea
-                  rows={4}
-                  value={broadcastCustomMessage}
-                  onChange={(e) => setBroadcastCustomMessage(e.target.value)}
-                  className="w-full text-xs p-2.5 border border-slate-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 text-slate-800 leading-relaxed font-normal"
-                />
-              </div>
-
-              <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px] text-slate-600">
-                <span className="font-semibold text-slate-700">Saluran:</span>
-                <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold">
-                  <Check className="w-3 h-3" />
-                  <span>Notifikasi SIMTA</span>
-                </span>
-                <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200 font-bold">
-                  <Check className="w-3 h-3" />
-                  <span>Email Mahasiswa (@student.unsri.ac.id)</span>
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setIsBroadcastModalOpen(false)}
-                className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-bold transition-colors cursor-pointer"
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const unsubmitted = studentsList.filter(s => !s.hasSubmitted);
-                  if (unsubmitted.length === 0) return;
-                  setIsSendingBroadcast(true);
-                  if (typeof sendBroadcastSubmissionReminder === 'function') {
-                    sendBroadcastSubmissionReminder({
-                      targetStudents: unsubmitted,
-                      customSubject: broadcastSubject,
-                      customMessage: broadcastCustomMessage
-                    });
-                  }
-                  setIsSendingBroadcast(false);
-                  setIsBroadcastModalOpen(false);
-                  showToast(`Pengingat pengajuan judul serentak berhasil dikirim ke ${unsubmitted.length} mahasiswa D3 MI!`);
-                }}
-                disabled={isSendingBroadcast || stats.totalBelum === 0}
-                className="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-bold rounded-xl shadow-lg shadow-amber-500/20 flex items-center space-x-2 transition-all cursor-pointer disabled:opacity-60"
-              >
-                <BellRing className="w-4 h-4 shrink-0" />
-                <span>
-                  {isSendingBroadcast 
-                    ? 'Mengirim Pengingat...' 
-                    : `Kirim Pengingat ke ${stats.totalBelum} Mahasiswa Sekaligus`
-                  }
-                </span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
     </div>
   );

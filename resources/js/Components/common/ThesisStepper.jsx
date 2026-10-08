@@ -30,14 +30,14 @@ export default function ThesisStepper({ currentTitle, stages = [] }) {
         : 'Dalam Tinjauan'
     },
     {
-      key: 'bimbingan',
-      label: '2. Bimbingan Intensif TA',
+      key: 'pengerjaan_ta',
+      label: '2. Pengerjaan Laporan TA',
       isCompleted: isReadyOrScheduled || isGraduated,
       isPending: isTitleFix && !isReadyOrScheduled && !isGraduated,
       statusText: (isReadyOrScheduled || isGraduated)
-        ? 'Memenuhi Syarat (>=2x/Bln)'
+        ? 'Siap Sidang Akhir'
         : isTitleFix
-        ? 'Proses Pembimbingan'
+        ? 'Dalam Penyusunan TA'
         : 'Menunggu Judul Fix'
     },
     {
@@ -72,7 +72,7 @@ export default function ThesisStepper({ currentTitle, stages = [] }) {
               Alur D3 Terpadu
             </span>
           </h3>
-          <p className="text-xs text-slate-500 mt-0.5">Alur terfokus: Usulan Judul &rarr; Bimbingan Intensif &rarr; Sidang Akhir &rarr; Kelulusan</p>
+          <p className="text-xs text-slate-500 mt-0.5">Alur terfokus: Usulan Judul &rarr; Pengerjaan TA &rarr; Sidang Akhir &rarr; Kelulusan</p>
         </div>
         {currentUser?.prodi && (
           <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700">

@@ -1,45 +1,20 @@
 import React, { useState, useMemo } from 'react';
 import { Link } from '@inertiajs/react';
 import { useAuth } from '../../context/AuthContext.jsx';
-import SimilarityGauge from '../../Components/common/SimilarityGauge.jsx';
 import StatusBadge from '../../Components/common/StatusBadge.jsx';
 import { getStudentSemester, AVAILABLE_SEMESTERS } from '../../lib/academicUtils.js';
 import { 
-  CheckSquare, 
   CheckCircle2, 
-  Eye, 
-  AlertTriangle, 
-  MessageSquare, 
-  UserCheck, 
-  Users, 
   Clock, 
-  ShieldCheck, 
   AlertCircle, 
   Search, 
   GraduationCap, 
-  X, 
   BookOpen,
-  Send,
-  History,
-  FileText,
-  Sparkles,
-  ArrowRight,
-  Filter
+  MessageSquare
 } from 'lucide-react';
 
 export default function TinjauJudulPage() {
-  const { 
-    thesisTitles, 
-    advisors, 
-    addProdiRevisionNote, 
-    setThesisTitleFix 
-  } = useAuth();
-
-  const [selectedTitleId, setSelectedTitleId] = useState(null);
-  const [revisiCatatan, setRevisiCatatan] = useState('');
-  const [catatanFix, setCatatanFix] = useState('');
-  const [confirmedDospem1Nip, setConfirmedDospem1Nip] = useState('');
-  const [confirmedDospem2Nip, setConfirmedDospem2Nip] = useState('');
+  const { thesisTitles } = useAuth();
 
   // Toast Notification
   const [toastMessage, setToastMessage] = useState('');
@@ -52,75 +27,6 @@ export default function TinjauJudulPage() {
   const showToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(''), 4000);
-  };
-
-  // Find currently selected title object (always reactive from thesisTitles state)
-  const selectedTitle = useMemo(() => {
-    if (!selectedTitleId) return null;
-    return thesisTitles.find(t => t.id === selectedTitleId) || null;
-  }, [thesisTitles, selectedTitleId]);
-
-  // Helper to resolve advisor NIP from name or title fields
-  const resolveAdvisorNip = (nip, name) => {
-    if (nip && advisors.some(a => a.nip === nip)) return nip;
-    if (name) {
-      const cleanName = String(name).toLowerCase().trim();
-      const matched = advisors.find(a => 
-        a.nama.toLowerCase().includes(cleanName) || 
-        cleanName.includes(a.nama.toLowerCase())
-      );
-      if (matched) return matched.nip;
-    }
-    return '';
-  };
-
-  // Open detail & review modal
-  const handleOpenDetail = (title) => {
-    setSelectedTitleId(title.id);
-    setRevisiCatatan('');
-    setCatatanFix(title.catatan_kaprodi || '');
-
-    // Penetapan dosen otomatis masuk dari usulan mahasiswa
-    const autoD1 = resolveAdvisorNip(title.pembimbing_1_nip, title.pembimbing_1_nama || title.pembimbing_1);
-    const autoD2 = resolveAdvisorNip(title.pembimbing_2_nip, title.pembimbing_2_nama || title.pembimbing_2);
-
-    setConfirmedDospem1Nip(autoD1);
-    setConfirmedDospem2Nip(autoD2);
-  };
-
-  // Quick suggestion chips for revision notes
-  const quickNotes = [
-    'Similarity tinggi (>40%), disarankan konsultasikan alternatif judul dengan pembimbing.',
-    'Ganti objek/studi kasus penelitian agar topik lebih spesifik dan orisinal.',
-    'Ruang lingkup sistem terlalu luas, mohon batasi pada modul inti kebutuhan D3 MI.',
-    'Metodologi pengembangan sistem perlu diperjelas bersama dosen pembimbing.'
-  ];
-
-  // Submit Catatan Revisi Rapat Prodi (Status berubah jadi "Perlu Revisi" - Kuning)
-  const handleSendRevisionNote = () => {
-    if (!selectedTitle) return;
-    if (!revisiCatatan.trim()) {
-      showToast('Harap tuliskan catatan revisi sebelum mengirim.');
-      return;
-    }
-
-    addProdiRevisionNote(selectedTitle.id, revisiCatatan.trim());
-    showToast(`Catatan revisi berhasil disimpan & dikirim ke ${selectedTitle.mhs_nama}. Status menjadi "Perlu Revisi".`);
-    setRevisiCatatan('');
-  };
-
-  // Tetapkan Status Judul Fix (Final) - Hijau Emerald
-  const handleSetTitleFix = () => {
-    if (!selectedTitle) return;
-
-    setThesisTitleFix(
-      selectedTitle.id,
-      confirmedDospem1Nip,
-      confirmedDospem2Nip,
-      catatanFix.trim() || 'Judul resmi ditetapkan FIX oleh Kaprodi.'
-    );
-
-    showToast(`Judul Tugas Akhir ${selectedTitle.mhs_nama} resmi berstatus JUDUL FIX!`);
   };
 
   // Stats calculation
@@ -407,14 +313,13 @@ export default function TinjauJudulPage() {
                       </td>
 
                       <td className="py-3.5 px-4 text-right align-top">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenDetail(t)}
+                        <Link
+                          href={`/kaprodi/titles/${t.id}`}
                           className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs inline-flex items-center space-x-1.5 cursor-pointer transition-colors"
                         >
                           <BookOpen className="w-3.5 h-3.5" />
                           <span>Detail &amp; Catatan</span>
-                        </button>
+                        </Link>
                       </td>
                     </tr>
                   );
@@ -425,280 +330,7 @@ export default function TinjauJudulPage() {
         </div>
       </div>
 
-      {/* DETAIL, LOG REVISI & ACTION MODAL */}
-      {selectedTitle && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in" data-lenis-prevent>
-          <div className="bg-white rounded-3xl max-w-3xl w-full p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
-            
-            {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Panel Peninjauan &amp; Catatan Rapat Prodi
-                </span>
-                <h3 className="text-base font-bold text-slate-900">
-                  {selectedTitle.mhs_nama} ({selectedTitle.mhs_nim} • {selectedTitle.mhs_kelas})
-                </h3>
-              </div>
-              <div className="flex items-center space-x-2">
-                <StatusBadge type="thesis" status={selectedTitle.status} />
-                <button 
-                  type="button"
-                  onClick={() => setSelectedTitleId(null)} 
-                  className="text-slate-400 hover:text-slate-600 text-sm font-bold p-1 cursor-pointer rounded-lg hover:bg-slate-100"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
 
-            {/* Judul TA Saat Ini */}
-            <div className="space-y-1.5">
-              <span className="text-xs font-bold text-slate-700 block flex items-center justify-between">
-                <span>Judul Tugas Akhir (Versi Terkini):</span>
-                <span className="text-[11px] font-normal text-slate-500">
-                  Similarity Engine: <strong className="text-indigo-600">{selectedTitle.skor_kemiripan_terakhir}%</strong>
-                </span>
-              </span>
-              <p className="text-sm font-semibold text-slate-900 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-                "{selectedTitle.judul}"
-              </p>
-            </div>
-
-            {/* Deskripsi Topik */}
-            {selectedTitle.deskripsi && (
-              <div className="space-y-1">
-                <span className="text-xs font-bold text-slate-700 block">Deskripsi / Ringkasan Topik:</span>
-                <p className="text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200 leading-relaxed">
-                  {selectedTitle.deskripsi}
-                </p>
-              </div>
-            )}
-
-            <SimilarityGauge score={selectedTitle.skor_kemiripan_terakhir} />
-
-            {/* SECTION 1: RIWAYAT REVISI & CATATAN RAPAT BERDASARKAN TANGGAL */}
-            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-extrabold text-slate-900 flex items-center space-x-2">
-                  <History className="w-4 h-4 text-indigo-600" />
-                  <span>Riwayat Log Revisi &amp; Catatan Rapat (Tersimpan Berdasarkan Tanggal)</span>
-                </span>
-                <span className="text-[10px] text-slate-500 font-medium">
-                  {selectedTitle.riwayat_revisi ? selectedTitle.riwayat_revisi.length : 1} Catatan Tersimpan
-                </span>
-              </div>
-
-              <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
-                {(!selectedTitle.riwayat_revisi || selectedTitle.riwayat_revisi.length === 0) ? (
-                  <div className="p-3 bg-white rounded-xl border border-slate-200 text-[11px] text-slate-500 italic">
-                    Belum ada riwayat revisi tambahan. Pengajuan berada di tahap awal.
-                  </div>
-                ) : (
-                  selectedTitle.riwayat_revisi.map((rev, index) => {
-                    const isFixLog = rev.tipe === 'judul_fix';
-                    const isProdiNote = rev.tipe === 'catatan_prodi';
-                    const isMhsRevision = rev.tipe === 'revisi_mahasiswa';
-
-                    return (
-                      <div 
-                        key={rev.id || index}
-                        className={`p-3 rounded-xl border text-xs space-y-1.5 transition-all ${
-                          isFixLog 
-                            ? 'bg-emerald-50/70 border-emerald-200 text-emerald-900' 
-                            : isProdiNote
-                            ? 'bg-amber-50/80 border-amber-200 text-amber-900'
-                            : isMhsRevision
-                            ? 'bg-indigo-50/70 border-indigo-200 text-indigo-900'
-                            : 'bg-white border-slate-200 text-slate-800'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between text-[10px]">
-                          <span className="font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/90 border shadow-2xs">
-                            {isFixLog && '✓ Judul Ditetapkan Fix'}
-                            {isProdiNote && '💬 Catatan Rapat Prodi'}
-                            {isMhsRevision && '✏️ Revisi Judul Mahasiswa'}
-                            {!isFixLog && !isProdiNote && !isMhsRevision && '📄 Pengajuan Awal'}
-                          </span>
-                          <span className="font-mono text-slate-500">
-                            {formatDate(rev.tanggal)}
-                          </span>
-                        </div>
-
-                        {rev.judul && rev.judul !== selectedTitle.judul && (
-                          <div className="text-[11px] font-medium text-slate-600 line-through">
-                            Judul Sebelumnya: "{rev.judul}"
-                          </div>
-                        )}
-
-                        <p className="text-xs font-semibold leading-relaxed">
-                          "{rev.catatan}"
-                        </p>
-
-                        <div className="flex items-center justify-between pt-1 border-t border-slate-200/50 text-[10px] text-slate-500">
-                          <span>Oleh: <strong>{rev.oleh || 'Sistem'}</strong></span>
-                          {rev.skor_similarity !== undefined && (
-                            <span className="font-mono">Similarity saat itu: {rev.skor_similarity}%</span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-
-            {/* SECTION 2: FORM CATATAN HASIL RAPAT PRODI (JIKA ADA REVISI) */}
-            <div className="bg-amber-50/50 border border-amber-200 rounded-2xl p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-extrabold text-amber-900 flex items-center space-x-2">
-                  <MessageSquare className="w-4 h-4 text-amber-600" />
-                  <span>Berikan Catatan Revisi Rapat Prodi (Status Menjadi "Perlu Revisi")</span>
-                </span>
-                <span className="text-[10px] text-amber-700 bg-amber-100/70 px-2 py-0.5 rounded-full font-semibold">
-                  Kuning = Tahap Revisi
-                </span>
-              </div>
-              
-              <p className="text-[11px] text-amber-800/90 leading-relaxed">
-                Jika terdapat masalah pada judul (contoh: similarity tinggi atau topik perlu penyesuaian), berikan catatan di bawah ini. Mahasiswa akan melakukan revisi bersama dosen pembimbing.
-              </p>
-
-              {/* Quick Suggestion Chips */}
-              <div className="flex flex-wrap gap-1.5 pt-1">
-                {quickNotes.map((note, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => setRevisiCatatan(note)}
-                    className="text-[10px] bg-white hover:bg-amber-100/70 text-amber-900 border border-amber-200 px-2.5 py-1 rounded-lg transition-colors cursor-pointer text-left"
-                  >
-                    + {note.substring(0, 48)}...
-                  </button>
-                ))}
-              </div>
-
-              <textarea
-                rows={2}
-                value={revisiCatatan}
-                onChange={(e) => setRevisiCatatan(e.target.value)}
-                placeholder="Tuliskan catatan arahan hasil rapat Prodi untuk mahasiswa dan dosen pembimbing..."
-                className="w-full text-xs p-3 border border-amber-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-amber-400 placeholder:text-slate-400"
-              />
-
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={handleSendRevisionNote}
-                  className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs rounded-xl shadow-xs inline-flex items-center space-x-1.5 cursor-pointer transition-colors"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                  <span>Kirim Catatan Revisi (Ubah Status ke Perlu Revisi)</span>
-                </button>
-              </div>
-            </div>
-
-            {/* SECTION 3: PENETAPAN DOSEN PEMBIMBING & STATUS JUDUL FIX */}
-            <div className="bg-emerald-50/40 border border-emerald-200 rounded-2xl p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-extrabold text-emerald-950 flex items-center space-x-2">
-                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                  <span>Penetapan Status Judul Fix (Final) &amp; Dosen Pembimbing Definitif</span>
-                </span>
-                <span className="text-[10px] text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full font-semibold">
-                  Hijau = Judul Fix
-                </span>
-              </div>
-
-              <p className="text-[11px] text-emerald-900/80 leading-relaxed">
-                Tetapkan status judul menjadi <strong>JUDUL FIX</strong> ketika judul sudah sesuai dan similarity aman. Status ini menjadi informasi resmi bahwa mahasiswa berhak melanjutkan ke pendaftaran Seminar Proposal.
-              </p>
-
-              {/* Dospem Definitif Selector */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                    Dosen Pembimbing 1 Definitif:
-                  </label>
-                  <select
-                    value={confirmedDospem1Nip}
-                    onChange={(e) => setConfirmedDospem1Nip(e.target.value)}
-                    className="w-full text-xs p-2.5 border border-slate-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  >
-                    <option value="">-- Pilih Pembimbing 1 --</option>
-                    {advisors.map(adv => (
-                      <option 
-                        key={adv.id || adv.nip} 
-                        value={adv.nip}
-                        disabled={adv.nip === confirmedDospem2Nip}
-                      >
-                        {adv.nama} (Kuota: {adv.kuota_dospem1 || 8})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                    Dosen Pembimbing 2 Definitif:
-                  </label>
-                  <select
-                    value={confirmedDospem2Nip}
-                    onChange={(e) => setConfirmedDospem2Nip(e.target.value)}
-                    className="w-full text-xs p-2.5 border border-slate-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  >
-                    <option value="">-- Pilih Pembimbing 2 --</option>
-                    {advisors.map(adv => (
-                      <option 
-                        key={adv.id || adv.nip} 
-                        value={adv.nip}
-                        disabled={adv.nip === confirmedDospem1Nip}
-                      >
-                        {adv.nama} (Kuota: {adv.kuota_dospem2 || 8})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Catatan Fix Tambahan (Opsional) */}
-              <div>
-                <input
-                  type="text"
-                  value={catatanFix}
-                  onChange={(e) => setCatatanFix(e.target.value)}
-                  placeholder="Catatan pengesahan final judul (opsional, misal: Judul resmi disetujui dalam rapat Prodi)..."
-                  className="w-full text-xs p-2.5 border border-slate-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-
-              <div className="flex justify-end pt-1">
-                <button
-                  type="button"
-                  onClick={handleSetTitleFix}
-                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-600/20 inline-flex items-center space-x-1.5 cursor-pointer transition-colors"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Tetapkan Sebagai Judul Fix (Final)</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="flex items-center justify-between pt-3 border-t border-slate-100 text-[11px] text-slate-500">
-              <span>Sistem alur tanpa tombol Tolak: Pembimbing dan Mahasiswa berkoordinasi menyelesaikan revisi.</span>
-              <button
-                type="button"
-                onClick={() => setSelectedTitleId(null)}
-                className="px-4 py-2 border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl font-bold transition-colors cursor-pointer"
-              >
-                Tutup
-              </button>
-            </div>
-
-          </div>
-        </div>
-      )}
 
     </div>
   );

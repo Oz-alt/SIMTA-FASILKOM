@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { Link } from '@inertiajs/react';
 import ThesisStepper from '../../Components/common/ThesisStepper.jsx';
+import BimbinganReminderBanner from '../../Components/common/BimbinganReminderBanner.jsx';
+import { calculateBimbinganReminder } from '../../lib/bimbinganReminder.js';
 import { 
   FileText, 
   CalendarDays, 
@@ -15,21 +17,20 @@ import {
   Mail,
   BookOpen
 } from 'lucide-react';
-import BimbinganReminderBanner from '../../Components/common/BimbinganReminderBanner.jsx';
-import { calculateBimbinganReminder } from '../../lib/bimbinganReminder.js';
 
 export default function DashboardMahasiswa() {
-  const { currentUser, thesisTitles, thesisStages, bookings, consultations, getStudentAdvisors } = useAuth();
+  const { currentUser, thesisTitles, thesisStages, bookings, getStudentAdvisors, consultations } = useAuth();
 
   // Get current student's title dynamically
   const myTitle = thesisTitles.find(t => (currentUser?.id && t.profile_id === currentUser.id) || (currentUser?.nim && t.mhs_nim === currentUser.nim)) || null;
   const myStages = myTitle ? thesisStages.filter(s => s.thesis_title_id === myTitle.id) : [];
   const myBookings = bookings.filter(b => currentUser?.nim && b.mhs_nim === currentUser.nim);
 
-  // Automatic Bimbingan Reminder (Min 2x/Month from last consultation date)
-  const bimbinganReminder = React.useMemo(() => {
-    return calculateBimbinganReminder(consultations, currentUser?.nim, 2);
-  }, [consultations, currentUser?.nim]);
+  // Automated Bimbingan Reminder (Minimal 2x per bulan)
+  const reminderStatus = useMemo(() => {
+    if (!currentUser?.nim || !myTitle) return null;
+    return calculateBimbinganReminder(consultations, currentUser.nim, 2);
+  }, [consultations, currentUser?.nim, myTitle]);
 
   // Dynamic Dospem 1 & 2 assigned by Kaprodi
   const assigned = (getStudentAdvisors && currentUser?.nim) ? getStudentAdvisors(currentUser.nim) : {};
@@ -84,16 +85,18 @@ export default function DashboardMahasiswa() {
         </div>
       </div>
 
-      {/* Automatic Bimbingan Reminder Banner */}
-      <BimbinganReminderBanner 
-        reminder={bimbinganReminder} 
-        studentEmail={currentUser?.email}
-        studentUser={currentUser}
-        showAction={false}
-      />
-
       {/* Thesis Journey Stepper */}
       <ThesisStepper currentTitle={myTitle} stages={myStages} />
+
+      {/* Automated Bimbingan Reminder Banner (Minimal 2x/Bulan) */}
+      {reminderStatus && (
+        <BimbinganReminderBanner 
+          reminder={reminderStatus} 
+          studentEmail={currentUser?.email}
+          studentUser={currentUser}
+          showAction={true}
+        />
+      )}
 
       {/* Status Summary Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

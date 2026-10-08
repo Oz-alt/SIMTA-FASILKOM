@@ -84,15 +84,6 @@ export default function Sidebar() {
               ]
             },
             {
-              id: 'bimbingan',
-              label: 'Bimbingan',
-              icon: FileCheck,
-              items: [
-                { to: '/thesis/consultations', label: 'Bimbingan & Konsultasi', icon: FileCheck },
-                { to: '/thesis/consultations/card', label: 'Kartu Bimbingan Digital', icon: Printer }
-              ]
-            },
-            {
               id: 'database',
               label: 'Database',
               icon: Database,
@@ -117,15 +108,6 @@ export default function Sidebar() {
                 { to: '/kaprodi/submission-status', label: 'Peninjauan Pengajuan Mhs', icon: FileStack },
                 { to: '/kaprodi/advisors', label: 'Pembagian Dosen Pembimbing', icon: UserCheck },
                 { to: '/kaprodi/defense-schedules', label: 'Manajemen Jadwal Sidang', icon: CalendarDays }
-              ]
-            },
-            {
-              id: 'bimbingan',
-              label: 'Bimbingan',
-              icon: FileCheck,
-              items: [
-                { to: '/thesis/consultations', label: 'Bimbingan & Konsultasi', icon: FileCheck },
-                { to: '/kaprodi/reminders', label: 'Reminder Pembimbingan', icon: Bell }
               ]
             },
             {
@@ -154,11 +136,14 @@ export default function Sidebar() {
           dashboard: { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
           groups: [
             {
-              id: 'bimbingan',
-              label: 'Bimbingan',
-              icon: FileCheck,
+              id: 'ruangan',
+              label: 'Ruangan',
+              icon: Building2,
               items: [
-                { to: '/thesis/consultations', label: 'Bimbingan & Konsultasi', icon: FileCheck }
+                { to: '/admin/bookings', label: 'Persetujuan Ruangan', icon: CheckSquare },
+                { to: '/admin/rooms', label: 'Kelola Ruang & Gedung', icon: Building2 },
+                { to: '/admin/priorities', label: 'Prioritas Ruangan', icon: ListOrdered },
+                { to: '/schedule', label: 'Master Schedule Grid', icon: CalendarDays }
               ]
             },
             {
@@ -169,17 +154,6 @@ export default function Sidebar() {
                 { to: '/thesis/archive', label: 'Arsip Tugas Akhir', icon: BookOpen },
                 { to: '/admin/repository/publish', label: 'Publikasi Repositori Global', icon: Globe }
               ]
-            },
-            {
-              id: 'ruangan',
-              label: 'Ruangan',
-              icon: Building2,
-              items: [
-                { to: '/admin/bookings', label: 'Persetujuan Ruangan', icon: CheckSquare },
-                { to: '/admin/rooms', label: 'Kelola Ruang & Gedung', icon: Building2 },
-                { to: '/admin/priorities', label: 'Prioritas Ruangan', icon: ListOrdered },
-                { to: '/schedule', label: 'Master Schedule Grid', icon: CalendarDays }
-              ]
             }
           ]
         };
@@ -189,11 +163,10 @@ export default function Sidebar() {
           dashboard: { to: '/dosen/dashboard', label: 'Dashboard', icon: LayoutDashboard },
           groups: [
             {
-              id: 'bimbingan',
-              label: 'Bimbingan',
-              icon: FileCheck,
+              id: 'tugas_akhir',
+              label: 'Tugas Akhir',
+              icon: GraduationCap,
               items: [
-                { to: '/dosen/bimbingan', label: 'Bimbingan & Konsultasi', icon: FileCheck },
                 { to: '/dosen/validasi-judul', label: 'Validasi Judul TA', icon: CheckSquare },
                 { to: '/dosen/jadwal-sidang', label: 'Notifikasi & Jadwal', icon: CalendarDays }
               ]

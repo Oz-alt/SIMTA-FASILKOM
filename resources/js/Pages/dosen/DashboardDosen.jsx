@@ -41,7 +41,7 @@ export default function DashboardDosen() {
         </div>
         <h1 className="text-2xl font-extrabold tracking-tight">Selamat Datang, {currentUser?.nama}</h1>
         <p className="text-sm text-teal-100/90 mt-1 max-w-2xl leading-relaxed">
-          Pantau progres bimbingan mahasiswa Anda, tinjau pengajuan judul, dan jadwalkan sesi bimbingan secara efektif.
+          Pantau progres mahasiswa bimbingan Anda, validasi usulan judul, dan kelola jadwal sidang Tugas Akhir secara terpadu.
         </p>
       </div>
 
@@ -69,14 +69,14 @@ export default function DashboardDosen() {
           <p className="text-[11px] text-slate-500">Menunggu validasi Anda</p>
         </Link>
 
-        <Link href="/dosen/bimbingan" className="bg-gradient-to-br from-emerald-50 to-emerald-100/60 border border-emerald-200 rounded-xl p-5 shadow-2xs space-y-1 hover:border-emerald-400 hover:shadow-md transition-all group block sm:col-span-2 lg:col-span-2">
-          <div className="text-xs font-bold text-emerald-700 uppercase tracking-wider flex items-center justify-between">
-            <span>Progress Bimbingan</span>
-            <ArrowRight className="w-5 h-5 text-emerald-600 group-hover:translate-x-1 transition-transform" />
+        <Link href="/dosen/jadwal-sidang" className="bg-gradient-to-br from-indigo-50 to-indigo-100/60 border border-indigo-200 rounded-xl p-5 shadow-2xs space-y-1 hover:border-indigo-400 hover:shadow-md transition-all group block sm:col-span-2 lg:col-span-2">
+          <div className="text-xs font-bold text-indigo-700 uppercase tracking-wider flex items-center justify-between">
+            <span>Jadwal & Notifikasi Sidang</span>
+            <ArrowRight className="w-5 h-5 text-indigo-600 group-hover:translate-x-1 transition-transform" />
           </div>
-          <div className="text-sm font-bold text-slate-900 pt-1">Buka Log Konsultasi Mahasiswa</div>
-          <p className="text-[11px] text-emerald-600/80 font-medium mt-1">
-            Berikan masukan, periksa revisi, dan ACC laporan untuk pendaftaran sidang.
+          <div className="text-sm font-bold text-slate-900 pt-1">Agenda Sidang &amp; Ujian Mahasiswa</div>
+          <p className="text-[11px] text-indigo-600/80 font-medium mt-1">
+            Lihat jadwal pelaksanaan sidang akhir dan notifikasi pengujian mahasiswa bimbingan.
           </p>
         </Link>
       </div>
@@ -88,9 +88,9 @@ export default function DashboardDosen() {
             <BookOpen className="w-4 h-4 text-emerald-600" />
             <span>Mahasiswa Bimbingan Aktif</span>
           </h3>
-          <Link href="/dosen/bimbingan" className="text-xs font-bold text-emerald-600 hover:text-emerald-800">
-            Lihat Semua
-          </Link>
+          <span className="text-xs font-semibold text-slate-500">
+            Total {myStudents.length} Mahasiswa
+          </span>
         </div>
 
         {myStudents.length === 0 ? (
@@ -140,10 +140,10 @@ export default function DashboardDosen() {
                         </span>
                       </td>
                       <td className="py-3 px-3 text-right">
-                        <Link href="/dosen/bimbingan" className="inline-flex items-center space-x-1 text-emerald-600 hover:text-emerald-700 font-bold bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition-colors">
-                          <MessageSquare className="w-3.5 h-3.5" />
-                          <span>Konsultasi</span>
-                        </Link>
+                        <span className="inline-flex items-center space-x-1 text-slate-600 bg-slate-100 px-2.5 py-1 rounded-md text-[11px] font-medium">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                          <span>Aktif</span>
+                        </span>
                       </td>
                     </tr>
                   );

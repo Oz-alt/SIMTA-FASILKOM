@@ -40,8 +40,7 @@ export default function ManajemenTAPage() {
     confirmThesisAdvisors, 
     confirmAllThesisAdvisors,
     getAllRegisteredStudents,
-    sendBroadcastSubmissionReminder,
-    submissionBroadcastLogs
+    sendBroadcastSubmissionReminder
   } = useAuth();
 
   // Search & Filter States
@@ -62,13 +61,15 @@ export default function ManajemenTAPage() {
   const [confirmingTitle, setConfirmingTitle] = useState(null);
   const [isConfirmAllModalOpen, setIsConfirmAllModalOpen] = useState(false);
 
-  // Broadcast Reminder Modal State (Point 23)
+  // Broadcast Reminder Modal State (Ingatkan Serentak)
   const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState(false);
   const [broadcastSubject, setBroadcastSubject] = useState('[Pemberitahuan Prodi D3 MI] Pengingat Batas Pengajuan Usulan Judul Tugas Akhir');
   const [broadcastCustomMessage, setBroadcastCustomMessage] = useState(
     'Yth. Mahasiswa Program Studi D3 Manajemen Informatika,\n\nBerdasarkan pantauan sistem SIMTA, Anda tercatat belum mengusulkan judul Tugas Akhir untuk semester ini. Mohon segera menyusun usulan judul dan mengajukannya melalui sistem SIMTA agar proses peninjauan topik dan penetapan dosen pembimbing dapat segera dilakukan.\n\nTerima kasih,\nKetua Program Studi D3 Manajemen Informatika\nFakultas Ilmu Komputer, Universitas Sriwijaya'
   );
   const [isSendingBroadcast, setIsSendingBroadcast] = useState(false);
+
+
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -192,13 +193,7 @@ export default function ManajemenTAPage() {
     return filteredStudents.filter(s => s.hasSubmitted && !s.dospem_confirmed);
   }, [filteredStudents]);
 
-  // Last broadcast reminder details
-  const lastBroadcast = useMemo(() => {
-    if (Array.isArray(submissionBroadcastLogs) && submissionBroadcastLogs.length > 0) {
-      return submissionBroadcastLogs[0];
-    }
-    return null;
-  }, [submissionBroadcastLogs]);
+
 
   // Open Edit Dospem Modal
   const handleOpenEdit = (student) => {
@@ -362,7 +357,7 @@ export default function ManajemenTAPage() {
     setIsConfirmAllModalOpen(false);
   };
 
-  // Execute Broadcast Submission Reminder (Single Button Broadcast - Point 23)
+  // Execute Broadcast Submission Reminder (Ingatkan Serentak)
   const handleExecuteBroadcastReminder = () => {
     if (unsubmittedStudents.length === 0) {
       showToast('Seluruh mahasiswa telah mengajukan judul. Tidak ada pengingat yang perlu dikirim.');
@@ -406,7 +401,7 @@ export default function ManajemenTAPage() {
             Manajemen Tugas Akhir Mahasiswa
           </h1>
           <p className="text-xs sm:text-sm text-blue-100/90 leading-relaxed font-normal">
-            Pantau seluruh mahasiswa tingkat akhir secara terintegrasi: usulan judul mahasiswa otomatis masuk ke manajemen tanpa proses ACC/Tolak manual, mahasiswa yang belum mengajukan judul dapat dipantau, dan pengingat pengajuan dapat dikirim secara serentak.
+            Pantau seluruh mahasiswa tingkat akhir secara terintegrasi: usulan judul mahasiswa otomatis masuk ke manajemen tanpa proses ACC/Tolak manual, serta pemantauan penetapan dosen pembimbing definitif.
           </p>
         </div>
       </div>
@@ -438,28 +433,17 @@ export default function ManajemenTAPage() {
           <p className="text-[11px] text-slate-500">Otomatis masuk proses pembimbingan &amp; review</p>
         </div>
 
-        {/* Belum Mengajukan Judul (Point 22 & Point 23) */}
+        {/* Belum Mengajukan Judul */}
         <div className="bg-white border border-amber-200 rounded-2xl p-5 shadow-2xs space-y-2 bg-gradient-to-br from-white to-amber-50/40">
           <div className="text-xs font-bold text-amber-700 uppercase tracking-wider flex items-center justify-between">
             <span>Belum Mengajukan Judul</span>
             <UserX className="w-4 h-4 text-amber-600" />
           </div>
-          <div className="text-2xl font-extrabold text-amber-700 flex items-center justify-between">
-            <span>{unsubmittedStudents.length} Mahasiswa</span>
-            {unsubmittedStudents.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setIsBroadcastModalOpen(true)}
-                className="px-2.5 py-1 text-[10px] font-bold bg-amber-500 hover:bg-amber-600 text-white rounded-lg shadow-xs flex items-center space-x-1 cursor-pointer transition-all"
-                title="Kirim pengingat serentak ke seluruh mahasiswa yang belum mengajukan"
-              >
-                <BellRing className="w-3 h-3 shrink-0" />
-                <span>Ingatkan Serentak</span>
-              </button>
-            )}
+          <div className="text-2xl font-extrabold text-amber-700">
+            {unsubmittedStudents.length} Mahasiswa
           </div>
           <p className="text-[11px] text-amber-600/90 font-medium">
-            {unsubmittedStudents.length > 0 ? 'Perlu pengingat pengajuan serentak' : 'Semua mahasiswa telah mengajukan'}
+            {unsubmittedStudents.length > 0 ? 'Mahasiswa tingkat akhir belum mengusulkan judul' : 'Semua mahasiswa telah mengajukan'}
           </p>
         </div>
 
@@ -477,27 +461,6 @@ export default function ManajemenTAPage() {
         </div>
 
       </div>
-
-      {/* Riwayat Broadcast Terakhir Banner (Jika ada) */}
-      {lastBroadcast && (
-        <div className="bg-amber-50/80 border border-amber-200 rounded-2xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-amber-900 shadow-2xs">
-          <div className="flex items-center space-x-2.5">
-            <span className="w-7 h-7 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
-              <BellRing className="w-4 h-4" />
-            </span>
-            <div>
-              <span className="font-bold">Pengingat Serentak Terakhir:</span> Terkirim ke <strong className="font-extrabold text-amber-950">{lastBroadcast.total_recipients} mahasiswa</strong> pada {new Date(lastBroadcast.tanggal_kirim).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })} WIB via {lastBroadcast.channel}.
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => setIsBroadcastModalOpen(true)}
-            className="text-[11px] font-bold text-amber-800 hover:text-amber-950 underline cursor-pointer shrink-0"
-          >
-            Kirim Pengingat Lagi
-          </button>
-        </div>
-      )}
 
       {/* Search and Filters Bar with Segmented Control & Single Broadcast Button (Points 22 & 23) */}
       <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
@@ -606,20 +569,20 @@ export default function ManajemenTAPage() {
             <span>Format Grup</span>
           </button>
 
-          {/* SINGLE BUTTON BROADCAST: Kirim Reminder Pengajuan Serentak (Point 23) */}
+          {/* Tombol Ingatkan Serentak (Diposisikan di Toolbar Aksi, Bukan di Kartu) */}
           <button
             type="button"
             onClick={() => setIsBroadcastModalOpen(true)}
             disabled={unsubmittedStudents.length === 0}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-all shadow-sm ${
+            className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-all shadow-sm ${
               unsubmittedStudents.length > 0
-                ? 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white shadow-amber-500/20 hover:scale-[1.02] cursor-pointer'
-                : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-70'
+                ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-amber-500/20 hover:scale-[1.02] cursor-pointer'
+                : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-75'
             }`}
             title="Kirim pengingat pengajuan judul serentak ke seluruh mahasiswa yang belum mengajukan"
           >
             <BellRing className="w-4 h-4 shrink-0" />
-            <span>Kirim Reminder Pengajuan Serentak</span>
+            <span>Ingatkan Serentak</span>
             {unsubmittedStudents.length > 0 && (
               <span className="px-1.5 py-0.5 text-[10px] font-extrabold bg-amber-800 text-white rounded-full leading-none">
                 {unsubmittedStudents.length}
@@ -664,7 +627,7 @@ export default function ManajemenTAPage() {
               <span>Daftar Mahasiswa &amp; Tugas Akhir D3 Manajemen Informatika</span>
             </h2>
             <p className="text-[11px] text-slate-500 mt-0.5">
-              Menampilkan mahasiswa yang sudah mengusulkan judul maupun yang belum mengajukan. Gunakan tombol reminder serentak di atas untuk mengirim pengingat secara keseluruhan.
+              Menampilkan rekap mahasiswa yang sudah mengusulkan judul maupun yang belum mengajukan Tugas Akhir.
             </p>
           </div>
           <div className="text-xs font-semibold text-slate-600">
@@ -853,15 +816,8 @@ export default function ManajemenTAPage() {
 
                           </div>
                         ) : (
-                          /* Point 23: Mahasiswa yang belum mengajukan tercakup di pengingat serentak */
                           <div className="flex items-center justify-center">
-                            <span 
-                              className="text-[10px] font-semibold text-amber-700 bg-amber-50/80 px-2 py-1 rounded-md border border-amber-200/70 inline-flex items-center space-x-1"
-                              title="Mahasiswa ini tercakup dalam pengingat pengajuan judul serentak melalui tombol di atas"
-                            >
-                              <BellRing className="w-3 h-3 text-amber-600 shrink-0" />
-                              <span>Serentak</span>
-                            </span>
+                            <span className="text-slate-400 font-medium text-xs">-</span>
                           </div>
                         )}
                       </td>
@@ -1153,7 +1109,9 @@ export default function ManajemenTAPage() {
         </div>
       )}
 
-      {/* MODAL REMINDER PENGAJUAN SERENTAK / KESELURUHAN (Point 23) */}
+
+
+      {/* MODAL INGATKAN SERENTAK */}
       {isBroadcastModalOpen && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in" data-lenis-prevent>
           <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-7 shadow-2xl space-y-4 border border-amber-200">
@@ -1164,7 +1122,7 @@ export default function ManajemenTAPage() {
                 <span className="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
                   <BellRing className="w-4 h-4" />
                 </span>
-                <span>Kirim Reminder Pengajuan Judul Serentak</span>
+                <span>Ingatkan Pengajuan Judul Serentak</span>
               </div>
               <button 
                 type="button"
@@ -1184,7 +1142,7 @@ export default function ManajemenTAPage() {
                     Target Penerima Pengingat
                   </span>
                   <span className="px-2 py-0.5 rounded-full bg-amber-600 text-white font-extrabold text-[10px]">
-                    {unsubmittedStudents.length} Mahasiswa
+                    {unsubmittedStudents.length} Mahasiswa Belum Mengajukan
                   </span>
                 </div>
                 <p className="text-amber-900 leading-relaxed text-[11px]">
@@ -1258,7 +1216,7 @@ export default function ManajemenTAPage() {
                 </span>
                 <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200 font-bold">
                   <Check className="w-3 h-3" />
-                  <span>Email Resmi (@student.unsri.ac.id)</span>
+                  <span>Email Mahasiswa (@student.unsri.ac.id)</span>
                 </span>
               </div>
 

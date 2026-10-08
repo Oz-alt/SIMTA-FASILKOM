@@ -294,7 +294,7 @@ export default function DashboardKaprodi() {
     const d2 = titleItem.pembimbing_2_nama || titleItem.pembimbing_2 || 'Dosen Pembimbing 2';
     const similarity = titleItem.skor_kemiripan_terakhir || 0;
 
-    const defaultMsg = `Yth. Bapak/Ibu Dosen Pembimbing, kami menginformasikan dari pemantauan SIMTA Prodi D3 Manajemen Informatika bahwa usulan judul mahasiswa bimbingan Anda (${titleItem.mhs_nama} - NIM ${titleItem.mhs_nim}) saat ini memiliki skor kemiripan ${similarity}% (di atas batas aman ${similarityThreshold}%). Mohon kesediaan Bapak/Ibu untuk memberikan arahan pembimbingan intensif agar mahasiswa dapat merevisi formulasi judul atau studi kasus sehingga siap melangkah ke tahap bimbingan intensif dan pendaftaran Sidang Akhir Tugas Akhir D3.`;
+    const defaultMsg = `Yth. Bapak/Ibu Dosen Pembimbing, kami menginformasikan dari pemantauan SIMTA Prodi D3 Manajemen Informatika bahwa usulan judul mahasiswa bimbingan Anda (${titleItem.mhs_nama} - NIM ${titleItem.mhs_nim}) saat ini memiliki skor kemiripan ${similarity}% (di atas batas aman ${similarityThreshold}%). Mohon kesediaan Bapak/Ibu untuk memberikan arahan agar mahasiswa dapat merevisi formulasi judul atau studi kasus sehingga siap melangkah ke tahap pengerjaan laporan dan pendaftaran Sidang Akhir Tugas Akhir D3.`;
 
     setReminderModal({
       isOpen: true,
@@ -455,33 +455,32 @@ export default function DashboardKaprodi() {
         </div>
       </div>
 
-      {/* Cadence Reminder Quick Callout Banner (Point 15-17) */}
-      <div className="bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 border border-amber-200/90 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-2xs">
+      {/* Cadence Reminder Quick Callout Banner - Otomatis Sistem (Minimal 2x/Bulan) */}
+      <div className="bg-gradient-to-r from-emerald-50/80 via-teal-50/60 to-emerald-50/80 border border-emerald-200/90 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-2xs">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-700 flex items-center justify-center border border-amber-300/50 shrink-0">
-            <Clock className="w-5 h-5 text-amber-600" />
+          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-700 flex items-center justify-center border border-emerald-300/50 shrink-0">
+            <Clock className="w-5 h-5 text-emerald-600" />
           </div>
           <div>
             <div className="text-xs font-bold text-slate-900 flex items-center gap-2">
-              <span>Sistem Pengingat Kepatuhan Bimbingan (Minimal 2x per Bulan)</span>
-              <span className="px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 text-[10px] font-extrabold">
-                Standar Akademik D3 MI
+              <span>Sistem Pengingat Kepatuhan Bimbingan Otomatis (Minimal 2x per Bulan)</span>
+              <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold border border-emerald-200 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                Otomatis oleh Sistem
               </span>
             </div>
             <p className="text-[11px] text-slate-600 mt-0.5">
-              Pantau mahasiswa yang terhenti bimbingan, kirim pengingat resmi melalui Gmail ke mahasiswa &amp; dosen pembimbing, serta cetak riwayat sebagai bukti proses sah monitoring Prodi.
+              Sistem SIMTA secara otomatis mengevaluasi dan mengirimkan notifikasi pengingat kepada mahasiswa dan dosen pembimbing apabila belum melaksanakan bimbingan minimal 2 kali dalam 1 bulan.
             </p>
           </div>
         </div>
 
-        <Link
-          href="/kaprodi/reminders"
-          className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors shrink-0"
-        >
-          <Bell className="w-3.5 h-3.5" />
-          <span>Kelola Reminder Pembimbingan</span>
-          <ArrowRight className="w-3.5 h-3.5" />
-        </Link>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-emerald-200 text-emerald-800 rounded-xl text-xs font-bold shadow-2xs">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Auto-Reminder Aktif</span>
+          </span>
+        </div>
       </div>
 
       {/* KPI Overview Cards - Dynamic based on Threshold */}
@@ -995,7 +994,7 @@ export default function DashboardKaprodi() {
             </h3>
             
             <p className="text-xs text-slate-500 max-w-3xl leading-relaxed">
-              Fokus sistem diselaraskan dengan kurikulum D3: Mahasiswa yang usulan judulnya telah disetujui langsung menjalani proses pembimbingan intensif menuju <strong>Sidang Akhir Tugas Akhir D3</strong> dan penetapan status <strong>Kelulusan</strong> (tanpa tahapan Seminar Proposal / Seminar Hasil yang terpisah).
+              Fokus sistem diselaraskan dengan kurikulum D3: Mahasiswa yang usulan judulnya telah disetujui langsung menjalani proses pengerjaan laporan menuju <strong>Sidang Akhir Tugas Akhir D3</strong> dan penetapan status <strong>Kelulusan</strong> (tanpa tahapan Seminar Proposal / Seminar Hasil yang terpisah).
             </p>
           </div>
 

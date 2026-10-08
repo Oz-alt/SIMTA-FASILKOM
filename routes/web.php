@@ -25,12 +25,6 @@ Route::get('/profile', function () {
     return Inertia::render('ProfilePage');
 });
 
-Route::get('/verify/bimbingan/{nim}', function ($nim) {
-    return Inertia::render('VerifyBimbinganPage', [
-        'nim' => $nim,
-    ]);
-});
-
 // ============================================================
 // MAHASISWA ROUTES
 // ============================================================
@@ -48,11 +42,11 @@ Route::get('/thesis/status', function () {
 });
 
 Route::get('/thesis/consultations', function () {
-    return Inertia::render('mahasiswa/BimbinganTAPage');
+    return redirect('/dashboard');
 });
 
 Route::get('/thesis/consultations/card', function () {
-    return Inertia::render('mahasiswa/KartuBimbinganPage');
+    return redirect('/dashboard');
 });
 
 Route::get('/thesis/archive', function () {
@@ -89,6 +83,12 @@ Route::get('/kaprodi/titles', function () {
     return Inertia::render('kaprodi/TinjauJudulPage');
 });
 
+Route::get('/kaprodi/titles/{id}', function ($id) {
+    return Inertia::render('kaprodi/DetailTinjauJudulPage', [
+        'titleId' => $id,
+    ]);
+});
+
 Route::get('/kaprodi/thesis-management', function () {
     return Inertia::render('kaprodi/ManajemenTAPage');
 });
@@ -106,11 +106,11 @@ Route::get('/kaprodi/defense-schedules', function () {
 });
 
 Route::get('/kaprodi/reminders', function () {
-    return Inertia::render('kaprodi/ReminderPembimbinganPage');
+    return redirect('/kaprodi/dashboard');
 });
 
 Route::get('/kaprodi/reminder-pembimbingan', function () {
-    return Inertia::render('kaprodi/ReminderPembimbinganPage');
+    return redirect('/kaprodi/dashboard');
 });
 
 Route::get('/kaprodi/repository/review', function () {
@@ -206,7 +206,7 @@ Route::get('/dosen/dashboard', function () {
 });
 
 Route::get('/dosen/bimbingan', function () {
-    return Inertia::render('dosen/BimbinganPage');
+    return redirect('/dosen/dashboard');
 });
 
 Route::get('/dosen/jadwal-sidang', function () {
@@ -222,9 +222,7 @@ Route::get('/dosen/validasi-judul', function () {
 // ============================================================
 
 Route::get('/verify/bimbingan/{nim}', function ($nim) {
-    return Inertia::render('VerifyBimbinganPage', [
-        'nim' => $nim,
-    ]);
+    return redirect('/');
 });
 
 // ============================================================

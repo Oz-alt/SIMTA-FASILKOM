@@ -1952,16 +1952,16 @@ export function AuthProvider({ children }) {
       isi_pesan: defaultMessage,
       status_pengiriman: 'terkirim',
       channel: 'Gmail & Notifikasi SIMTA',
-      pengirim_nama: currentUser?.nama || 'Dr. Abdiansah, S.Kom., M.Cs.',
-      pengirim_role: 'Ketua Program Studi D3 Manajemen Informatika'
+      pengirim_nama: 'Sistem Otomatis SIMTA (Auto-Scheduler)',
+      pengirim_role: 'Engine Pengingat Otomatis Sistem Prodi D3 MI'
     };
 
     setBimbinganReminderLogs(prev => [logEntry, ...prev]);
     return logEntry;
   };
 
-  // Batch pengiriman ke semua mahasiswa yang terlambat / butuh bimbingan
-  const sendBatchBimbinganCadenceReminders = (target = 'both') => {
+  // Evaluasi dan pengiriman otomatis langsung oleh sistem ke semua mahasiswa yang terdeteksi terlambat
+  const triggerSystemAutoReminders = (target = 'both') => {
     const sentLogs = [];
     thesisTitles.forEach(t => {
       const rem = calculateBimbinganReminder(consultations, t.mhs_nim, 2);
@@ -1975,6 +1975,37 @@ export function AuthProvider({ children }) {
     });
     return sentLogs;
   };
+
+  const sendBatchBimbinganCadenceReminders = triggerSystemAutoReminders;
+
+  // ── Auto-Engine: Sistem Otomatis Mengirimkan Pengingat jika Belum Bimbingan 2x dalam 1 Bulan ──
+  useEffect(() => {
+    if (!thesisTitles || thesisTitles.length === 0 || !consultations) return;
+
+    thesisTitles.forEach(t => {
+      const isActiveThesis = t.status === 'disetujui' || t.status === 'judul_fix';
+      if (!isActiveThesis) return;
+
+      const rem = calculateBimbinganReminder(consultations, t.mhs_nim, 2);
+      if (rem.isReminderActive && (rem.severity === 'critical' || rem.severity === 'warning' || rem.severity === 'empty')) {
+        const key = `simta_auto_rem_sent_${t.mhs_nim}`;
+        const lastSentStr = typeof window !== 'undefined' ? localStorage.getItem(key) : null;
+        const lastSent = lastSentStr ? Number(lastSentStr) : 0;
+        const now = Date.now();
+        const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+
+        if (now - lastSent > SEVEN_DAYS) {
+          try {
+            if (typeof window !== 'undefined') localStorage.setItem(key, String(now));
+          } catch {}
+          sendBimbinganCadenceReminder({
+            studentNim: t.mhs_nim,
+            target: 'both'
+          });
+        }
+      }
+    });
+  }, [thesisTitles?.length, consultations?.length]);
 
   // ── Dispatcher Pengingat Pengajuan Judul Serentak ke Mahasiswa yang Belum Mengajukan (Point 23) ──
   const sendBroadcastSubmissionReminder = ({
@@ -3219,6 +3250,7 @@ export function AuthProvider({ children }) {
       bimbinganReminderLogs,
       sendBimbinganCadenceReminder,
       sendBatchBimbinganCadenceReminders,
+      triggerSystemAutoReminders,
       submissionBroadcastLogs,
       sendBroadcastSubmissionReminder
     }}>
