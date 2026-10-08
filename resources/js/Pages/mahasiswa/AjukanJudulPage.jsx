@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { router } from '@inertiajs/react';
 import SimilarityGauge from '../../Components/common/SimilarityGauge.jsx';
 import { checkClientSimilarity } from '../../lib/similarityEngine.js';
 import { preProcessTitle, getSimilarityThreshold } from '@backend/services/titleService.js';
-import { FileText, Send, AlertTriangle, ShieldCheck, Info, CheckCircle2 } from 'lucide-react';
+import { FileText, Send, AlertTriangle, ShieldCheck, Info, CheckCircle2, Search, RefreshCw } from 'lucide-react';
 
 import { supabase, isSupabaseConfigured } from '../../services/supabase.js';
 
@@ -13,32 +13,103 @@ export default function AjukanJudulPage() {
   const navigate = (url) => router.visit(url);
 
   const [judul, setJudul] = useState('');
-  const [deskripsi, setDeskripsi] = useState('');
+  const [abstrak, setAbstrak] = useState('');
   const [pembimbing1Nip, setPembimbing1Nip] = useState('');
   const [pembimbing2Nip, setPembimbing2Nip] = useState('');
   const [similarityResult, setSimilarityResult] = useState({ highestScore: 0, processedInput: '', matches: [] });
   const [isChecking, setIsChecking] = useState(false);
+  const [hasChecked, setHasChecked] = useState(false);
   const [showWarningModal, setShowWarningModal] = useState(false);
+
+  // Auto-resize ref for judul textarea
+  const judulRef = useRef(null);
+
+  useEffect(() => {
+    if (judulRef.current) {
+      judulRef.current.style.height = 'auto';
+      judulRef.current.style.height = `${Math.max(75, judulRef.current.scrollHeight)}px`;
+    }
+  }, [judul]);
 
   // Combine database titles for similarity engine fallback
   const allDbTitles = [...thesisTitles, ...historicalTitles];
 
-  // Live Similarity Check debounce effect (Calls real Supabase RPC if configured)
-  useEffect(() => {
+  // Explicit Similarity Check triggered by button click
+  const handleCheckSimilarity = async () => {
     if (!judul || judul.trim().length < 5) {
-      setSimilarityResult({ highestScore: 0, processedInput: '', matches: [] });
+      alert('Silakan masukkan judul tugas akhir minimal 5 karakter terlebih dahulu.');
       return;
     }
 
     setIsChecking(true);
-    const timer = setTimeout(async () => {
-      // 1. Call real Supabase RPC check_title_similarity function
+
+    // 1. Call real Supabase RPC check_title_similarity function if configured
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data, error } = await supabase.rpc('check_title_similarity', {
+          input_title: judul.trim()
+        });
+
+        if (!error && data) {
+          const matches = data.map(item => ({
+            judul: item.matched_title,
+            penulis: item.source_type === 'thesis_titles' ? 'Mahasiswa Aktif' : 'Arsip Alumni',
+            tahun: '2025',
+            skor_fts: item.skor_fts || 0,
+            skor_trigram: item.skor_trigram || 0,
+            skor_gabungan: item.skor_gabungan || 0
+          }));
+
+          const highest = matches.length > 0 ? Math.max(...matches.map(m => m.skor_gabungan)) : 0;
+          const processedText = preProcessTitle(judul);
+
+          setSimilarityResult({
+            highestScore: highest,
+            processedInput: processedText,
+            matches: matches
+          });
+          setHasChecked(true);
+          setIsChecking(false);
+          return;
+        }
+      } catch (err) {
+        console.error('Supabase RPC similarity check error:', err);
+      }
+    }
+
+    // 2. Fallback to client similarity engine
+    const result = checkClientSimilarity(judul, allDbTitles);
+    setSimilarityResult(result);
+    setHasChecked(true);
+    setIsChecking(false);
+  };
+
+  const threshold = getSimilarityThreshold(similarityResult.highestScore);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!judul || !judul.trim()) {
+      alert('Judul Tugas Akhir wajib diisi.');
+      return;
+    }
+
+    if (!abstrak || !abstrak.trim()) {
+      alert('Abstrak Tugas Akhir wajib diisi.');
+      return;
+    }
+
+    let currentScore = similarityResult.highestScore;
+
+    // If user filled in title but hasn't clicked check yet, run check first
+    if (judul && judul.trim().length >= 5 && !hasChecked) {
+      setIsChecking(true);
+      let res;
       if (isSupabaseConfigured && supabase) {
         try {
           const { data, error } = await supabase.rpc('check_title_similarity', {
             input_title: judul.trim()
           });
-
           if (!error && data) {
             const matches = data.map(item => ({
               judul: item.matched_title,
@@ -48,45 +119,41 @@ export default function AjukanJudulPage() {
               skor_trigram: item.skor_trigram || 0,
               skor_gabungan: item.skor_gabungan || 0
             }));
-
             const highest = matches.length > 0 ? Math.max(...matches.map(m => m.skor_gabungan)) : 0;
-            const processedText = preProcessTitle(judul);
-
-            setSimilarityResult({
-              highestScore: highest,
-              processedInput: processedText,
-              matches: matches
-            });
-            setIsChecking(false);
-            return;
+            res = { highestScore: highest, processedInput: preProcessTitle(judul), matches };
           }
         } catch (err) {
-          console.error('Supabase RPC similarity check error:', err);
+          console.error(err);
         }
       }
-
-      // 2. Fallback to client similarity engine
-      const result = checkClientSimilarity(judul, allDbTitles);
-      setSimilarityResult(result);
+      if (!res) {
+        res = checkClientSimilarity(judul, allDbTitles);
+      }
+      setSimilarityResult(res);
+      setHasChecked(true);
       setIsChecking(false);
-    }, 400);
+      currentScore = res.highestScore;
 
-    return () => clearTimeout(timer);
-  }, [judul, thesisTitles, historicalTitles]);
+      const checkThreshold = getSimilarityThreshold(currentScore);
+      if (!checkThreshold.allowSubmit) {
+        alert('Pengajuan terkunci karena skor kemiripan melebihi 70%. Silakan revisi judul Anda terlebih dahulu.');
+        return;
+      }
 
-  const threshold = getSimilarityThreshold(similarityResult.highestScore);
+      if (checkThreshold.status === 'peringatan' && !showWarningModal) {
+        setShowWarningModal(true);
+        return;
+      }
+    } else if (hasChecked) {
+      if (!threshold.allowSubmit) {
+        alert('Pengajuan terkunci karena skor kemiripan melebihi 70%. Silakan revisi judul Anda terlebih dahulu.');
+        return;
+      }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    if (!threshold.allowSubmit) {
-      alert('Pengajuan terkunci karena skor kemiripan melebihi 70%. Silakan revisi judul Anda terlebih dahulu.');
-      return;
-    }
-
-    if (threshold.status === 'peringatan' && !showWarningModal) {
-      setShowWarningModal(true);
-      return;
+      if (threshold.status === 'peringatan' && !showWarningModal) {
+        setShowWarningModal(true);
+        return;
+      }
     }
 
     const processedText = preProcessTitle(judul);
@@ -103,8 +170,8 @@ export default function AjukanJudulPage() {
           mhs_kelas: currentUser?.kelas || 'MI 5A',
           judul: judul.trim(),
           judul_processed: processedText,
-          abstrak: deskripsi.trim(),
-          skor_similarity: similarityResult.highestScore,
+          abstrak: abstrak.trim(),
+          skor_similarity: currentScore,
           pembimbing_1_nip: pembimbing1Nip,
           pembimbing_1_nama: selectedDospem1?.nama || '',
           pembimbing_2_nip: pembimbing2Nip,
@@ -117,10 +184,11 @@ export default function AjukanJudulPage() {
     }
 
     addThesisTitle({
-      judul,
-      deskripsi,
+      judul: judul.trim(),
+      abstrak: abstrak.trim(),
+      deskripsi: abstrak.trim(),
       judul_processed: processedText,
-      skor_kemiripan_terakhir: similarityResult.highestScore,
+      skor_kemiripan_terakhir: currentScore,
       pembimbing_1_nip: pembimbing1Nip,
       pembimbing_1_nama: selectedDospem1?.nama || '',
       pembimbing_2_nip: pembimbing2Nip,
@@ -140,7 +208,7 @@ export default function AjukanJudulPage() {
           <span>Pengajuan Tugas Akhir & Dosen Pembimbing</span>
         </h1>
         <p className="text-xs text-slate-500 mt-1">
-          Sistem akan memeriksa kemiripan judul Anda secara otomatis terhadap arsip historis D3 MI UNSRI.
+          Sistem akan memeriksa kemiripan judul Anda terhadap arsip historis D3 MI UNSRI melalui tombol Cek Similarity.
         </p>
       </div>
 
@@ -161,32 +229,45 @@ export default function AjukanJudulPage() {
             {/* Title Input */}
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                Judul Tugas Akhir <span className="text-slate-400 font-normal">(Opsional)</span>
+                Judul Tugas Akhir <span className="text-red-500 font-bold">*</span>
               </label>
               <textarea
+                ref={judulRef}
                 rows={3}
+                required
                 value={judul}
-                onChange={(e) => setJudul(e.target.value)}
+                onChange={(e) => {
+                  setJudul(e.target.value);
+                  if (hasChecked) {
+                    setHasChecked(false);
+                  }
+                }}
                 placeholder="Contoh: Rancang Bangun Sistem Informasi Manajemen Penjualan Alat Kesehatan Berbasis Web..."
-                className="w-full text-xs p-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 leading-relaxed font-medium"
+                className="w-full text-xs p-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 leading-relaxed font-medium overflow-hidden resize-none transition-[height] duration-75 min-h-[75px]"
               />
               <p className="text-[10px] text-slate-400 mt-1">
-                Pre-processing otomatis akan menghapus kata umum (stop-words) dan memeriksa kemiripan jika judul diisi.
+                Pre-processing otomatis akan menghapus kata umum (stop-words) dan memeriksa kemiripan saat tombol Cek Similarity diklik.
               </p>
             </div>
 
-            {/* Abstract / Description */}
+            {/* Abstrak Input */}
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                Deskripsi / Ringkasan Topik <span className="text-slate-400 font-normal">(Opsional)</span>
+                Abstrak <span className="text-red-500 font-bold">*</span>
               </label>
               <textarea
-                rows={4}
-                value={deskripsi}
-                onChange={(e) => setDeskripsi(e.target.value)}
-                placeholder="Jelaskan secara singkat latar belakang, masalah, dan metode yang digunakan dalam TA ini..."
-                className="w-full text-xs p-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 leading-relaxed"
+                rows={6}
+                required
+                data-lenis-prevent
+                value={abstrak}
+                onChange={(e) => setAbstrak(e.target.value)}
+                onWheel={(e) => e.stopPropagation()}
+                placeholder="Masukkan ringkasan abstrak penelitian tugas akhir (latar belakang, rumusan masalah, metode, dan tujuan penelitian)..."
+                className="w-full text-xs p-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 leading-relaxed overflow-y-auto overscroll-contain no-scrollbar h-36 max-h-56 resize-none"
               />
+              <p className="text-[10px] text-slate-400 mt-1">
+                Wajib diisi secara lengkap sebagai ringkasan substansi topik tugas akhir.
+              </p>
             </div>
 
             {/* Usulan Dosen Pembimbing */}
@@ -259,9 +340,9 @@ export default function AjukanJudulPage() {
             <div className="pt-2">
               <button
                 type="submit"
-                disabled={!threshold.allowSubmit}
+                disabled={!judul.trim() || !abstrak.trim() || (hasChecked && !threshold.allowSubmit)}
                 className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold text-white transition-all flex items-center justify-center space-x-2 cursor-pointer ${
-                  !threshold.allowSubmit
+                  !judul.trim() || !abstrak.trim() || (hasChecked && !threshold.allowSubmit)
                     ? 'bg-slate-300 cursor-not-allowed'
                     : 'bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-500/20'
                 }`}
@@ -274,13 +355,39 @@ export default function AjukanJudulPage() {
           </form>
         </div>
 
-        {/* Right: Similarity Engine Live Feedback */}
+        {/* Right: Similarity Engine Feedback */}
         <div className="lg:col-span-5 space-y-4">
           
-          <SimilarityGauge score={similarityResult.highestScore} isChecking={isChecking} />
+          <div className="space-y-3">
+            <SimilarityGauge 
+              score={similarityResult.highestScore} 
+              isChecking={isChecking} 
+              hasChecked={hasChecked}
+            />
+
+            {/* Tombol Cek Similarity Dibawah Persentase */}
+            <button
+              type="button"
+              onClick={handleCheckSimilarity}
+              disabled={isChecking || !judul || judul.trim().length < 5}
+              className="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] disabled:bg-slate-300 disabled:cursor-not-allowed transition-all flex items-center justify-center space-x-2 shadow-md shadow-indigo-500/20 cursor-pointer"
+            >
+              {isChecking ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span>Sedang Memeriksa Kemiripan...</span>
+                </>
+              ) : (
+                <>
+                  <Search className="w-4 h-4" />
+                  <span>{hasChecked ? 'Cek Ulang Similarity' : 'Cek Similarity'}</span>
+                </>
+              )}
+            </button>
+          </div>
 
           {/* Text Pre-processing Token Breakdown */}
-          {similarityResult.processedInput && (
+          {hasChecked && similarityResult.processedInput && (
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-xs">
               <span className="font-bold text-slate-700 block mb-1">Hasil Pre-processing (Token Inti):</span>
               <div className="flex flex-wrap gap-1.5 mt-1">
@@ -296,10 +403,14 @@ export default function AjukanJudulPage() {
           {/* Matched Titles List */}
           <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs space-y-3">
             <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-              Daftar Judul Pembanding Mirip ({similarityResult.matches.length})
+              Daftar Judul Pembanding Mirip {hasChecked ? `(${similarityResult.matches.length})` : ''}
             </h4>
 
-            {similarityResult.matches.length === 0 ? (
+            {!hasChecked ? (
+              <div className="text-center py-6 text-xs text-slate-400">
+                Klik tombol <strong>"Cek Similarity"</strong> untuk melihat perbandingan kemiripan dengan arsip judul.
+              </div>
+            ) : similarityResult.matches.length === 0 ? (
               <div className="text-center py-6 text-xs text-slate-400">
                 Tidak ada judul historis yang mirip.
               </div>

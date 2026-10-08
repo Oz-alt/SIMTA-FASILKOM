@@ -11,6 +11,7 @@ import {
   AlertCircle, 
   MessageSquare, 
   ArrowRight, 
+  ArrowLeft,
   UserCheck, 
   ShieldCheck, 
   FileText, 
@@ -20,15 +21,22 @@ import {
   Send,
   X,
   Sparkles,
-  TrendingDown
+  TrendingDown,
+  Search,
+  RefreshCw,
+  Trash2,
+  AlertTriangle,
+  ChevronRight
 } from 'lucide-react';
+import { supabase, isSupabaseConfigured } from '../../services/supabase.js';
 
 export default function StatusJudulPage() {
   const { 
     currentUser, 
     thesisTitles, 
     historicalTitles, 
-    reviseThesisTitle 
+    reviseThesisTitle,
+    cancelThesisTitle
   } = useAuth();
 
   const myTitles = thesisTitles.filter(t => 
@@ -37,18 +45,49 @@ export default function StatusJudulPage() {
     t.mhs_nama === currentUser?.nama
   );
 
+  // Selected Detail Page State (Read from query param or internal state)
+  const [selectedId, setSelectedId] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('id') || null;
+    }
+    return null;
+  });
+
+  const selectedTitle = myTitles.find(t => t.id === selectedId);
+
   // Revision Modal State
   const [revisionModalTitle, setRevisionModalTitle] = useState(null);
+  const [cancelModalTitle, setCancelModalTitle] = useState(null);
   const [newJudul, setNewJudul] = useState('');
   const [newDeskripsi, setNewDeskripsi] = useState('');
   const [catatanKonsultasi, setCatatanKonsultasi] = useState('');
   const [simScore, setSimScore] = useState(0);
   const [isCheckingSim, setIsCheckingSim] = useState(false);
+  const [hasCheckedSim, setHasCheckedSim] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
   const showToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(''), 4000);
+  };
+
+  const handleOpenDetail = (id) => {
+    setSelectedId(id);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location);
+      url.searchParams.set('id', id);
+      window.history.pushState({}, '', url);
+    }
+  };
+
+  const handleBackToList = () => {
+    setSelectedId(null);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location);
+      url.searchParams.delete('id');
+      window.history.pushState({}, '', url);
+    }
   };
 
   // Open Revision Modal
@@ -57,28 +96,47 @@ export default function StatusJudulPage() {
     setNewJudul(titleObj.judul || '');
     setNewDeskripsi(titleObj.deskripsi || '');
     setCatatanKonsultasi('');
-    setSimScore(titleObj.skor_kemiripan_terakhir || 0);
+    setSimScore(0);
+    setHasCheckedSim(false);
   };
 
-  // Live Similarity Check for revision input
   const allDbTitles = [...thesisTitles, ...historicalTitles];
-  useEffect(() => {
+
+  // Manual Scan Similarity Check for revision input
+  const handleScanSimilarityRevision = async () => {
     if (!newJudul || newJudul.trim().length < 5) {
-      setSimScore(0);
+      showToast('Harap masukkan judul baru minimal 5 karakter terlebih dahulu.');
       return;
     }
 
     setIsCheckingSim(true);
-    const timer = setTimeout(() => {
-      // Exclude current title from check to avoid self-match 100%
-      const otherTitles = allDbTitles.filter(t => t.id !== revisionModalTitle?.id);
-      const res = checkClientSimilarity(newJudul, otherTitles);
-      setSimScore(res.highestScore || 0);
-      setIsCheckingSim(false);
-    }, 350);
 
-    return () => clearTimeout(timer);
-  }, [newJudul, revisionModalTitle]);
+    // 1. Supabase RPC check if available
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data, error } = await supabase.rpc('check_title_similarity', {
+          input_title: newJudul.trim()
+        });
+        if (!error && data) {
+          const otherMatches = data.filter(item => item.matched_title.toLowerCase().trim() !== (revisionModalTitle?.judul || '').toLowerCase().trim());
+          const highest = otherMatches.length > 0 ? Math.max(...otherMatches.map(m => m.skor_gabungan || 0)) : 0;
+          setSimScore(highest);
+          setHasCheckedSim(true);
+          setIsCheckingSim(false);
+          return;
+        }
+      } catch (err) {
+        console.error('Supabase RPC similarity check error:', err);
+      }
+    }
+
+    // 2. Client similarity fallback (exclude current title being revised)
+    const otherTitles = allDbTitles.filter(t => t.id !== revisionModalTitle?.id);
+    const res = checkClientSimilarity(newJudul, otherTitles);
+    setSimScore(res.highestScore || 0);
+    setHasCheckedSim(true);
+    setIsCheckingSim(false);
+  };
 
   // Handle submit revision
   const handleSaveRevision = (e) => {
@@ -89,11 +147,18 @@ export default function StatusJudulPage() {
       return;
     }
 
+    let finalSimScore = simScore;
+    if (!hasCheckedSim) {
+      const otherTitles = allDbTitles.filter(t => t.id !== revisionModalTitle?.id);
+      const res = checkClientSimilarity(newJudul, otherTitles);
+      finalSimScore = res.highestScore || 0;
+    }
+
     reviseThesisTitle(
       revisionModalTitle.id,
       newJudul.trim(),
       newDeskripsi.trim(),
-      simScore,
+      finalSimScore,
       catatanKonsultasi.trim() || 'Judul direvisi mahasiswa setelah konsultasi bersama dosen pembimbing.'
     );
 
@@ -129,79 +194,100 @@ export default function StatusJudulPage() {
         </div>
       )}
 
-      {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold text-slate-900 flex items-center space-x-2">
-          <Clock className="w-5 h-5 text-indigo-600" />
-          <span>Status &amp; Alur Peninjauan Judul TA</span>
-        </h1>
-        <p className="text-xs text-slate-500 mt-1">
-          Pengajuan judul otomatis masuk tahap peninjauan Prodi. Jika terdapat catatan rapat, lakukan revisi bersama dosen pembimbing sampai judul berstatus fix.
-        </p>
-      </div>
-
-      <div className="space-y-5">
-        {myTitles.length === 0 ? (
-          <div className="bg-white border border-slate-200 rounded-2xl p-10 text-center text-xs text-slate-400 space-y-4 shadow-xs">
-            <div className="w-12 h-12 rounded-full bg-indigo-50 text-indigo-500 flex items-center justify-center mx-auto">
-              <FileText className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="font-bold text-slate-700 text-sm">
-                Belum Ada Pengajuan Judul Tugas Akhir
-              </p>
-              <p className="text-slate-500 mt-1">
-                Silakan buat pengajuan judul baru. Pengajuan akan otomatis masuk ke tahap peninjauan rapat Prodi.
-              </p>
-            </div>
-            <Link 
-              href="/thesis/submit" 
-              className="inline-flex items-center space-x-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-xs transition-all"
+      {/* VIEW 1: DEDICATED DETAIL PAGE (Saat Card Di-klik) */}
+      {selectedTitle ? (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          
+          {/* Top Back Navigation */}
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              onClick={handleBackToList}
+              className="inline-flex items-center space-x-2 text-xs font-bold text-slate-700 hover:text-indigo-600 bg-white border border-slate-200 hover:border-indigo-200 px-4 py-2 rounded-xl shadow-2xs transition-all cursor-pointer group"
             >
-              <span>Ajukan Judul Sekarang</span>
-              <ArrowRight className="w-4 h-4" />
-            </Link>
+              <ArrowLeft className="w-4 h-4 text-slate-500 group-hover:text-indigo-600 group-hover:-translate-x-0.5 transition-all" />
+              <span>Kembali ke Daftar Pengajuan</span>
+            </button>
+            <span className="text-xs text-slate-400 font-mono">
+              ID: {selectedTitle.id}
+            </span>
           </div>
-        ) : (
-          myTitles.map(t => {
+
+          {/* Header Detail */}
+          <div>
+            <h1 className="text-xl font-bold text-slate-900 flex items-center space-x-2">
+              <FileText className="w-5 h-5 text-indigo-600" />
+              <span>Detail Pengajuan Tugas Akhir</span>
+            </h1>
+            <p className="text-xs text-slate-500 mt-1">
+              Rincian data pengajuan tugas akhir, catatan pembahasan rapat prodi, dan log revisi.
+            </p>
+          </div>
+
+          {/* Full Detail Sheet Container */}
+          {(() => {
+            const t = selectedTitle;
             const isFix = t.status === 'disetujui' || t.status === 'judul_fix';
             const isRevisi = t.status === 'perlu_revisi';
             const isTinjauan = t.status === 'tinjauan' || t.status === 'diajukan';
 
             return (
-              <div key={t.id} className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-5">
+              <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 shadow-xs space-y-6">
                 
                 {/* Header Card */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
                   <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">ID Pengajuan: {t.id}</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      ID Pengajuan: {t.id}
+                    </span>
                     <div className="text-xs text-slate-500 mt-0.5">
                       Diajukan pada: {formatDate(t.created_at)}
                     </div>
                   </div>
-                  <StatusBadge type="thesis" status={t.status} className="self-start sm:self-auto" />
+                  <div className="flex items-center space-x-2.5 self-start sm:self-auto">
+                    <StatusBadge type="thesis" status={t.status} />
+                    {!isFix && (
+                      <button
+                        type="button"
+                        onClick={() => setCancelModalTitle(t)}
+                        className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 hover:text-rose-800 border border-rose-200 text-xs font-bold rounded-xl transition-all inline-flex items-center space-x-1.5 shadow-2xs cursor-pointer"
+                        title="Batalkan pengajuan tugas akhir ini"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Batalkan Pengajuan</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
 
-                {/* Judul & Deskripsi */}
-                <div>
-                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                    Judul Tugas Akhir:
-                  </span>
-                  <h3 className="text-base font-bold text-slate-900 leading-snug">
-                    "{t.judul}"
-                  </h3>
-                  {t.deskripsi && (
-                    <p className="text-xs text-slate-600 mt-2 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100">
-                      {t.deskripsi}
-                    </p>
+                {/* Judul & Abstrak */}
+                <div className="space-y-3">
+                  <div>
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                      Judul Tugas Akhir:
+                    </span>
+                    <h3 className="text-base sm:text-lg font-bold text-slate-900 leading-snug">
+                      "{t.judul}"
+                    </h3>
+                  </div>
+
+                  {(t.abstrak || t.deskripsi) && (
+                    <div>
+                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                        Abstrak / Deskripsi Topik:
+                      </span>
+                      <p className="text-xs text-slate-700 leading-relaxed bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                        {t.abstrak || t.deskripsi}
+                      </p>
+                    </div>
                   )}
                 </div>
 
                 {/* Similarity Score Badge */}
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between text-xs gap-2">
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between text-xs gap-2">
                   <div className="flex items-center space-x-2">
                     <span className="font-semibold text-slate-600">Skor Kemiripan (Similarity Engine):</span>
-                    <span className={`font-mono font-bold px-2 py-0.5 rounded-md border text-xs ${
+                    <span className={`font-mono font-bold px-2.5 py-0.5 rounded-lg border text-xs ${
                       t.skor_kemiripan_terakhir > 40
                         ? 'bg-amber-50 text-amber-800 border-amber-300'
                         : 'bg-emerald-50 text-emerald-700 border-emerald-200'
@@ -226,7 +312,7 @@ export default function StatusJudulPage() {
                       </span>
                     </div>
 
-                    <p className="text-xs text-amber-900 font-semibold bg-white p-3 rounded-xl border border-amber-200/80 leading-relaxed italic">
+                    <p className="text-xs text-amber-900 font-semibold bg-white p-3.5 rounded-xl border border-amber-200/80 leading-relaxed italic">
                       "{t.catatan_kaprodi || 'Similarity terdeteksi cukup tinggi atau topik perlu disesuaikan. Silakan konsultasikan perubahan judul dengan dosen pembimbing.'}"
                     </p>
 
@@ -249,13 +335,13 @@ export default function StatusJudulPage() {
 
                 {/* 2. Status DALAM TINJAUAN */}
                 {isTinjauan && (
-                  <div className="bg-yellow-50/70 border border-yellow-200 rounded-2xl p-4 space-y-2">
+                  <div className="bg-yellow-50/70 border border-yellow-200 rounded-2xl p-4.5 space-y-2">
                     <div className="flex items-center justify-between text-xs">
                       <div className="flex items-center space-x-2 text-yellow-900 font-bold">
                         <Clock className="w-4 h-4 text-yellow-600 shrink-0" />
                         <span>Pengajuan Otomatis Sedang Dalam Tahap Peninjauan Prodi</span>
                       </div>
-                      <span className="text-[10px] font-semibold text-yellow-800 bg-yellow-100 px-2 py-0.5 rounded-full">
+                      <span className="text-[10px] font-semibold text-yellow-800 bg-yellow-100 px-2.5 py-0.5 rounded-full">
                         Menunggu Hasil Rapat
                       </span>
                     </div>
@@ -305,14 +391,14 @@ export default function StatusJudulPage() {
                 )}
 
                 {/* Dosen Pembimbing Details */}
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs space-y-2">
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4.5 text-xs space-y-2">
                   <span className="font-bold text-slate-800 flex items-center space-x-1.5">
                     <Users className="w-4 h-4 text-indigo-600" />
                     <span>{isFix ? 'Dosen Pembimbing Resmi (Definitif):' : 'Dosen Pembimbing yang Diajukan:'}</span>
                   </span>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-700 pt-1">
-                    <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-slate-700 pt-1">
+                    <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs">
                       <span className="text-[10px] font-bold text-slate-400 block">PEMBIMBING 1:</span>
                       <span className="font-bold text-slate-800 text-xs">
                         {t.pembimbing_1_nama || t.pembimbing_1 || 'Belum Ditentukan'}
@@ -321,7 +407,7 @@ export default function StatusJudulPage() {
                         <span className="text-[10px] text-slate-400 font-mono block">NIP. {t.pembimbing_1_nip}</span>
                       )}
                     </div>
-                    <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                    <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs">
                       <span className="text-[10px] font-bold text-slate-400 block">PEMBIMBING 2:</span>
                       <span className="font-bold text-slate-800 text-xs">
                         {t.pembimbing_2_nama || t.pembimbing_2 || 'Belum Ditentukan'}
@@ -334,7 +420,7 @@ export default function StatusJudulPage() {
                 </div>
 
                 {/* SECTION RIWAYAT REVISI LENGKAP BERDASARKAN TANGGAL */}
-                <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50/50 space-y-3">
+                <div className="border border-slate-200 rounded-2xl p-4.5 bg-slate-50/50 space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-slate-900 flex items-center space-x-2">
                       <History className="w-4 h-4 text-indigo-600" />
@@ -345,9 +431,9 @@ export default function StatusJudulPage() {
                     </span>
                   </div>
 
-                  <div className="space-y-2">
+                  <div className="space-y-2.5">
                     {(!t.riwayat_revisi || t.riwayat_revisi.length === 0) ? (
-                      <div className="p-3 bg-white rounded-xl border border-slate-200 text-xs text-slate-500 italic">
+                      <div className="p-3.5 bg-white rounded-xl border border-slate-200 text-xs text-slate-500 italic">
                         Pengajuan baru dilakukan. Belum ada catatan revisi lanjutan.
                       </div>
                     ) : (
@@ -359,7 +445,7 @@ export default function StatusJudulPage() {
                         return (
                           <div 
                             key={rev.id || index}
-                            className={`p-3 rounded-xl border text-xs space-y-1.5 transition-all ${
+                            className={`p-3.5 rounded-xl border text-xs space-y-1.5 transition-all ${
                               isFixLog 
                                 ? 'bg-emerald-50/70 border-emerald-200 text-emerald-900' 
                                 : isProdiNote
@@ -391,7 +477,7 @@ export default function StatusJudulPage() {
                               "{rev.catatan}"
                             </p>
 
-                            <div className="flex items-center justify-between pt-1 border-t border-slate-200/50 text-[10px] text-slate-500">
+                            <div className="flex items-center justify-between pt-1.5 border-t border-slate-200/50 text-[10px] text-slate-500">
                               <span>Oleh: <strong>{rev.oleh || 'Sistem'}</strong></span>
                               {rev.skor_similarity !== undefined && (
                                 <span className="font-mono">Similarity: {rev.skor_similarity}%</span>
@@ -406,9 +492,130 @@ export default function StatusJudulPage() {
 
               </div>
             );
-          })
-        )}
-      </div>
+          })()}
+
+        </div>
+      ) : (
+        /* VIEW 2: DAFTAR CARD STATUS PENGAJUAN (Default) */
+        <div className="space-y-5 animate-in fade-in duration-200">
+          {/* Header List */}
+          <div>
+            <h1 className="text-xl font-bold text-slate-900 flex items-center space-x-2">
+              <Clock className="w-5 h-5 text-indigo-600" />
+              <span>Status Pengajuan Tugas Akhir</span>
+            </h1>
+            <p className="text-xs text-slate-500 mt-1">
+              Pantau status dan alur verifikasi pengajuan tugas akhir Anda, rekomendasi dosen pembimbing, serta keputusan peninjauan rapat Prodi.
+            </p>
+          </div>
+
+          {myTitles.length === 0 ? (
+            <div className="bg-white border border-slate-200 rounded-3xl p-10 text-center text-xs text-slate-400 space-y-4 shadow-xs">
+              <div className="w-12 h-12 rounded-full bg-indigo-50 text-indigo-500 flex items-center justify-center mx-auto">
+                <FileText className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="font-bold text-slate-700 text-sm">
+                  Belum Ada Pengajuan Judul Tugas Akhir
+                </p>
+                <p className="text-slate-500 mt-1">
+                  Silakan buat pengajuan judul baru. Pengajuan akan otomatis masuk ke tahap peninjauan rapat Prodi.
+                </p>
+              </div>
+              <Link 
+                href="/thesis/submit" 
+                className="inline-flex items-center space-x-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-xs transition-all"
+              >
+                <span>Ajukan Judul Sekarang</span>
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {myTitles.map(t => {
+                const isFix = t.status === 'disetujui' || t.status === 'judul_fix';
+
+                return (
+                  <div 
+                    key={t.id} 
+                    onClick={() => handleOpenDetail(t.id)}
+                    className="bg-white border border-slate-200 hover:border-indigo-400 rounded-3xl p-6 shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer space-y-4 group"
+                  >
+                    {/* Top Bar */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3.5">
+                      <div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          ID Pengajuan: {t.id}
+                        </span>
+                        <div className="text-xs text-slate-500 mt-0.5">
+                          Diajukan pada: {formatDate(t.created_at)}
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2.5 self-start sm:self-auto" onClick={(e) => e.stopPropagation()}>
+                        <StatusBadge type="thesis" status={t.status} />
+                        {!isFix && (
+                          <button
+                            type="button"
+                            onClick={() => setCancelModalTitle(t)}
+                            className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 hover:text-rose-800 border border-rose-200 text-xs font-bold rounded-xl transition-all inline-flex items-center space-x-1.5 shadow-2xs cursor-pointer"
+                            title="Batalkan pengajuan tugas akhir ini"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Batalkan Pengajuan</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Judul Tugas Akhir */}
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                        Judul Tugas Akhir:
+                      </span>
+                      <h3 className="text-sm sm:text-base font-bold text-slate-900 leading-snug group-hover:text-indigo-600 transition-colors">
+                        "{t.judul}"
+                      </h3>
+                    </div>
+
+                    {/* Footer / Summary Chips & Action */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100">
+                      <div className="flex flex-wrap items-center gap-2">
+                        {/* Similarity Chip */}
+                        <span className={`inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg border font-mono text-[11px] font-semibold ${
+                          t.skor_kemiripan_terakhir > 40
+                            ? 'bg-amber-50 text-amber-800 border-amber-200'
+                            : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        }`}>
+                          <span>Kemiripan:</span>
+                          <strong>{t.skor_kemiripan_terakhir}%</strong>
+                          <span className="text-[10px] font-normal">
+                            {t.skor_kemiripan_terakhir <= 40 ? '(Aman)' : '(Perlu Perhatian)'}
+                          </span>
+                        </span>
+
+                        {/* Pembimbing Preview */}
+                        <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 border border-slate-200 text-[11px]">
+                          <Users className="w-3.5 h-3.5 text-slate-500" />
+                          <span className="truncate max-w-[220px]">
+                            {t.pembimbing_1_nama || t.pembimbing_1 || 'Pembimbing 1'}
+                          </span>
+                        </span>
+                      </div>
+
+                      {/* Detail CTA Button */}
+                      <div className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl bg-indigo-50 group-hover:bg-indigo-600 text-indigo-600 group-hover:text-white text-xs font-bold transition-all shadow-2xs">
+                        <span>Buka Detail &amp; Catatan</span>
+                        <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                      </div>
+                    </div>
+
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* MODAL FORM REVISI JUDUL BERSAMA PEMBIMBING */}
       {revisionModalTitle && (
@@ -430,7 +637,7 @@ export default function StatusJudulPage() {
             </div>
 
             <p className="text-xs text-slate-500 leading-relaxed">
-              Ketikkan judul baru hasil konsultasi dengan Dosen Pembimbing. Sistem akan langsung menguji skor kemiripan secara langsung.
+              Ketikkan judul baru hasil konsultasi dengan Dosen Pembimbing. Klik tombol <strong>Scan Similarity</strong> untuk menguji skor kemiripan terhadap arsip judul.
             </p>
 
             <form onSubmit={handleSaveRevision} className="space-y-4">
@@ -443,31 +650,57 @@ export default function StatusJudulPage() {
                 <textarea
                   rows={3}
                   value={newJudul}
-                  onChange={(e) => setNewJudul(e.target.value)}
+                  onChange={(e) => {
+                    setNewJudul(e.target.value);
+                    if (hasCheckedSim) setHasCheckedSim(false);
+                  }}
                   placeholder="Contoh: Rancang Bangun Sistem Informasi Monitoring Pelanggan Berbasis Web..."
-                  className="w-full text-xs p-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full text-xs p-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
                   required
                 />
               </div>
 
-              {/* Live Similarity Gauge Box */}
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+              {/* Similarity Scan Section */}
+              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-bold text-slate-700 flex items-center space-x-1">
-                    <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                  <span className="font-bold text-slate-700 flex items-center space-x-1.5">
+                    <Sparkles className="w-4 h-4 text-indigo-600" />
                     <span>Uji Kemiripan Judul Baru:</span>
                   </span>
-                  <span className={`font-mono font-bold text-xs px-2 py-0.5 rounded-full border ${
-                    simScore > 40
+                  <span className={`font-mono font-bold text-xs px-2.5 py-0.5 rounded-full border ${
+                    !hasCheckedSim
+                      ? 'bg-slate-200/80 text-slate-600 border-slate-300'
+                      : simScore > 40
                       ? 'bg-amber-50 text-amber-800 border-amber-300'
                       : 'bg-emerald-50 text-emerald-700 border-emerald-200'
                   }`}>
-                    {isCheckingSim ? 'Memeriksa...' : `${simScore}%`}
+                    {isCheckingSim ? 'Memeriksa...' : (!hasCheckedSim ? '- %' : `${simScore}%`)}
                   </span>
                 </div>
-                {revisionModalTitle.skor_kemiripan_terakhir > simScore && (
-                  <div className="text-[11px] text-emerald-700 font-semibold flex items-center space-x-1">
-                    <TrendingDown className="w-3.5 h-3.5" />
+
+                {/* Tombol Scan Similarity */}
+                <button
+                  type="button"
+                  onClick={handleScanSimilarityRevision}
+                  disabled={isCheckingSim || !newJudul || newJudul.trim().length < 5}
+                  className="w-full py-2 px-3 rounded-lg text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] disabled:bg-slate-300 disabled:cursor-not-allowed transition-all flex items-center justify-center space-x-1.5 shadow-xs cursor-pointer"
+                >
+                  {isCheckingSim ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Sedang Memeriksa Kemiripan...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Search className="w-3.5 h-3.5" />
+                      <span>{hasCheckedSim ? 'Scan Ulang Similarity' : 'Scan Similarity'}</span>
+                    </>
+                  )}
+                </button>
+
+                {hasCheckedSim && revisionModalTitle.skor_kemiripan_terakhir > simScore && (
+                  <div className="text-[11px] text-emerald-700 font-semibold flex items-center space-x-1 pt-0.5">
+                    <TrendingDown className="w-3.5 h-3.5 text-emerald-600" />
                     <span>Kemiripan turun dari {revisionModalTitle.skor_kemiripan_terakhir}% menjadi {simScore}%!</span>
                   </div>
                 )}
@@ -507,6 +740,55 @@ export default function StatusJudulPage() {
 
             </form>
 
+          </div>
+        </div>
+      )}
+
+      {/* MODAL KONFIRMASI BATALKAN PENGAJUAN */}
+      {cancelModalTitle && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in" data-lenis-prevent>
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center space-x-3 text-rose-600">
+              <div className="w-10 h-10 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5 text-rose-600" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Batalkan Pengajuan Tugas Akhir?</h3>
+                <p className="text-[11px] text-slate-500">Tindakan ini tidak dapat dibatalkan</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-700 space-y-1">
+              <span className="font-semibold text-slate-500 block text-[10px] uppercase">Judul yang Dibatalkan:</span>
+              <p className="font-medium text-slate-900 leading-snug">"{cancelModalTitle.judul}"</p>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Apakah Anda yakin ingin membatalkan pengajuan tugas akhir ini? Seluruh usulan judul beserta usulan dosen pembimbing akan dibatalkan, dan Anda dapat mengajukan judul baru kembali.
+            </p>
+
+            <div className="flex items-center justify-end space-x-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setCancelModalTitle(null)}
+                className="px-4 py-2 border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+              >
+                Kembali
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const idToCancel = cancelModalTitle.id;
+                  setCancelModalTitle(null);
+                  await cancelThesisTitle(idToCancel);
+                  showToast('Pengajuan tugas akhir berhasil dibatalkan.');
+                }}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded-xl shadow-xs inline-flex items-center space-x-1.5 cursor-pointer transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Ya, Batalkan Pengajuan</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

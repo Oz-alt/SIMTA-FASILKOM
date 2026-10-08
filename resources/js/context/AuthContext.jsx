@@ -1433,19 +1433,61 @@ export function AuthProvider({ children }) {
 
     setThesisTitles(prev => [createdTitle, ...prev]);
 
-    // Push notification to Kaprodi
+    const newNotifs = [];
+
+    // 1. Push notification to Kaprodi
     const kaprodiUser = MOCK_USERS.find(u => u.role === 'kaprodi');
-    if (kaprodiUser) {
-      const newNotif = {
-        id: `notif-${Date.now()}-kaprodi`,
-        profile_id: kaprodiUser.id,
+    const kaprodiId = kaprodiUser?.id || 'user-kaprodi-abdiansah';
+    newNotifs.push({
+      id: `notif-${Date.now()}-kaprodi`,
+      profile_id: kaprodiId,
+      recipient_role: 'kaprodi',
+      related_type: 'thesis_title',
+      title: 'Pengajuan Judul Baru Masuk Tahap Tinjauan',
+      message: `${currentUser?.nama || 'Mahasiswa'} (${currentUser?.nim || ''}) mengajukan judul: "${newTitleData.judul}". Otomatis masuk tahap peninjauan rapat Prodi.`,
+      is_read: false,
+      created_at: new Date().toISOString()
+    });
+    sendEmailNotification(kaprodiUser?.email || 'kaprodi.mi@unsri.ac.id', 'Pengajuan Judul Tugas Akhir Baru', `Mahasiswa ${currentUser?.nama} mengajukan judul: "${newTitleData.judul}".`);
+
+    // 2. Push notification to Dosen Pembimbing 1
+    if (d1Nip || d1Nama) {
+      newNotifs.push({
+        id: `notif-${Date.now()}-dospem1`,
+        profile_id: d1Obj?.id || d1Nip,
+        recipient_nip: d1Nip,
+        recipient_role: 'dosen',
         related_type: 'thesis_title',
-        title: 'Pengajuan Judul Baru Masuk Tahap Tinjauan',
-        message: `${currentUser?.nama || 'Mahasiswa'} (${currentUser?.nim || ''}) mengajukan judul: "${newTitleData.judul}". Otomatis masuk tahap peninjauan rapat Prodi.`,
+        title: 'Usulan Pembimbing 1: Pengajuan Judul Baru',
+        message: `Mahasiswa ${currentUser?.nama || 'Mahasiswa'} (${currentUser?.nim || ''}) mengusulkan Anda sebagai Pembimbing 1 untuk judul: "${newTitleData.judul}". Silakan tinjau & berikan validasi akademik.`,
         is_read: false,
         created_at: new Date().toISOString()
-      };
-      setNotifications(prev => [newNotif, ...prev]);
+      });
+      if (d1Obj?.email) {
+        sendEmailNotification(d1Obj.email, 'Usulan Pembimbing 1 Tugas Akhir', `Mahasiswa ${currentUser?.nama} mengusulkan Anda sebagai Pembimbing 1.`);
+      }
+    }
+
+    // 3. Push notification to Dosen Pembimbing 2
+    if (d2Nip || d2Nama) {
+      newNotifs.push({
+        id: `notif-${Date.now()}-dospem2`,
+        profile_id: d2Obj?.id || d2Nip,
+        recipient_nip: d2Nip,
+        recipient_role: 'dosen',
+        related_type: 'thesis_title',
+        title: 'Usulan Pembimbing 2: Pengajuan Judul Baru',
+        message: `Mahasiswa ${currentUser?.nama || 'Mahasiswa'} (${currentUser?.nim || ''}) mengusulkan Anda sebagai Pembimbing 2 untuk judul: "${newTitleData.judul}". Silakan tinjau & berikan validasi akademik.`,
+        is_read: false,
+        created_at: new Date().toISOString()
+      });
+      if (d2Obj?.email) {
+        sendEmailNotification(d2Obj.email, 'Usulan Pembimbing 2 Tugas Akhir', `Mahasiswa ${currentUser?.nama} mengusulkan Anda sebagai Pembimbing 2.`);
+      }
+    }
+
+    if (newNotifs.length > 0) {
+      setNotifications(prev => [...newNotifs, ...prev]);
     }
 
     return createdTitle;
@@ -1595,6 +1637,37 @@ export function AuthProvider({ children }) {
           message: `${affectedTitle.mhs_nama} (${affectedTitle.mhs_nim}) telah memperbarui usulan judul menjadi: "${newJudul.trim()}" (Similarity: ${newSimilarityScore}%). Judul kembali masuk tahap tinjauan Prodi.`,
           is_read: false,
           created_at: nowIso
+        };
+        setNotifications(prev => [notifKaprodi, ...prev]);
+      }
+    }
+  };
+
+  // Mahasiswa membatalkan pengajuan tugas akhir
+  const cancelThesisTitle = async (titleId) => {
+    const targetTitle = thesisTitles.find(t => t.id === titleId);
+    setThesisTitles(prev => prev.filter(t => t.id !== titleId));
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('thesis_titles').delete().eq('id', titleId);
+      } catch (err) {
+        console.warn('Supabase delete thesis title error:', err);
+      }
+    }
+
+    if (targetTitle) {
+      const kaprodiUser = MOCK_USERS.find(u => u.role === 'kaprodi');
+      if (kaprodiUser) {
+        const notifKaprodi = {
+          id: `notif-${Date.now()}-cancel`,
+          profile_id: kaprodiUser.id,
+          recipient_role: 'kaprodi',
+          related_type: 'thesis_title_cancelled',
+          title: 'Pengajuan Tugas Akhir Dibatalkan',
+          message: `Mahasiswa ${targetTitle.mhs_nama} (${targetTitle.mhs_nim}) telah membatalkan usulan judul: "${targetTitle.judul}".`,
+          is_read: false,
+          created_at: new Date().toISOString()
         };
         setNotifications(prev => [notifKaprodi, ...prev]);
       }
@@ -3112,6 +3185,7 @@ export function AuthProvider({ children }) {
       bulkAssignStudentAdvisors,
       getStudentAdvisors,
       addThesisTitle,
+      cancelThesisTitle,
       validateThesisTitleDosen,
       reviewThesisTitle,
       addProdiRevisionNote,

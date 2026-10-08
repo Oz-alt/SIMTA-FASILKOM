@@ -13,17 +13,23 @@ import {
 export default function DashboardDosen() {
   const { currentUser, studentAdvisors, thesisTitles, thesisStages } = useAuth();
 
+  // Normalize current user identifiers
+  const userNip = currentUser?.nip || currentUser?.nim || '';
+  const userNama = currentUser?.nama || '';
+
   // Find students assigned to this dosen
   const myStudents = studentAdvisors.filter(sa => 
-    sa.dospem1_nip === currentUser.nip || sa.dospem2_nip === currentUser.nip
+    sa.dospem1_nip === userNip || sa.dospem2_nip === userNip
   );
 
-  // Get their titles
-  const myStudentTitles = thesisTitles.filter(t => 
-    myStudents.some(sa => sa.student_nim === t.mhs_nim)
-  );
-
-  const pendingTitles = myStudentTitles.filter(t => t.status === 'diajukan');
+  // Find pending title proposals for this dosen (menunggu validasi)
+  const pendingTitles = thesisTitles.filter(t => {
+    const isProposed = (t.pembimbing_1_nip && t.pembimbing_1_nip === userNip) ||
+                       (t.pembimbing_2_nip && t.pembimbing_2_nip === userNip) ||
+                       (t.pembimbing_1 && t.pembimbing_1 === userNama) ||
+                       (t.pembimbing_2 && t.pembimbing_2 === userNama);
+    return isProposed && (!t.rekomendasi_dospem_status || t.rekomendasi_dospem_status === 'menunggu_validasi');
+  });
 
   return (
     <div className="space-y-6">
@@ -51,14 +57,17 @@ export default function DashboardDosen() {
           <p className="text-[11px] text-slate-500">Total mahasiswa yang dibimbing</p>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs space-y-1">
-          <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Tinjauan Judul Baru</div>
+        <Link href="/dosen/validasi-judul" className="bg-white border border-slate-200 hover:border-amber-400 hover:shadow-md transition-all rounded-xl p-5 shadow-2xs space-y-1 block group">
+          <div className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+            <span>Tinjauan Judul Baru</span>
+            <ArrowRight className="w-4 h-4 text-amber-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+          </div>
           <div className="text-2xl font-extrabold text-amber-600 flex items-center justify-between">
             <span>{pendingTitles.length} Judul</span>
             <Clock className="w-6 h-6 text-amber-500/30" />
           </div>
           <p className="text-[11px] text-slate-500">Menunggu validasi Anda</p>
-        </div>
+        </Link>
 
         <Link href="/dosen/bimbingan" className="bg-gradient-to-br from-emerald-50 to-emerald-100/60 border border-emerald-200 rounded-xl p-5 shadow-2xs space-y-1 hover:border-emerald-400 hover:shadow-md transition-all group block sm:col-span-2 lg:col-span-2">
           <div className="text-xs font-bold text-emerald-700 uppercase tracking-wider flex items-center justify-between">

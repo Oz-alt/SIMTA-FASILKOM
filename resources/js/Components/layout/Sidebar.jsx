@@ -80,7 +80,7 @@ export default function Sidebar() {
               icon: GraduationCap,
               items: [
                 { to: '/thesis/submit', label: 'Ajukan Tugas Akhir', icon: FileText },
-                { to: '/thesis/status', label: 'Status Judul', icon: Clock }
+                { to: '/thesis/status', label: 'Status Pengajuan', icon: Clock }
               ]
             },
             {
