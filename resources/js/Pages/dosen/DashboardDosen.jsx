@@ -88,9 +88,9 @@ export default function DashboardDosen() {
             <BookOpen className="w-4 h-4 text-emerald-600" />
             <span>Mahasiswa Bimbingan Aktif</span>
           </h3>
-          <span className="text-xs font-semibold text-slate-500">
-            Total {myStudents.length} Mahasiswa
-          </span>
+          <Link href="/dosen/bimbingan" className="text-xs font-bold text-emerald-600 hover:text-emerald-800">
+            Buka Log Bimbingan &rarr;
+          </Link>
         </div>
 
         {myStudents.length === 0 ? (
@@ -140,10 +140,10 @@ export default function DashboardDosen() {
                         </span>
                       </td>
                       <td className="py-3 px-3 text-right">
-                        <span className="inline-flex items-center space-x-1 text-slate-600 bg-slate-100 px-2.5 py-1 rounded-md text-[11px] font-medium">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                          <span>Aktif</span>
-                        </span>
+                        <Link href="/dosen/bimbingan" className="inline-flex items-center space-x-1 text-emerald-600 hover:text-emerald-700 font-bold bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition-colors">
+                          <MessageSquare className="w-3.5 h-3.5" />
+                          <span>Konsultasi</span>
+                        </Link>
                       </td>
                     </tr>
                   );

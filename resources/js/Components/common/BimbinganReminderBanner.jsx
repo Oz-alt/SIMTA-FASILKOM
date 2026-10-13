@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from '@inertiajs/react';
 import { 
   AlertTriangle, 
   AlertOctagon, 
@@ -90,15 +91,25 @@ export default function BimbinganReminderBanner({ reminder, studentEmail, studen
               <span>Lihat Salinan Email</span>
             </button>
 
-            {showAction && onAddBimbingan && (
-              <button
-                type="button"
-                onClick={onAddBimbingan}
-                className="px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-600/20 transition-all flex items-center space-x-1.5 cursor-pointer"
-              >
-                <PlusCircle className="w-4 h-4" />
-                <span>Catat Bimbingan</span>
-              </button>
+            {showAction && (
+              onAddBimbingan ? (
+                <button
+                  type="button"
+                  onClick={onAddBimbingan}
+                  className="px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-600/20 transition-all flex items-center space-x-1.5 cursor-pointer"
+                >
+                  <PlusCircle className="w-4 h-4" />
+                  <span>Catat Bimbingan</span>
+                </button>
+              ) : (
+                <Link
+                  href="/thesis/consultations"
+                  className="px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-600/20 transition-all flex items-center space-x-1.5"
+                >
+                  <PlusCircle className="w-4 h-4" />
+                  <span>Buka Log Bimbingan</span>
+                </Link>
+              )
             )}
           </div>
         </div>

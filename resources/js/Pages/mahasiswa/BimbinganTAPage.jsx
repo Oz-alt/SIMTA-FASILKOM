@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { Link } from '@inertiajs/react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { 
   BookOpen, 
@@ -15,7 +16,8 @@ import {
   Calendar,
   Edit3,
   Link2,
-  ExternalLink
+  ExternalLink,
+  Printer
 } from 'lucide-react';
 import ModalAjukanBimbingan from '../../Components/common/ModalAjukanBimbingan.jsx';
 import ModalEditBimbingan from '../../Components/common/ModalEditBimbingan.jsx';
@@ -134,6 +136,13 @@ export default function BimbinganTAPage() {
                 <PlusCircle className="w-4 h-4" />
                 <span>Catat Sesi Bimbingan Baru</span>
               </button>
+              <Link
+                href="/thesis/consultations/card"
+                className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs border border-white/20 backdrop-blur-md transition-all flex items-center space-x-2"
+              >
+                <Printer className="w-4 h-4 text-blue-300" />
+                <span>Kartu Bimbingan Digital</span>
+              </Link>
             </div>
           )}
         </div>

@@ -42,11 +42,11 @@ Route::get('/thesis/status', function () {
 });
 
 Route::get('/thesis/consultations', function () {
-    return redirect('/dashboard');
+    return Inertia::render('mahasiswa/BimbinganTAPage');
 });
 
 Route::get('/thesis/consultations/card', function () {
-    return redirect('/dashboard');
+    return Inertia::render('mahasiswa/KartuBimbinganPage');
 });
 
 Route::get('/thesis/archive', function () {
@@ -106,11 +106,11 @@ Route::get('/kaprodi/defense-schedules', function () {
 });
 
 Route::get('/kaprodi/reminders', function () {
-    return redirect('/kaprodi/dashboard');
+    return Inertia::render('kaprodi/ReminderPembimbinganPage');
 });
 
 Route::get('/kaprodi/reminder-pembimbingan', function () {
-    return redirect('/kaprodi/dashboard');
+    return Inertia::render('kaprodi/ReminderPembimbinganPage');
 });
 
 Route::get('/kaprodi/repository/review', function () {
@@ -206,7 +206,7 @@ Route::get('/dosen/dashboard', function () {
 });
 
 Route::get('/dosen/bimbingan', function () {
-    return redirect('/dosen/dashboard');
+    return Inertia::render('dosen/BimbinganPage');
 });
 
 Route::get('/dosen/jadwal-sidang', function () {
@@ -222,7 +222,9 @@ Route::get('/dosen/validasi-judul', function () {
 // ============================================================
 
 Route::get('/verify/bimbingan/{nim}', function ($nim) {
-    return redirect('/');
+    return Inertia::render('VerifyBimbinganPage', [
+        'nim' => $nim,
+    ]);
 });
 
 // ============================================================

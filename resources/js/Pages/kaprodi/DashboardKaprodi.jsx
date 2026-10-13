@@ -480,6 +480,13 @@ export default function DashboardKaprodi() {
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
             <span>Auto-Reminder Aktif</span>
           </span>
+          <Link
+            href="/kaprodi/reminders"
+            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors shrink-0"
+          >
+            <Bell className="w-3.5 h-3.5" />
+            <span>Kelola Reminder</span>
+          </Link>
         </div>
       </div>
 
