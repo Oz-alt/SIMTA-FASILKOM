@@ -3138,16 +3138,6 @@ export const MOCK_USERS = [
     "department_id": "dept-mi-1"
   },
   {
-    "id": "user-kaprodi",
-    "nim": "198410012009121005",
-    "nip": "198410012009121005",
-    "nama": "Dr. Abdiansah, S.Kom., M.Cs.",
-    "role": "kaprodi",
-    "email": "abdiansah@unsri.ac.id",
-    "password": "198410012009121005",
-    "department_id": "dept-mi-1"
-  },
-  {
     "id": "user-admin-sarana",
     "nim": "198509152010121004",
     "nip": "198509152010121004",
@@ -3163,7 +3153,7 @@ export const MOCK_USERS = [
     "nama": "Dr. Abdiansah, S.Kom., M.Cs.",
     "role": "dosen",
     "email": "abdiansah@unsri.ac.id",
-    "password": "dosen123",
+    "password": "198410012009121005",
     "prodi": "D3 Manajemen Informatika",
     "department_id": "dept-mi-1",
     "link_wa_group": "https://chat.whatsapp.com/BimbinganTA-DrAbdiansah",

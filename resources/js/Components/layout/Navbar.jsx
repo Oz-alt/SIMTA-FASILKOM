@@ -47,7 +47,9 @@ export default function Navbar() {
   const roleBadges = {
     mahasiswa: { label: 'Mahasiswa', color: 'bg-emerald-100 text-emerald-800 border-emerald-300', icon: GraduationCap },
     kaprodi: { label: 'Kaprodi', color: 'bg-blue-100 text-blue-800 border-blue-300', icon: BookOpen },
-    admin_sarana: { label: 'Admin Sarana', color: 'bg-purple-100 text-purple-800 border-purple-300', icon: Building2 }
+    dosen: { label: 'Dosen Pembimbing', color: 'bg-teal-100 text-teal-800 border-teal-300', icon: BookOpen },
+    admin_sarana: { label: 'Admin Sarana', color: 'bg-purple-100 text-purple-800 border-purple-300', icon: Building2 },
+    admin: { label: 'Admin SIMTA', color: 'bg-rose-100 text-rose-800 border-rose-300', icon: Building2 }
   };
 
   const userRole = currentUser?.role || 'mahasiswa';

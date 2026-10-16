@@ -33,17 +33,43 @@ export function AuthProvider({ children }) {
     if (!user) return null;
     let cleanNama = user.nama;
 
+    // Dosen Dr. Abdiansah or any NIP 198410012009121005
+    if (user.nip === '198410012009121005' || user.nim === '198410012009121005' || (user.email && user.email.toLowerCase() === 'abdiansah@unsri.ac.id') || user.id === 'user-dosen-abdiansah' || user.id === 'user-kaprodi-abdiansah') {
+      return {
+        ...user,
+        id: 'user-dosen-abdiansah',
+        nama: 'Dr. Abdiansah, S.Kom., M.Cs.',
+        role: 'dosen',
+        email: 'abdiansah@unsri.ac.id',
+        nip: '198410012009121005',
+        nim: '198410012009121005',
+        kelas: 'Dosen Pembimbing'
+      };
+    }
+
+    if (user.role === 'dosen') {
+      return {
+        ...user,
+        nama: cleanNama || 'Dosen Pembimbing',
+        role: 'dosen',
+        email: user.email || `${user.nip || user.nim}@unsri.ac.id`,
+        nip: user.nip || user.nim,
+        nim: user.nip || user.nim,
+        kelas: 'Dosen Pembimbing'
+      };
+    }
+
     if (user.role === 'kaprodi') {
-      if (!cleanNama || cleanNama === 'Mahasiswa UNSRI' || cleanNama === 'Pengguna SIMTA' || cleanNama === 'Aulia Azzahra' || cleanNama === 'Dr. Ir. Hendra Kusuma, M.T.' || /^\d+$/.test(cleanNama)) {
-        cleanNama = 'Dr. Abdiansah, S.Kom., M.Cs.';
+      if (!cleanNama || cleanNama === 'Mahasiswa UNSRI' || cleanNama === 'Pengguna SIMTA' || cleanNama === 'Aulia Azzahra' || /^\d+$/.test(cleanNama)) {
+        cleanNama = 'Dr. Ir. Hendra Kusuma, M.T.';
       }
       return {
         ...user,
         nama: cleanNama,
         role: 'kaprodi',
-        email: user.email || 'abdiansah@unsri.ac.id',
-        nip: user.nip || user.nim || '198410012009121005',
-        nim: user.nip || user.nim || '198410012009121005',
+        email: user.email || 'kaprodi.mi@unsri.ac.id',
+        nip: user.nip || user.nim || '197805122005011002',
+        nim: user.nip || user.nim || '197805122005011002',
         kelas: 'Dosen / Kaprodi'
       };
     }
@@ -132,12 +158,22 @@ export function AuthProvider({ children }) {
         kelas: 'Admin SIMTA'
       },
       {
-        id: 'user-kaprodi-abdiansah',
+        id: 'user-dosen-abdiansah',
         nama: 'Dr. Abdiansah, S.Kom., M.Cs.',
         nim: '198410012009121005',
         nip: '198410012009121005',
         email: 'abdiansah@unsri.ac.id',
         password: '198410012009121005',
+        role: 'dosen',
+        kelas: 'Dosen Pembimbing'
+      },
+      {
+        id: 'user-kaprodi-hendra',
+        nama: 'Dr. Ir. Hendra Kusuma, M.T.',
+        nim: '197805122005011002',
+        nip: '197805122005011002',
+        email: 'kaprodi.mi@unsri.ac.id',
+        password: 'Kaprodi123!',
         role: 'kaprodi',
         kelas: 'Dosen / Kaprodi'
       },
@@ -1140,13 +1176,27 @@ export function AuthProvider({ children }) {
       return '/admin/dashboard';
     }
 
-    if (termLower === 'kaprodi' || termLower === 'abdiansah' || termLower === '198410012009121005' || termLower === 'abdiansah@unsri.ac.id') {
-      const kaprodiUser = {
-        id: 'user-kaprodi-abdiansah',
+    if (termLower === 'dosen' || termLower === 'abdiansah' || termLower === '198410012009121005' || termLower === 'abdiansah@unsri.ac.id') {
+      const dosenUser = {
+        id: 'user-dosen-abdiansah',
         nama: 'Dr. Abdiansah, S.Kom., M.Cs.',
         nip: '198410012009121005',
         nim: '198410012009121005',
         email: 'abdiansah@unsri.ac.id',
+        role: 'dosen',
+        kelas: 'Dosen Pembimbing'
+      };
+      setCurrentUser(dosenUser);
+      return '/dosen/dashboard';
+    }
+
+    if (termLower === 'kaprodi' || termLower === 'hendra' || termLower === '197805122005011002' || termLower === 'kaprodi.mi@unsri.ac.id') {
+      const kaprodiUser = {
+        id: 'user-kaprodi-hendra',
+        nama: 'Dr. Ir. Hendra Kusuma, M.T.',
+        nip: '197805122005011002',
+        nim: '197805122005011002',
+        email: 'kaprodi.mi@unsri.ac.id',
         role: 'kaprodi',
         kelas: 'Dosen / Kaprodi'
       };
@@ -1437,7 +1487,7 @@ export function AuthProvider({ children }) {
 
     // 1. Push notification to Kaprodi
     const kaprodiUser = MOCK_USERS.find(u => u.role === 'kaprodi');
-    const kaprodiId = kaprodiUser?.id || 'user-kaprodi-abdiansah';
+    const kaprodiId = kaprodiUser?.id || 'user-kaprodi-hendra';
     newNotifs.push({
       id: `notif-${Date.now()}-kaprodi`,
       profile_id: kaprodiId,
@@ -2717,7 +2767,7 @@ export function AuthProvider({ children }) {
           keahlian: Array.isArray(adv.keahlian) ? adv.keahlian : (adv.keahlian || '').split(',').map(s => s.trim()).filter(Boolean),
           kuota_dospem1: Number(adv.kuota_dospem1) || 8,
           kuota_dospem2: Number(adv.kuota_dospem2) || 8,
-          role: nip === '198410012009121005' || nip === '197805122005011002' ? 'kaprodi' : 'dosen',
+          role: nip === '197805122005011002' ? 'kaprodi' : 'dosen',
           status: adv.status || 'aktif',
           created_at: adv.created_at || '2026-09-01T08:00:00.000Z'
         });
