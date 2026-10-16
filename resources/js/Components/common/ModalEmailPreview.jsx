@@ -151,7 +151,7 @@ export default function ModalEmailPreview({ isOpen, onClose, reminder, student, 
           {/* Instructions */}
           <div className="space-y-2 text-xs text-slate-600 leading-relaxed">
             <p>
-              Mahasiswa diwajibkan untuk aktif berkonsultasi dengan Dosen Pembimbing 1 dan Dosen Pembimbing 2 sekurang-kurangnya <strong>2 kali dalam sebulan</strong> untuk memastikan kelancaran penulisan naskah serta pemenuhan syarat kelayakan pendaftaran sidang (minimal 12 sesi bimbingan).
+              Mahasiswa diwajibkan untuk aktif berkonsultasi dengan Dosen Pembimbing 1 dan Dosen Pembimbing 2 sekurang-kurangnya <strong>2 kali dalam sebulan</strong> untuk memastikan kelancaran penulisan naskah serta pemenuhan syarat kelayakan pendaftaran sidang (minimal 24 sesi bimbingan, 12 sesi masing-masing pembimbing).
             </p>
             <p>
               Silakan akses portal SIMTA mahasiswa untuk mencatat sesi bimbingan atau mengunggah naskah revisi terbaru Anda.

@@ -7,7 +7,9 @@ import {
   AlertCircle,
   Clock,
   UserCheck,
-  FileText
+  FileText,
+  Building2,
+  Video
 } from 'lucide-react';
 
 export default function BimbinganPage() {
@@ -147,6 +149,23 @@ export default function BimbinganPage() {
                               c.pembimbing === 'Pembimbing 1' ? 'bg-indigo-50 text-indigo-800 border-indigo-200' : 'bg-purple-50 text-purple-800 border-purple-200'
                             }`}>
                               {c.pembimbing}
+                            </span>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center space-x-1 ${
+                              c.metode === 'daring'
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                : 'bg-slate-100 text-slate-700 border-slate-200'
+                            }`}>
+                              {c.metode === 'daring' ? (
+                                <>
+                                  <Video className="w-3 h-3 text-emerald-600" />
+                                  <span>Daring</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Building2 className="w-3 h-3 text-slate-500" />
+                                  <span>Luring</span>
+                                </>
+                              )}
                             </span>
                             <span className="text-slate-500 font-medium flex items-center space-x-1">
                               <Clock className="w-3.5 h-3.5" />

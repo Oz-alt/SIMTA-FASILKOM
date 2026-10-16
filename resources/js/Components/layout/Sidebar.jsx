@@ -88,7 +88,7 @@ export default function Sidebar() {
               label: 'Bimbingan',
               icon: FileCheck,
               items: [
-                { to: '/thesis/consultations', label: 'Log Bimbingan', icon: FileCheck },
+                { to: '/thesis/consultations', label: 'Entry Bimbingan', icon: FileCheck },
                 { to: '/thesis/consultations/card', label: 'Kartu Bimbingan Digital', icon: Printer }
               ]
             },

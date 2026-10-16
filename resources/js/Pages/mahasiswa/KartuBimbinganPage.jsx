@@ -86,8 +86,8 @@ export default function KartuBimbinganPage() {
     ? `${window.location.origin}/verify/bimbingan/${studentNim}`
     : `/verify/bimbingan/${studentNim}`;
 
-  // Minimum 12 rows, dynamically grows if student has more consultations
-  const ROWS_COUNT = Math.max(12, studentConsultations.length);
+  // Minimum 24 rows (12 per pembimbing), dynamically grows if student has more consultations
+  const ROWS_COUNT = Math.max(24, studentConsultations.length);
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 select-none bg-slate-50 p-6 min-h-screen">
@@ -100,7 +100,7 @@ export default function KartuBimbinganPage() {
             className="inline-flex items-center space-x-2 text-sm font-bold text-slate-600 hover:text-blue-600 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Kembali ke Log Bimbingan</span>
+            <span>Kembali ke Entry Bimbingan</span>
           </Link>
           <div className="flex items-center space-x-3">
             <button
@@ -168,7 +168,16 @@ export default function KartuBimbinganPage() {
                 <tr key={index} className="min-h-12">
                   <td className="border border-black py-2 px-1 text-center font-semibold align-middle">{index + 1}</td>
                   <td className="border border-black py-2 px-2 text-center align-middle">{data ? data.tanggal : ''}</td>
-                  <td className="border border-black py-2 px-3 text-left font-medium align-middle">{data ? data.bab_topik : ''}</td>
+                  <td className="border border-black py-2 px-3 text-left font-medium align-middle">
+                    {data ? (
+                      <div className="flex items-center justify-between gap-1.5">
+                        <span>{data.bab_topik}</span>
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded border border-slate-300 text-slate-600 uppercase tracking-wider shrink-0 print:border-black print:text-black">
+                          {data.metode === 'daring' ? 'Daring' : 'Luring'}
+                        </span>
+                      </div>
+                    ) : ''}
+                  </td>
                   <td className="border border-black p-2 text-center align-middle">
                     {/* Paraf Mahasiswa dikosongkan */}
                   </td>

@@ -2468,6 +2468,7 @@ export function AuthProvider({ children }) {
       pembimbing: consData.pembimbing || 'Pembimbing 1',
       dosen_nama: consData.dosen_nama || 'Dr. Ir. Hendra Kusuma, M.T.',
       dosen_nip: consData.dosen_nip || '',
+      metode: consData.metode || 'luring',
       tanggal: consData.tanggal || new Date().toISOString().split('T')[0],
       waktu: consData.waktu || '10:00',
       bab_topik: consData.bab_topik,
@@ -2486,8 +2487,8 @@ export function AuthProvider({ children }) {
 
     if (isSupabaseConfigured && supabase) {
       try {
-        // Only send columns that exist in the Supabase table (exclude dosen_nip which is local-only)
-        const { dosen_nip, ...supabasePayload } = newEntry;
+        // Only send columns that exist in the Supabase table (exclude local-only columns)
+        const { dosen_nip, metode, ...supabasePayload } = newEntry;
         const { error } = await supabase.from('thesis_consultations').insert([supabasePayload]);
         if (error) console.warn('Supabase consultation insert warning:', error.message);
       } catch (err) {
@@ -2576,10 +2577,11 @@ export function AuthProvider({ children }) {
 
     if (isSupabaseConfigured && supabase) {
       try {
+        const { dosen_nip, metode, ...safeFields } = updatedFields;
         const { error } = await supabase
           .from('thesis_consultations')
           .update({
-            ...updatedFields,
+            ...safeFields,
             updated_at: new Date().toISOString()
           })
           .eq('id', consultationId);

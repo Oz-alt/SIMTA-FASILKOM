@@ -17,7 +17,9 @@ import {
   Edit3,
   Link2,
   ExternalLink,
-  Printer
+  Printer,
+  Building2,
+  Video
 } from 'lucide-react';
 import ModalAjukanBimbingan from '../../Components/common/ModalAjukanBimbingan.jsx';
 import ModalEditBimbingan from '../../Components/common/ModalEditBimbingan.jsx';
@@ -68,9 +70,12 @@ export default function BimbinganTAPage() {
   const totalApproved = studentConsultations.filter(c => c.status === 'disetujui').length;
   const countPemb1 = studentConsultations.filter(c => c.pembimbing === 'Pembimbing 1' && c.status === 'disetujui').length;
   const countPemb2 = studentConsultations.filter(c => c.pembimbing === 'Pembimbing 2' && c.status === 'disetujui').length;
-  const minRequired = 12;
-  const progressPercent = Math.min(100, Math.round((totalApproved / minRequired) * 100));
-  const isEligibleForDefense = totalApproved >= minRequired;
+  const minRequiredPerPembimbing = 12;
+  const minRequired = 24; // 12x masing-masing pembimbing (Pembimbing 1 & Pembimbing 2)
+  const approvedPemb1 = Math.min(countPemb1, minRequiredPerPembimbing);
+  const approvedPemb2 = Math.min(countPemb2, minRequiredPerPembimbing);
+  const progressPercent = Math.min(100, Math.round(((approvedPemb1 + approvedPemb2) / minRequired) * 100));
+  const isEligibleForDefense = countPemb1 >= minRequiredPerPembimbing && countPemb2 >= minRequiredPerPembimbing;
 
   const handleFeedbackSubmit = (consId, newStatus) => {
     const notes = feedbackInput[consId] || 'Telah diverifikasi pembimbing.';
@@ -170,13 +175,13 @@ export default function BimbinganTAPage() {
         <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-1">
           <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Sesi Pembimbing 1</span>
           <div className="text-2xl font-extrabold text-indigo-700">{countPemb1} Sesi</div>
-          <span className="text-[11px] text-slate-500">Utama</span>
+          <span className="text-[11px] text-slate-500">Utama (Min. {minRequiredPerPembimbing} Sesi)</span>
         </div>
 
         <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-1">
           <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Sesi Pembimbing 2</span>
           <div className="text-2xl font-extrabold text-purple-700">{countPemb2} Sesi</div>
-          <span className="text-[11px] text-slate-500">Pendamping</span>
+          <span className="text-[11px] text-slate-500">Pendamping (Min. {minRequiredPerPembimbing} Sesi)</span>
         </div>
 
         <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-1.5">
@@ -187,8 +192,8 @@ export default function BimbinganTAPage() {
           <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
             <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${progressPercent}%` }}></div>
           </div>
-          <span className={`text-[10px] font-bold block ${isEligibleForDefense ? 'text-emerald-700' : 'text-amber-600'}`}>
-            {isEligibleForDefense ? '✓ Layak Daftar Sidang' : `Syarat Min. ${minRequired} Sesi Bimbingan`}
+          <span className={`text-[10px] font-bold block leading-tight ${isEligibleForDefense ? 'text-emerald-700' : 'text-amber-600'}`}>
+            {isEligibleForDefense ? '✓ Layak Daftar Sidang' : `Syarat Min. ${minRequired} Sesi (12x Tiap Pembimbing)`}
           </span>
         </div>
 
@@ -239,6 +244,23 @@ export default function BimbinganTAPage() {
                       item.pembimbing === 'Pembimbing 1' ? 'bg-indigo-50 text-indigo-800 border-indigo-200' : 'bg-purple-50 text-purple-800 border-purple-200'
                     }`}>
                       {item.pembimbing}
+                    </span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center space-x-1 ${
+                      item.metode === 'daring'
+                        ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                        : 'bg-slate-100 text-slate-700 border-slate-200'
+                    }`}>
+                      {item.metode === 'daring' ? (
+                        <>
+                          <Video className="w-3 h-3 text-emerald-600" />
+                          <span>Daring</span>
+                        </>
+                      ) : (
+                        <>
+                          <Building2 className="w-3 h-3 text-slate-500" />
+                          <span>Luring</span>
+                        </>
+                      )}
                     </span>
                     <div className="flex items-center space-x-2">
                       {!isStudentRole && item.mhs_nama && (
