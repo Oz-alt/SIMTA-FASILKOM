@@ -3163,8 +3163,11 @@ export const MOCK_USERS = [
     "nama": "Dr. Abdiansah, S.Kom., M.Cs.",
     "role": "dosen",
     "email": "abdiansah@unsri.ac.id",
-    "password": "198410012009121005",
-    "department_id": "dept-mi-1"
+    "password": "dosen123",
+    "prodi": "D3 Manajemen Informatika",
+    "department_id": "dept-mi-1",
+    "link_wa_group": "https://chat.whatsapp.com/BimbinganTA-DrAbdiansah",
+    "no_hp": "081278901001"
   },
   {
     "id": "user-dosen-alfiqnufiq",

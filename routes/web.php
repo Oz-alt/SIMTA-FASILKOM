@@ -205,8 +205,28 @@ Route::get('/dosen/dashboard', function () {
     return Inertia::render('dosen/DashboardDosen');
 });
 
+Route::get('/dosen/mahasiswa', function () {
+    return Inertia::render('dosen/MahasiswaBimbinganPage');
+});
+
+Route::get('/dosen/validasi', function () {
+    return Inertia::render('dosen/ValidasiBimbinganPage');
+});
+
+Route::get('/dosen/monitoring', function () {
+    return Inertia::render('dosen/MonitoringMahasiswaPage');
+});
+
+Route::get('/dosen/rekap', function () {
+    return Inertia::render('dosen/RekapBimbinganPage');
+});
+
+Route::get('/dosen/profil', function () {
+    return Inertia::render('dosen/ProfilDosenPage');
+});
+
 Route::get('/dosen/bimbingan', function () {
-    return Inertia::render('dosen/BimbinganPage');
+    return Inertia::render('dosen/ValidasiBimbinganPage');
 });
 
 Route::get('/dosen/jadwal-sidang', function () {

@@ -182,20 +182,22 @@ export default function Sidebar() {
           groups: [
             {
               id: 'bimbingan',
-              label: 'Bimbingan',
+              label: 'Menu Bimbingan',
               icon: FileCheck,
               items: [
-                { to: '/dosen/bimbingan', label: 'Log Bimbingan & Konsultasi', icon: FileCheck },
-                { to: '/dosen/validasi-judul', label: 'Validasi Judul TA', icon: CheckSquare },
-                { to: '/dosen/jadwal-sidang', label: 'Notifikasi & Jadwal', icon: CalendarDays }
+                { to: '/dosen/mahasiswa', label: 'Mahasiswa Bimbingan', icon: Users },
+                { to: '/dosen/validasi', label: 'Validasi Bimbingan', icon: CheckSquare },
+                { to: '/dosen/monitoring', label: 'Monitoring Mahasiswa', icon: BarChart3 },
+                { to: '/dosen/rekap', label: 'Rekap Bimbingan', icon: FileText }
               ]
             },
             {
-              id: 'database',
-              label: 'Database',
-              icon: Database,
+              id: 'lainnya',
+              label: 'Layanan & Akun',
+              icon: Settings,
               items: [
-                { to: '/thesis/archive', label: 'Arsip Tugas Akhir', icon: BookOpen }
+                { to: '/dosen/profil', label: 'Pengaturan Profil', icon: Settings },
+                { to: '/dosen/jadwal-sidang', label: 'Jadwal Sidang TA', icon: CalendarDays }
               ]
             }
           ]
