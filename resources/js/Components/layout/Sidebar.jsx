@@ -187,7 +187,6 @@ export default function Sidebar() {
               items: [
                 { to: '/dosen/mahasiswa', label: 'Mahasiswa Bimbingan', icon: Users },
                 { to: '/dosen/validasi-judul', label: 'Validasi Usulan Judul', icon: BookOpen },
-                { to: '/dosen/validasi', label: 'Validasi Bimbingan', icon: CheckSquare },
                 { to: '/dosen/monitoring', label: 'Monitoring Mahasiswa', icon: BarChart3 },
                 { to: '/dosen/rekap', label: 'Rekap Bimbingan', icon: FileText }
               ]
@@ -197,7 +196,6 @@ export default function Sidebar() {
               label: 'Layanan & Akun',
               icon: Settings,
               items: [
-                { to: '/dosen/profil', label: 'Pengaturan Profil', icon: Settings },
                 { to: '/dosen/jadwal-sidang', label: 'Jadwal Sidang TA', icon: CalendarDays }
               ]
             }

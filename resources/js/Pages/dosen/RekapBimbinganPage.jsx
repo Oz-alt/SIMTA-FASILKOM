@@ -225,7 +225,7 @@ export default function RekapBimbinganPage() {
                     </td>
                     <td className="py-3.5 px-4 text-right">
                       <Link
-                        href="/dosen/validasi"
+                        href={`/dosen/validasi?nim=${item.student_nim}`}
                         className="inline-flex items-center space-x-1 text-blue-600 hover:text-blue-800 font-bold bg-blue-50 hover:bg-blue-100 px-2.5 py-1.5 rounded-lg transition-colors"
                       >
                         <span>Lihat Log</span>

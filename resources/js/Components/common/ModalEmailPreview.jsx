@@ -57,7 +57,7 @@ export default function ModalEmailPreview({ isOpen, onClose, reminder, student, 
         <div className="bg-slate-50 border-b border-slate-200 p-4 text-xs text-slate-600 space-y-1.5 font-mono">
           <div className="flex items-center space-x-2">
             <span className="font-bold text-slate-400 w-16">Dari:</span>
-            <span className="text-slate-800 font-semibold">SIMTA FASILKOM UNSRI &lt;no-reply@fasilkom.unsri.ac.id&gt;</span>
+            <span className="text-slate-800 font-semibold">SIMONITA FASILKOM UNSRI &lt;no-reply@fasilkom.unsri.ac.id&gt;</span>
           </div>
           <div className="flex items-center space-x-2">
             <span className="font-bold text-slate-400 w-16">Kepada:</span>
@@ -92,7 +92,7 @@ export default function ModalEmailPreview({ isOpen, onClose, reminder, student, 
                   FAKULTAS ILMU KOMPUTER - PROGRAM STUDI D3 MANAJEMEN INFORMATIKA
                 </p>
                 <p className="text-[10px] text-slate-400">
-                  Sistem Informasi Manajemen Tugas Akhir (SIMTA) Terpadu
+                  Sistem Monitoring Tugas Akhir (SIMONITA) Terpadu
                 </p>
               </div>
             </div>
@@ -154,7 +154,7 @@ export default function ModalEmailPreview({ isOpen, onClose, reminder, student, 
               Mahasiswa diwajibkan untuk aktif berkonsultasi dengan Dosen Pembimbing 1 dan Dosen Pembimbing 2 sekurang-kurangnya <strong>2 kali dalam sebulan</strong> untuk memastikan kelancaran penulisan naskah serta pemenuhan syarat kelayakan pendaftaran sidang (minimal 24 sesi bimbingan, 12 sesi masing-masing pembimbing).
             </p>
             <p>
-              Silakan akses portal SIMTA mahasiswa untuk mencatat sesi bimbingan atau mengunggah naskah revisi terbaru Anda.
+              Silakan akses portal SIMONITA mahasiswa untuk mencatat sesi bimbingan atau mengunggah naskah revisi terbaru Anda.
             </p>
           </div>
 

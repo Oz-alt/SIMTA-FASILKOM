@@ -3273,7 +3273,7 @@ export const MOCK_USERS = [
     "id": "user-admin-simta",
     "nim": "199203142018011001",
     "nip": "199203142018011001",
-    "nama": "Rina Agustina, S.Kom. (Admin SIMTA)",
+    "nama": "Rina Agustina, S.Kom. (Admin SIMONITA)",
     "role": "admin",
     "email": "admin.simta@unsri.ac.id",
     "no_hp": "081234567899",
@@ -15756,9 +15756,9 @@ export const MOCK_ADMIN_DOCUMENTS = [
 export const MOCK_ADMIN_CMS = [
   {
     id: 'cms-1',
-    judul: 'Selamat Datang di SIMTA',
+    judul: 'Selamat Datang di SIMONITA',
     kategori: 'Beranda',
-    isi: 'Selamat datang di Sistem Informasi Manajemen Tugas Akhir (SIMTA) Fakultas Ilmu Komputer Universitas Sriwijaya. Platform ini dirancang untuk memudahkan proses pengajuan, pembimbingan, dan sidang tugas akhir mahasiswa D3 Manajemen Informatika.',
+    isi: 'Selamat datang di Sistem Monitoring Tugas Akhir (SIMONITA) Fakultas Ilmu Komputer Universitas Sriwijaya. Platform ini dirancang untuk memudahkan proses pengajuan, pembimbingan, dan sidang tugas akhir mahasiswa D3 Manajemen Informatika.',
     status: 'publikasi',
     updated_at: '2026-09-01T08:00:00Z',
     penulis: 'Rina Agustina'
@@ -15794,7 +15794,7 @@ export const MOCK_ADMIN_CMS = [
     id: 'cms-5',
     judul: 'Kontak dan Layanan Akademik',
     kategori: 'Informasi',
-    isi: 'Untuk pertanyaan seputar administrasi tugas akhir, silakan menghubungi Admin SIMTA di admin.simta@unsri.ac.id atau datang langsung ke Gedung DIPKOM Lt. 1, Kampus Bukit Palembang, pada hari Senin-Jumat pukul 08.00-16.00 WIB.',
+    isi: 'Untuk pertanyaan seputar administrasi tugas akhir, silakan menghubungi Admin SIMONITA di admin.simonita@unsri.ac.id atau datang langsung ke Gedung DIPKOM Lt. 1, Kampus Bukit Palembang, pada hari Senin-Jumat pukul 08.00-16.00 WIB.',
     status: 'publikasi',
     updated_at: '2026-09-10T11:00:00Z',
     penulis: 'Rina Agustina'

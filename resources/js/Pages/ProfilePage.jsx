@@ -44,6 +44,7 @@ export default function ProfilePage() {
   const isDosenOrKaprodi = currentUser?.role === 'dosen' || currentUser?.role === 'kaprodi';
   const [waLinkInput, setWaLinkInput] = useState(currentUser?.link_wa_group || '');
   const [savedWaLink, setSavedWaLink] = useState(currentUser?.link_wa_group || '');
+  const [isEditingWa, setIsEditingWa] = useState(false);
   const [isSavingWa, setIsSavingWa] = useState(false);
   const [waError, setWaError] = useState('');
   const [waSuccess, setWaSuccess] = useState('');
@@ -62,7 +63,7 @@ export default function ProfilePage() {
     dosen: { label: 'Dosen Pembimbing', badge: 'bg-indigo-100 text-indigo-800 border-indigo-200' },
     kaprodi: { label: 'Dosen / Kaprodi', badge: 'bg-blue-100 text-blue-800 border-blue-200' },
     admin_sarana: { label: 'Admin Sarana & Prasarana', badge: 'bg-purple-100 text-purple-800 border-purple-200' },
-    admin: { label: 'Admin SIMTA', badge: 'bg-amber-100 text-amber-800 border-amber-200' }
+    admin: { label: 'Admin SIMONITA', badge: 'bg-amber-100 text-amber-800 border-amber-200' }
   };
 
   const currentRole = roleLabels[currentUser?.role] || roleLabels.mahasiswa;
@@ -179,7 +180,8 @@ export default function ProfilePage() {
       });
       setSavedWaLink(validation.formattedUrl);
       setWaLinkInput(validation.formattedUrl);
-      setWaSuccess('Tautan grup WhatsApp bimbingan berhasil disimpan dan terhubung ke akun Anda!');
+      setIsEditingWa(false);
+      setWaSuccess('Tautan grup WhatsApp bimbingan berhasil disimpan!');
       setTimeout(() => setWaSuccess(''), 4500);
     } catch (err) {
       setWaError(err.message || 'Gagal menyimpan tautan grup WhatsApp.');
@@ -603,148 +605,176 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {/* Notice jika tautan belum pernah diatur */}
-          {!savedWaLink ? (
-            <div className="p-4 rounded-xl bg-amber-50/80 border border-amber-200/80 flex items-start space-x-3 text-xs text-amber-900">
-              <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-              <div className="space-y-1">
-                <span className="font-bold block">Tautan Grup Belum Diatur</span>
-                <p className="text-amber-800/90 leading-relaxed">
-                  Tautan grup WhatsApp bimbingan Anda belum diatur. Mahasiswa bimbingan Anda memerlukan tautan ini agar dapat bergabung ke grup koordinasi bimbingan di dashboard mereka. Silakan masukkan tautan grup WhatsApp bimbingan Anda pada formulir di bawah ini.
-                </p>
-              </div>
-            </div>
-          ) : (
-            /* Current Saved Link Preview Card */
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-3">
+          {/* Mode 1: Edit Mode (Inline Form saat tombol Pensil Edit ditekan) */}
+          {isEditingWa ? (
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[11px]">
-                <span className="font-bold uppercase tracking-wider text-slate-500">
-                  Tautan Tersimpan Saat Ini
+                <span className="font-bold uppercase tracking-wider text-slate-700 flex items-center space-x-1.5">
+                  <Edit3 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>{savedWaLink ? 'Edit Tautan Grup WhatsApp' : 'Atur Tautan Grup WhatsApp'}</span>
                 </span>
                 <span className="text-slate-500">
-                  Terhubung ke akun: <strong className="text-slate-800 font-semibold">{currentUser?.nama}</strong> (NIP: {currentUser?.nip || currentUser?.nim || '-'})
+                  Akun: <strong className="text-slate-800 font-semibold">{currentUser?.nama}</strong> (NIP: {currentUser?.nip || currentUser?.nim || '-'})
                 </span>
               </div>
 
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
-                <div className="flex items-center space-x-2.5 overflow-hidden text-xs text-slate-800 font-mono">
-                  <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                    <Link2 className="w-4 h-4" />
+              <form onSubmit={handleSaveWaLink} className="space-y-3">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      value={waLinkInput}
+                      onChange={(e) => {
+                        setWaLinkInput(e.target.value);
+                        if (waError) setWaError('');
+                      }}
+                      placeholder="https://chat.whatsapp.com/GrupBimbinganTA-NamaDosen"
+                      className="w-full pl-9 pr-3 py-2 rounded-xl border border-emerald-500 focus:ring-2 focus:ring-emerald-100 text-xs font-semibold text-slate-900 bg-white outline-none"
+                      autoFocus
+                    />
+                    <Link2 className="w-4 h-4 text-emerald-600 absolute left-3 top-1/2 -translate-y-1/2" />
                   </div>
-                  <span className="truncate select-all font-medium text-slate-900">{savedWaLink}</span>
+
+                  <div className="flex items-center space-x-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setWaLinkInput(savedWaLink || '');
+                        setIsEditingWa(false);
+                        setWaError('');
+                      }}
+                      className="px-3.5 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs transition-all flex items-center space-x-1.5 cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      <span>Batal</span>
+                    </button>
+
+                    <button
+                      type="submit"
+                      disabled={isSavingWa || !waLinkInput.trim()}
+                      className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/25 transition-all flex items-center space-x-1.5 cursor-pointer disabled:opacity-50"
+                    >
+                      {isSavingWa ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>Menyimpan...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-3.5 h-3.5" />
+                          <span>Simpan</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
 
-                <div className="flex items-center space-x-2 shrink-0">
-                  <button
-                    type="button"
-                    onClick={handleCopyWaLink}
-                    className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors flex items-center space-x-1.5 cursor-pointer"
-                    title="Salin tautan ke clipboard"
-                  >
-                    {copiedWa ? (
-                      <>
-                        <Check className="w-3.5 h-3.5 text-emerald-600" />
-                        <span className="text-emerald-700">Tersalin!</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3.5 h-3.5 text-slate-500" />
-                        <span>Salin</span>
-                      </>
-                    )}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleOpenWaGroup}
-                    className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors shadow-2xs flex items-center space-x-1.5 cursor-pointer"
-                    title="Buka / Bergabung ke Grup WhatsApp di tab baru"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                    <span>Buka / Gabung Grup</span>
-                  </button>
-                </div>
-              </div>
+                <p className="text-[11px] text-slate-400 font-medium">
+                  Format yang didukung: <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-600 font-mono">https://chat.whatsapp.com/KodeUndangan</code> atau <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-600 font-mono">https://wa.me/...</code>
+                </p>
+              </form>
             </div>
-          )}
+          ) : (
+            /* Mode 2: Display View Mode (Tampilan Bersih Tautan) */
+            <>
+              {!savedWaLink ? (
+                /* Notice jika belum pernah diatur */
+                <div className="p-4 rounded-xl bg-amber-50/80 border border-amber-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs text-amber-900">
+                  <div className="flex items-start space-x-3">
+                    <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                      <span className="font-bold block">Tautan Grup Belum Diatur</span>
+                      <p className="text-amber-800/90 leading-relaxed">
+                        Tautan grup WhatsApp bimbingan Anda belum diatur. Mahasiswa bimbingan Anda memerlukan tautan ini agar dapat bergabung ke grup koordinasi bimbingan di dashboard mereka.
+                      </p>
+                    </div>
+                  </div>
 
-          {/* Form Input & Save Controls */}
-          <form onSubmit={handleSaveWaLink} className="space-y-4">
-            <div className="space-y-1.5">
-              <label htmlFor="wa-group-url" className="text-xs font-bold text-slate-700 flex items-center space-x-1.5">
-                <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
-                <span>{savedWaLink ? 'Perbarui Tautan Grup WhatsApp' : 'Masukkan Tautan Grup WhatsApp Baru'}</span>
-              </label>
-              
-              <div className="relative">
-                <input
-                  id="wa-group-url"
-                  type="text"
-                  value={waLinkInput}
-                  onChange={(e) => {
-                    setWaLinkInput(e.target.value);
-                    if (waError) setWaError('');
-                  }}
-                  placeholder="https://chat.whatsapp.com/GrupBimbinganTA-NamaDosen"
-                  className="w-full pl-9 pr-24 py-2.5 rounded-xl border border-slate-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 text-xs font-semibold text-slate-900 bg-white transition-all outline-none"
-                />
-                <Link2 className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                
-                {waLinkInput && waLinkInput !== savedWaLink && (
                   <button
                     type="button"
                     onClick={() => {
-                      setWaLinkInput(savedWaLink);
+                      setWaLinkInput('');
+                      setIsEditingWa(true);
                       setWaError('');
                     }}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] font-bold text-slate-400 hover:text-slate-600 px-2 py-0.5 rounded cursor-pointer"
+                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all flex items-center space-x-1.5 shadow-2xs cursor-pointer shrink-0"
                   >
-                    Reset
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>Atur Tautan</span>
                   </button>
-                )}
-              </div>
-              <p className="text-[11px] text-slate-400 font-medium">
-                Format yang diperbolehkan: <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-600 font-mono">https://chat.whatsapp.com/KodeUndangan</code> atau <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-600 font-mono">https://wa.me/...</code>
-              </p>
-            </div>
+                </div>
+              ) : (
+                /* Kartu Tautan Tersimpan Saat Ini */
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[11px]">
+                    <span className="font-bold uppercase tracking-wider text-slate-500">
+                      Tautan Tersimpan Saat Ini
+                    </span>
+                    <span className="text-slate-500">
+                      Terhubung ke akun: <strong className="text-slate-800 font-semibold">{currentUser?.nama}</strong> (NIP: {currentUser?.nip || currentUser?.nim || '-'})
+                    </span>
+                  </div>
 
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
-              <div className="text-[11px] text-slate-400 font-medium max-w-md">
-                Tautan tersimpan secara khusus pada akun dosen Anda (NIP: {currentUser?.nip || currentUser?.nim || '-'}) dan otomatis terisolasi agar tidak tertukar dengan dosen lain.
-              </div>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
+                    <div className="flex items-center space-x-2.5 overflow-hidden text-xs text-slate-800 font-mono">
+                      <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                        <Link2 className="w-4 h-4" />
+                      </div>
+                      <span className="truncate select-all font-medium text-slate-900">{savedWaLink}</span>
+                    </div>
 
-              <div className="flex items-center space-x-2.5">
-                {(savedWaLink || waLinkInput) && (
-                  <button
-                    type="button"
-                    onClick={handleOpenWaGroup}
-                    className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-all flex items-center space-x-1.5 cursor-pointer"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
-                    <span>Uji Buka Tautan</span>
-                  </button>
-                )}
+                    <div className="flex items-center space-x-2 shrink-0">
+                      {/* Tombol Salin */}
+                      <button
+                        type="button"
+                        onClick={handleCopyWaLink}
+                        className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors flex items-center space-x-1.5 cursor-pointer"
+                        title="Salin tautan ke clipboard"
+                      >
+                        {copiedWa ? (
+                          <>
+                            <Check className="w-3.5 h-3.5 text-emerald-600" />
+                            <span className="text-emerald-700">Tersalin!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5 text-slate-500" />
+                            <span>Salin</span>
+                          </>
+                        )}
+                      </button>
 
-                <button
-                  type="submit"
-                  disabled={isSavingWa || !waLinkInput.trim() || waLinkInput.trim() === savedWaLink}
-                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/25 transition-all flex items-center space-x-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isSavingWa ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin text-white" />
-                      <span>Menyimpan...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Save className="w-4 h-4" />
-                      <span>Simpan Tautan</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </form>
+                      {/* Tombol Edit dengan Ikon Pensil */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setWaLinkInput(savedWaLink);
+                          setIsEditingWa(true);
+                          setWaError('');
+                        }}
+                        className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors flex items-center space-x-1.5 cursor-pointer"
+                        title="Edit tautan grup WhatsApp"
+                      >
+                        <Edit3 className="w-3.5 h-3.5 text-slate-600" />
+                        <span>Edit</span>
+                      </button>
+
+                      {/* Tombol Buka Grup (buka grup langsung di tab baru) */}
+                      <button
+                        type="button"
+                        onClick={handleOpenWaGroup}
+                        className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors shadow-2xs flex items-center space-x-1.5 cursor-pointer"
+                        title="Buka Grup WhatsApp di tab baru"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        <span>Buka Grup</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
 

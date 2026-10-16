@@ -270,7 +270,7 @@ export default function MonitoringMahasiswaPage() {
                 {/* Action Button */}
                 <div className="md:col-span-2 flex flex-col gap-2 justify-end">
                   <Link
-                    href="/dosen/validasi"
+                    href={`/dosen/validasi?nim=${mhs.student_nim}`}
                     className="w-full text-center px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold border border-indigo-200 transition-colors"
                   >
                     Buka Log

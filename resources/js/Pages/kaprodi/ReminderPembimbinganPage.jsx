@@ -706,7 +706,7 @@ export default function ReminderPembimbinganPage() {
 
                       {/* Recipient Emails */}
                       <td className="py-3.5 px-4 align-top space-y-1 font-mono text-[10px]">
-                        <div className="font-bold text-slate-700 capitalize">Kanal: Gmail &amp; Notif SIMTA</div>
+                        <div className="font-bold text-slate-700 capitalize">Kanal: Gmail &amp; Notif SIMONITA</div>
                         {(log.recipients_emails || []).map((em, idx) => (
                           <div key={idx} className="text-slate-500 truncate max-w-[200px]" title={em}>
                             &bull; {em}
@@ -722,7 +722,7 @@ export default function ReminderPembimbinganPage() {
                         </span>
 
                         <div className="text-[10px] text-slate-400">
-                          Pengirim: {log.pengirim_nama || 'Sistem Otomatis SIMTA'}
+                          Pengirim: {log.pengirim_nama || 'Sistem Otomatis SIMONITA'}
                         </div>
                       </td>
 
@@ -744,7 +744,7 @@ export default function ReminderPembimbinganPage() {
                   <div>
                     <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                       <Cpu className="w-4 h-4 text-indigo-600" />
-                      <span>Parameter Otomasi Engine Pengingat SIMTA</span>
+                      <span>Parameter Otomasi Engine Pengingat SIMONITA</span>
                     </h3>
                     <p className="text-xs text-slate-500 mt-0.5">Sistem berjalan secara otomatis tanpa memerlukan input manual berulang</p>
                   </div>
@@ -771,7 +771,7 @@ export default function ReminderPembimbinganPage() {
 
                   <div className="p-3 bg-white rounded-lg border border-slate-200 space-y-1">
                     <span className="font-bold text-slate-700 block">Pengirim Resmi Notifikasi:</span>
-                    <p className="text-slate-600 font-medium">Sistem Otomatis SIMTA (Atas Nama Program Studi D3 Manajemen Informatika)</p>
+                    <p className="text-slate-600 font-medium">Sistem Otomatis SIMONITA (Atas Nama Program Studi D3 Manajemen Informatika)</p>
                   </div>
                 </div>
               </div>
@@ -781,7 +781,7 @@ export default function ReminderPembimbinganPage() {
                 <div className="text-xs text-indigo-900 space-y-1">
                   <h4 className="font-bold">Keuntungan Sistem Pengingat Otomatis Terpadu</h4>
                   <p className="leading-relaxed">
-                    Dengan sistem otomatis ini, seluruh pengingat dikelola langsung oleh sistem SIMTA pada halaman Kaprodi. Mahasiswa dan dosen pembimbing menerima notifikasi tepat waktu secara otomatis tanpa membebani Kaprodi untuk mengirimkan pesan satu demi satu.
+                    Dengan sistem otomatis ini, seluruh pengingat dikelola langsung oleh sistem SIMONITA pada halaman Kaprodi. Mahasiswa dan dosen pembimbing menerima notifikasi tepat waktu secara otomatis tanpa membebani Kaprodi untuk mengirimkan pesan satu demi satu.
                   </p>
                 </div>
               </div>
@@ -807,7 +807,7 @@ export default function ReminderPembimbinganPage() {
                     Salinan Email Pengingat Otomatis Sistem
                   </h3>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    Bukti proses otentik yang otomatis dikirimkan sistem via Gmail &amp; SIMTA
+                    Bukti proses otentik yang otomatis dikirimkan sistem via Gmail &amp; SIMONITA
                   </p>
                 </div>
               </div>
@@ -824,7 +824,7 @@ export default function ReminderPembimbinganPage() {
             <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-2 text-xs font-mono">
               <div className="flex items-center justify-between">
                 <span className="text-slate-500">Dari:</span>
-                <span className="font-bold text-slate-900">SIMTA Auto-Reminder Engine &lt;simta-noreply@unsri.ac.id&gt;</span>
+                <span className="font-bold text-slate-900">SIMONITA Auto-Reminder Engine &lt;simonita-noreply@unsri.ac.id&gt;</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-500">Waktu Kirim:</span>
@@ -867,7 +867,7 @@ export default function ReminderPembimbinganPage() {
               </div>
 
               <div className="pt-4 border-t border-slate-100 text-[11px] text-slate-500">
-                <p>Email ini dikirimkan secara otomatis oleh <strong>Sistem Otomatis SIMTA (Auto-Reminder Engine)</strong> Program Studi D3 Manajemen Informatika FASILKOM UNSRI.</p>
+                <p>Email ini dikirimkan secara otomatis oleh <strong>Sistem Otomatis SIMONITA (Auto-Reminder Engine)</strong> Program Studi D3 Manajemen Informatika FASILKOM UNSRI.</p>
                 <p className="mt-1">ID Transaksi Audit: <span className="font-mono">{testEmailModal.selectedLog.id}</span></p>
               </div>
             </div>
@@ -915,7 +915,7 @@ export default function ReminderPembimbinganPage() {
                 <h2 className="font-extrabold text-sm uppercase">KEMENTERIAN PENDIDIKAN TINGGI, SAINS, DAN TEKNOLOGI</h2>
                 <h3 className="font-bold text-xs uppercase">UNIVERSITAS SRIWIJAYA &bull; FAKULTAS ILMU KOMPUTER</h3>
                 <h4 className="font-semibold text-xs uppercase">PROGRAM STUDI D3 MANAJEMEN INFORMATIKA</h4>
-                <p className="text-[10px] text-slate-500">Sistem Informasi Manajemen Tugas Akhir (SIMTA) - Rekapitulasi Audit Trail Otomatis</p>
+                <p className="text-[10px] text-slate-500">Sistem Monitoring Tugas Akhir (SIMONITA) - Rekapitulasi Audit Trail Otomatis</p>
               </div>
 
               <div className="py-2 flex justify-between items-center text-[11px]">
@@ -956,7 +956,7 @@ export default function ReminderPembimbinganPage() {
 
               <div className="pt-6 flex justify-between items-end text-[11px]">
                 <div className="text-[10px] text-slate-500">
-                  Dicetak secara sah melalui sistem SIMTA FASILKOM UNSRI.
+                  Dicetak secara sah melalui sistem SIMONITA FASILKOM UNSRI.
                 </div>
                 <div className="text-center w-56 space-y-12">
                   <div>

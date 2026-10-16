@@ -252,11 +252,11 @@ export default function MahasiswaBimbinganPage() {
                 {/* Tombol Aksi Kanan */}
                 <div className="flex items-center space-x-2 shrink-0">
                   <Link
-                    href="/dosen/validasi"
+                    href={`/dosen/validasi?nim=${student.student_nim || student.nim}`}
                     className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-800 text-xs font-bold border border-teal-200 transition-colors"
                   >
                     <MessageSquare className="w-3.5 h-3.5 text-teal-600" />
-                    <span>Validasi Bimbingan</span>
+                    <span>Log Bimbingan</span>
                   </Link>
 
                   <Link

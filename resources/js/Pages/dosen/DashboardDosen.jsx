@@ -226,7 +226,7 @@ export default function DashboardDosen() {
 
         {/* Bimbingan Menunggu Validasi */}
         <Link 
-          href="/dosen/validasi" 
+          href="/dosen/monitoring" 
           className="bg-white border border-slate-200 hover:border-indigo-400 hover:shadow-md transition-all rounded-2xl p-5 shadow-2xs space-y-2 block group"
         >
           <div className="flex items-center justify-between text-slate-400">
@@ -236,7 +236,7 @@ export default function DashboardDosen() {
           <div className="text-3xl font-extrabold text-indigo-600">
             {stats.menunggu} <span className="text-xs font-medium text-slate-500">Menunggu</span>
           </div>
-          <p className="text-[11px] text-indigo-600/80 font-medium">Klik untuk konfirmasi validasi &amp; revisi</p>
+          <p className="text-[11px] text-indigo-600/80 font-medium">Klik untuk monitoring mahasiswa</p>
         </Link>
 
       </div>
@@ -308,7 +308,7 @@ export default function DashboardDosen() {
                   <span>Kapasitas Target</span>
                 </span>
               </div>
-              <span className="text-[11px] text-slate-400">Diperbarui real-time dari database SIMTA</span>
+              <span className="text-[11px] text-slate-400">Diperbarui real-time dari database SIMONITA</span>
             </div>
           </div>
         </div>
@@ -414,11 +414,11 @@ export default function DashboardDosen() {
           </div>
 
           <Link
-            href="/dosen/validasi"
+            href="/dosen/monitoring"
             className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center justify-center space-x-2 transition-all shadow-xs"
           >
-            <ShieldCheck className="w-4 h-4 text-teal-400" />
-            <span>Kelola &amp; Validasi Seluruh Log</span>
+            <BarChart3 className="w-4 h-4 text-teal-400" />
+            <span>Monitoring Mahasiswa Bimbingan</span>
           </Link>
         </div>
 
@@ -572,7 +572,7 @@ export default function DashboardDosen() {
                       </td>
                       <td className="py-3 px-3 text-right">
                         <Link 
-                          href="/dosen/validasi" 
+                          href={`/dosen/validasi?nim=${student.student_nim}`} 
                           className="inline-flex items-center space-x-1 text-teal-700 hover:text-teal-800 font-bold bg-teal-50 hover:bg-teal-100 px-3 py-1.5 rounded-lg transition-colors"
                         >
                           <MessageSquare className="w-3.5 h-3.5 text-teal-600" />

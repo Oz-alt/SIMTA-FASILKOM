@@ -1634,27 +1634,34 @@ export function AuthProvider({ children }) {
   // Dosen Review / Rekomendasi (Validasi Akademik Awal dari Dospem, ACC Tetap Kaprodi)
   const validateThesisTitleDosen = (titleId, statusRekomendasi, catatanDosen = '') => {
     let affectedTitle = null;
-    setThesisTitles(prev => prev.map(t => {
-      if (t.id === titleId) {
-        affectedTitle = {
-          ...t,
-          rekomendasi_dospem_status: statusRekomendasi, // 'direkomendasikan' | 'perlu_revisi'
-          catatan_dospem: catatanDosen,
-          rekomendasi_oleh: currentUser?.nama || 'Dosen Pembimbing',
-          rekomendasi_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
-        return affectedTitle;
-      }
-      return t;
-    }));
+    setThesisTitles(prev => {
+      const updated = prev.map(t => {
+        if (t.id === titleId) {
+          affectedTitle = {
+            ...t,
+            status: statusRekomendasi === 'direkomendasikan' ? 'disetujui' : (statusRekomendasi === 'perlu_revisi' ? 'perlu_revisi' : t.status),
+            rekomendasi_dospem_status: statusRekomendasi, // 'direkomendasikan' | 'perlu_revisi'
+            catatan_dospem: catatanDosen,
+            rekomendasi_oleh: currentUser?.nama || 'Dosen Pembimbing',
+            rekomendasi_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
+          return affectedTitle;
+        }
+        return t;
+      });
+      try { localStorage.setItem('simta_thesis_titles', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
 
     if (affectedTitle) {
       // Notifikasi ke Mahasiswa dengan Integrasi Email
       const studentUser = MOCK_USERS.find(u => u.nim === affectedTitle.mhs_nim);
       const studentEmail = studentUser?.email || (affectedTitle.mhs_nim ? `${affectedTitle.mhs_nim}@student.unsri.ac.id` : '09010182428002@student.unsri.ac.id');
-      const notifTitle = statusRekomendasi === 'direkomendasikan' ? 'Usulan Judul Direkomendasikan Dosen' : 'Catatan Masukan Topik dari Dosen';
-      const notifMessage = `${currentUser?.nama || 'Dosen Pembimbing'} telah memeriksa usulan judul Anda: "${catatanDosen || (statusRekomendasi === 'direkomendasikan' ? 'Direkomendasikan untuk persetujuan Kaprodi.' : 'Perlu revisi topik.')}"`;
+      const notifTitle = statusRekomendasi === 'direkomendasikan' ? 'Usulan Judul Disetujui (ACC) Dosen' : 'Catatan Revisi Judul dari Dosen';
+      const notifMessage = statusRekomendasi === 'direkomendasikan'
+        ? `${currentUser?.nama || 'Dosen Pembimbing'} telah menyetujui (ACC) usulan judul tugas akhir Anda.`
+        : `${currentUser?.nama || 'Dosen Pembimbing'} memberikan catatan revisi pada usulan judul: "${catatanDosen}"`;
 
       const notifMhs = {
         id: `notif-${Date.now()}-mhs`,

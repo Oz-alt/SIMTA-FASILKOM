@@ -49,7 +49,7 @@ export default function Navbar() {
     kaprodi: { label: 'Kaprodi', color: 'bg-blue-100 text-blue-800 border-blue-300', icon: BookOpen },
     dosen: { label: 'Dosen Pembimbing', color: 'bg-teal-100 text-teal-800 border-teal-300', icon: BookOpen },
     admin_sarana: { label: 'Admin Sarana', color: 'bg-purple-100 text-purple-800 border-purple-300', icon: Building2 },
-    admin: { label: 'Admin SIMTA', color: 'bg-rose-100 text-rose-800 border-rose-300', icon: Building2 }
+    admin: { label: 'Admin SIMONITA', color: 'bg-rose-100 text-rose-800 border-rose-300', icon: Building2 }
   };
 
   const userRole = currentUser?.role || 'mahasiswa';
@@ -70,10 +70,10 @@ export default function Navbar() {
             />
             <div>
               <div className="flex items-center space-x-2">
-                <span className="font-extrabold text-xl tracking-tight text-slate-900">SIMTA</span>
+                <span className="font-extrabold text-xl tracking-tight text-slate-900">SIMONITA</span>
               </div>
               <p className="text-[11px] font-medium text-slate-500 hidden sm:block">
-                Sistem Informasi Manajemen Tugas Akhir &amp; Ruang Sidang
+                Sistem Monitoring Tugas Akhir
               </p>
             </div>
           </div>

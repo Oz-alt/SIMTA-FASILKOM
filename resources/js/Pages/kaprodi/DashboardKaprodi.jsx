@@ -294,7 +294,7 @@ export default function DashboardKaprodi() {
     const d2 = titleItem.pembimbing_2_nama || titleItem.pembimbing_2 || 'Dosen Pembimbing 2';
     const similarity = titleItem.skor_kemiripan_terakhir || 0;
 
-    const defaultMsg = `Yth. Bapak/Ibu Dosen Pembimbing, kami menginformasikan dari pemantauan SIMTA Prodi D3 Manajemen Informatika bahwa usulan judul mahasiswa bimbingan Anda (${titleItem.mhs_nama} - NIM ${titleItem.mhs_nim}) saat ini memiliki skor kemiripan ${similarity}% (di atas batas aman ${similarityThreshold}%). Mohon kesediaan Bapak/Ibu untuk memberikan arahan agar mahasiswa dapat merevisi formulasi judul atau studi kasus sehingga siap melangkah ke tahap pengerjaan laporan dan pendaftaran Sidang Akhir Tugas Akhir D3.`;
+    const defaultMsg = `Yth. Bapak/Ibu Dosen Pembimbing, kami menginformasikan dari pemantauan SIMONITA Prodi D3 Manajemen Informatika bahwa usulan judul mahasiswa bimbingan Anda (${titleItem.mhs_nama} - NIM ${titleItem.mhs_nim}) saat ini memiliki skor kemiripan ${similarity}% (di atas batas aman ${similarityThreshold}%). Mohon kesediaan Bapak/Ibu untuk memberikan arahan agar mahasiswa dapat merevisi formulasi judul atau studi kasus sehingga siap melangkah ke tahap pengerjaan laporan dan pendaftaran Sidang Akhir Tugas Akhir D3.`;
 
     setReminderModal({
       isOpen: true,
@@ -470,7 +470,7 @@ export default function DashboardKaprodi() {
               </span>
             </div>
             <p className="text-[11px] text-slate-600 mt-0.5">
-              Sistem SIMTA secara otomatis mengevaluasi dan mengirimkan notifikasi pengingat kepada mahasiswa dan dosen pembimbing apabila belum melaksanakan bimbingan minimal 2 kali dalam 1 bulan.
+              Sistem SIMONITA secara otomatis mengevaluasi dan mengirimkan notifikasi pengingat kepada mahasiswa dan dosen pembimbing apabila belum melaksanakan bimbingan minimal 2 kali dalam 1 bulan.
             </p>
           </div>
         </div>
@@ -1451,7 +1451,7 @@ export default function DashboardKaprodi() {
                     className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-600/20 transition-all disabled:opacity-50"
                   >
                     <Send className="w-3.5 h-3.5" />
-                    <span>{reminderModal.isSending ? 'Mengirim...' : 'Kirim Notifikasi SIMTA'}</span>
+                    <span>{reminderModal.isSending ? 'Mengirim...' : 'Kirim Notifikasi SIMONITA'}</span>
                   </button>
                 </div>
               </div>
