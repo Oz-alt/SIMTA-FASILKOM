@@ -208,6 +208,23 @@ export default function Sidebar() {
           dashboard: { to: '/admin-simta/dashboard', label: 'Dashboard', icon: LayoutDashboard },
           groups: [
             {
+              id: 'data_master',
+              label: 'Data Master',
+              icon: Database,
+              items: [
+                { to: '/admin-simta/master/mahasiswa', label: 'Data Master Mahasiswa', icon: GraduationCap },
+                { to: '/admin-simta/master/dosen', label: 'Data Master Dosen', icon: UserCheck }
+              ]
+            },
+            {
+              id: 'tugas_akhir',
+              label: 'Tugas Akhir',
+              icon: BookOpen,
+              items: [
+                { to: '/admin-simta/thesis-management', label: 'Manajemen Tugas Akhir', icon: BookOpen }
+              ]
+            },
+            {
               id: 'manajemen_akun',
               label: 'Manajemen Akun',
               icon: Users,

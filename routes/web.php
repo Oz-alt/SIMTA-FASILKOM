@@ -193,6 +193,30 @@ Route::get('/admin-simta/templates', function () {
     return Inertia::render('admin/TemplateAdminPage');
 });
 
+Route::get('/admin-simta/master/mahasiswa', function () {
+    return Inertia::render('admin/MasterMahasiswaAdminPage');
+});
+
+Route::get('/admin-simta/master-data/mahasiswa', function () {
+    return Inertia::render('admin/MasterMahasiswaAdminPage');
+});
+
+Route::get('/admin-simta/master/dosen', function () {
+    return Inertia::render('admin/MasterDosenAdminPage');
+});
+
+Route::get('/admin-simta/master-data/dosen', function () {
+    return Inertia::render('admin/MasterDosenAdminPage');
+});
+
+Route::get('/admin-simta/thesis-management', function () {
+    return Inertia::render('admin/ManajemenTAAdminPage');
+});
+
+Route::get('/admin-simta/manajemen-ta', function () {
+    return Inertia::render('admin/ManajemenTAAdminPage');
+});
+
 Route::get('/admin-simta/repository', function () {
     return Inertia::render('admin/ManajemenRepositoryAdminPage');
 });

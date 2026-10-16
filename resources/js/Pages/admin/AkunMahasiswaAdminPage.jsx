@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { 
   GraduationCap, 
@@ -62,6 +62,19 @@ export default function AkunMahasiswaAdminPage() {
   // Password reset custom field
   const [newPasswordInput, setNewPasswordInput] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+
+  // Lock background scroll when any modal is open so touchpad/wheel scrolls the modal
+  useEffect(() => {
+    const isAnyModalOpen = Boolean(isAddOpen || editingStudent || viewingStudent || resettingStudent || deletingStudent);
+    if (isAnyModalOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isAddOpen, editingStudent, viewingStudent, resettingStudent, deletingStudent]);
 
   // Toast Notification
   const [toastMessage, setToastMessage] = useState('');
@@ -221,7 +234,7 @@ export default function AkunMahasiswaAdminPage() {
   };
 
   return (
-    <div className="space-y-6 select-none">
+    <div className="space-y-6">
       
       {/* Toast Notification Banner */}
       {toastMessage && (
@@ -513,13 +526,25 @@ export default function AkunMahasiswaAdminPage() {
 
       {/* ── MODAL: TAMBAH / EDIT AKUN MAHASISWA ────────────────────────────── */}
       {(isAddOpen || editingStudent) && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
+        <div 
+          data-lenis-prevent
+          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-hidden"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setIsAddOpen(false);
+              setEditingStudent(null);
+            }
+          }}
+        >
+          <div 
+            data-lenis-prevent
+            className="bg-white rounded-3xl max-w-lg w-full shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh] sm:max-h-[85vh] overflow-hidden"
+          >
             
-            {/* Modal Header */}
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+            {/* Modal Header (Fixed at top of popup) */}
+            <div className="flex items-center justify-between p-5 sm:p-6 pb-4 border-b border-slate-100 bg-white shrink-0">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold shrink-0">
                   <GraduationCap className="w-5 h-5" />
                 </div>
                 <div>
@@ -534,141 +559,150 @@ export default function AkunMahasiswaAdminPage() {
               <button
                 type="button"
                 onClick={() => { setIsAddOpen(false); setEditingStudent(null); }}
-                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer shrink-0"
+                aria-label="Tutup modal"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Modal Form */}
-            <form onSubmit={handleSaveStudent} className="space-y-4 pt-4 text-xs">
+            {/* Modal Form Wrapper */}
+            <form onSubmit={handleSaveStudent} className="flex flex-col flex-1 min-h-0 overflow-hidden" data-lenis-prevent>
               
-              {/* NIM */}
-              <div className="space-y-1">
-                <label className="font-bold text-slate-700">NIM (Nomor Induk Mahasiswa) *</label>
-                <input
-                  type="text"
-                  required
-                  value={studentForm.nim}
-                  onChange={(e) => setStudentForm({ ...studentForm, nim: e.target.value })}
-                  placeholder="Contoh: 09010182428002"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none font-mono text-xs font-semibold"
-                />
-              </div>
-
-              {/* Nama */}
-              <div className="space-y-1">
-                <label className="font-bold text-slate-700">Nama Lengkap Mahasiswa *</label>
-                <input
-                  type="text"
-                  required
-                  value={studentForm.nama}
-                  onChange={(e) => setStudentForm({ ...studentForm, nama: e.target.value })}
-                  placeholder="Masukkan nama lengkap sesuai KTM"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-xs font-medium"
-                />
-              </div>
-
-              {/* Email Resmi & No HP */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Scrollable Form Body (Dedicated internal scroll) */}
+              <div 
+                data-lenis-prevent
+                className="p-5 sm:p-6 space-y-4 text-xs overflow-y-auto flex-1 overscroll-contain"
+              >
+                
+                {/* NIM */}
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700">Email Resmi UNSRI</label>
-                  <input
-                    type="email"
-                    value={studentForm.email}
-                    onChange={(e) => setStudentForm({ ...studentForm, email: e.target.value })}
-                    placeholder="nama@student.unsri.ac.id"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-xs font-medium"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-700">No. WhatsApp / HP</label>
+                  <label className="font-bold text-slate-700">NIM (Nomor Induk Mahasiswa) *</label>
                   <input
                     type="text"
-                    value={studentForm.no_hp}
-                    onChange={(e) => setStudentForm({ ...studentForm, no_hp: e.target.value })}
-                    placeholder="08123456789"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-xs font-medium"
+                    required
+                    value={studentForm.nim}
+                    onChange={(e) => setStudentForm({ ...studentForm, nim: e.target.value })}
+                    placeholder="Contoh: 09010182428002"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none font-mono text-xs font-semibold"
                   />
                 </div>
-              </div>
 
-              {/* Prodi & Kelas */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Nama */}
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700">Program Studi</label>
-                  <select
-                    value={studentForm.prodi}
-                    onChange={(e) => setStudentForm({ ...studentForm, prodi: e.target.value })}
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-blue-600 outline-none text-xs font-semibold bg-white cursor-pointer"
-                  >
-                    <option value="D3 Manajemen Informatika">D3 Manajemen Informatika</option>
-                    <option value="D3 Teknik Komputer">D3 Teknik Komputer</option>
-                    <option value="S1 Sistem Informasi">S1 Sistem Informasi</option>
-                    <option value="S1 Teknik Informatika">S1 Teknik Informatika</option>
-                    <option value="S1 Sistem Komputer">S1 Sistem Komputer</option>
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-700">Kelas / Rombel</label>
+                  <label className="font-bold text-slate-700">Nama Lengkap Mahasiswa *</label>
                   <input
                     type="text"
-                    value={studentForm.kelas}
-                    onChange={(e) => setStudentForm({ ...studentForm, kelas: e.target.value })}
-                    placeholder="Contoh: MI 5A"
+                    required
+                    value={studentForm.nama}
+                    onChange={(e) => setStudentForm({ ...studentForm, nama: e.target.value })}
+                    placeholder="Masukkan nama lengkap sesuai KTM"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-xs font-medium"
                   />
                 </div>
-              </div>
 
-              {/* Status Akun */}
-              <div className="space-y-1">
-                <label className="font-bold text-slate-700">Status Akun</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {['aktif', 'cuti', 'nonaktif'].map(st => (
-                    <button
-                      key={st}
-                      type="button"
-                      onClick={() => setStudentForm({ ...studentForm, status: st })}
-                      className={`py-2 px-3 rounded-xl border font-bold text-xs uppercase tracking-wider transition-all cursor-pointer ${
-                        studentForm.status === st
-                          ? 'bg-blue-50 border-blue-600 text-blue-700 ring-2 ring-blue-100'
-                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                      }`}
+                {/* Email Resmi & No HP */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-700">Email Resmi UNSRI</label>
+                    <input
+                      type="email"
+                      value={studentForm.email}
+                      onChange={(e) => setStudentForm({ ...studentForm, email: e.target.value })}
+                      placeholder="nama@student.unsri.ac.id"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-xs font-medium"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-700">No. WhatsApp / HP</label>
+                    <input
+                      type="text"
+                      value={studentForm.no_hp}
+                      onChange={(e) => setStudentForm({ ...studentForm, no_hp: e.target.value })}
+                      placeholder="08123456789"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-xs font-medium"
+                    />
+                  </div>
+                </div>
+
+                {/* Prodi & Kelas */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-700">Program Studi</label>
+                    <select
+                      value={studentForm.prodi}
+                      onChange={(e) => setStudentForm({ ...studentForm, prodi: e.target.value })}
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-blue-600 outline-none text-xs font-semibold bg-white cursor-pointer"
                     >
-                      {st}
-                    </button>
-                  ))}
+                      <option value="D3 Manajemen Informatika">D3 Manajemen Informatika</option>
+                      <option value="D3 Teknik Komputer">D3 Teknik Komputer</option>
+                      <option value="S1 Sistem Informasi">S1 Sistem Informasi</option>
+                      <option value="S1 Teknik Informatika">S1 Teknik Informatika</option>
+                      <option value="S1 Sistem Komputer">S1 Sistem Komputer</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-700">Kelas / Rombel</label>
+                    <input
+                      type="text"
+                      value={studentForm.kelas}
+                      onChange={(e) => setStudentForm({ ...studentForm, kelas: e.target.value })}
+                      placeholder="Contoh: MI 5A"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-xs font-medium"
+                    />
+                  </div>
                 </div>
+
+                {/* Status Akun */}
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Status Akun</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {['aktif', 'cuti', 'nonaktif'].map(st => (
+                      <button
+                        key={st}
+                        type="button"
+                        onClick={() => setStudentForm({ ...studentForm, status: st })}
+                        className={`py-2 px-3 rounded-xl border font-bold text-xs uppercase tracking-wider transition-all cursor-pointer ${
+                          studentForm.status === st
+                            ? 'bg-blue-50 border-blue-600 text-blue-700 ring-2 ring-blue-100'
+                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        {st}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Password Initial (Only for new accounts) */}
+                {!editingStudent && (
+                  <div className="space-y-1 pt-1">
+                    <label className="font-bold text-slate-700">Kata Sandi Awal (Opsional)</label>
+                    <input
+                      type="text"
+                      value={studentForm.password}
+                      onChange={(e) => setStudentForm({ ...studentForm, password: e.target.value })}
+                      placeholder="Default: Sesuai NIM jika dikosongkan"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-xs font-medium"
+                    />
+                    <p className="text-[10px] text-slate-400">Kata sandi standar otomatis menggunakan NIM mahasiswa.</p>
+                  </div>
+                )}
+
               </div>
 
-              {/* Password Initial (Only for new accounts) */}
-              {!editingStudent && (
-                <div className="space-y-1 pt-1">
-                  <label className="font-bold text-slate-700">Kata Sandi Awal (Opsional)</label>
-                  <input
-                    type="text"
-                    value={studentForm.password}
-                    onChange={(e) => setStudentForm({ ...studentForm, password: e.target.value })}
-                    placeholder="Default: Sesuai NIM jika dikosongkan"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-xs font-medium"
-                  />
-                  <p className="text-[10px] text-slate-400">Kata sandi standar otomatis menggunakan NIM mahasiswa.</p>
-                </div>
-              )}
-
-              {/* Modal Buttons */}
-              <div className="flex items-center justify-end space-x-2 pt-4 border-t border-slate-100">
+              {/* Modal Footer (Pinned at bottom of popup) */}
+              <div className="flex items-center justify-end space-x-2.5 p-4 sm:px-6 border-t border-slate-100 bg-slate-50/90 backdrop-blur-xs shrink-0 rounded-b-3xl">
                 <button
                   type="button"
                   onClick={() => { setIsAddOpen(false); setEditingStudent(null); }}
-                  className="px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-100 font-bold transition-all cursor-pointer"
+                  className="px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-200/70 font-bold transition-all cursor-pointer text-xs"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md shadow-blue-600/30 transition-all cursor-pointer"
+                  className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md shadow-blue-600/30 transition-all cursor-pointer text-xs"
                 >
                   {editingStudent ? 'Simpan Perubahan' : 'Daftarkan Akun'}
                 </button>
@@ -682,22 +716,22 @@ export default function AkunMahasiswaAdminPage() {
 
       {/* ── MODAL: DETAIL AKUN MAHASISWA ─────────────────────────────────── */}
       {viewingStudent && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200 space-y-5">
+        <div data-lenis-prevent className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div data-lenis-prevent className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200 space-y-5 max-h-[90vh] overflow-y-auto my-auto">
             
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="font-extrabold text-base text-slate-900">Detail Akun Mahasiswa</h3>
               <button
                 type="button"
                 onClick={() => setViewingStudent(null)}
-                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600"
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <div className="flex items-center space-x-4 p-4 rounded-2xl bg-slate-50 border border-slate-100">
-              <div className="w-14 h-14 rounded-2xl bg-blue-600 text-white font-black text-xl flex items-center justify-center shadow-md shadow-blue-600/30">
+              <div className="w-14 h-14 rounded-2xl bg-blue-600 text-white font-black text-xl flex items-center justify-center shadow-md shadow-blue-600/30 shrink-0">
                 {viewingStudent.nama ? viewingStudent.nama.charAt(0).toUpperCase() : 'M'}
               </div>
               <div>
@@ -738,7 +772,7 @@ export default function AkunMahasiswaAdminPage() {
               )}
             </div>
 
-            <div className="flex items-center justify-end space-x-2 pt-2">
+            <div className="flex items-center justify-end space-x-2 pt-2 border-t border-slate-100">
               <button
                 type="button"
                 onClick={() => {
@@ -746,7 +780,7 @@ export default function AkunMahasiswaAdminPage() {
                   setViewingStudent(null);
                   handleOpenReset(s);
                 }}
-                className="px-4 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold text-xs flex items-center space-x-1.5"
+                className="px-4 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold text-xs flex items-center space-x-1.5 cursor-pointer"
               >
                 <KeyRound className="w-3.5 h-3.5" />
                 <span>Reset Sandi</span>
@@ -754,7 +788,7 @@ export default function AkunMahasiswaAdminPage() {
               <button
                 type="button"
                 onClick={() => setViewingStudent(null)}
-                className="px-4 py-2 rounded-xl bg-slate-900 text-white font-bold text-xs"
+                className="px-4 py-2 rounded-xl bg-slate-900 text-white font-bold text-xs cursor-pointer"
               >
                 Tutup
               </button>
@@ -766,8 +800,8 @@ export default function AkunMahasiswaAdminPage() {
 
       {/* ── MODAL: RESET PASSWORD MAHASISWA ──────────────────────────────── */}
       {resettingStudent && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200 space-y-4">
+        <div data-lenis-prevent className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div data-lenis-prevent className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200 space-y-4 max-h-[90vh] overflow-y-auto my-auto">
             
             <div className="flex items-center space-x-3 text-amber-600">
               <div className="w-10 h-10 rounded-2xl bg-amber-50 flex items-center justify-center shrink-0 font-bold">
@@ -798,7 +832,7 @@ export default function AkunMahasiswaAdminPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -808,24 +842,24 @@ export default function AkunMahasiswaAdminPage() {
                   <button
                     type="button"
                     onClick={() => setNewPasswordInput(resettingStudent.nim)}
-                    className="text-blue-600 hover:underline font-bold"
+                    className="text-blue-600 hover:underline font-bold cursor-pointer"
                   >
                     Gunakan NIM ({resettingStudent.nim})
                   </button>
                 </div>
               </div>
 
-              <div className="flex items-center justify-end space-x-2 pt-3">
+              <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setResettingStudent(null)}
-                  className="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 font-bold text-xs"
+                  className="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 font-bold text-xs cursor-pointer"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-md shadow-amber-600/30"
+                  className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-md shadow-amber-600/30 cursor-pointer"
                 >
                   Konfirmasi Reset Sandi
                 </button>
@@ -838,8 +872,8 @@ export default function AkunMahasiswaAdminPage() {
 
       {/* ── MODAL: KONFIRMASI HAPUS MAHASISWA ────────────────────────────── */}
       {deletingStudent && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200 space-y-4">
+        <div data-lenis-prevent className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div data-lenis-prevent className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200 space-y-4 max-h-[90vh] overflow-y-auto my-auto">
             
             <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
               <AlertTriangle className="w-6 h-6" />
@@ -852,18 +886,18 @@ export default function AkunMahasiswaAdminPage() {
               </p>
             </div>
 
-            <div className="flex items-center justify-center space-x-2 pt-2">
+            <div className="flex items-center justify-center space-x-2 pt-2 border-t border-slate-100">
               <button
                 type="button"
                 onClick={() => setDeletingStudent(null)}
-                className="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 font-bold text-xs"
+                className="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 font-bold text-xs cursor-pointer"
               >
                 Batal
               </button>
               <button
                 type="button"
                 onClick={handleConfirmDelete}
-                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md shadow-rose-600/30"
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md shadow-rose-600/30 cursor-pointer"
               >
                 Ya, Hapus Akun
               </button>
