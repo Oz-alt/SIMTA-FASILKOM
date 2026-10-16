@@ -170,11 +170,18 @@ export default function KartuBimbinganPage() {
                   <td className="border border-black py-2 px-2 text-center align-middle">{data ? data.tanggal : ''}</td>
                   <td className="border border-black py-2 px-3 text-left font-medium align-middle">
                     {data ? (
-                      <div className="flex items-center justify-between gap-1.5">
+                      <div className="flex items-center justify-between gap-1.5 flex-wrap">
                         <span>{data.bab_topik}</span>
-                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded border border-slate-300 text-slate-600 uppercase tracking-wider shrink-0 print:border-black print:text-black">
-                          {data.metode === 'daring' ? 'Daring' : 'Luring'}
-                        </span>
+                        <div className="flex items-center space-x-1 shrink-0">
+                          {data.jenis_revisi && (
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded border border-slate-300 text-slate-800 uppercase tracking-wider print:border-black print:text-black">
+                              {data.jenis_revisi}
+                            </span>
+                          )}
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded border border-slate-300 text-slate-600 uppercase tracking-wider print:border-black print:text-black">
+                            {data.metode === 'daring' ? 'Daring' : 'Luring'}
+                          </span>
+                        </div>
                       </div>
                     ) : ''}
                   </td>

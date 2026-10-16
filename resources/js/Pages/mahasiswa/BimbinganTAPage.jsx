@@ -19,7 +19,9 @@ import {
   ExternalLink,
   Printer,
   Building2,
-  Video
+  Video,
+  X,
+  AlertTriangle
 } from 'lucide-react';
 import ModalAjukanBimbingan from '../../Components/common/ModalAjukanBimbingan.jsx';
 import ModalEditBimbingan from '../../Components/common/ModalEditBimbingan.jsx';
@@ -278,51 +280,88 @@ export default function BimbinganTAPage() {
                       <span>{item.tanggal} ({item.waktu})</span>
                     </span>
 
-                    {/* Status Badge */}
-                    {item.status === 'disetujui' && (
-                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold text-[10px] flex items-center space-x-1">
-                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                        <span>Disetujui</span>
-                      </span>
-                    )}
-                    {item.status === 'perlu_revisi' && (
-                      <span className="px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 font-bold text-[10px] flex items-center space-x-1">
-                        <AlertCircle className="w-3 h-3 text-amber-600" />
-                        <span>Perlu Revisi</span>
-                      </span>
-                    )}
-                    {item.status === 'menunggu_tanggapan' && (
-                      <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-800 border border-blue-200 font-bold text-[10px] flex items-center space-x-1">
-                        <Clock className="w-3 h-3 text-blue-600" />
-                        <span>Menunggu Tanggapan</span>
-                      </span>
-                    )}
+                    <div className="flex items-center space-x-2 flex-wrap gap-1">
+                      {/* Jenis Revisi Badge */}
+                      {item.jenis_revisi && (
+                        <span className={`px-2.5 py-0.5 rounded-full font-extrabold text-[10px] flex items-center space-x-1 border ${
+                          item.jenis_revisi === 'Diterima' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
+                          item.jenis_revisi === 'Minor' ? 'bg-amber-100 text-amber-800 border-amber-300' :
+                          item.jenis_revisi === 'Mayor' ? 'bg-orange-100 text-orange-800 border-orange-300' :
+                          'bg-rose-100 text-rose-800 border-rose-300'
+                        }`}>
+                          {item.jenis_revisi === 'Diterima' && <CheckCircle2 className="w-3 h-3 text-emerald-600" />}
+                          {item.jenis_revisi === 'Minor' && <AlertCircle className="w-3 h-3 text-amber-600" />}
+                          {item.jenis_revisi === 'Mayor' && <AlertTriangle className="w-3 h-3 text-orange-600" />}
+                          {item.jenis_revisi === 'Ditolak' && <X className="w-3 h-3 text-rose-600" />}
+                          <span>Revisi: {item.jenis_revisi}</span>
+                        </span>
+                      )}
+
+                      {/* Status Badge */}
+                      {item.status === 'disetujui' && (
+                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold text-[10px] flex items-center space-x-1">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          <span>Disetujui</span>
+                        </span>
+                      )}
+                      {item.status === 'perlu_revisi' && (
+                        <span className="px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 font-bold text-[10px] flex items-center space-x-1">
+                          <AlertCircle className="w-3 h-3 text-amber-600" />
+                          <span>Perlu Revisi</span>
+                        </span>
+                      )}
+                      {item.status === 'ditolak' && (
+                        <span className="px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-800 border border-rose-200 font-bold text-[10px] flex items-center space-x-1">
+                          <X className="w-3 h-3 text-rose-600" />
+                          <span>Ditolak</span>
+                        </span>
+                      )}
+                      {item.status === 'menunggu_tanggapan' && (
+                        <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-800 border border-blue-200 font-bold text-[10px] flex items-center space-x-1">
+                          <Clock className="w-3 h-3 text-blue-600" />
+                          <span>Menunggu Tanggapan</span>
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
                 {/* Bab & Catatan Mahasiswa */}
                 <div className="space-y-2 text-xs">
-                  <div className="font-bold text-slate-900 text-sm flex items-center space-x-2">
-                    <BookOpen className="w-4 h-4 text-blue-600 shrink-0" />
-                    <span>{item.bab_topik}</span>
+                    <div className="font-bold text-slate-900 text-sm flex items-center space-x-2">
+                      <BookOpen className="w-4 h-4 text-blue-600 shrink-0" />
+                      <span>{item.bab_topik}</span>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-slate-700 leading-relaxed">
+                      <span className="font-bold text-slate-900 block mb-0.5">Catatan Progres Mahasiswa:</span>
+                      <p>{item.catatan_mahasiswa}</p>
+                    </div>
                   </div>
 
-                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-slate-700 leading-relaxed">
-                    <span className="font-bold text-slate-900 block mb-0.5">Catatan Progres Mahasiswa:</span>
-                    <p>{item.catatan_mahasiswa}</p>
-                  </div>
-                </div>
-
-                {/* Masukan Dosen Pembimbing */}
-                {item.masukan_dosen && (
-                  <div className="p-3.5 rounded-xl bg-indigo-50/60 border border-indigo-100 text-xs space-y-1">
-                    <span className="font-bold text-indigo-900 flex items-center space-x-1.5">
-                      <MessageSquare className="w-4 h-4 text-indigo-600" />
-                      <span>Masukan / Catatan Dosen Pembimbing:</span>
-                    </span>
-                    <p className="text-indigo-950 leading-relaxed pl-5 font-medium">{item.masukan_dosen}</p>
-                  </div>
-                )}
+                  {/* Masukan Dosen Pembimbing */}
+                  {item.masukan_dosen && (
+                    <div className={`p-3.5 rounded-xl border text-xs space-y-1.5 ${
+                      item.jenis_revisi === 'Diterima' ? 'bg-emerald-50/70 border-emerald-200' :
+                      item.jenis_revisi === 'Minor' ? 'bg-amber-50/70 border-amber-200' :
+                      item.jenis_revisi === 'Mayor' ? 'bg-orange-50/70 border-orange-200' :
+                      item.jenis_revisi === 'Ditolak' ? 'bg-rose-50/70 border-rose-200' :
+                      'bg-indigo-50/60 border-indigo-100'
+                    }`}>
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-slate-900 flex items-center space-x-1.5">
+                          <MessageSquare className="w-4 h-4 text-indigo-600" />
+                          <span>Masukan / Catatan Dosen Pembimbing:</span>
+                        </span>
+                        {item.jenis_revisi && (
+                          <span className="text-[10px] font-extrabold text-slate-700 bg-white/90 px-2 py-0.5 rounded-md border border-slate-200 shadow-2xs">
+                            Kategori: {item.jenis_revisi}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-slate-800 leading-relaxed pl-5 font-medium">{item.masukan_dosen}</p>
+                    </div>
+                  )}
 
                 {/* Link Dokumen Drive & Action Buttons */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-2.5 border-t border-slate-100 text-xs">
