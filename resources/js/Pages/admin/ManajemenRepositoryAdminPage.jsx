@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { 
   Database, 
@@ -78,6 +78,19 @@ export default function ManajemenRepositoryAdminPage() {
   const [showImportModal, setShowImportModal] = useState(false);
   const [showScraperModal, setShowScraperModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
+
+  // Lock background scroll when any modal is open so touchpad/wheel scrolls the modal
+  useEffect(() => {
+    const isAnyModalOpen = Boolean(showDetailModal || showFormModal || showImportModal || showScraperModal || showDeleteConfirm);
+    if (isAnyModalOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [showDetailModal, showFormModal, showImportModal, showScraperModal, showDeleteConfirm]);
 
   // Scraper Simulation State
   const [isScraping, setIsScraping] = useState(false);
@@ -878,8 +891,8 @@ export default function ManajemenRepositoryAdminPage() {
       {/* MODAL: DETAIL & METADATA REPOSITORI */}
       {/* ========================================================================= */}
       {showDetailModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-3xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200 space-y-5 p-6 sm:p-8">
+        <div data-lenis-prevent className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
+          <div data-lenis-prevent className="bg-white rounded-3xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200 space-y-5 p-6 sm:p-8">
             
             <div className="flex items-start justify-between border-b border-slate-100 pb-4">
               <div className="space-y-1">
@@ -1268,154 +1281,158 @@ function FormRepositoryModal({ item, onClose, onSave }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
-      <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200 p-6 sm:p-8 space-y-5">
+    <div data-lenis-prevent className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in overflow-y-auto">
+      <div data-lenis-prevent className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-200 flex flex-col max-h-[90vh] overflow-hidden my-auto">
         
-        <div className="flex items-start justify-between border-b border-slate-100 pb-4">
+        {/* Header */}
+        <div className="flex items-start justify-between border-b border-slate-100 p-6 pb-4 shrink-0 bg-white">
           <div>
             <h2 className="text-lg font-black text-slate-900">
               {item ? 'Edit Metadata Dokumen Repositori' : 'Tambah Dokumen Repositori Baru'}
             </h2>
             <p className="text-xs text-slate-500">Lengkapi formulir metadata Tugas Akhir / Skripsi Fasilkom UNSRI</p>
           </div>
-          <button onClick={onClose} className="p-1.5 text-slate-400 hover:text-slate-700 rounded-full transition-colors cursor-pointer">
+          <button onClick={onClose} className="p-1.5 text-slate-400 hover:text-slate-700 rounded-full transition-colors cursor-pointer shrink-0">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4 text-xs">
-          
-          <div className="space-y-1">
-            <label className="font-bold text-slate-700">Judul Tugas Akhir / Skripsi *</label>
-            <textarea
-              rows={3}
-              value={formData.judul}
-              onChange={(e) => setFormData({ ...formData, judul: e.target.value })}
-              placeholder="Contoh: RANCANG BANGUN SISTEM INFORMASI..."
-              className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-            {errors.judul && <p className="text-[11px] text-red-600 font-semibold">{errors.judul}</p>}
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {/* Scrollable Form Body */}
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden min-h-0" data-lenis-prevent>
+          <div data-lenis-prevent className="overflow-y-auto p-6 space-y-4 text-xs flex-1">
             <div className="space-y-1">
-              <label className="font-bold text-slate-700">Nama Penulis / Mahasiswa *</label>
-              <input
-                type="text"
-                value={formData.penulis_nama}
-                onChange={(e) => setFormData({ ...formData, penulis_nama: e.target.value })}
-                placeholder="Nama Lengkap"
-                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              <label className="font-bold text-slate-700">Judul Tugas Akhir / Skripsi *</label>
+              <textarea
+                rows={3}
+                value={formData.judul}
+                onChange={(e) => setFormData({ ...formData, judul: e.target.value })}
+                placeholder="Contoh: RANCANG BANGUN SISTEM INFORMASI..."
+                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
-              {errors.penulis_nama && <p className="text-[11px] text-red-600 font-semibold">{errors.penulis_nama}</p>}
+              {errors.judul && <p className="text-[11px] text-red-600 font-semibold">{errors.judul}</p>}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700">Nama Penulis / Mahasiswa *</label>
+                <input
+                  type="text"
+                  value={formData.penulis_nama}
+                  onChange={(e) => setFormData({ ...formData, penulis_nama: e.target.value })}
+                  placeholder="Nama Lengkap"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                {errors.penulis_nama && <p className="text-[11px] text-red-600 font-semibold">{errors.penulis_nama}</p>}
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700">NIM Mahasiswa *</label>
+                <input
+                  type="text"
+                  value={formData.penulis_nim}
+                  onChange={(e) => setFormData({ ...formData, penulis_nim: e.target.value })}
+                  placeholder="Contoh: 09010182428019"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                {errors.penulis_nim && <p className="text-[11px] text-red-600 font-semibold">{errors.penulis_nim}</p>}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700">Program Studi</label>
+                <select
+                  value={formData.prodi}
+                  onChange={(e) => setFormData({ ...formData, prodi: e.target.value })}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  {PRODI_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700">Tahun TA / Lulus</label>
+                <select
+                  value={formData.tahun_ta}
+                  onChange={(e) => setFormData({ ...formData, tahun_ta: e.target.value })}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  {TAHUN_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700">Dosen Pembimbing 1 / PA</label>
+                <input
+                  type="text"
+                  value={formData.pembimbing_1}
+                  onChange={(e) => setFormData({ ...formData, pembimbing_1: e.target.value })}
+                  placeholder="Nama Pembimbing 1"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700">Dosen Pembimbing 2</label>
+                <input
+                  type="text"
+                  value={formData.pembimbing_2}
+                  onChange={(e) => setFormData({ ...formData, pembimbing_2: e.target.value })}
+                  placeholder="Nama Pembimbing 2 (Opsional)"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
             </div>
 
             <div className="space-y-1">
-              <label className="font-bold text-slate-700">NIM Mahasiswa *</label>
+              <label className="font-bold text-slate-700">URL Asli Repository UNSRI (E-Print Link)</label>
               <input
-                type="text"
-                value={formData.penulis_nim}
-                onChange={(e) => setFormData({ ...formData, penulis_nim: e.target.value })}
-                placeholder="Contoh: 09010182428019"
+                type="url"
+                value={formData.link_repo_unsri}
+                onChange={(e) => setFormData({ ...formData, link_repo_unsri: e.target.value })}
+                placeholder="http://repository.unsri.ac.id/200395/"
                 className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
-              {errors.penulis_nim && <p className="text-[11px] text-red-600 font-semibold">{errors.penulis_nim}</p>}
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="font-bold text-slate-700">Program Studi</label>
+              <label className="font-bold text-slate-700">Abstrak Dokumen</label>
+              <textarea
+                rows={4}
+                value={formData.abstrak}
+                onChange={(e) => setFormData({ ...formData, abstrak: e.target.value })}
+                placeholder="Isi abstrak atau ringkasan skripsi..."
+                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-serif"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="font-bold text-slate-700">Status Publikasi</label>
               <select
-                value={formData.prodi}
-                onChange={(e) => setFormData({ ...formData, prodi: e.target.value })}
+                value={formData.status}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                 className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
-                {PRODI_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
-              </select>
-            </div>
-
-            <div className="space-y-1">
-              <label className="font-bold text-slate-700">Tahun TA / Lulus</label>
-              <select
-                value={formData.tahun_ta}
-                onChange={(e) => setFormData({ ...formData, tahun_ta: e.target.value })}
-                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              >
-                {TAHUN_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+                <option value="dipublikasikan">Dipublikasikan (Tayang di Arsip Publik SIMTA)</option>
+                <option value="draf">Draf / Belum Publish</option>
               </select>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <label className="font-bold text-slate-700">Dosen Pembimbing 1 / PA</label>
-              <input
-                type="text"
-                value={formData.pembimbing_1}
-                onChange={(e) => setFormData({ ...formData, pembimbing_1: e.target.value })}
-                placeholder="Nama Pembimbing 1"
-                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="font-bold text-slate-700">Dosen Pembimbing 2</label>
-              <input
-                type="text"
-                value={formData.pembimbing_2}
-                onChange={(e) => setFormData({ ...formData, pembimbing_2: e.target.value })}
-                placeholder="Nama Pembimbing 2 (Opsional)"
-                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <label className="font-bold text-slate-700">URL Asli Repository UNSRI (E-Print Link)</label>
-            <input
-              type="url"
-              value={formData.link_repo_unsri}
-              onChange={(e) => setFormData({ ...formData, link_repo_unsri: e.target.value })}
-              placeholder="http://repository.unsri.ac.id/200395/"
-              className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-
-          <div className="space-y-1">
-            <label className="font-bold text-slate-700">Abstrak Dokumen</label>
-            <textarea
-              rows={4}
-              value={formData.abstrak}
-              onChange={(e) => setFormData({ ...formData, abstrak: e.target.value })}
-              placeholder="Isi abstrak atau ringkasan skripsi..."
-              className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-serif"
-            />
-          </div>
-
-          <div className="space-y-1">
-            <label className="font-bold text-slate-700">Status Publikasi</label>
-            <select
-              value={formData.status}
-              onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-              className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              <option value="dipublikasikan">Dipublikasikan (Tayang di Arsip Publik SIMTA)</option>
-              <option value="draf">Draf / Belum Publish</option>
-            </select>
-          </div>
-
-          <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-100">
+          {/* Footer */}
+          <div className="flex items-center justify-end space-x-2 p-4 sm:px-6 border-t border-slate-100 bg-slate-50/80 shrink-0">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
+              className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
             >
               Batal
             </button>
             <button
               type="submit"
-              className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-all shadow-md cursor-pointer"
+              className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-all shadow-md cursor-pointer"
             >
               Simpan Data
             </button>

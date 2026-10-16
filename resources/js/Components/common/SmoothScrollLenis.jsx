@@ -57,7 +57,19 @@ export default function SmoothScroll({ children }) {
       resetScroll();
     });
 
+    // 5. Automatically pause Lenis when modals are open (body overflow hidden)
+    const bodyObserver = new MutationObserver(() => {
+      if (document.body.style.overflow === 'hidden') {
+        lenis.stop();
+      } else {
+        lenis.start();
+      }
+    });
+
+    bodyObserver.observe(document.body, { attributes: true, attributeFilter: ['style'] });
+
     return () => {
+      bodyObserver.disconnect();
       window.removeEventListener('load', resetScroll);
       window.removeEventListener('beforeunload', resetScroll);
       unsubscribeRouter();
