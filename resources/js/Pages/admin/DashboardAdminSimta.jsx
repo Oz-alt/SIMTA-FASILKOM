@@ -72,11 +72,11 @@ export default function DashboardAdminSimta() {
       <div className="bg-gradient-to-r from-slate-900 via-indigo-900 to-blue-900 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
         <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-200 text-xs font-semibold backdrop-blur-sm mb-3 border border-indigo-400/20">
           <ShieldCheck className="w-3.5 h-3.5" />
-          <span>Portal Akses Admin SIMTA</span>
+          <span>Portal Akses Admin SIMONITA</span>
         </div>
-        <h1 className="text-2xl font-extrabold tracking-tight">Dashboard Admin SIMTA FASILKOM</h1>
+        <h1 className="text-2xl font-extrabold tracking-tight">Dashboard Admin SIMONITA FASILKOM</h1>
         <p className="text-sm text-indigo-100/90 mt-1 max-w-2xl leading-relaxed">
-          Kelola resource akun mahasiswa &amp; dosen, dokumen/surat resmi, konten CMS, serta template pada Sistem Informasi Manajemen Tugas Akhir Fasilkom UNSRI.
+          Kelola resource akun mahasiswa &amp; dosen, dokumen/surat resmi, konten CMS, serta template pada Sistem Monitoring Tugas Akhir Fasilkom UNSRI.
         </p>
       </div>
 

@@ -1,5 +1,5 @@
 /**
- * SIMTA System Constants & Type Definitions
+ * SIMONITA System Constants & Type Definitions
  */
 
 export const ROLES = {

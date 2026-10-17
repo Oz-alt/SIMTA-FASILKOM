@@ -20,8 +20,10 @@ export default function KartuBimbinganPage() {
   }, [consultations, currentUser]);
 
   const totalApproved = studentConsultations.filter(c => c.status === 'disetujui').length;
-  const minRequired = 12;
-  const isEligibleForDefense = totalApproved >= minRequired;
+  const countPemb1 = studentConsultations.filter(c => c.pembimbing === 'Pembimbing 1' && c.status === 'disetujui').length;
+  const countPemb2 = studentConsultations.filter(c => c.pembimbing === 'Pembimbing 2' && c.status === 'disetujui').length;
+  const minRequired = 24;
+  const isEligibleForDefense = countPemb1 >= 12 && countPemb2 >= 12;
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 select-none">
@@ -82,7 +84,7 @@ export default function KartuBimbinganPage() {
               <p><span className="text-slate-500 font-normal">Pembimbing 1:</span> Dr. Ir. Hendra Kusuma, M.T.</p>
               <p><span className="text-slate-500 font-normal">Pembimbing 2:</span> Siti Nurhaliza, S.Kom., M.Kom.</p>
               <p><span className="text-slate-500 font-normal">Total Sesi Disetujui:</span> {totalApproved} Sesi</p>
-              <p><span className="text-slate-500 font-normal">Status Kelayakan Sidang:</span> <strong className={isEligibleForDefense ? 'text-emerald-700' : 'text-amber-700'}>{isEligibleForDefense ? 'MEMENUHI SYARAT (MIN. 8 SESI)' : 'BELUM MEMENUHI SYARAT'}</strong></p>
+              <p><span className="text-slate-500 font-normal">Status Kelayakan Sidang:</span> <strong className={isEligibleForDefense ? 'text-emerald-700' : 'text-amber-700'}>{isEligibleForDefense ? 'MEMENUHI SYARAT (MIN. 24 SESI)' : 'BELUM MEMENUHI SYARAT (MIN. 24 SESI, 12X TIAP PEMBIMBING)'}</strong></p>
             </div>
           </div>
 

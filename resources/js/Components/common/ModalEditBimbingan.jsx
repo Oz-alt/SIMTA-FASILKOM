@@ -8,7 +8,9 @@ import {
   CheckCircle2,
   Edit3,
   Link2,
-  ExternalLink
+  ExternalLink,
+  Building2,
+  Video
 } from 'lucide-react';
 
 export default function ModalEditBimbingan({ isOpen, onClose, consultation, onSaved }) {
@@ -17,6 +19,7 @@ export default function ModalEditBimbingan({ isOpen, onClose, consultation, onSa
   const [formData, setFormData] = useState({
     pembimbing: 'Pembimbing 1',
     dosen_nama: '',
+    metode: 'luring',
     tanggal: '',
     waktu: '',
     bab_topik: '',
@@ -32,6 +35,7 @@ export default function ModalEditBimbingan({ isOpen, onClose, consultation, onSa
       setFormData({
         pembimbing: consultation.pembimbing || 'Pembimbing 1',
         dosen_nama: consultation.dosen_nama || '',
+        metode: consultation.metode || 'luring',
         tanggal: consultation.tanggal || '',
         waktu: consultation.waktu || '09:00',
         bab_topik: consultation.bab_topik || '',
@@ -82,6 +86,7 @@ export default function ModalEditBimbingan({ isOpen, onClose, consultation, onSa
       await updateConsultation(consultation.id, {
         pembimbing: formData.pembimbing,
         dosen_nama: formData.dosen_nama,
+        metode: formData.metode || 'luring',
         tanggal: formData.tanggal,
         waktu: formData.waktu,
         bab_topik: formData.bab_topik.trim(),
@@ -174,6 +179,61 @@ export default function ModalEditBimbingan({ isOpen, onClose, consultation, onSa
                   className="w-28 px-3 py-2 rounded-xl border border-slate-300 font-semibold text-slate-900 bg-white"
                 />
               </div>
+            </div>
+          </div>
+
+          {/* Metode Bimbingan (Daring / Luring) */}
+          <div className="space-y-1.5">
+            <label className="font-bold text-slate-700 flex items-center justify-between">
+              <span>Metode Bimbingan <span className="text-rose-500">*</span></span>
+              <span className="text-[11px] font-normal text-slate-400">Pilih opsi pelaksanaan konsultasi</span>
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setFormData(prev => ({ ...prev, metode: 'luring' }))}
+                className={`flex items-center space-x-3 p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                  formData.metode === 'luring'
+                    ? 'bg-amber-50/80 border-amber-500 ring-2 ring-amber-500/20 text-amber-900 shadow-2xs'
+                    : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                  formData.metode === 'luring' ? 'bg-amber-600 text-white' : 'bg-slate-100 text-slate-500'
+                }`}>
+                  <Building2 className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <div className="font-bold text-xs flex items-center space-x-1.5">
+                    <span>Luring (Tatap Muka)</span>
+                    {formData.metode === 'luring' && <CheckCircle2 className="w-3.5 h-3.5 text-amber-600 shrink-0" />}
+                  </div>
+                  <div className="text-[10px] text-slate-500 truncate">Di Kampus / Ruang Dosen</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFormData(prev => ({ ...prev, metode: 'daring' }))}
+                className={`flex items-center space-x-3 p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                  formData.metode === 'daring'
+                    ? 'bg-emerald-50/80 border-emerald-500 ring-2 ring-emerald-500/20 text-emerald-900 shadow-2xs'
+                    : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                  formData.metode === 'daring' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-500'
+                }`}>
+                  <Video className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <div className="font-bold text-xs flex items-center space-x-1.5">
+                    <span>Daring (Online)</span>
+                    {formData.metode === 'daring' && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                  </div>
+                  <div className="text-[10px] text-slate-500 truncate">Zoom / Meet / WhatsApp</div>
+                </div>
+              </button>
             </div>
           </div>
 

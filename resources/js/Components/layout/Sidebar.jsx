@@ -89,7 +89,7 @@ export default function Sidebar() {
               label: 'Bimbingan',
               icon: FileCheck,
               items: [
-                { to: '/thesis/consultations', label: 'Log Bimbingan', icon: FileCheck },
+                { to: '/thesis/consultations', label: 'Entry Bimbingan', icon: FileCheck },
                 { to: '/thesis/consultations/card', label: 'Kartu Bimbingan Digital', icon: Printer }
               ]
             },
@@ -183,20 +183,21 @@ export default function Sidebar() {
           groups: [
             {
               id: 'bimbingan',
-              label: 'Bimbingan',
+              label: 'Menu Bimbingan',
               icon: FileCheck,
               items: [
-                { to: '/dosen/bimbingan', label: 'Log Bimbingan & Konsultasi', icon: FileCheck },
-                { to: '/dosen/validasi-judul', label: 'Validasi Judul TA', icon: CheckSquare },
-                { to: '/dosen/jadwal-sidang', label: 'Notifikasi & Jadwal', icon: CalendarDays }
+                { to: '/dosen/mahasiswa', label: 'Mahasiswa Bimbingan', icon: Users },
+                { to: '/dosen/validasi-judul', label: 'Validasi Usulan Judul', icon: BookOpen },
+                { to: '/dosen/monitoring', label: 'Monitoring Mahasiswa', icon: BarChart3 },
+                { to: '/dosen/rekap', label: 'Rekap Bimbingan', icon: FileText }
               ]
             },
             {
-              id: 'database',
-              label: 'Database',
-              icon: Database,
+              id: 'lainnya',
+              label: 'Layanan & Akun',
+              icon: Settings,
               items: [
-                { to: '/thesis/archive', label: 'Arsip Tugas Akhir', icon: BookOpen }
+                { to: '/dosen/jadwal-sidang', label: 'Jadwal Sidang TA', icon: CalendarDays }
               ]
             }
           ]
@@ -206,6 +207,23 @@ export default function Sidebar() {
         return {
           dashboard: { to: '/admin-simta/dashboard', label: 'Dashboard', icon: LayoutDashboard },
           groups: [
+            {
+              id: 'data_master',
+              label: 'Data Master',
+              icon: Database,
+              items: [
+                { to: '/admin-simta/master/mahasiswa', label: 'Data Master Mahasiswa', icon: GraduationCap },
+                { to: '/admin-simta/master/dosen', label: 'Data Master Dosen', icon: UserCheck }
+              ]
+            },
+            {
+              id: 'tugas_akhir',
+              label: 'Tugas Akhir',
+              icon: BookOpen,
+              items: [
+                { to: '/admin-simta/thesis-management', label: 'Manajemen Tugas Akhir', icon: BookOpen }
+              ]
+            },
             {
               id: 'manajemen_akun',
               label: 'Manajemen Akun',

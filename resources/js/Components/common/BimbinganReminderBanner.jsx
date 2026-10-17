@@ -107,7 +107,7 @@ export default function BimbinganReminderBanner({ reminder, studentEmail, studen
                   className="px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-600/20 transition-all flex items-center space-x-1.5"
                 >
                   <PlusCircle className="w-4 h-4" />
-                  <span>Buka Log Bimbingan</span>
+                  <span>Buka Entry Bimbingan</span>
                 </Link>
               )
             )}

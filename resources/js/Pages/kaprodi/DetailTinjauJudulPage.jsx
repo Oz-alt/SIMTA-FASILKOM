@@ -153,7 +153,7 @@ export default function DetailTinjauJudulPage({ titleId: propTitleId }) {
           <AlertCircle className="w-12 h-12 text-amber-500 mx-auto" />
           <h2 className="text-lg font-bold text-slate-800">Data Pengajuan Tidak Ditemukan</h2>
           <p className="text-xs text-slate-500">
-            Pengajuan Tugas Akhir dengan ID tersebut tidak ditemukan dalam sistem SIMTA.
+            Pengajuan Tugas Akhir dengan ID tersebut tidak ditemukan dalam sistem SIMONITA.
           </p>
           <Link
             href="/kaprodi/titles"
@@ -341,7 +341,7 @@ export default function DetailTinjauJudulPage({ titleId: propTitleId }) {
                       </p>
 
                       <div className="flex items-center justify-between pt-2 border-t border-slate-200/60 text-[11px] text-slate-500">
-                        <span>Pencatat: <strong>{rev.oleh || 'Sistem SIMTA'}</strong></span>
+                        <span>Pencatat: <strong>{rev.oleh || 'Sistem SIMONITA'}</strong></span>
                         {rev.skor_similarity !== undefined && (
                           <span className="font-mono font-semibold">Similarity saat itu: {rev.skor_similarity}%</span>
                         )}

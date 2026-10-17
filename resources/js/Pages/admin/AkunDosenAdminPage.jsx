@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { 
   UserCheck, 
@@ -63,6 +63,19 @@ export default function AkunDosenAdminPage() {
   // Password reset custom field
   const [newPasswordInput, setNewPasswordInput] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+
+  // Lock background scroll when any modal is open so touchpad/wheel scrolls the modal
+  useEffect(() => {
+    const isAnyModalOpen = Boolean(isAddOpen || editingDosen || viewingDosen || resettingDosen || deletingDosen);
+    if (isAnyModalOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isAddOpen, editingDosen, viewingDosen, resettingDosen, deletingDosen]);
 
   // Toast Notification
   const [toastMessage, setToastMessage] = useState('');
@@ -233,7 +246,7 @@ export default function AkunDosenAdminPage() {
   };
 
   return (
-    <div className="space-y-6 select-none">
+    <div className="space-y-6">
       
       {/* Toast Notification Banner */}
       {toastMessage && (
@@ -547,13 +560,25 @@ export default function AkunDosenAdminPage() {
 
       {/* ── MODAL: TAMBAH / EDIT AKUN DOSEN ────────────────────────────────── */}
       {(isAddOpen || editingDosen) && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
+        <div 
+          data-lenis-prevent
+          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-hidden"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setIsAddOpen(false);
+              setEditingDosen(null);
+            }
+          }}
+        >
+          <div 
+            data-lenis-prevent
+            className="bg-white rounded-3xl max-w-lg w-full shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh] sm:max-h-[85vh] overflow-hidden"
+          >
             
-            {/* Modal Header */}
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+            {/* Modal Header (Fixed at top of popup) */}
+            <div className="flex items-center justify-between p-5 sm:p-6 pb-4 border-b border-slate-100 bg-white shrink-0">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
+                <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold shrink-0">
                   <UserCheck className="w-5 h-5" />
                 </div>
                 <div>
@@ -568,189 +593,200 @@ export default function AkunDosenAdminPage() {
               <button
                 type="button"
                 onClick={() => { setIsAddOpen(false); setEditingDosen(null); }}
-                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer shrink-0"
+                aria-label="Tutup modal"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Modal Form */}
-            <form onSubmit={handleSaveDosen} className="space-y-4 pt-4 text-xs">
+            {/* Modal Form Wrapper */}
+            <form onSubmit={handleSaveDosen} className="flex flex-col flex-1 min-h-0 overflow-hidden" data-lenis-prevent>
               
-              {/* NIP */}
-              <div className="space-y-1">
-                <label className="font-bold text-slate-700">NIP (Nomor Induk Pegawai) *</label>
-                <input
-                  type="text"
-                  required
-                  value={dosenForm.nip}
-                  onChange={(e) => setDosenForm({ ...dosenForm, nip: e.target.value })}
-                  placeholder="Contoh: 198410012009121005"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 outline-none font-mono text-xs font-semibold"
-                />
-              </div>
-
-              {/* Nama Lengkap beserta Gelar */}
-              <div className="space-y-1">
-                <label className="font-bold text-slate-700">Nama Lengkap &amp; Gelar Akademik *</label>
-                <input
-                  type="text"
-                  required
-                  value={dosenForm.nama}
-                  onChange={(e) => setDosenForm({ ...dosenForm, nama: e.target.value })}
-                  placeholder="Contoh: Dr. Abdiansah, S.Kom., M.Cs."
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 outline-none text-xs font-medium"
-                />
-              </div>
-
-              {/* Email Resmi & No HP */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Scrollable Form Body (Dedicated internal scroll) */}
+              <div 
+                data-lenis-prevent
+                className="p-5 sm:p-6 space-y-4 text-xs overflow-y-auto flex-1 overscroll-contain"
+              >
+                
+                {/* NIP */}
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700">Email Resmi UNSRI</label>
-                  <input
-                    type="email"
-                    value={dosenForm.email}
-                    onChange={(e) => setDosenForm({ ...dosenForm, email: e.target.value })}
-                    placeholder="nama@unsri.ac.id"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 outline-none text-xs font-medium"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-700">No. WhatsApp / HP</label>
+                  <label className="font-bold text-slate-700">NIP (Nomor Induk Pegawai) *</label>
                   <input
                     type="text"
-                    value={dosenForm.no_hp}
-                    onChange={(e) => setDosenForm({ ...dosenForm, no_hp: e.target.value })}
-                    placeholder="08123456789"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 outline-none text-xs font-medium"
+                    required
+                    value={dosenForm.nip}
+                    onChange={(e) => setDosenForm({ ...dosenForm, nip: e.target.value })}
+                    placeholder="Contoh: 198410012009121005"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 outline-none font-mono text-xs font-semibold"
                   />
                 </div>
-              </div>
 
-              {/* Jabatan Fungsional & Prodi */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Nama Lengkap beserta Gelar */}
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700">Jabatan Fungsional</label>
-                  <select
-                    value={dosenForm.jabatan_fungsional}
-                    onChange={(e) => setDosenForm({ ...dosenForm, jabatan_fungsional: e.target.value })}
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-600 outline-none text-xs font-semibold bg-white cursor-pointer"
-                  >
-                    <option value="Tenaga Pengajar">Tenaga Pengajar</option>
-                    <option value="Asisten Ahli">Asisten Ahli</option>
-                    <option value="Lektor">Lektor</option>
-                    <option value="Lektor Kepala">Lektor Kepala</option>
-                    <option value="Guru Besar / Profesor">Guru Besar / Profesor</option>
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-700">Program Studi</label>
-                  <select
-                    value={dosenForm.prodi}
-                    onChange={(e) => setDosenForm({ ...dosenForm, prodi: e.target.value })}
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-600 outline-none text-xs font-semibold bg-white cursor-pointer"
-                  >
-                    <option value="D3 Manajemen Informatika">D3 Manajemen Informatika</option>
-                    <option value="D3 Teknik Komputer">D3 Teknik Komputer</option>
-                    <option value="S1 Sistem Informasi">S1 Sistem Informasi</option>
-                    <option value="S1 Teknik Informatika">S1 Teknik Informatika</option>
-                    <option value="S1 Sistem Komputer">S1 Sistem Komputer</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Bidang Keahlian */}
-              <div className="space-y-1">
-                <label className="font-bold text-slate-700">Bidang Keahlian (Pisahkan dengan koma)</label>
-                <input
-                  type="text"
-                  value={dosenForm.keahlian}
-                  onChange={(e) => setDosenForm({ ...dosenForm, keahlian: e.target.value })}
-                  placeholder="Contoh: Kecerdasan Buatan, Data Science, RPL"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 outline-none text-xs font-medium"
-                />
-              </div>
-
-              {/* Kuota Dospem 1 & 2 */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-700">Kuota Dospem 1</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="20"
-                    value={dosenForm.kuota_dospem1}
-                    onChange={(e) => setDosenForm({ ...dosenForm, kuota_dospem1: Number(e.target.value) })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-600 outline-none text-xs font-bold font-mono"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-700">Kuota Dospem 2</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="20"
-                    value={dosenForm.kuota_dospem2}
-                    onChange={(e) => setDosenForm({ ...dosenForm, kuota_dospem2: Number(e.target.value) })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-600 outline-none text-xs font-bold font-mono"
-                  />
-                </div>
-              </div>
-
-              {/* Status Akun & Role */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-700">Status Akun</label>
-                  <select
-                    value={dosenForm.status}
-                    onChange={(e) => setDosenForm({ ...dosenForm, status: e.target.value })}
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-600 outline-none text-xs font-semibold bg-white cursor-pointer"
-                  >
-                    <option value="aktif">Aktif</option>
-                    <option value="cuti_studi">Cuti Studi</option>
-                    <option value="nonaktif">Nonaktif</option>
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-700">Role Sistem</label>
-                  <select
-                    value={dosenForm.role}
-                    onChange={(e) => setDosenForm({ ...dosenForm, role: e.target.value })}
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-600 outline-none text-xs font-semibold bg-white cursor-pointer"
-                  >
-                    <option value="dosen">Dosen Pembimbing</option>
-                    <option value="kaprodi">Kaprodi (Ketua Jurusan)</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Password Initial (Only for new accounts) */}
-              {!editingDosen && (
-                <div className="space-y-1 pt-1">
-                  <label className="font-bold text-slate-700">Kata Sandi Awal (Opsional)</label>
+                  <label className="font-bold text-slate-700">Nama Lengkap &amp; Gelar Akademik *</label>
                   <input
                     type="text"
-                    value={dosenForm.password}
-                    onChange={(e) => setDosenForm({ ...dosenForm, password: e.target.value })}
-                    placeholder="Default: Sesuai NIP jika dikosongkan"
+                    required
+                    value={dosenForm.nama}
+                    onChange={(e) => setDosenForm({ ...dosenForm, nama: e.target.value })}
+                    placeholder="Contoh: Dr. Abdiansah, S.Kom., M.Cs."
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 outline-none text-xs font-medium"
                   />
-                  <p className="text-[10px] text-slate-400">Kata sandi standar otomatis menggunakan NIP dosen.</p>
                 </div>
-              )}
 
-              {/* Modal Buttons */}
-              <div className="flex items-center justify-end space-x-2 pt-4 border-t border-slate-100">
+                {/* Email Resmi & No HP */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-700">Email Resmi UNSRI</label>
+                    <input
+                      type="email"
+                      value={dosenForm.email}
+                      onChange={(e) => setDosenForm({ ...dosenForm, email: e.target.value })}
+                      placeholder="nama@unsri.ac.id"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 outline-none text-xs font-medium"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-700">No. WhatsApp / HP</label>
+                    <input
+                      type="text"
+                      value={dosenForm.no_hp}
+                      onChange={(e) => setDosenForm({ ...dosenForm, no_hp: e.target.value })}
+                      placeholder="08123456789"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 outline-none text-xs font-medium"
+                    />
+                  </div>
+                </div>
+
+                {/* Jabatan Fungsional & Prodi */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-700">Jabatan Fungsional</label>
+                    <select
+                      value={dosenForm.jabatan_fungsional}
+                      onChange={(e) => setDosenForm({ ...dosenForm, jabatan_fungsional: e.target.value })}
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-600 outline-none text-xs font-semibold bg-white cursor-pointer"
+                    >
+                      <option value="Tenaga Pengajar">Tenaga Pengajar</option>
+                      <option value="Asisten Ahli">Asisten Ahli</option>
+                      <option value="Lektor">Lektor</option>
+                      <option value="Lektor Kepala">Lektor Kepala</option>
+                      <option value="Guru Besar / Profesor">Guru Besar / Profesor</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-700">Program Studi</label>
+                    <select
+                      value={dosenForm.prodi}
+                      onChange={(e) => setDosenForm({ ...dosenForm, prodi: e.target.value })}
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-600 outline-none text-xs font-semibold bg-white cursor-pointer"
+                    >
+                      <option value="D3 Manajemen Informatika">D3 Manajemen Informatika</option>
+                      <option value="D3 Teknik Komputer">D3 Teknik Komputer</option>
+                      <option value="S1 Sistem Informasi">S1 Sistem Informasi</option>
+                      <option value="S1 Teknik Informatika">S1 Teknik Informatika</option>
+                      <option value="S1 Sistem Komputer">S1 Sistem Komputer</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Bidang Keahlian */}
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Bidang Keahlian (Pisahkan dengan koma)</label>
+                  <input
+                    type="text"
+                    value={dosenForm.keahlian}
+                    onChange={(e) => setDosenForm({ ...dosenForm, keahlian: e.target.value })}
+                    placeholder="Contoh: Kecerdasan Buatan, Data Science, RPL"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 outline-none text-xs font-medium"
+                  />
+                </div>
+
+                {/* Kuota Dospem 1 & 2 */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-700">Kuota Dospem 1</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="20"
+                      value={dosenForm.kuota_dospem1}
+                      onWheel={(e) => e.currentTarget.blur()}
+                      onChange={(e) => setDosenForm({ ...dosenForm, kuota_dospem1: Number(e.target.value) })}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-600 outline-none text-xs font-bold font-mono"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-700">Kuota Dospem 2</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="20"
+                      value={dosenForm.kuota_dospem2}
+                      onWheel={(e) => e.currentTarget.blur()}
+                      onChange={(e) => setDosenForm({ ...dosenForm, kuota_dospem2: Number(e.target.value) })}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-600 outline-none text-xs font-bold font-mono"
+                    />
+                  </div>
+                </div>
+
+                {/* Status Akun & Role */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-700">Status Akun</label>
+                    <select
+                      value={dosenForm.status}
+                      onChange={(e) => setDosenForm({ ...dosenForm, status: e.target.value })}
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-600 outline-none text-xs font-semibold bg-white cursor-pointer"
+                    >
+                      <option value="aktif">Aktif</option>
+                      <option value="cuti_studi">Cuti Studi</option>
+                      <option value="nonaktif">Nonaktif</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-700">Role Sistem</label>
+                    <select
+                      value={dosenForm.role}
+                      onChange={(e) => setDosenForm({ ...dosenForm, role: e.target.value })}
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-600 outline-none text-xs font-semibold bg-white cursor-pointer"
+                    >
+                      <option value="dosen">Dosen Pembimbing</option>
+                      <option value="kaprodi">Kaprodi (Ketua Jurusan)</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Password Initial (Only for new accounts) */}
+                {!editingDosen && (
+                  <div className="space-y-1 pt-1">
+                    <label className="font-bold text-slate-700">Kata Sandi Awal (Opsional)</label>
+                    <input
+                      type="text"
+                      value={dosenForm.password}
+                      onChange={(e) => setDosenForm({ ...dosenForm, password: e.target.value })}
+                      placeholder="Default: Sesuai NIP jika dikosongkan"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 outline-none text-xs font-medium"
+                    />
+                    <p className="text-[10px] text-slate-400">Kata sandi standar otomatis menggunakan NIP dosen.</p>
+                  </div>
+                )}
+
+              </div>
+
+              {/* Modal Footer (Pinned at bottom of popup) */}
+              <div className="flex items-center justify-end space-x-2.5 p-4 sm:px-6 border-t border-slate-100 bg-slate-50/90 backdrop-blur-xs shrink-0 rounded-b-3xl">
                 <button
                   type="button"
                   onClick={() => { setIsAddOpen(false); setEditingDosen(null); }}
-                  className="px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-100 font-bold transition-all cursor-pointer"
+                  className="px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-200/70 font-bold transition-all cursor-pointer text-xs"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-md shadow-indigo-600/30 transition-all cursor-pointer"
+                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-md shadow-indigo-600/30 transition-all cursor-pointer text-xs"
                 >
                   {editingDosen ? 'Simpan Perubahan' : 'Daftarkan Akun'}
                 </button>
@@ -764,22 +800,22 @@ export default function AkunDosenAdminPage() {
 
       {/* ── MODAL: DETAIL AKUN DOSEN ─────────────────────────────────────── */}
       {viewingDosen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200 space-y-5">
+        <div data-lenis-prevent className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div data-lenis-prevent className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200 space-y-5 max-h-[90vh] overflow-y-auto my-auto">
             
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="font-extrabold text-base text-slate-900">Detail Akun Dosen</h3>
               <button
                 type="button"
                 onClick={() => setViewingDosen(null)}
-                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600"
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <div className="flex items-center space-x-4 p-4 rounded-2xl bg-slate-50 border border-slate-100">
-              <div className="w-14 h-14 rounded-2xl bg-indigo-600 text-white font-black text-xl flex items-center justify-center shadow-md shadow-indigo-600/30">
+              <div className="w-14 h-14 rounded-2xl bg-indigo-600 text-white font-black text-xl flex items-center justify-center shadow-md shadow-indigo-600/30 shrink-0">
                 {viewingDosen.nama ? viewingDosen.nama.charAt(0).toUpperCase() : 'D'}
               </div>
               <div>
@@ -822,7 +858,7 @@ export default function AkunDosenAdminPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-end space-x-2 pt-2">
+            <div className="flex items-center justify-end space-x-2 pt-2 border-t border-slate-100">
               <button
                 type="button"
                 onClick={() => {
@@ -830,7 +866,7 @@ export default function AkunDosenAdminPage() {
                   setViewingDosen(null);
                   handleOpenReset(d);
                 }}
-                className="px-4 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold text-xs flex items-center space-x-1.5"
+                className="px-4 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold text-xs flex items-center space-x-1.5 cursor-pointer"
               >
                 <KeyRound className="w-3.5 h-3.5" />
                 <span>Reset Sandi</span>
@@ -838,7 +874,7 @@ export default function AkunDosenAdminPage() {
               <button
                 type="button"
                 onClick={() => setViewingDosen(null)}
-                className="px-4 py-2 rounded-xl bg-slate-900 text-white font-bold text-xs"
+                className="px-4 py-2 rounded-xl bg-slate-900 text-white font-bold text-xs cursor-pointer"
               >
                 Tutup
               </button>
@@ -850,8 +886,8 @@ export default function AkunDosenAdminPage() {
 
       {/* ── MODAL: RESET PASSWORD DOSEN ──────────────────────────────────── */}
       {resettingDosen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200 space-y-4">
+        <div data-lenis-prevent className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div data-lenis-prevent className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200 space-y-4 max-h-[90vh] overflow-y-auto my-auto">
             
             <div className="flex items-center space-x-3 text-amber-600">
               <div className="w-10 h-10 rounded-2xl bg-amber-50 flex items-center justify-center shrink-0 font-bold">
@@ -882,7 +918,7 @@ export default function AkunDosenAdminPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -892,24 +928,24 @@ export default function AkunDosenAdminPage() {
                   <button
                     type="button"
                     onClick={() => setNewPasswordInput(resettingDosen.nip)}
-                    className="text-indigo-600 hover:underline font-bold"
+                    className="text-indigo-600 hover:underline font-bold cursor-pointer"
                   >
                     Gunakan NIP ({resettingDosen.nip})
                   </button>
                 </div>
               </div>
 
-              <div className="flex items-center justify-end space-x-2 pt-3">
+              <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setResettingDosen(null)}
-                  className="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 font-bold text-xs"
+                  className="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 font-bold text-xs cursor-pointer"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-md shadow-amber-600/30"
+                  className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-md shadow-amber-600/30 cursor-pointer"
                 >
                   Konfirmasi Reset Sandi
                 </button>
@@ -922,8 +958,8 @@ export default function AkunDosenAdminPage() {
 
       {/* ── MODAL: KONFIRMASI HAPUS DOSEN ────────────────────────────────── */}
       {deletingDosen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200 space-y-4">
+        <div data-lenis-prevent className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div data-lenis-prevent className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200 space-y-4 max-h-[90vh] overflow-y-auto my-auto">
             
             <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
               <AlertTriangle className="w-6 h-6" />
@@ -936,18 +972,18 @@ export default function AkunDosenAdminPage() {
               </p>
             </div>
 
-            <div className="flex items-center justify-center space-x-2 pt-2">
+            <div className="flex items-center justify-center space-x-2 pt-2 border-t border-slate-100">
               <button
                 type="button"
                 onClick={() => setDeletingDosen(null)}
-                className="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 font-bold text-xs"
+                className="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 font-bold text-xs cursor-pointer"
               >
                 Batal
               </button>
               <button
                 type="button"
                 onClick={handleConfirmDelete}
-                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md shadow-rose-600/30"
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md shadow-rose-600/30 cursor-pointer"
               >
                 Ya, Hapus Akun
               </button>

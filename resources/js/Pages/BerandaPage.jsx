@@ -38,7 +38,7 @@ export default function BerandaPage() {
 
   const slides = [
     {
-      title: 'SIMTA FASILKOM UNSRI',
+      title: 'SIMONITA FASILKOM UNSRI',
       image: diklatImg
     },
     {
@@ -184,7 +184,7 @@ export default function BerandaPage() {
               Alur Pelayanan Terpadu
             </span>
             <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 pt-1">
-              Bagaimana SIMTA Membantu Perjalanan TA Mahasiswa?
+              Bagaimana SIMONITA Membantu Perjalanan TA Mahasiswa?
             </h2>
             <p className="text-xs text-slate-500">
               4 langkah terintegrasi mulai dari verifikasi judul hingga pelaksanaan sidang tanpa penginputan data ulang.
@@ -243,7 +243,7 @@ export default function BerandaPage() {
               Modul & Kapabilitas Platform
             </span>
             <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 pt-1">
-              Fitur Utama Sistem Informasi SIMTA
+              Fitur Utama Sistem Monitoring Tugas Akhir (SIMONITA)
             </h2>
             <p className="text-xs text-slate-500">
               Seluruh modul terintegrasi untuk mendukung penyelesaian Tugas Akhir & Kerja Praktik mahasiswa D3 MI.

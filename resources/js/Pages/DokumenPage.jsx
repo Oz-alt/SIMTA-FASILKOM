@@ -97,7 +97,7 @@ export default function DokumenPage() {
     {
       id: 5,
       title: 'BUKU PANDUAN SIMILARITY CHECK Engine & VERIFIKASI KEBARUAN JUDUL',
-      description: 'Panduan teknis penggunaan fitur Similarity Engine SIMTA berbasis FTS & Trigram untuk menghitung persentase kemiripan judul TA.',
+      description: 'Panduan teknis penggunaan fitur Similarity Engine SIMONITA berbasis FTS & Trigram untuk menghitung persentase kemiripan judul TA.',
       category: 'Panduan TA',
       prodi: 'Semua Prodi',
       fileSize: '1.72 MB',

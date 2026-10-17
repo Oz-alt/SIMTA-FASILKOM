@@ -30,9 +30,12 @@ export default function BimbinganTAPage() {
   const totalApproved = studentConsultations.filter(c => c.status === 'disetujui').length;
   const countPemb1 = studentConsultations.filter(c => c.pembimbing === 'Pembimbing 1' && c.status === 'disetujui').length;
   const countPemb2 = studentConsultations.filter(c => c.pembimbing === 'Pembimbing 2' && c.status === 'disetujui').length;
-  const minRequired = 12;
-  const progressPercent = Math.min(100, Math.round((totalApproved / minRequired) * 100));
-  const isEligibleForDefense = totalApproved >= minRequired;
+  const minRequiredPerPembimbing = 12;
+  const minRequired = 24;
+  const approvedPemb1 = Math.min(countPemb1, minRequiredPerPembimbing);
+  const approvedPemb2 = Math.min(countPemb2, minRequiredPerPembimbing);
+  const progressPercent = Math.min(100, Math.round(((approvedPemb1 + approvedPemb2) / minRequired) * 100));
+  const isEligibleForDefense = countPemb1 >= minRequiredPerPembimbing && countPemb2 >= minRequiredPerPembimbing;
 
   const handleFeedbackSubmit = (consId, newStatus) => {
     const notes = feedbackInput[consId] || 'Telah diverifikasi pembimbing.';
@@ -104,8 +107,8 @@ export default function BimbinganTAPage() {
           <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
             <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${progressPercent}%` }}></div>
           </div>
-          <span className={`text-[10px] font-bold block ${isEligibleForDefense ? 'text-emerald-700' : 'text-amber-600'}`}>
-            {isEligibleForDefense ? '✓ Layak Daftar Sidang' : `Syarat Min. ${minRequired} Sesi Bimbingan`}
+          <span className={`text-[10px] font-bold block leading-tight ${isEligibleForDefense ? 'text-emerald-700' : 'text-amber-600'}`}>
+            {isEligibleForDefense ? '✓ Layak Daftar Sidang' : `Syarat Min. ${minRequired} Sesi (12x Tiap Pembimbing)`}
           </span>
         </div>
 

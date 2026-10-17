@@ -29,7 +29,7 @@ export default function PublicNavbar() {
               className="h-10 w-auto object-contain group-hover:scale-105 transition-transform" 
             />
             <span className="font-extrabold text-xl tracking-tight text-slate-900 uppercase">
-              SIMTA FASILKOM
+              SIMONITA FASILKOM
             </span>
           </Link>
 

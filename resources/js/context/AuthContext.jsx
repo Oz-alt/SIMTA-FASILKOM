@@ -33,18 +33,77 @@ export function AuthProvider({ children }) {
     if (!user) return null;
     let cleanNama = user.nama;
 
+    // Dosen Dr. Abdiansah or any NIP 198410012009121005
+    if (user.nip === '198410012009121005' || user.nim === '198410012009121005' || (user.email && user.email.toLowerCase() === 'abdiansah@unsri.ac.id') || user.id === 'user-dosen-abdiansah' || user.id === 'user-kaprodi-abdiansah') {
+      let waLink = user.link_wa_group;
+      if (waLink === undefined) {
+        try {
+          const advs = JSON.parse(localStorage.getItem('simta_advisors') || '[]');
+          const matched = advs.find(a => String(a.nip) === '198410012009121005');
+          waLink = matched?.link_wa_group || 'https://chat.whatsapp.com/BimbinganTA-DrAbdiansah';
+        } catch {
+          waLink = 'https://chat.whatsapp.com/BimbinganTA-DrAbdiansah';
+        }
+      }
+      return {
+        ...user,
+        id: 'user-dosen-abdiansah',
+        nama: 'Dr. Abdiansah, S.Kom., M.Cs.',
+        role: 'dosen',
+        email: 'abdiansah@unsri.ac.id',
+        nip: '198410012009121005',
+        nim: '198410012009121005',
+        kelas: 'Dosen Pembimbing',
+        link_wa_group: waLink
+      };
+    }
+
+    if (user.role === 'dosen') {
+      const uNip = user.nip || user.nim;
+      let waLink = user.link_wa_group;
+      if (waLink === undefined && uNip) {
+        try {
+          const advs = JSON.parse(localStorage.getItem('simta_advisors') || '[]');
+          const matched = advs.find(a => String(a.nip) === String(uNip));
+          waLink = matched?.link_wa_group || '';
+        } catch {}
+      }
+      return {
+        ...user,
+        nama: cleanNama || 'Dosen Pembimbing',
+        role: 'dosen',
+        email: user.email || `${uNip}@unsri.ac.id`,
+        nip: uNip,
+        nim: uNip,
+        kelas: 'Dosen Pembimbing',
+        link_wa_group: waLink !== undefined ? waLink : ''
+      };
+    }
+
     if (user.role === 'kaprodi') {
-      if (!cleanNama || cleanNama === 'Mahasiswa UNSRI' || cleanNama === 'Pengguna SIMTA' || cleanNama === 'Aulia Azzahra' || cleanNama === 'Dr. Ir. Hendra Kusuma, M.T.' || /^\d+$/.test(cleanNama)) {
-        cleanNama = 'Dr. Abdiansah, S.Kom., M.Cs.';
+      if (!cleanNama || cleanNama === 'Mahasiswa UNSRI' || cleanNama === 'Pengguna SIMTA' || cleanNama === 'Aulia Azzahra' || /^\d+$/.test(cleanNama)) {
+        cleanNama = 'Dr. Ir. Hendra Kusuma, M.T.';
+      }
+      const uNip = user.nip || user.nim || '197805122005011002';
+      let waLink = user.link_wa_group;
+      if (waLink === undefined) {
+        try {
+          const advs = JSON.parse(localStorage.getItem('simta_advisors') || '[]');
+          const matched = advs.find(a => String(a.nip) === String(uNip));
+          waLink = matched?.link_wa_group || 'https://chat.whatsapp.com/BimbinganTA-HendraKusuma';
+        } catch {
+          waLink = 'https://chat.whatsapp.com/BimbinganTA-HendraKusuma';
+        }
       }
       return {
         ...user,
         nama: cleanNama,
         role: 'kaprodi',
-        email: user.email || 'abdiansah@unsri.ac.id',
-        nip: user.nip || user.nim || '198410012009121005',
-        nim: user.nip || user.nim || '198410012009121005',
-        kelas: 'Dosen / Kaprodi'
+        email: user.email || 'kaprodi.mi@unsri.ac.id',
+        nip: uNip,
+        nim: uNip,
+        kelas: 'Dosen / Kaprodi',
+        link_wa_group: waLink
       };
     }
 
@@ -132,12 +191,22 @@ export function AuthProvider({ children }) {
         kelas: 'Admin SIMTA'
       },
       {
-        id: 'user-kaprodi-abdiansah',
+        id: 'user-dosen-abdiansah',
         nama: 'Dr. Abdiansah, S.Kom., M.Cs.',
         nim: '198410012009121005',
         nip: '198410012009121005',
         email: 'abdiansah@unsri.ac.id',
         password: '198410012009121005',
+        role: 'dosen',
+        kelas: 'Dosen Pembimbing'
+      },
+      {
+        id: 'user-kaprodi-hendra',
+        nama: 'Dr. Ir. Hendra Kusuma, M.T.',
+        nim: '197805122005011002',
+        nip: '197805122005011002',
+        email: 'kaprodi.mi@unsri.ac.id',
+        password: 'Kaprodi123!',
         role: 'kaprodi',
         kelas: 'Dosen / Kaprodi'
       },
@@ -244,14 +313,40 @@ export function AuthProvider({ children }) {
     const merged = { ...currentUser, ...updatedFields };
     setCurrentUser(merged);
 
-    if (isSupabaseConfigured && supabase && currentUser.id) {
+    // Sync advisor list if updating lecturer profile
+    const userNip = merged.nip || merged.nim;
+    if (userNip) {
+      setAdvisors(prev => {
+        const updated = prev.map(adv => {
+          if (String(adv.nip).trim() === String(userNip).trim()) {
+            return { ...adv, ...updatedFields };
+          }
+          return adv;
+        });
+        try { localStorage.setItem('simta_advisors', JSON.stringify(updated)); } catch {}
+        return updated;
+      });
+    }
+
+    if (isSupabaseConfigured && supabase) {
       try {
-        const { error } = await supabase
-          .from('profiles')
-          .update(updatedFields)
-          .eq('id', currentUser.id);
-        if (error) {
-          console.warn('Supabase profile update warning:', error.message);
+        if (currentUser.id) {
+          const { error } = await supabase
+            .from('profiles')
+            .update(updatedFields)
+            .eq('id', currentUser.id);
+          if (error) {
+            console.warn('Supabase profile update warning:', error.message);
+          }
+        }
+        if (userNip) {
+          const { error: advError } = await supabase
+            .from('advisors')
+            .update(updatedFields)
+            .eq('nip', userNip);
+          if (advError) {
+            console.warn('Supabase advisor update warning:', advError.message);
+          }
         }
       } catch (err) {
         console.warn('Failed to sync profile update to Supabase:', err);
@@ -518,10 +613,18 @@ export function AuthProvider({ children }) {
       const saved = localStorage.getItem('simta_consultations');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map(c => ({
+            ...c,
+            jenis_revisi: c.jenis_revisi || (c.status === 'disetujui' ? 'Diterima' : c.status === 'ditolak' ? 'Ditolak' : c.status === 'perlu_revisi' ? 'Minor' : undefined)
+          }));
+        }
       }
     } catch {}
-    return MOCK_CONSULTATIONS;
+    return (MOCK_CONSULTATIONS || []).map(c => ({
+      ...c,
+      jenis_revisi: c.jenis_revisi || (c.status === 'disetujui' ? 'Diterima' : c.status === 'ditolak' ? 'Ditolak' : c.status === 'perlu_revisi' ? 'Minor' : undefined)
+    }));
   });
 
 
@@ -1159,15 +1262,45 @@ export function AuthProvider({ children }) {
       return '/admin/dashboard';
     }
 
-    if (termLower === 'kaprodi' || termLower === 'abdiansah' || termLower === '198410012009121005' || termLower === 'abdiansah@unsri.ac.id') {
-      const kaprodiUser = {
-        id: 'user-kaprodi-abdiansah',
+    if (termLower === 'dosen' || termLower === 'abdiansah' || termLower === '198410012009121005' || termLower === 'abdiansah@unsri.ac.id') {
+      let savedWa = 'https://chat.whatsapp.com/BimbinganTA-DrAbdiansah';
+      try {
+        const advs = JSON.parse(localStorage.getItem('simta_advisors') || '[]');
+        const matchedAdv = advs.find(a => String(a.nip) === '198410012009121005');
+        if (matchedAdv?.link_wa_group !== undefined) savedWa = matchedAdv.link_wa_group;
+      } catch {}
+
+      const dosenUser = {
+        id: 'user-dosen-abdiansah',
         nama: 'Dr. Abdiansah, S.Kom., M.Cs.',
         nip: '198410012009121005',
         nim: '198410012009121005',
         email: 'abdiansah@unsri.ac.id',
+        role: 'dosen',
+        kelas: 'Dosen Pembimbing',
+        link_wa_group: savedWa
+      };
+      setCurrentUser(dosenUser);
+      return '/dosen/dashboard';
+    }
+
+    if (termLower === 'kaprodi' || termLower === 'hendra' || termLower === '197805122005011002' || termLower === 'kaprodi.mi@unsri.ac.id') {
+      let savedWa = 'https://chat.whatsapp.com/BimbinganTA-HendraKusuma';
+      try {
+        const advs = JSON.parse(localStorage.getItem('simta_advisors') || '[]');
+        const matchedAdv = advs.find(a => String(a.nip) === '197805122005011002');
+        if (matchedAdv?.link_wa_group !== undefined) savedWa = matchedAdv.link_wa_group;
+      } catch {}
+
+      const kaprodiUser = {
+        id: 'user-kaprodi-hendra',
+        nama: 'Dr. Ir. Hendra Kusuma, M.T.',
+        nip: '197805122005011002',
+        nim: '197805122005011002',
+        email: 'kaprodi.mi@unsri.ac.id',
         role: 'kaprodi',
-        kelas: 'Dosen / Kaprodi'
+        kelas: 'Dosen / Kaprodi',
+        link_wa_group: savedWa
       };
       setCurrentUser(kaprodiUser);
       return '/kaprodi/dashboard';
@@ -1456,7 +1589,7 @@ export function AuthProvider({ children }) {
 
     // 1. Push notification to Kaprodi
     const kaprodiUser = MOCK_USERS.find(u => u.role === 'kaprodi');
-    const kaprodiId = kaprodiUser?.id || 'user-kaprodi-abdiansah';
+    const kaprodiId = kaprodiUser?.id || 'user-kaprodi-hendra';
     newNotifs.push({
       id: `notif-${Date.now()}-kaprodi`,
       profile_id: kaprodiId,
@@ -1520,27 +1653,34 @@ export function AuthProvider({ children }) {
   // Dosen Review / Rekomendasi (Validasi Akademik Awal dari Dospem, ACC Tetap Kaprodi)
   const validateThesisTitleDosen = (titleId, statusRekomendasi, catatanDosen = '') => {
     let affectedTitle = null;
-    setThesisTitles(prev => prev.map(t => {
-      if (t.id === titleId) {
-        affectedTitle = {
-          ...t,
-          rekomendasi_dospem_status: statusRekomendasi, // 'direkomendasikan' | 'perlu_revisi'
-          catatan_dospem: catatanDosen,
-          rekomendasi_oleh: currentUser?.nama || 'Dosen Pembimbing',
-          rekomendasi_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
-        return affectedTitle;
-      }
-      return t;
-    }));
+    setThesisTitles(prev => {
+      const updated = prev.map(t => {
+        if (t.id === titleId) {
+          affectedTitle = {
+            ...t,
+            status: statusRekomendasi === 'direkomendasikan' ? 'disetujui' : (statusRekomendasi === 'perlu_revisi' ? 'perlu_revisi' : t.status),
+            rekomendasi_dospem_status: statusRekomendasi, // 'direkomendasikan' | 'perlu_revisi'
+            catatan_dospem: catatanDosen,
+            rekomendasi_oleh: currentUser?.nama || 'Dosen Pembimbing',
+            rekomendasi_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
+          return affectedTitle;
+        }
+        return t;
+      });
+      try { localStorage.setItem('simta_thesis_titles', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
 
     if (affectedTitle) {
       // Notifikasi ke Mahasiswa dengan Integrasi Email
       const studentUser = MOCK_USERS.find(u => u.nim === affectedTitle.mhs_nim);
       const studentEmail = studentUser?.email || (affectedTitle.mhs_nim ? `${affectedTitle.mhs_nim}@student.unsri.ac.id` : '09010182428002@student.unsri.ac.id');
-      const notifTitle = statusRekomendasi === 'direkomendasikan' ? 'Usulan Judul Direkomendasikan Dosen' : 'Catatan Masukan Topik dari Dosen';
-      const notifMessage = `${currentUser?.nama || 'Dosen Pembimbing'} telah memeriksa usulan judul Anda: "${catatanDosen || (statusRekomendasi === 'direkomendasikan' ? 'Direkomendasikan untuk persetujuan Kaprodi.' : 'Perlu revisi topik.')}"`;
+      const notifTitle = statusRekomendasi === 'direkomendasikan' ? 'Usulan Judul Disetujui (ACC) Dosen' : 'Catatan Revisi Judul dari Dosen';
+      const notifMessage = statusRekomendasi === 'direkomendasikan'
+        ? `${currentUser?.nama || 'Dosen Pembimbing'} telah menyetujui (ACC) usulan judul tugas akhir Anda.`
+        : `${currentUser?.nama || 'Dosen Pembimbing'} memberikan catatan revisi pada usulan judul: "${catatanDosen}"`;
 
       const notifMhs = {
         id: `notif-${Date.now()}-mhs`,
@@ -2487,6 +2627,7 @@ export function AuthProvider({ children }) {
       pembimbing: consData.pembimbing || 'Pembimbing 1',
       dosen_nama: consData.dosen_nama || 'Dr. Ir. Hendra Kusuma, M.T.',
       dosen_nip: consData.dosen_nip || '',
+      metode: consData.metode || 'luring',
       tanggal: consData.tanggal || new Date().toISOString().split('T')[0],
       waktu: consData.waktu || '10:00',
       bab_topik: consData.bab_topik,
@@ -2505,8 +2646,8 @@ export function AuthProvider({ children }) {
 
     if (isSupabaseConfigured && supabase) {
       try {
-        // Only send columns that exist in the Supabase table (exclude dosen_nip which is local-only)
-        const { dosen_nip, ...supabasePayload } = newEntry;
+        // Only send columns that exist in the Supabase table (exclude local-only columns)
+        const { dosen_nip, metode, ...supabasePayload } = newEntry;
         const { error } = await supabase.from('thesis_consultations').insert([supabasePayload]);
         if (error) console.warn('Supabase consultation insert warning:', error.message);
       } catch (err) {
@@ -2518,15 +2659,23 @@ export function AuthProvider({ children }) {
   };
 
   // Review consultation / feedback (Dosen / Kaprodi)
-  const reviewConsultation = async (consultationId, status, feedbackNotes) => {
+  const reviewConsultation = async (consultationId, status, feedbackNotes, jenisRevisi) => {
     let targetCons = null;
+    const resolvedJenisRevisi = jenisRevisi || (
+      status === 'disetujui' ? 'Diterima' : 
+      status === 'ditolak' ? 'Ditolak' : 
+      status === 'perlu_revisi' ? 'Minor' : 'Minor'
+    );
+
     setConsultations(prev => {
       const updated = prev.map(c => {
         if (c.id === consultationId) {
           targetCons = {
             ...c,
             status: status,
-            masukan_dosen: feedbackNotes || c.masukan_dosen
+            jenis_revisi: resolvedJenisRevisi,
+            masukan_dosen: feedbackNotes || c.masukan_dosen,
+            reviewed_at: new Date().toISOString()
           };
           return targetCons;
         }
@@ -2539,8 +2688,10 @@ export function AuthProvider({ children }) {
     if (targetCons) {
       const studentUser = MOCK_USERS.find(u => u.nim === targetCons.mhs_nim);
       const studentEmail = studentUser?.email || (targetCons.mhs_nim ? `${targetCons.mhs_nim}@student.unsri.ac.id` : '09010182428002@student.unsri.ac.id');
-      const notifTitle = status === 'disetujui' ? 'Bimbingan Tugas Akhir Disetujui (ACC)' : 'Masukan & Catatan Bimbingan Tugas Akhir';
-      const notifMessage = `${currentUser?.nama || targetCons.dosen_nama || 'Dosen Pembimbing'} telah memberikan tanggapan bimbingan: "${feedbackNotes || 'Silakan periksa catatan dan kartu bimbingan Anda.'}"`;
+      const notifTitle = status === 'disetujui' 
+        ? `Bimbingan Disetujui (${resolvedJenisRevisi})` 
+        : `Tanggapan Bimbingan: Revisi ${resolvedJenisRevisi}`;
+      const notifMessage = `${currentUser?.nama || targetCons.dosen_nama || 'Dosen Pembimbing'} telah memvalidasi bimbingan dengan kategori "${resolvedJenisRevisi}": "${feedbackNotes || 'Silakan periksa catatan dan kartu bimbingan Anda.'}"`;
 
       const notif = {
         id: `notif-${Date.now()}-cons`,
@@ -2560,12 +2711,16 @@ export function AuthProvider({ children }) {
 
     if (isSupabaseConfigured && supabase) {
       try {
+        const payload = {
+          status: status,
+          masukan_dosen: feedbackNotes || ''
+        };
+        if (resolvedJenisRevisi) {
+          payload.jenis_revisi = resolvedJenisRevisi;
+        }
         const { error } = await supabase
           .from('thesis_consultations')
-          .update({
-            status: status,
-            masukan_dosen: feedbackNotes || ''
-          })
+          .update(payload)
           .eq('id', consultationId);
         if (error) console.warn('Supabase consultation review warning:', error.message);
       } catch (err) {
@@ -2595,10 +2750,11 @@ export function AuthProvider({ children }) {
 
     if (isSupabaseConfigured && supabase) {
       try {
+        const { dosen_nip, metode, ...safeFields } = updatedFields;
         const { error } = await supabase
           .from('thesis_consultations')
           .update({
-            ...updatedFields,
+            ...safeFields,
             updated_at: new Date().toISOString()
           })
           .eq('id', consultationId);
@@ -2734,7 +2890,7 @@ export function AuthProvider({ children }) {
           keahlian: Array.isArray(adv.keahlian) ? adv.keahlian : (adv.keahlian || '').split(',').map(s => s.trim()).filter(Boolean),
           kuota_dospem1: Number(adv.kuota_dospem1) || 8,
           kuota_dospem2: Number(adv.kuota_dospem2) || 8,
-          role: nip === '198410012009121005' || nip === '197805122005011002' ? 'kaprodi' : 'dosen',
+          role: nip === '197805122005011002' ? 'kaprodi' : 'dosen',
           status: adv.status || 'aktif',
           created_at: adv.created_at || '2026-09-01T08:00:00.000Z'
         });

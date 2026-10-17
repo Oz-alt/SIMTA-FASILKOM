@@ -1,5 +1,6 @@
-import React from 'react';
-import { usePage } from '@inertiajs/react';
+import React, { useEffect } from 'react';
+import { usePage, router } from '@inertiajs/react';
+import { useAuth } from '../../context/AuthContext.jsx';
 import Navbar from './Navbar.jsx';
 import PublicNavbar from './PublicNavbar.jsx';
 import Sidebar from './Sidebar.jsx';
@@ -7,6 +8,15 @@ import Footer from './Footer.jsx';
 
 export default function AppLayout({ children }) {
   const { url } = usePage();
+  const { currentUser } = useAuth();
+
+  useEffect(() => {
+    if (currentUser?.role === 'dosen' && url.startsWith('/kaprodi')) {
+      router.visit('/dosen/dashboard');
+    } else if (currentUser?.role === 'kaprodi' && url.startsWith('/dosen')) {
+      router.visit('/kaprodi/dashboard');
+    }
+  }, [currentUser?.role, url]);
   const isHomePage = url === '/';
   const isDokumenPage = url === '/documents';
   const isAuthPage = url === '/login' || url === '/register';
