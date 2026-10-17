@@ -79,6 +79,18 @@ Route::get('/kaprodi/dashboard', function () {
     return Inertia::render('kaprodi/DashboardKaprodi');
 });
 
+Route::get('/kaprodi/monitoring-mahasiswa', function () {
+    return Inertia::render('kaprodi/MonitoringMahasiswaPage');
+});
+
+Route::get('/kaprodi/rekap-bimbingan', function () {
+    return Inertia::render('kaprodi/RekapBimbinganKaprodiPage');
+});
+
+Route::get('/admin-simta/rekap-bimbingan', function () {
+    return Inertia::render('kaprodi/RekapBimbinganKaprodiPage');
+});
+
 Route::get('/kaprodi/titles', function () {
     return Inertia::render('kaprodi/TinjauJudulPage');
 });
@@ -106,11 +118,11 @@ Route::get('/kaprodi/defense-schedules', function () {
 });
 
 Route::get('/kaprodi/reminders', function () {
-    return Inertia::render('kaprodi/ReminderPembimbinganPage');
+    return redirect('/kaprodi/monitoring-mahasiswa');
 });
 
 Route::get('/kaprodi/reminder-pembimbingan', function () {
-    return Inertia::render('kaprodi/ReminderPembimbinganPage');
+    return redirect('/kaprodi/monitoring-mahasiswa');
 });
 
 Route::get('/kaprodi/repository/review', function () {

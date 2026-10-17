@@ -26,7 +26,8 @@ import {
   FileStack,
   Layers,
   LayoutGrid,
-  Bell
+  Bell,
+  ClipboardList
 } from 'lucide-react';
 
 export default function Sidebar() {
@@ -124,8 +125,8 @@ export default function Sidebar() {
               label: 'Bimbingan',
               icon: FileCheck,
               items: [
-                { to: '/thesis/consultations', label: 'Log Bimbingan & Konsultasi', icon: FileCheck },
-                { to: '/kaprodi/reminders', label: 'Reminder Pembimbingan', icon: Bell }
+                { to: '/kaprodi/monitoring-mahasiswa', label: 'Monitoring Mahasiswa', icon: Users },
+                { to: '/kaprodi/rekap-bimbingan', label: 'Rekap Bimbingan', icon: ClipboardList }
               ]
             },
             {

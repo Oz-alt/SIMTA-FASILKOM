@@ -170,21 +170,40 @@ export function AuthProvider({ children }) {
 
   // Helper to read initial user from localStorage
   const getSavedUser = () => {
+    const path = typeof window !== 'undefined' ? window.location.pathname : '';
+
+    // Determine which role is required for this route
+    let requiredRole = null;
+    if (path.startsWith('/kaprodi')) requiredRole = 'kaprodi';
+    else if (path.startsWith('/admin-simta')) requiredRole = 'admin';
+    else if (path.startsWith('/admin-sarana')) requiredRole = 'admin_sarana';
+    else if (path.startsWith('/dosen')) requiredRole = 'dosen';
+    // mahasiswa & root routes: any role is fine
+
     try {
       const saved = localStorage.getItem('simta_active_user');
       if (saved) {
         const parsed = JSON.parse(saved);
         const clean = sanitizeProfile(parsed);
         if (clean) {
-          localStorage.setItem('simta_active_user', JSON.stringify(clean));
-          return clean;
+          // If the saved user role matches what this route needs (or no restriction), use it
+          if (!requiredRole || clean.role === requiredRole) {
+            localStorage.setItem('simta_active_user', JSON.stringify(clean));
+            return clean;
+          }
+          // Otherwise fall through to pick the correct demo account below
         }
       }
     } catch {}
-    
+
     const registered = getRegisteredUsers();
+    // Pick default user based on current route so demo always shows the right account
+    if (requiredRole) {
+      return registered.find(u => u.role === requiredRole) || registered[0] || null;
+    }
     return registered[0] || null;
   };
+
 
   // Helper to store a new registered user in localStorage
   const saveRegisteredUser = (user) => {
