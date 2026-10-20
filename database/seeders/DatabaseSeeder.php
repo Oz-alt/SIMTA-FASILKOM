@@ -15,11 +15,22 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        // Kaprodi: Username "Koprodi", Password "Koprodi123"
+        User::updateOrCreate(
+            ['email' => 'koprodi@unsri.ac.id'],
+            [
+                'name' => 'Dr. Abdiansah, S.Kom., M.Cs.',
+                'password' => bcrypt('Koprodi123'),
+            ]
+        );
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        // Dosen: NIP / Login 198410012009121005
+        User::updateOrCreate(
+            ['email' => 'abdiansah@unsri.ac.id'],
+            [
+                'name' => 'Dr. Abdiansah, S.Kom., M.Cs.',
+                'password' => bcrypt('198410012009121005'),
+            ]
+        );
     }
 }

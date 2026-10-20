@@ -58,7 +58,7 @@ export default function LoginPage({ status }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!identifier.trim()) {
-      setErrorMessage('NIM / NIP wajib diisi.');
+      setErrorMessage('NIM / NIP atau Username Koprodi wajib diisi.');
       return;
     }
 
@@ -217,14 +217,14 @@ export default function LoginPage({ status }) {
             {/* NIM / NIP Input Field */}
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-700">
-                NIM / NIP (Nomor Induk)
+                NIM / NIP / Username (Khusus Kaprodi)
               </label>
               <div className="relative">
                 <input
                   type="text"
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
-                  placeholder="Masukkan NIM atau NIP"
+                  placeholder="Masukkan NIM, NIP, atau username Koprodi"
                   className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 text-xs sm:text-sm text-slate-900 bg-white transition-all outline-none font-medium"
                 />
                 <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />

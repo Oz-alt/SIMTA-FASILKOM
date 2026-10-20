@@ -33,10 +33,10 @@ export function AuthProvider({ children }) {
     if (!user) return null;
     let cleanNama = user.nama;
 
-    // Dosen Dr. Abdiansah or any NIP 198410012009121005
-    if (user.nip === '198410012009121005' || user.nim === '198410012009121005' || (user.email && user.email.toLowerCase() === 'abdiansah@unsri.ac.id') || user.id === 'user-dosen-abdiansah' || user.id === 'user-kaprodi-abdiansah') {
+    // Kaprodi: Dr. Abdiansah, S.Kom., M.Cs. (Login dengan username Koprodi)
+    if (user.role === 'kaprodi' || user.id === 'user-kaprodi-abdiansah' || (user.username && user.username.toLowerCase() === 'koprodi')) {
       let waLink = user.link_wa_group;
-      if (waLink === undefined) {
+      if (!waLink) {
         try {
           const advs = JSON.parse(localStorage.getItem('simta_advisors') || '[]');
           const matched = advs.find(a => String(a.nip) === '198410012009121005');
@@ -47,18 +47,47 @@ export function AuthProvider({ children }) {
       }
       return {
         ...user,
-        id: 'user-dosen-abdiansah',
+        id: 'user-kaprodi-abdiansah',
+        username: 'Koprodi',
         nama: 'Dr. Abdiansah, S.Kom., M.Cs.',
-        role: 'dosen',
-        email: 'abdiansah@unsri.ac.id',
+        role: 'kaprodi',
+        email: user.email || 'koprodi@unsri.ac.id',
         nip: '198410012009121005',
         nim: '198410012009121005',
-        kelas: 'Dosen Pembimbing',
+        kelas: 'Dosen / Kaprodi',
+        prodi: 'D3 Manajemen Informatika',
         link_wa_group: waLink
       };
     }
 
+    // Dosen Dr. Abdiansah or any NIP 198410012009121005 (Login dengan NIP & Password NIP)
     if (user.role === 'dosen') {
+      const isAbdiansah = user.nip === '198410012009121005' || user.nim === '198410012009121005' || (user.email && user.email.toLowerCase() === 'abdiansah@unsri.ac.id') || user.id === 'user-dosen-abdiansah';
+      if (isAbdiansah) {
+        let waLink = user.link_wa_group;
+        if (!waLink) {
+          try {
+            const advs = JSON.parse(localStorage.getItem('simta_advisors') || '[]');
+            const matched = advs.find(a => String(a.nip) === '198410012009121005');
+            waLink = matched?.link_wa_group || 'https://chat.whatsapp.com/BimbinganTA-DrAbdiansah';
+          } catch {
+            waLink = 'https://chat.whatsapp.com/BimbinganTA-DrAbdiansah';
+          }
+        }
+        return {
+          ...user,
+          id: 'user-dosen-abdiansah',
+          nama: 'Dr. Abdiansah, S.Kom., M.Cs.',
+          role: 'dosen',
+          email: 'abdiansah@unsri.ac.id',
+          nip: '198410012009121005',
+          nim: '198410012009121005',
+          kelas: 'Dosen Pembimbing',
+          prodi: 'D3 Manajemen Informatika',
+          link_wa_group: waLink
+        };
+      }
+
       const uNip = user.nip || user.nim;
       let waLink = user.link_wa_group;
       if (waLink === undefined && uNip) {
@@ -77,33 +106,6 @@ export function AuthProvider({ children }) {
         nim: uNip,
         kelas: 'Dosen Pembimbing',
         link_wa_group: waLink !== undefined ? waLink : ''
-      };
-    }
-
-    if (user.role === 'kaprodi') {
-      if (!cleanNama || cleanNama === 'Mahasiswa UNSRI' || cleanNama === 'Pengguna SIMTA' || cleanNama === 'Aulia Azzahra' || /^\d+$/.test(cleanNama)) {
-        cleanNama = 'Dr. Ir. Hendra Kusuma, M.T.';
-      }
-      const uNip = user.nip || user.nim || '197805122005011002';
-      let waLink = user.link_wa_group;
-      if (waLink === undefined) {
-        try {
-          const advs = JSON.parse(localStorage.getItem('simta_advisors') || '[]');
-          const matched = advs.find(a => String(a.nip) === String(uNip));
-          waLink = matched?.link_wa_group || 'https://chat.whatsapp.com/BimbinganTA-HendraKusuma';
-        } catch {
-          waLink = 'https://chat.whatsapp.com/BimbinganTA-HendraKusuma';
-        }
-      }
-      return {
-        ...user,
-        nama: cleanNama,
-        role: 'kaprodi',
-        email: user.email || 'kaprodi.mi@unsri.ac.id',
-        nip: uNip,
-        nim: uNip,
-        kelas: 'Dosen / Kaprodi',
-        link_wa_group: waLink
       };
     }
 
@@ -132,7 +134,7 @@ export function AuthProvider({ children }) {
     }
 
     // Default for Mahasiswa
-    if (!cleanNama || cleanNama === 'Mahasiswa UNSRI' || cleanNama === 'Pengguna SIMTA' || cleanNama === 'Dr. Ir. Hendra Kusuma, M.T.' || /^\d+$/.test(cleanNama)) {
+    if (!cleanNama || cleanNama === 'Mahasiswa UNSRI' || cleanNama === 'Pengguna SIMTA' || cleanNama === 'Dr. Abdiansah, S.Kom., M.Cs.' || /^\d+$/.test(cleanNama)) {
       cleanNama = 'AULIA AZZAHRA';
     }
 
@@ -159,16 +161,62 @@ export function AuthProvider({ children }) {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          const sanitizedList = parsed.map(u => sanitizeProfile(u));
+          // Filter out old Hendra Kaprodi account completely
+          const cleaned = parsed.filter(u => 
+            u && 
+            u.id !== 'user-kaprodi-hendra' && 
+            !String(u.nama || '').includes('Hendra Kusuma') && 
+            String(u.nip || '') !== '197805122005011002' &&
+            String(u.email || '') !== 'kaprodi.mi@unsri.ac.id'
+          );
+
+          // Ensure Kaprodi Dr. Abdiansah is present with username Koprodi and password Koprodi123
+          const kaprodiIdx = cleaned.findIndex(u => u.role === 'kaprodi');
+          const kaprodiObj = {
+            id: 'user-kaprodi-abdiansah',
+            username: 'Koprodi',
+            nama: 'Dr. Abdiansah, S.Kom., M.Cs.',
+            nim: '198410012009121005',
+            nip: '198410012009121005',
+            email: 'koprodi@unsri.ac.id',
+            password: 'Koprodi123',
+            role: 'kaprodi',
+            kelas: 'Dosen / Kaprodi',
+            prodi: 'D3 Manajemen Informatika'
+          };
+          if (kaprodiIdx >= 0) {
+            cleaned[kaprodiIdx] = { ...cleaned[kaprodiIdx], ...kaprodiObj };
+          } else {
+            cleaned.unshift(kaprodiObj);
+          }
+
+          // Ensure Dosen Dr. Abdiansah is present with NIP & password from NIP
+          const dosenAbdiansahIdx = cleaned.findIndex(u => u.role === 'dosen' && String(u.nip) === '198410012009121005');
+          const dosenAbdiansahObj = {
+            id: 'user-dosen-abdiansah',
+            nama: 'Dr. Abdiansah, S.Kom., M.Cs.',
+            nim: '198410012009121005',
+            nip: '198410012009121005',
+            email: 'abdiansah@unsri.ac.id',
+            password: '198410012009121005',
+            role: 'dosen',
+            kelas: 'Dosen Pembimbing',
+            prodi: 'D3 Manajemen Informatika'
+          };
+          if (dosenAbdiansahIdx >= 0) {
+            cleaned[dosenAbdiansahIdx] = { ...cleaned[dosenAbdiansahIdx], ...dosenAbdiansahObj };
+          } else {
+            cleaned.push(dosenAbdiansahObj);
+          }
+
+          const sanitizedList = cleaned.map(u => sanitizeProfile(u));
           
-          // Deduplicate entries by role + name
+          // Deduplicate entries by unique role + identifier
           const uniqueMap = new Map();
           sanitizedList.forEach(u => {
             if (u && u.nama) {
-              const key = u.role === 'mahasiswa' ? `mhs-${u.nama.toLowerCase()}` : (u.id || u.email || u.nip);
-              if (!uniqueMap.has(key) || u.nim === '09010182428002') {
-                uniqueMap.set(key, u);
-              }
+              const key = u.role === 'mahasiswa' ? `mhs-${u.nim || u.nama}` : (u.id || `${u.role}-${u.nip}`);
+              uniqueMap.set(key, u);
             }
           });
 
@@ -181,14 +229,16 @@ export function AuthProvider({ children }) {
     
     const defaultRegistered = [
       {
-        id: 'user-admin-simta',
-        nama: 'Rina Agustina, S.Kom. (Admin SIMTA)',
-        nim: '198503152010122001',
-        nip: '198503152010122001',
-        email: 'admin.simta@unsri.ac.id',
-        password: 'admin',
-        role: 'admin',
-        kelas: 'Admin SIMTA'
+        id: 'user-kaprodi-abdiansah',
+        username: 'Koprodi',
+        nama: 'Dr. Abdiansah, S.Kom., M.Cs.',
+        nim: '198410012009121005',
+        nip: '198410012009121005',
+        email: 'koprodi@unsri.ac.id',
+        password: 'Koprodi123',
+        role: 'kaprodi',
+        kelas: 'Dosen / Kaprodi',
+        prodi: 'D3 Manajemen Informatika'
       },
       {
         id: 'user-dosen-abdiansah',
@@ -198,17 +248,18 @@ export function AuthProvider({ children }) {
         email: 'abdiansah@unsri.ac.id',
         password: '198410012009121005',
         role: 'dosen',
-        kelas: 'Dosen Pembimbing'
+        kelas: 'Dosen Pembimbing',
+        prodi: 'D3 Manajemen Informatika'
       },
       {
-        id: 'user-kaprodi-hendra',
-        nama: 'Dr. Ir. Hendra Kusuma, M.T.',
-        nim: '197805122005011002',
-        nip: '197805122005011002',
-        email: 'kaprodi.mi@unsri.ac.id',
-        password: 'Kaprodi123!',
-        role: 'kaprodi',
-        kelas: 'Dosen / Kaprodi'
+        id: 'user-admin-simta',
+        nama: 'Rina Agustina, S.Kom. (Admin SIMTA)',
+        nim: '198503152010122001',
+        nip: '198503152010122001',
+        email: 'admin.simta@unsri.ac.id',
+        password: '198503152010122001',
+        role: 'admin',
+        kelas: 'Admin SIMTA'
       },
       {
         id: 'user-admin-sarana',
@@ -216,7 +267,7 @@ export function AuthProvider({ children }) {
         nim: '198204102008121003',
         nip: '198204102008121003',
         email: 'admin.sarana@unsri.ac.id',
-        password: 'admin',
+        password: '198204102008121003',
         role: 'admin_sarana',
         kelas: 'Admin Sarana'
       },
@@ -245,7 +296,7 @@ export function AuthProvider({ children }) {
     let requiredRole = null;
     if (path.startsWith('/kaprodi')) requiredRole = 'kaprodi';
     else if (path.startsWith('/admin-simta')) requiredRole = 'admin';
-    else if (path.startsWith('/admin-sarana')) requiredRole = 'admin_sarana';
+    else if (path.startsWith('/admin-sarana') || path === '/admin/dashboard' || path.startsWith('/admin/')) requiredRole = 'admin_sarana';
     else if (path.startsWith('/dosen')) requiredRole = 'dosen';
     // mahasiswa & root routes: any role is fine
 
@@ -253,14 +304,18 @@ export function AuthProvider({ children }) {
       const saved = localStorage.getItem('simta_active_user');
       if (saved) {
         const parsed = JSON.parse(saved);
-        const clean = sanitizeProfile(parsed);
-        if (clean) {
-          // If the saved user role matches what this route needs (or no restriction), use it
-          if (!requiredRole || clean.role === requiredRole) {
-            localStorage.setItem('simta_active_user', JSON.stringify(clean));
-            return clean;
+        // Purge old Hendra Kusuma account if found in localStorage
+        if (parsed.id === 'user-kaprodi-hendra' || String(parsed.nama || '').includes('Hendra Kusuma') || String(parsed.nip || '') === '197805122005011002') {
+          localStorage.removeItem('simta_active_user');
+        } else {
+          const clean = sanitizeProfile(parsed);
+          if (clean) {
+            // If the saved user role matches what this route needs (or no restriction), use it
+            if (!requiredRole || clean.role === requiredRole) {
+              localStorage.setItem('simta_active_user', JSON.stringify(clean));
+              return clean;
+            }
           }
-          // Otherwise fall through to pick the correct demo account below
         }
       }
     } catch {}
@@ -278,7 +333,10 @@ export function AuthProvider({ children }) {
   const saveRegisteredUser = (user) => {
     try {
       const users = getRegisteredUsers();
-      const existingIdx = users.findIndex(u => u.id === user.id || u.email === user.email || (u.nim && u.nim === user.nim));
+      const existingIdx = users.findIndex(u => 
+        u.id === user.id || 
+        (u.role === user.role && ((u.username && user.username && u.username.toLowerCase() === user.username.toLowerCase()) || u.email === user.email || (u.nim && u.nim === user.nim)))
+      );
       if (existingIdx >= 0) {
         users[existingIdx] = { ...users[existingIdx], ...user };
       } else {
@@ -1227,14 +1285,91 @@ export function AuthProvider({ children }) {
     }
   }, [currentUser, consultations]);
 
-  // Authenticate user strictly by NIM or NIP credential & password
+  // Authenticate user strictly:
+  // - Kaprodi: username "Koprodi", password "Koprodi123"
+  // - Dosen Dr. Abdiansah: NIP "198410012009121005", password "198410012009121005"
+  // - Selain dari Koprodi, tidak bisa login menggunakan username (wajib NIP atau NIM)
   const login = async (credential = '', password = '') => {
     const term = String(credential).trim();
     const termLower = term.toLowerCase();
     const inputPass = String(password).trim();
 
-    // 0. Direct quick match for Admin SIMTA, Admin Sarana, and Kaprodi credentials
-    if (termLower === 'admin' || termLower === 'admin-simta' || termLower === 'admin_simta' || termLower === '198503152010122001' || termLower === 'admin.simta@unsri.ac.id') {
+    if (!term) {
+      throw new Error('NIM / NIP atau Username Koprodi wajib diisi.');
+    }
+    if (!inputPass) {
+      throw new Error('Kata sandi wajib diisi.');
+    }
+
+    // 1. Khusus Akun Kaprodi: login pakai username "Koprodi" dan password "Koprodi123"
+    if (termLower === 'koprodi' || termLower === 'kaprodi') {
+      if (inputPass !== 'Koprodi123') {
+        throw new Error('Kata sandi untuk akun Koprodi salah. Kata sandi yang benar adalah "Koprodi123".');
+      }
+      let savedWa = 'https://chat.whatsapp.com/BimbinganTA-DrAbdiansah';
+      try {
+        const advs = JSON.parse(localStorage.getItem('simta_advisors') || '[]');
+        const matchedAdv = advs.find(a => String(a.nip) === '198410012009121005');
+        if (matchedAdv?.link_wa_group) savedWa = matchedAdv.link_wa_group;
+      } catch {}
+
+      const kaprodiUser = {
+        id: 'user-kaprodi-abdiansah',
+        username: 'Koprodi',
+        nama: 'Dr. Abdiansah, S.Kom., M.Cs.',
+        nip: '198410012009121005',
+        nim: '198410012009121005',
+        email: 'koprodi@unsri.ac.id',
+        role: 'kaprodi',
+        kelas: 'Dosen / Kaprodi',
+        prodi: 'D3 Manajemen Informatika',
+        link_wa_group: savedWa
+      };
+      setCurrentUser(kaprodiUser);
+      return '/kaprodi/dashboard';
+    }
+
+    // 2. ATURAN KETAT: Selain dari Koprodi tidak bisa login pake username!
+    // Hanya diperbolehkan nomor induk (NIP/NIM numerik) atau alamat email resmi (@)
+    const isEmail = term.includes('@');
+    const isNumeric = /^[0-9]+$/.test(term);
+
+    if (!isEmail && !isNumeric) {
+      throw new Error('Login dengan username hanya berlaku untuk akun Koprodi. Untuk Dosen, Admin, dan Mahasiswa silakan gunakan NIP atau NIM.');
+    }
+
+    // 3. Khusus Akun Dosen Baru Dr. Abdiansah: login pakai NIP dan Password dari NIP
+    if (term === '198410012009121005' || termLower === 'abdiansah@unsri.ac.id') {
+      if (inputPass !== '198410012009121005') {
+        throw new Error('Kata sandi yang Anda masukkan salah. Kata sandi untuk Dosen Dr. Abdiansah adalah NIP Anda (198410012009121005).');
+      }
+      let savedWa = 'https://chat.whatsapp.com/BimbinganTA-DrAbdiansah';
+      try {
+        const advs = JSON.parse(localStorage.getItem('simta_advisors') || '[]');
+        const matchedAdv = advs.find(a => String(a.nip) === '198410012009121005');
+        if (matchedAdv?.link_wa_group) savedWa = matchedAdv.link_wa_group;
+      } catch {}
+
+      const dosenUser = {
+        id: 'user-dosen-abdiansah',
+        nama: 'Dr. Abdiansah, S.Kom., M.Cs.',
+        nip: '198410012009121005',
+        nim: '198410012009121005',
+        email: 'abdiansah@unsri.ac.id',
+        role: 'dosen',
+        kelas: 'Dosen Pembimbing',
+        prodi: 'D3 Manajemen Informatika',
+        link_wa_group: savedWa
+      };
+      setCurrentUser(dosenUser);
+      return '/dosen/dashboard';
+    }
+
+    // 4. Admin SIMTA: NIP 198503152010122001
+    if (term === '198503152010122001' || termLower === 'admin.simta@unsri.ac.id') {
+      if (inputPass !== '198503152010122001' && inputPass !== 'admin') {
+        throw new Error('Kata sandi yang Anda masukkan salah. Kata sandi default untuk Admin SIMTA adalah NIP Anda.');
+      }
       const adminUser = {
         id: 'user-admin-simta',
         nama: 'Rina Agustina, S.Kom. (Admin SIMTA)',
@@ -1248,7 +1383,11 @@ export function AuthProvider({ children }) {
       return '/admin-simta/dashboard';
     }
 
-    if (termLower === 'admin_sarana' || termLower === 'admin-sarana' || termLower === 'admin.sarana@unsri.ac.id' || termLower === '198204102008121003') {
+    // 5. Admin Sarana: NIP 198204102008121003
+    if (term === '198204102008121003' || termLower === 'admin.sarana@unsri.ac.id') {
+      if (inputPass !== '198204102008121003' && inputPass !== 'admin') {
+        throw new Error('Kata sandi yang Anda masukkan salah. Kata sandi default untuk Admin Sarana adalah NIP Anda.');
+      }
       const adminSaranaUser = {
         id: 'user-admin-sarana',
         nama: 'Budi Santoso, S.Kom. (Admin Ruang)',
@@ -1262,59 +1401,9 @@ export function AuthProvider({ children }) {
       return '/admin/dashboard';
     }
 
-    if (termLower === 'dosen' || termLower === 'abdiansah' || termLower === '198410012009121005' || termLower === 'abdiansah@unsri.ac.id') {
-      let savedWa = 'https://chat.whatsapp.com/BimbinganTA-DrAbdiansah';
-      try {
-        const advs = JSON.parse(localStorage.getItem('simta_advisors') || '[]');
-        const matchedAdv = advs.find(a => String(a.nip) === '198410012009121005');
-        if (matchedAdv?.link_wa_group !== undefined) savedWa = matchedAdv.link_wa_group;
-      } catch {}
-
-      const dosenUser = {
-        id: 'user-dosen-abdiansah',
-        nama: 'Dr. Abdiansah, S.Kom., M.Cs.',
-        nip: '198410012009121005',
-        nim: '198410012009121005',
-        email: 'abdiansah@unsri.ac.id',
-        role: 'dosen',
-        kelas: 'Dosen Pembimbing',
-        link_wa_group: savedWa
-      };
-      setCurrentUser(dosenUser);
-      return '/dosen/dashboard';
-    }
-
-    if (termLower === 'kaprodi' || termLower === 'hendra' || termLower === '197805122005011002' || termLower === 'kaprodi.mi@unsri.ac.id') {
-      let savedWa = 'https://chat.whatsapp.com/BimbinganTA-HendraKusuma';
-      try {
-        const advs = JSON.parse(localStorage.getItem('simta_advisors') || '[]');
-        const matchedAdv = advs.find(a => String(a.nip) === '197805122005011002');
-        if (matchedAdv?.link_wa_group !== undefined) savedWa = matchedAdv.link_wa_group;
-      } catch {}
-
-      const kaprodiUser = {
-        id: 'user-kaprodi-hendra',
-        nama: 'Dr. Ir. Hendra Kusuma, M.T.',
-        nip: '197805122005011002',
-        nim: '197805122005011002',
-        email: 'kaprodi.mi@unsri.ac.id',
-        role: 'kaprodi',
-        kelas: 'Dosen / Kaprodi',
-        link_wa_group: savedWa
-      };
-      setCurrentUser(kaprodiUser);
-      return '/kaprodi/dashboard';
-    }
-
     // Helper to validate input password against user object
     const isValidPassword = (user) => {
-      // If user is selecting role directly without password for demo (e.g. credential = 'kaprodi' and no password typed), allow
-      if (user.role === termLower && !inputPass) return true;
-
-      // Must have entered a password
       if (!inputPass) return false;
-
-      // Expected default password is user.password || user.nim || user.nip
       const userPass = String(user.password || '').trim().toLowerCase();
       const userNim = String(user.nim || '').trim().toLowerCase();
       const userNip = String(user.nip || '').trim().toLowerCase();
@@ -1323,16 +1412,12 @@ export function AuthProvider({ children }) {
       return (
         (userPass && inputPassLower === userPass) ||
         (userNim && inputPassLower === userNim) ||
-        (userNip && inputPassLower === userNip) ||
-        (user.role === 'kaprodi' && (inputPass === 'Kaprodi123!' || inputPassLower === 'kaprodi123!' || inputPassLower === 'kaprodi'))
+        (userNip && inputPassLower === userNip)
       );
     };
 
     const getInvalidPasswordErrorMessage = (user) => {
       const role = user?.role;
-      if (role === 'kaprodi') {
-        return 'Kata sandi yang Anda masukkan salah. Kata sandi default untuk Kaprodi adalah NIP Anda.';
-      }
       if (role === 'dosen') {
         return 'Kata sandi yang Anda masukkan salah. Kata sandi default untuk Dosen adalah NIP Anda.';
       }
@@ -1340,18 +1425,17 @@ export function AuthProvider({ children }) {
         return 'Kata sandi yang Anda masukkan salah. Kata sandi default untuk Admin adalah NIP Anda.';
       }
       if (role === 'mahasiswa') {
-        return 'Kata sandi yang Anda masukkan salah. Kata sandi default untuk mahasiswa adalah NIM Anda.';
+        return 'Kata sandi yang Anda masukkan salah. Kata sandi default untuk Mahasiswa adalah NIM Anda.';
       }
       return 'Kata sandi yang Anda masukkan salah. Silakan periksa kembali kata sandi Anda.';
     };
 
-    // 1. Check local registered users list FIRST by NIM, NIP, Email, or ID
+    // 6. Check local registered users list FIRST by NIM, NIP, or Email
     const registered = getRegisteredUsers();
     const localFound = registered.find(u => 
       (u.nim && u.nim.toLowerCase() === termLower) || 
       (u.nip && u.nip.toLowerCase() === termLower) || 
-      (u.email && u.email.toLowerCase() === termLower) ||
-      (u.id && u.id.toLowerCase() === termLower)
+      (u.email && u.email.toLowerCase() === termLower)
     );
 
     if (localFound) {
@@ -1366,7 +1450,7 @@ export function AuthProvider({ children }) {
       return '/dashboard';
     }
 
-    // 2. Try Real Supabase Auth if configured & password provided
+    // 7. Try Real Supabase Auth if configured & password provided
     if (isSupabaseConfigured && supabase && password) {
       let emailToUse = termLower.includes('@') ? termLower : '';
       if (!emailToUse) {
@@ -1406,12 +1490,11 @@ export function AuthProvider({ children }) {
       }
     }
 
-    // 3. Fallback to Mock Dataset Matching by NIM / NIP / Email / Role
+    // 8. Fallback to Mock Dataset Matching strictly by NIM / NIP / Email (No username/role bypass!)
     let foundUser = MOCK_USERS.find(u => 
       (u.nim && u.nim.toLowerCase() === termLower) || 
       (u.nip && u.nip.toLowerCase() === termLower) ||
-      (u.email && u.email.toLowerCase() === termLower) ||
-      u.role === termLower
+      (u.email && u.email.toLowerCase() === termLower)
     );
 
     // If not found in MOCK_USERS, check advisors master list for dynamically added Dosen
@@ -1447,7 +1530,7 @@ export function AuthProvider({ children }) {
       return '/dashboard';
     }
 
-    // 4. If no match found in registered users, Supabase, or mock users, throw invalid credential error
+    // 9. If no match found in registered users, Supabase, or mock users, throw invalid credential error
     throw new Error('NIM / NIP atau Email yang Anda masukkan tidak terdaftar dalam sistem.');
   };
 
@@ -1589,7 +1672,7 @@ export function AuthProvider({ children }) {
 
     // 1. Push notification to Kaprodi
     const kaprodiUser = MOCK_USERS.find(u => u.role === 'kaprodi');
-    const kaprodiId = kaprodiUser?.id || 'user-kaprodi-hendra';
+    const kaprodiId = kaprodiUser?.id || 'user-kaprodi-abdiansah';
     newNotifs.push({
       id: `notif-${Date.now()}-kaprodi`,
       profile_id: kaprodiId,
@@ -1600,7 +1683,7 @@ export function AuthProvider({ children }) {
       is_read: false,
       created_at: new Date().toISOString()
     });
-    sendEmailNotification(kaprodiUser?.email || 'kaprodi.mi@unsri.ac.id', 'Pengajuan Judul Tugas Akhir Baru', `Mahasiswa ${currentUser?.nama} mengajukan judul: "${newTitleData.judul}".`);
+    sendEmailNotification(kaprodiUser?.email || 'koprodi@unsri.ac.id', 'Pengajuan Judul Tugas Akhir Baru', `Mahasiswa ${currentUser?.nama} mengajukan judul: "${newTitleData.judul}".`);
 
     // 2. Push notification to Dosen Pembimbing 1
     if (d1Nip || d1Nama) {
@@ -2434,7 +2517,7 @@ export function AuthProvider({ children }) {
       tahun_lulus: repoData.tahun_lulus || new Date().getFullYear().toString(),
       pembimbing_1: repoData.pembimbing_1,
       pembimbing_2: repoData.pembimbing_2,
-      penguji_1: repoData.penguji_1 || 'Dr. Ir. Hendra Kusuma, M.T.',
+      penguji_1: repoData.penguji_1 || 'Dr. Abdiansah, S.Kom., M.Cs.',
       penguji_2: repoData.penguji_2 || 'Siti Nurhaliza, S.Kom., M.Kom.',
       kata_kunci: Array.isArray(repoData.kata_kunci) ? repoData.kata_kunci : (repoData.kata_kunci || '').split(',').map(k => k.trim()).filter(Boolean),
       file_pdf_url: repoData.file_pdf_url,
@@ -2625,7 +2708,7 @@ export function AuthProvider({ children }) {
       mhs_nim: currentUser?.nim || '09010182428002',
       mhs_nama: currentUser?.nama || 'Aulia Azzahra',
       pembimbing: consData.pembimbing || 'Pembimbing 1',
-      dosen_nama: consData.dosen_nama || 'Dr. Ir. Hendra Kusuma, M.T.',
+      dosen_nama: consData.dosen_nama || 'Dr. Abdiansah, S.Kom., M.Cs.',
       dosen_nip: consData.dosen_nip || '',
       metode: consData.metode || 'luring',
       tanggal: consData.tanggal || new Date().toISOString().split('T')[0],
