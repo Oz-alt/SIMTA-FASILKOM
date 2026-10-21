@@ -351,7 +351,7 @@ export default function ManajemenRepositoryAdminPage() {
         id: `arc-scraped-${Date.now()}-2`,
         judul: `ANALISIS SENTIMEN REVIEW APLIKASI SATU SEHAT PADA GOOGLE PLAY STORE MENGGUNAKAN ALGORITMA BERT`,
         abstrak: `Penelitian memanfaatkan transformer Bidirectional Encoder Representations from Transformers (BERT) untuk klasifikasi polaritas sentimen ulasan pengguna.`,
-        penulis_nama: `SITI NURHALIZA`,
+        penulis_nama: `NURHALIZAH APRILIYANI`,
         penulis_nim: `090211820250${Math.floor(10 + Math.random() * 80)}`,
         prodi: scraperConfig.prodi,
         pembimbing_1: `RIFQI SYAMSUAR, M.Kom.`,

@@ -387,7 +387,7 @@ export default function MasterDosenPage() {
                     type="text"
                     required
                     disabled={!!editingDosen}
-                    placeholder="Contoh: 197805122005011002"
+                    placeholder="Contoh: 198410012009121005"
                     value={dosenForm.nip}
                     onChange={(e) => setDosenForm({ ...dosenForm, nip: e.target.value })}
                     className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500 disabled:opacity-60"

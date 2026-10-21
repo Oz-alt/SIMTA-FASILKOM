@@ -1013,13 +1013,43 @@ export function AuthProvider({ children }) {
       supabase.from('profiles').select('*')
         .then(({ data, error }) => {
           if (!error && data && data.length > 0) {
-            setDbProfiles(data);
+            const cleaned = data.filter(p => {
+              const nameLower = String(p.nama || '').toLowerCase();
+              const nip = String(p.nip || '');
+              const id = String(p.id || '');
+              return (
+                id !== '5ccb09e6-7a1e-4ada-8b08-5df0d406bd40' &&
+                id !== 'user-kaprodi-hendra' &&
+                nip !== '197805122005011002' &&
+                !nameLower.includes('hendra kusuma') &&
+                !nameLower.includes('indra') &&
+                !nameLower.includes('budi dosen') &&
+                !nameLower.includes('ahmad zaki') &&
+                !nameLower.includes('ahmad dahlan')
+              );
+            });
+            setDbProfiles(cleaned);
           }
         });
       supabase.from('advisors').select('*').order('nama', { ascending: true })
         .then(({ data, error }) => {
           if (!error && data && data.length > 0) {
-            setAdvisors(data);
+            const cleanedAdvisors = data.filter(adv => {
+              const nameLower = String(adv.nama || '').toLowerCase();
+              const nip = String(adv.nip || '');
+              const id = String(adv.id || '');
+              return (
+                id !== '5ccb09e6-7a1e-4ada-8b08-5df0d406bd40' &&
+                id !== 'user-kaprodi-hendra' &&
+                nip !== '197805122005011002' &&
+                !nameLower.includes('hendra kusuma') &&
+                !nameLower.includes('indra') &&
+                !nameLower.includes('budi dosen') &&
+                !nameLower.includes('ahmad zaki') &&
+                !nameLower.includes('ahmad dahlan')
+              );
+            });
+            setAdvisors(cleanedAdvisors);
           }
         });
       supabase.from('student_advisors').select('*')
@@ -2518,7 +2548,7 @@ export function AuthProvider({ children }) {
       pembimbing_1: repoData.pembimbing_1,
       pembimbing_2: repoData.pembimbing_2,
       penguji_1: repoData.penguji_1 || 'Dr. Abdiansah, S.Kom., M.Cs.',
-      penguji_2: repoData.penguji_2 || 'Siti Nurhaliza, S.Kom., M.Kom.',
+      penguji_2: repoData.penguji_2 || 'Anna Dwi Marjusalinah, S.Kom., M.Kom.',
       kata_kunci: Array.isArray(repoData.kata_kunci) ? repoData.kata_kunci : (repoData.kata_kunci || '').split(',').map(k => k.trim()).filter(Boolean),
       file_pdf_url: repoData.file_pdf_url,
       status: 'menunggu_review_kaprodi',
@@ -2973,7 +3003,7 @@ export function AuthProvider({ children }) {
           keahlian: Array.isArray(adv.keahlian) ? adv.keahlian : (adv.keahlian || '').split(',').map(s => s.trim()).filter(Boolean),
           kuota_dospem1: Number(adv.kuota_dospem1) || 8,
           kuota_dospem2: Number(adv.kuota_dospem2) || 8,
-          role: nip === '197805122005011002' ? 'kaprodi' : 'dosen',
+          role: nip === '198410012009121005' ? 'kaprodi' : 'dosen',
           status: adv.status || 'aktif',
           created_at: adv.created_at || '2026-09-01T08:00:00.000Z'
         });
@@ -3028,7 +3058,21 @@ export function AuthProvider({ children }) {
       }
     });
 
-    return Array.from(accountMap.values());
+    return Array.from(accountMap.values()).filter(d => {
+      const nip = String(d.nip || d.nim || '');
+      const nama = String(d.nama || '').toLowerCase();
+      const id = String(d.id || '');
+      return (
+        id !== 'user-kaprodi-hendra' &&
+        id !== '5ccb09e6-7a1e-4ada-8b08-5df0d406bd40' &&
+        nip !== '197805122005011002' &&
+        !nama.includes('hendra kusuma') &&
+        !nama.includes('indra') &&
+        !nama.includes('budi dosen') &&
+        !nama.includes('ahmad zaki') &&
+        !nama.includes('ahmad dahlan')
+      );
+    });
   };
 
   // Add Mahasiswa Account (Admin SIMTA)

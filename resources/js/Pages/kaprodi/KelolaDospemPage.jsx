@@ -203,8 +203,8 @@ export default function KelolaDospemPage() {
     const csvContent =
       'data:text/csv;charset=utf-8,' +
       'NIP,Nama,Email,NoHP,Prodi,Keahlian,KuotaDospem1,KuotaDospem2\n' +
-      '198001012005011001,Dr. Ahmad Fauzi, S.Kom., M.T.,fauzi@unsri.ac.id,081234567890,D3 Manajemen Informatika,"Sistem Informasi, Machine Learning",8,8\n' +
-      '198502022010122002,Nurul Hidayah, M.Kom.,nurul@unsri.ac.id,081398765432,D3 Manajemen Informatika,"UI/UX Design, Web Engineering",8,8';
+      '198710092024211001,Willy, S.Kom., M.Kom.,willy@unsri.ac.id,081234567890,D3 Manajemen Informatika,"Sistem Informasi, Machine Learning",8,8\n' +
+      '198303182023212034,Iin Seprina, M.Kom.,iinseprina@unsri.ac.id,081398765432,D3 Manajemen Informatika,"UI/UX Design, Web Engineering",8,8';
 
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
