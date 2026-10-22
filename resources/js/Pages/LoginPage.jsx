@@ -23,7 +23,7 @@ export default function LoginPage({ status }) {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
+  const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccessLoading, setIsSuccessLoading] = useState(false);
   const [loadingText, setLoadingText] = useState('Memverifikasi Akses Akun...');
@@ -31,6 +31,25 @@ export default function LoginPage({ status }) {
 
   const formPanelRef = useRef(null);
   const leftContentRef = useRef(null);
+
+  // Pastikan form selalu kosong saat pertama kali dibuka (bersihkan browser autofill)
+  useEffect(() => {
+    setIdentifier('');
+    setPassword('');
+    const t1 = setTimeout(() => {
+      setIdentifier('');
+      setPassword('');
+    }, 50);
+    const t2 = setTimeout(() => {
+      setIdentifier('');
+      setPassword('');
+    }, 200);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, []);
 
   // GSAP Entrance Animations
   useEffect(() => {
@@ -212,7 +231,11 @@ export default function LoginPage({ status }) {
           )}
 
           {/* Real Form Input Fields */}
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} autoComplete="off" className="space-y-4">
+
+            {/* Decoy hidden inputs to consume browser password autofill */}
+            <input type="text" name="fake_user_autofill_block" tabIndex={-1} autoComplete="off" style={{ display: 'none' }} aria-hidden="true" />
+            <input type="password" name="fake_pass_autofill_block" tabIndex={-1} autoComplete="new-password" style={{ display: 'none' }} aria-hidden="true" />
 
             {/* NIM / NIP Input Field */}
             <div className="space-y-1.5">
@@ -222,6 +245,12 @@ export default function LoginPage({ status }) {
               <div className="relative">
                 <input
                   type="text"
+                  name="simta_identifier"
+                  id="simta_identifier"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck="false"
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
                   placeholder="Masukkan NIM, NIP, atau username Koprodi"
@@ -239,6 +268,9 @@ export default function LoginPage({ status }) {
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
+                  name="simta_password"
+                  id="simta_password"
+                  autoComplete="new-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Masukkan kata sandi..."

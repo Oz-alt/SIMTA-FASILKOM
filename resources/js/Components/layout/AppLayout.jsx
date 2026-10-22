@@ -15,8 +15,19 @@ export default function AppLayout({ children }) {
       router.visit('/dosen/dashboard');
     } else if (currentUser?.role === 'kaprodi' && url.startsWith('/dosen')) {
       router.visit('/kaprodi/dashboard');
+    } else if (
+      currentUser?.role === 'mahasiswa' && 
+      !currentUser?.is_profile_completed && 
+      !url.startsWith('/profile') &&
+      !url.startsWith('/login') &&
+      !url.startsWith('/register') &&
+      !url.startsWith('/verify') &&
+      url !== '/' &&
+      url !== '/documents'
+    ) {
+      router.visit('/profile?first_login=true');
     }
-  }, [currentUser?.role, url]);
+  }, [currentUser?.role, currentUser?.is_profile_completed, url]);
   const isHomePage = url === '/';
   const isDokumenPage = url === '/documents';
   const isAuthPage = url === '/login' || url === '/register';

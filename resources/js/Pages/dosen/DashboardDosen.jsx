@@ -32,12 +32,17 @@ export default function DashboardDosen() {
 
   // 1. Find students assigned to this dosen
   const myStudents = useMemo(() => {
-    return studentAdvisors.filter(sa => 
-      sa.dospem1_nip === userNip || sa.dospem2_nip === userNip ||
-      (userNama && (sa.dospem1_nama?.includes(userNama) || sa.dospem2_nama?.includes(userNama))) ||
-      currentUser?.role === 'dosen'
-    );
-  }, [studentAdvisors, userNip, userNama, currentUser]);
+    const cleanNip = String(userNip || '').trim();
+    const cleanNama = (userNama || '').split(',')[0].toLowerCase().trim();
+
+    return studentAdvisors.filter(sa => {
+      const isDospem1 = (cleanNip && String(sa.dospem1_nip || '').trim() === cleanNip) ||
+                        (cleanNama && sa.dospem1_nama && sa.dospem1_nama.toLowerCase().includes(cleanNama));
+      const isDospem2 = (cleanNip && String(sa.dospem2_nip || '').trim() === cleanNip) ||
+                        (cleanNama && sa.dospem2_nama && sa.dospem2_nama.toLowerCase().includes(cleanNama));
+      return isDospem1 || isDospem2;
+    });
+  }, [studentAdvisors, userNip, userNama]);
 
   const myStudentNims = useMemo(() => {
     return new Set(myStudents.map(s => String(s.student_nim)));
@@ -45,20 +50,24 @@ export default function DashboardDosen() {
 
   // 2. Actual consultations strictly belonging to this logged-in dosen's students
   const myConsultations = useMemo(() => {
+    const cleanNip = String(userNip || '').trim();
+    const cleanNama = (userNama || '').split(',')[0].toLowerCase().trim();
+
     return (consultations || []).filter(c => 
-      (c.dosen_nip && String(c.dosen_nip).trim() === String(userNip).trim()) ||
+      (cleanNip && String(c.dosen_nip || '').trim() === cleanNip) ||
       myStudentNims.has(String(c.mhs_nim)) ||
-      (userNama && c.dosen_nama?.toLowerCase().includes(userNama.toLowerCase()))
+      (cleanNama && c.dosen_nama && c.dosen_nama.toLowerCase().includes(cleanNama))
     );
   }, [consultations, userNip, userNama, myStudentNims]);
 
   // 3. Find pending title proposals for this dosen (menunggu validasi)
   const pendingTitles = useMemo(() => {
+    const cleanNip = String(userNip || '').trim();
+    const cleanNama = (userNama || '').split(',')[0].toLowerCase().trim();
+
     return (thesisTitles || []).filter(t => {
-      const isProposed = (t.pembimbing_1_nip && t.pembimbing_1_nip === userNip) ||
-                         (t.pembimbing_2_nip && t.pembimbing_2_nip === userNip) ||
-                         (t.pembimbing_1 && t.pembimbing_1 === userNama) ||
-                         (t.pembimbing_2 && t.pembimbing_2 === userNama);
+      const isProposed = (cleanNip && (String(t.pembimbing_1_nip || '').trim() === cleanNip || String(t.pembimbing_2_nip || '').trim() === cleanNip)) ||
+                         (cleanNama && ((t.pembimbing_1 && t.pembimbing_1.toLowerCase().includes(cleanNama)) || (t.pembimbing_2 && t.pembimbing_2.toLowerCase().includes(cleanNama))));
       return isProposed && (!t.rekomendasi_dospem_status || t.rekomendasi_dospem_status === 'menunggu_validasi');
     });
   }, [thesisTitles, userNip, userNama]);

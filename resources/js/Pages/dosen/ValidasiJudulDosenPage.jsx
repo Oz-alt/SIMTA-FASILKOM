@@ -17,13 +17,20 @@ export default function ValidasiJudulDosenPage() {
   const userNama = currentUser?.nama || '';
 
   // Filter titles where this dosen is proposed as Pembimbing 1 or 2, or assigned
+  const cleanNip = String(userNip || '').trim();
+  const cleanNama = (userNama || '').split(',')[0].toLowerCase().trim();
+
   const relevantTitles = thesisTitles.filter(t => {
-    const isProposed1 = (t.pembimbing_1_nip && t.pembimbing_1_nip === userNip) || (t.pembimbing_1 && t.pembimbing_1 === userNama);
-    const isProposed2 = (t.pembimbing_2_nip && t.pembimbing_2_nip === userNip) || (t.pembimbing_2 && t.pembimbing_2 === userNama);
+    const isProposed1 = (cleanNip && String(t.pembimbing_1_nip || '').trim() === cleanNip) || 
+                        (cleanNama && t.pembimbing_1 && t.pembimbing_1.toLowerCase().includes(cleanNama));
+    const isProposed2 = (cleanNip && String(t.pembimbing_2_nip || '').trim() === cleanNip) || 
+                        (cleanNama && t.pembimbing_2 && t.pembimbing_2.toLowerCase().includes(cleanNama));
     const isAssigned = studentAdvisors.some(sa => 
-      sa.student_nim === t.mhs_nim && (sa.dospem1_nip === userNip || sa.dospem2_nip === userNip)
+      String(sa.student_nim || '').trim() === String(t.mhs_nim || '').trim() && 
+      ((cleanNip && (String(sa.dospem1_nip || '').trim() === cleanNip || String(sa.dospem2_nip || '').trim() === cleanNip)) ||
+       (cleanNama && ((sa.dospem1_nama && sa.dospem1_nama.toLowerCase().includes(cleanNama)) || (sa.dospem2_nama && sa.dospem2_nama.toLowerCase().includes(cleanNama)))))
     );
-    return isProposed1 || isProposed2 || isAssigned || currentUser?.role === 'dosen';
+    return isProposed1 || isProposed2 || isAssigned;
   });
 
   // Split into pending validation by dosen vs already validated by dosen
@@ -124,8 +131,8 @@ export default function ValidasiJudulDosenPage() {
           ) : (
             <div className="space-y-3.5">
               {pendingValidationTitles.map(t => {
-                const isDospem1 = t.pembimbing_1_nip === userNip || t.pembimbing_1 === userNama;
-                const isDospem2 = t.pembimbing_2_nip === userNip || t.pembimbing_2 === userNama;
+                const isDospem1 = (cleanNip && String(t.pembimbing_1_nip || '').trim() === cleanNip) || (cleanNama && t.pembimbing_1 && t.pembimbing_1.toLowerCase().includes(cleanNama));
+                const isDospem2 = (cleanNip && String(t.pembimbing_2_nip || '').trim() === cleanNip) || (cleanNama && t.pembimbing_2 && t.pembimbing_2.toLowerCase().includes(cleanNama));
                 const roleLabel = isDospem1 ? 'Pembimbing 1' : isDospem2 ? 'Pembimbing 2' : 'Dosen Pembimbing';
                 const similarity = getSimilarityColor(t.skor_kemiripan_terakhir);
                 const scoreNum = Number(t.skor_kemiripan_terakhir) || 0;

@@ -25,12 +25,17 @@ export default function RekapBimbinganPage() {
 
   // Filter students assigned to this dosen
   const assignedStudents = useMemo(() => {
+    const cleanNip = String(userNip || '').trim();
+    const cleanNama = (userNama || '').split(',')[0].toLowerCase().trim();
+
     return studentAdvisors.filter(sa => {
-      const isDospem1 = sa.dospem1_nip === userNip || (userNama && sa.dospem1_nama?.toLowerCase().includes(userNama.toLowerCase()));
-      const isDospem2 = sa.dospem2_nip === userNip || (userNama && sa.dospem2_nama?.toLowerCase().includes(userNama.toLowerCase()));
-      return isDospem1 || isDospem2 || currentUser?.role === 'dosen';
+      const isDospem1 = (cleanNip && String(sa.dospem1_nip || '').trim() === cleanNip) ||
+                        (cleanNama && sa.dospem1_nama && sa.dospem1_nama.toLowerCase().includes(cleanNama));
+      const isDospem2 = (cleanNip && String(sa.dospem2_nip || '').trim() === cleanNip) ||
+                        (cleanNama && sa.dospem2_nama && sa.dospem2_nama.toLowerCase().includes(cleanNama));
+      return isDospem1 || isDospem2;
     });
-  }, [studentAdvisors, userNip, userNama, currentUser]);
+  }, [studentAdvisors, userNip, userNama]);
 
   const rekapData = useMemo(() => {
     return assignedStudents.map(student => {

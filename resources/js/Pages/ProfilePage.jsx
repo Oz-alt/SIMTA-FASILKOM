@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { usePage, router } from '@inertiajs/react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { 
   User, 
@@ -7,6 +8,7 @@ import {
   Phone, 
   GraduationCap, 
   ShieldCheck, 
+  ShieldAlert,
   Camera, 
   Edit3, 
   Save, 
@@ -20,25 +22,47 @@ import {
   Link2,
   AlertTriangle,
   Copy,
-  Check
+  Check,
+  Eye,
+  EyeOff,
+  KeyRound,
+  ArrowRight
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../services/supabase.js';
 
 export default function ProfilePage() {
   const { currentUser, updateUserProfile, departments } = useAuth();
+  const { url } = usePage();
 
-  const [isEditing, setIsEditing] = useState(false);
+  const isMahasiswa = currentUser?.role === 'mahasiswa';
+  const isPendingProfile = isMahasiswa && !currentUser?.is_profile_completed;
+  const isFirstLogin = isPendingProfile || (typeof url === 'string' && url.includes('first_login'));
+
+  const [isEditing, setIsEditing] = useState(() => isFirstLogin || false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
+  // Password setup state
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isCompletedSuccess, setIsCompletedSuccess] = useState(false);
+
   const [formData, setFormData] = useState({
     nama: currentUser?.nama || '',
-    no_hp: currentUser?.no_hp || '',
+    no_hp: currentUser?.no_hp && currentUser?.no_hp !== '-' ? currentUser.no_hp : '',
     prodi: currentUser?.prodi || 'D3 Manajemen Informatika',
     kelas: currentUser?.kelas || 'MI 5A'
   });
+
+  useEffect(() => {
+    if (isFirstLogin) {
+      setIsEditing(true);
+    }
+  }, [isFirstLogin]);
 
   // State untuk Pengelolaan Tautan WhatsApp Group Bimbingan (Dosen / Kaprodi)
   const isDosenOrKaprodi = currentUser?.role === 'dosen' || currentUser?.role === 'kaprodi';
@@ -55,8 +79,14 @@ export default function ProfilePage() {
       const link = currentUser.link_wa_group || '';
       setWaLinkInput(link);
       setSavedWaLink(link);
+      setFormData({
+        nama: currentUser.nama || '',
+        no_hp: currentUser.no_hp && currentUser.no_hp !== '-' ? currentUser.no_hp : '',
+        prodi: currentUser.prodi || 'D3 Manajemen Informatika',
+        kelas: currentUser.kelas || 'MI 5A'
+      });
     }
-  }, [currentUser?.id, currentUser?.link_wa_group, currentUser?.nip]);
+  }, [currentUser?.id, currentUser?.link_wa_group, currentUser?.nip, currentUser?.nim]);
 
   const roleLabels = {
     mahasiswa: { label: 'Mahasiswa', badge: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
@@ -76,7 +106,7 @@ export default function ProfilePage() {
   const handleStartEdit = () => {
     setFormData({
       nama: currentUser?.nama || '',
-      no_hp: currentUser?.no_hp || '',
+      no_hp: currentUser?.no_hp && currentUser?.no_hp !== '-' ? currentUser.no_hp : '',
       prodi: currentUser?.prodi || 'D3 Manajemen Informatika',
       kelas: currentUser?.kelas || 'MI 5A'
     });
@@ -86,6 +116,10 @@ export default function ProfilePage() {
   };
 
   const handleCancelEdit = () => {
+    if (isPendingProfile) {
+      setErrorMsg('Anda wajib melengkapi profil dan mengatur kata sandi baru akun Anda.');
+      return;
+    }
     setIsEditing(false);
     setErrorMsg('');
   };
@@ -97,22 +131,75 @@ export default function ProfilePage() {
       return;
     }
 
+    if (isMahasiswa) {
+      if (!formData.no_hp.trim()) {
+        setErrorMsg('Nomor HP / WhatsApp aktif wajib diisi.');
+        return;
+      }
+      const digitsOnly = formData.no_hp.replace(/\D/g, '');
+      if (digitsOnly.length < 10) {
+        setErrorMsg('Nomor WhatsApp harus valid minimal 10 digit (contoh: 081234567890).');
+        return;
+      }
+      if (!formData.kelas.trim()) {
+        setErrorMsg('Kelas mahasiswa wajib diisi (contoh: MI 5A).');
+        return;
+      }
+
+      // Password requirement
+      if (isPendingProfile || newPassword.trim() || confirmPassword.trim()) {
+        if (!newPassword.trim()) {
+          setErrorMsg('Kata sandi baru wajib diisi untuk keamanan akun Anda.');
+          return;
+        }
+        if (newPassword.length < 6) {
+          setErrorMsg('Kata sandi baru minimal harus 6 karakter.');
+          return;
+        }
+        if (currentUser?.nim && newPassword.trim() === currentUser.nim.trim()) {
+          setErrorMsg('Kata sandi baru tidak boleh sama dengan NIM Anda. Gunakan kata sandi yang lebih aman.');
+          return;
+        }
+        if (newPassword !== confirmPassword) {
+          setErrorMsg('Konfirmasi kata sandi tidak cocok. Silakan periksa kembali.');
+          return;
+        }
+      }
+    }
+
     setIsSaving(true);
     setErrorMsg('');
     setSuccessMsg('');
 
     try {
-      await updateUserProfile({
+      const payload = {
         nama: formData.nama.trim(),
         no_hp: formData.no_hp.trim(),
         prodi: formData.prodi,
         kelas: formData.kelas.trim()
-      });
+      };
+
+      if (isMahasiswa) {
+        payload.is_profile_completed = true;
+        if (newPassword.trim()) {
+          payload.password = newPassword.trim();
+        }
+      }
+
+      await updateUserProfile(payload);
 
       setIsSaving(false);
       setIsEditing(false);
-      setSuccessMsg('Profil berhasil diperbarui!');
-      setTimeout(() => setSuccessMsg(''), 4000);
+      setIsCompletedSuccess(true);
+      setNewPassword('');
+      setConfirmPassword('');
+      setSuccessMsg('Profil dan data akun berhasil disimpan! Akun Anda kini aktif sepenuhnya.');
+
+      if (isFirstLogin) {
+        setTimeout(() => {
+          router.visit('/dashboard');
+        }, 2200);
+      }
     } catch (err) {
       setIsSaving(false);
       setErrorMsg(err.message || 'Gagal memperbarui profil.');
@@ -276,6 +363,57 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
+
+      {/* First-Time Setup Required Banner for Mahasiswa */}
+      {(isPendingProfile || (isFirstLogin && !isCompletedSuccess)) && (
+        <div className="p-5 rounded-2xl bg-amber-50 border-2 border-amber-300 text-amber-950 shadow-sm animate-in fade-in space-y-3">
+          <div className="flex items-start space-x-3.5">
+            <div className="p-2.5 rounded-xl bg-amber-500 text-white shrink-0 mt-0.5 shadow-xs">
+              <ShieldAlert className="w-5 h-5" />
+            </div>
+            <div className="space-y-1.5 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-extrabold text-sm text-amber-950">
+                  Pengaturan Profil & Keamanan Akun Mahasiswa (Wajib Dilengkapi)
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-200 text-amber-900 uppercase tracking-wide border border-amber-300">
+                  Aktivasi Pertama Kali
+                </span>
+              </div>
+              <p className="text-xs text-amber-900/90 leading-relaxed">
+                Halo <strong>{currentUser?.nama}</strong>, akun Anda saat ini terdeteksi masih menggunakan kredensial bawaan (kata sandi default NIM). Demi keamanan data akademik dan privasi proses bimbingan Tugas Akhir Anda di SIMTA, Anda diwajibkan melengkapi nomor WhatsApp aktif, kelas, serta membuat <strong>kata sandi baru</strong> Anda.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Completion Success Celebration Banner */}
+      {isCompletedSuccess && (
+        <div className="p-5 rounded-2xl bg-emerald-50 border-2 border-emerald-300 text-emerald-950 shadow-sm animate-in fade-in flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-start space-x-3.5">
+            <div className="p-2.5 rounded-xl bg-emerald-600 text-white shrink-0 mt-0.5 shadow-xs">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+            <div className="space-y-1">
+              <span className="font-extrabold text-sm text-emerald-950 block">
+                Selamat! Profil & Kata Sandi Berhasil Dikonfigurasi
+              </span>
+              <p className="text-xs text-emerald-800">
+                Akun mahasiswa Anda kini telah aktif sepenuhnya. Seluruh modul dan menu SIMTA siap digunakan.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => router.visit('/dashboard')}
+            className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/30 transition-all flex items-center space-x-2 cursor-pointer shrink-0"
+          >
+            <span>Menuju Dashboard</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+      )}
       
       {/* Alert Notifications */}
       {successMsg && (
@@ -354,7 +492,12 @@ export default function ProfilePage() {
 
         {/* Action Toggle Button: Edit / Batal */}
         <div>
-          {!isEditing ? (
+          {isPendingProfile ? (
+            <div className="px-3.5 py-2 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 text-xs font-bold flex items-center space-x-1.5 shadow-2xs">
+              <Lock className="w-3.5 h-3.5 text-amber-600" />
+              <span>Aktivasi Wajib</span>
+            </div>
+          ) : !isEditing ? (
             <button
               onClick={handleStartEdit}
               className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-600/20 transition-all flex items-center space-x-2 cursor-pointer shrink-0"
@@ -522,22 +665,131 @@ export default function ProfilePage() {
               )}
             </div>
 
+            {/* 7. Pengaturan Keamanan Kata Sandi Baru (Mahasiswa) */}
+            {isMahasiswa && (
+              <div className="col-span-1 md:col-span-2 p-5 rounded-2xl bg-gradient-to-br from-slate-50 to-blue-50/40 border border-blue-100/80 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-blue-100/80 pb-3">
+                  <div className="flex items-center space-x-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold shrink-0">
+                      <KeyRound className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-bold text-slate-900">
+                        Keamanan Akun: {isPendingProfile ? 'Buat Kata Sandi Baru (Wajib Diatur)' : 'Ubah Kata Sandi Akun'}
+                      </h3>
+                      <p className="text-[11px] text-slate-500 font-medium">
+                        {isPendingProfile 
+                          ? 'Akun masih menggunakan kata sandi default NIM. Tentukan kata sandi baru untuk mengamankan akun Anda.' 
+                          : 'Kosongkan kolom ini jika Anda tidak ingin mengubah kata sandi.'}
+                      </p>
+                    </div>
+                  </div>
+                  {isPendingProfile && (
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 uppercase tracking-wide shrink-0">
+                      Wajib Diisi
+                    </span>
+                  )}
+                </div>
+
+                {isEditing ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Input Kata Sandi Baru */}
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                        Kata Sandi Baru {isPendingProfile && <span className="text-rose-500">*</span>}
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showNewPassword ? 'text' : 'password'}
+                          value={newPassword}
+                          onChange={(e) => {
+                            setNewPassword(e.target.value);
+                            if (errorMsg) setErrorMsg('');
+                          }}
+                          placeholder={isPendingProfile ? "Minimal 6 karakter (bukan NIM)..." : "Masukkan kata sandi baru..."}
+                          className="w-full pl-9 pr-10 py-2 rounded-xl border border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 text-xs font-semibold text-slate-900 bg-white transition-all outline-none"
+                        />
+                        <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <button
+                          type="button"
+                          onClick={() => setShowNewPassword(!showNewPassword)}
+                          className="p-1.5 text-slate-400 hover:text-slate-600 absolute right-2.5 top-1/2 -translate-y-1/2 transition-colors cursor-pointer"
+                          tabIndex={-1}
+                        >
+                          {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Input Konfirmasi Kata Sandi Baru */}
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                        Konfirmasi Kata Sandi Baru {isPendingProfile && <span className="text-rose-500">*</span>}
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showConfirmPassword ? 'text' : 'password'}
+                          value={confirmPassword}
+                          onChange={(e) => {
+                            setConfirmPassword(e.target.value);
+                            if (errorMsg) setErrorMsg('');
+                          }}
+                          placeholder="Ulangi kata sandi baru..."
+                          className="w-full pl-9 pr-10 py-2 rounded-xl border border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 text-xs font-semibold text-slate-900 bg-white transition-all outline-none"
+                        />
+                        <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          className="p-1.5 text-slate-400 hover:text-slate-600 absolute right-2.5 top-1/2 -translate-y-1/2 transition-colors cursor-pointer"
+                          tabIndex={-1}
+                        >
+                          {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="col-span-1 md:col-span-2 text-[11px] text-slate-500 flex items-center space-x-1.5 pt-0.5">
+                      <ShieldCheck className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                      <span>Kata sandi minimal 6 karakter dan tidak boleh menggunakan NIM Anda.</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between text-xs text-slate-700 bg-white/80 p-3 rounded-xl border border-slate-200">
+                    <div className="flex items-center space-x-2 font-mono">
+                      <Lock className="w-4 h-4 text-slate-400" />
+                      <span>•••••••••••• (Tersimpan Aman)</span>
+                    </div>
+                    <span className="text-[11px] text-slate-500 font-medium">
+                      Gunakan tombol "Edit Profil" untuk mengubah kata sandi.
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
           </div>
 
           {/* Submit Button when in Edit Mode */}
           {isEditing && (
             <div className="flex items-center justify-end space-x-3 pt-4 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={handleCancelEdit}
-                className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-all cursor-pointer"
-              >
-                Batal
-              </button>
+              {!isPendingProfile && (
+                <button
+                  type="button"
+                  onClick={handleCancelEdit}
+                  className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-all cursor-pointer"
+                >
+                  Batal
+                </button>
+              )}
               <button
                 type="submit"
                 disabled={isSaving}
-                className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-600/30 transition-all flex items-center space-x-2 cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
+                className={`px-5 py-2.5 rounded-xl text-white font-bold text-xs shadow-md transition-all flex items-center space-x-2 cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed ${
+                  isPendingProfile 
+                    ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/30' 
+                    : 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/30'
+                }`}
               >
                 {isSaving ? (
                   <>
@@ -547,7 +799,7 @@ export default function ProfilePage() {
                 ) : (
                   <>
                     <Save className="w-4 h-4" />
-                    <span>Simpan Perubahan</span>
+                    <span>{isPendingProfile ? 'Simpan & Aktifkan Akun Mahasiswa' : 'Simpan Perubahan'}</span>
                   </>
                 )}
               </button>

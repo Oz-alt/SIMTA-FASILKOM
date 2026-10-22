@@ -51,7 +51,7 @@ export default function VerifyBimbinganPage({ nim: propNim }) {
     };
 
     return consultations
-      .filter(c => String(c.mhs_nim).trim() === String(nim).trim() && c.status === 'disetujui')
+      .filter(c => String(c.mhs_nim).trim() === String(nim).trim())
       .sort((a, b) => {
         // 1. Primary: Compare tanggal (YYYY-MM-DD)
         const dateA = a.tanggal || '';
@@ -206,7 +206,25 @@ export default function VerifyBimbinganPage({ nim: propNim }) {
                   <tr className="hover:bg-slate-50/80 transition-colors">
                     <td className="py-3 px-4 text-slate-500 font-semibold border-r border-slate-100 bg-slate-50/60">Catatan Pembimbing</td>
                     <td className="py-3 px-4 font-semibold text-slate-900 leading-relaxed">
-                      {targetLog.masukan_dosen || '-'}
+                      {targetLog.masukan_dosen ? String(targetLog.masukan_dosen).replace(/^\[(Revisi Mayor|Revisi Minor|Mayor|Minor|Menunggu|Diterima|Disetujui|Ditolak)\]\s*/i, '') : '-'}
+                    </td>
+                  </tr>
+                  <tr className="hover:bg-slate-50/80 transition-colors">
+                    <td className="py-3 px-4 text-slate-500 font-semibold border-r border-slate-100 bg-slate-50/60">Status Respon Dosen</td>
+                    <td className="py-3 px-4 font-bold text-slate-900">
+                      {(() => {
+                        const j = targetLog.jenis_revisi || (targetLog.status === 'disetujui' ? 'Diterima' : targetLog.status === 'perlu_revisi' ? 'Minor' : 'Menunggu');
+                        if (j === 'Mayor' || j.toLowerCase() === 'revisi mayor') {
+                          return <span className="inline-block px-2.5 py-0.5 rounded text-xs font-extrabold bg-rose-100 text-rose-700 border border-rose-300">Revisi Mayor</span>;
+                        }
+                        if (j === 'Minor' || j.toLowerCase() === 'revisi minor') {
+                          return <span className="inline-block px-2.5 py-0.5 rounded text-xs font-extrabold bg-blue-100 text-blue-700 border border-blue-300">Revisi Minor</span>;
+                        }
+                        if (j === 'Menunggu' || j.toLowerCase() === 'menunggu tanggapan') {
+                          return <span className="inline-block px-2.5 py-0.5 rounded text-xs font-extrabold bg-amber-100 text-amber-700 border border-amber-300">Menunggu</span>;
+                        }
+                        return <span className="inline-block px-2.5 py-0.5 rounded text-xs font-extrabold bg-emerald-100 text-emerald-700 border border-emerald-300">Diterima</span>;
+                      })()}
                     </td>
                   </tr>
                 </tbody>

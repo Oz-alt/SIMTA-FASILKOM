@@ -30,15 +30,23 @@ export default function MahasiswaBimbinganPage() {
 
   // Filter students assigned to this dosen
   const assignedStudents = useMemo(() => {
+    const cleanNip = String(userNip || '').trim();
+    const cleanNama = (userNama || '').split(',')[0].toLowerCase().trim();
+
     return studentAdvisors.filter(sa => {
-      const isDospem1 = sa.dospem1_nip === userNip || (userNama && sa.dospem1_nama?.toLowerCase().includes(userNama.toLowerCase()));
-      const isDospem2 = sa.dospem2_nip === userNip || (userNama && sa.dospem2_nama?.toLowerCase().includes(userNama.toLowerCase()));
-      return isDospem1 || isDospem2 || currentUser?.role === 'dosen';
+      const isDospem1 = (cleanNip && String(sa.dospem1_nip || '').trim() === cleanNip) ||
+                        (cleanNama && sa.dospem1_nama && sa.dospem1_nama.toLowerCase().includes(cleanNama));
+      const isDospem2 = (cleanNip && String(sa.dospem2_nip || '').trim() === cleanNip) ||
+                        (cleanNama && sa.dospem2_nama && sa.dospem2_nama.toLowerCase().includes(cleanNama));
+      return isDospem1 || isDospem2;
     });
-  }, [studentAdvisors, userNip, userNama, currentUser]);
+  }, [studentAdvisors, userNip, userNama]);
 
   // Merge with thesis title and consultation stats
   const enrichedStudents = useMemo(() => {
+    const cleanNip = String(userNip || '').trim();
+    const cleanNama = (userNama || '').split(',')[0].toLowerCase().trim();
+
     return assignedStudents.map(student => {
       const title = thesisTitles.find(t => t.mhs_nim === student.student_nim);
       const studentStages = thesisStages.filter(s => s.thesis_title_id === title?.id);
@@ -72,7 +80,8 @@ export default function MahasiswaBimbinganPage() {
       const mhsConsultations = consultations.filter(c => c.mhs_nim === student.student_nim);
       const approvedConsultations = mhsConsultations.filter(c => c.status === 'disetujui');
 
-      const isD1 = student.dospem1_nip === userNip || (userNama && student.dospem1_nama?.toLowerCase().includes(userNama.toLowerCase()));
+      const isD1 = (cleanNip && String(student.dospem1_nip || '').trim() === cleanNip) ||
+                   (cleanNama && student.dospem1_nama && student.dospem1_nama.toLowerCase().includes(cleanNama));
 
       return {
         ...student,

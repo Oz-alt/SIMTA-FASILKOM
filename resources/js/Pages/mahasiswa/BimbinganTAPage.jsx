@@ -278,13 +278,15 @@ export default function BimbinganTAPage() {
                       {item.jenis_revisi && (
                         <span className={`px-2.5 py-0.5 rounded-full font-extrabold text-[10px] flex items-center space-x-1 border ${
                           item.jenis_revisi === 'Diterima' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
-                          item.jenis_revisi === 'Minor' ? 'bg-amber-100 text-amber-800 border-amber-300' :
-                          item.jenis_revisi === 'Mayor' ? 'bg-orange-100 text-orange-800 border-orange-300' :
+                          item.jenis_revisi === 'Minor' ? 'bg-blue-100 text-blue-800 border-blue-300' :
+                          item.jenis_revisi === 'Mayor' ? 'bg-rose-100 text-rose-800 border-rose-300' :
+                          item.jenis_revisi === 'Menunggu' ? 'bg-amber-100 text-amber-800 border-amber-300' :
                           'bg-rose-100 text-rose-800 border-rose-300'
                         }`}>
                           {item.jenis_revisi === 'Diterima' && <CheckCircle2 className="w-3 h-3 text-emerald-600" />}
-                          {item.jenis_revisi === 'Minor' && <AlertCircle className="w-3 h-3 text-amber-600" />}
-                          {item.jenis_revisi === 'Mayor' && <AlertTriangle className="w-3 h-3 text-orange-600" />}
+                          {item.jenis_revisi === 'Minor' && <AlertCircle className="w-3 h-3 text-blue-600" />}
+                          {item.jenis_revisi === 'Mayor' && <AlertTriangle className="w-3 h-3 text-rose-600" />}
+                          {item.jenis_revisi === 'Menunggu' && <Clock className="w-3 h-3 text-amber-600" />}
                           {item.jenis_revisi === 'Ditolak' && <X className="w-3 h-3 text-rose-600" />}
                           <span>Revisi: {item.jenis_revisi}</span>
                         </span>
@@ -338,8 +340,9 @@ export default function BimbinganTAPage() {
                   {item.masukan_dosen && (
                     <div className={`p-3.5 rounded-xl border text-xs space-y-1.5 ${
                       item.jenis_revisi === 'Diterima' ? 'bg-emerald-50/70 border-emerald-200' :
-                      item.jenis_revisi === 'Minor' ? 'bg-amber-50/70 border-amber-200' :
-                      item.jenis_revisi === 'Mayor' ? 'bg-orange-50/70 border-orange-200' :
+                      item.jenis_revisi === 'Minor' ? 'bg-blue-50/70 border-blue-200' :
+                      item.jenis_revisi === 'Mayor' ? 'bg-rose-50/70 border-rose-200' :
+                      item.jenis_revisi === 'Menunggu' ? 'bg-amber-50/70 border-amber-200' :
                       item.jenis_revisi === 'Ditolak' ? 'bg-rose-50/70 border-rose-200' :
                       'bg-indigo-50/60 border-indigo-100'
                     }`}>
@@ -354,7 +357,7 @@ export default function BimbinganTAPage() {
                           </span>
                         )}
                       </div>
-                      <p className="text-slate-800 leading-relaxed pl-5 font-medium">{item.masukan_dosen}</p>
+                      <p className="text-slate-800 leading-relaxed pl-5 font-medium">{String(item.masukan_dosen).replace(/^\[(Revisi Mayor|Revisi Minor|Mayor|Minor|Menunggu|Diterima|Disetujui|Ditolak)\]\s*/i, '')}</p>
                     </div>
                   )}
 

@@ -151,7 +151,15 @@ export function AuthProvider({ children }) {
       }
     }
 
-    return { ...user, nama: cleanNama, nim: cleanNim, email: cleanEmail };
+    const isProfileCompleted = user.is_profile_completed === true;
+
+    return { 
+      ...user, 
+      nama: cleanNama, 
+      nim: cleanNim, 
+      email: cleanEmail,
+      is_profile_completed: isProfileCompleted 
+    };
   };
 
   // Helper to read all registered user accounts from localStorage
@@ -279,7 +287,8 @@ export function AuthProvider({ children }) {
         no_hp: '0812781011',
         password: '09010182428002',
         role: 'mahasiswa',
-        kelas: 'MI 2024'
+        kelas: 'MI 2024',
+        is_profile_completed: false
       }
     ];
     try {
@@ -373,7 +382,7 @@ export function AuthProvider({ children }) {
 
     // Sync advisor list if updating lecturer profile
     const userNip = merged.nip || merged.nim;
-    if (userNip) {
+    if (userNip && (merged.role === 'dosen' || merged.role === 'kaprodi')) {
       setAdvisors(prev => {
         const updated = prev.map(adv => {
           if (String(adv.nip).trim() === String(userNip).trim()) {
@@ -386,21 +395,40 @@ export function AuthProvider({ children }) {
       });
     }
 
+    // Sync student registry & profiles if updating student
+    if (merged.role === 'mahasiswa') {
+      const userNim = String(merged.nim || merged.id || '').trim();
+      setDbProfiles(prev => prev.map(p => {
+        if (String(p.id) === userNim || String(p.nim) === userNim || String(p.id) === String(merged.id)) {
+          return { ...p, ...updatedFields };
+        }
+        return p;
+      }));
+    }
+
     if (isSupabaseConfigured && supabase) {
       try {
-        if (currentUser.id) {
+        const { password, is_profile_completed, ...safeFields } = updatedFields;
+        if (currentUser.id && Object.keys(safeFields).length > 0) {
           const { error } = await supabase
             .from('profiles')
-            .update(updatedFields)
+            .update(safeFields)
             .eq('id', currentUser.id);
           if (error) {
             console.warn('Supabase profile update warning:', error.message);
           }
         }
-        if (userNip) {
+        if (password) {
+          try {
+            await supabase.auth.updateUser({ password });
+          } catch (passErr) {
+            console.warn('Supabase auth password update warning:', passErr);
+          }
+        }
+        if (userNip && (merged.role === 'dosen' || merged.role === 'kaprodi')) {
           const { error: advError } = await supabase
             .from('advisors')
-            .update(updatedFields)
+            .update(safeFields)
             .eq('nip', userNip);
           if (advError) {
             console.warn('Supabase advisor update warning:', advError.message);
@@ -665,6 +693,26 @@ export function AuthProvider({ children }) {
     return MOCK_THESIS_REPOSITORIES;
   });
 
+  // Helper to extract revision type from note or status
+  const parseConsultationItem = (c) => {
+    let parsedJenis = c.jenis_revisi;
+    const note = c.masukan_dosen || '';
+    if (note.includes('[Revisi Mayor]') || note.includes('[Mayor]')) {
+      parsedJenis = 'Mayor';
+    } else if (note.includes('[Revisi Minor]') || note.includes('[Minor]')) {
+      parsedJenis = 'Minor';
+    } else if (note.includes('[Diterima]') || note.includes('[Disetujui]')) {
+      parsedJenis = 'Diterima';
+    } else if (note.includes('[Menunggu]')) {
+      parsedJenis = 'Menunggu';
+    }
+
+    if (!parsedJenis) {
+      parsedJenis = c.status === 'disetujui' ? 'Diterima' : c.status === 'ditolak' ? 'Ditolak' : c.status === 'perlu_revisi' ? 'Minor' : 'Menunggu';
+    }
+    return { ...c, jenis_revisi: parsedJenis };
+  };
+
   // Thesis Consultation Sessions state with local persistence
   const [consultations, setConsultations] = useState(() => {
     try {
@@ -672,17 +720,11 @@ export function AuthProvider({ children }) {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.map(c => ({
-            ...c,
-            jenis_revisi: c.jenis_revisi || (c.status === 'disetujui' ? 'Diterima' : c.status === 'ditolak' ? 'Ditolak' : c.status === 'perlu_revisi' ? 'Minor' : undefined)
-          }));
+          return parsed.map(parseConsultationItem);
         }
       }
     } catch {}
-    return (MOCK_CONSULTATIONS || []).map(c => ({
-      ...c,
-      jenis_revisi: c.jenis_revisi || (c.status === 'disetujui' ? 'Diterima' : c.status === 'ditolak' ? 'Ditolak' : c.status === 'perlu_revisi' ? 'Minor' : undefined)
-    }));
+    return (MOCK_CONSULTATIONS || []).map(parseConsultationItem);
   });
 
 
@@ -1090,7 +1132,9 @@ export function AuthProvider({ children }) {
             setConsultations(prev => {
               const localMap = new Map(prev.map(c => [String(c.id), c]));
               data.forEach(remoteItem => {
-                localMap.set(String(remoteItem.id), remoteItem);
+                const existing = localMap.get(String(remoteItem.id));
+                const parsed = parseConsultationItem({ ...existing, ...remoteItem });
+                localMap.set(String(remoteItem.id), parsed);
               });
               const merged = Array.from(localMap.values());
               try { localStorage.setItem('simta_consultations', JSON.stringify(merged)); } catch {}
@@ -1123,13 +1167,19 @@ export function AuthProvider({ children }) {
                 setConsultations(prev => {
                   const exists = prev.some(c => String(c.id) === String(payload.new.id));
                   if (exists) return prev;
-                  const updated = [payload.new, ...prev];
+                  const item = parseConsultationItem(payload.new);
+                  const updated = [item, ...prev];
                   try { localStorage.setItem('simta_consultations', JSON.stringify(updated)); } catch {}
                   return updated;
                 });
               } else if (payload.eventType === 'UPDATE' && payload.new) {
                 setConsultations(prev => {
-                  const updated = prev.map(c => String(c.id) === String(payload.new.id) ? { ...c, ...payload.new } : c);
+                  const updated = prev.map(c => {
+                    if (String(c.id) === String(payload.new.id)) {
+                      return parseConsultationItem({ ...c, ...payload.new });
+                    }
+                    return c;
+                  });
                   try { localStorage.setItem('simta_consultations', JSON.stringify(updated)); } catch {}
                   return updated;
                 });
@@ -1282,6 +1332,22 @@ export function AuthProvider({ children }) {
         }
       };
     }
+  }, []);
+
+  // Cross-tab synchronization for consultations state
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === 'simta_consultations' && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (Array.isArray(parsed)) {
+            setConsultations(parsed.map(parseConsultationItem));
+          }
+        } catch {}
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
   // Automatic Bimbingan Reminder Dispatcher for Mahasiswa (Min. 2x/Bulan terhitung dari kartu bimbingan terakhir)
@@ -1477,6 +1543,9 @@ export function AuthProvider({ children }) {
       if (localFound.role === 'admin_sarana') return '/admin/dashboard';
       if (localFound.role === 'admin') return '/admin-simta/dashboard';
       if (localFound.role === 'dosen') return '/dosen/dashboard';
+      if (localFound.role === 'mahasiswa') {
+        return !localFound.is_profile_completed ? '/profile?first_login=true' : '/dashboard';
+      }
       return '/dashboard';
     }
 
@@ -1515,6 +1584,9 @@ export function AuthProvider({ children }) {
           if (activeProfile.role === 'admin_sarana') return '/admin/dashboard';
           if (activeProfile.role === 'admin') return '/admin-simta/dashboard';
           if (activeProfile.role === 'dosen') return '/dosen/dashboard';
+          if (activeProfile.role === 'mahasiswa') {
+            return !activeProfile.is_profile_completed ? '/profile?first_login=true' : '/dashboard';
+          }
           return '/dashboard';
         }
       }
@@ -1557,6 +1629,9 @@ export function AuthProvider({ children }) {
       if (foundUser.role === 'admin_sarana') return '/admin/dashboard';
       if (foundUser.role === 'admin') return '/admin-simta/dashboard';
       if (foundUser.role === 'dosen') return '/dosen/dashboard';
+      if (foundUser.role === 'mahasiswa') {
+        return !foundUser.is_profile_completed ? '/profile?first_login=true' : '/dashboard';
+      }
       return '/dashboard';
     }
 
@@ -2780,14 +2855,22 @@ export function AuthProvider({ children }) {
       status === 'perlu_revisi' ? 'Minor' : 'Minor'
     );
 
+    // Format note with category tag so it survives Supabase storage even without a dedicated column
+    let noteWithTag = feedbackNotes || '';
+    if (resolvedJenisRevisi) {
+      const cleanNote = noteWithTag.replace(/^\[(Revisi Mayor|Revisi Minor|Mayor|Minor|Menunggu|Diterima|Disetujui|Ditolak)\]\s*/i, '');
+      const tagLabel = resolvedJenisRevisi === 'Mayor' ? 'Revisi Mayor' : resolvedJenisRevisi === 'Minor' ? 'Revisi Minor' : resolvedJenisRevisi;
+      noteWithTag = `[${tagLabel}] ${cleanNote}`.trim();
+    }
+
     setConsultations(prev => {
       const updated = prev.map(c => {
-        if (c.id === consultationId) {
+        if (String(c.id) === String(consultationId)) {
           targetCons = {
             ...c,
             status: status,
             jenis_revisi: resolvedJenisRevisi,
-            masukan_dosen: feedbackNotes || c.masukan_dosen,
+            masukan_dosen: noteWithTag,
             reviewed_at: new Date().toISOString()
           };
           return targetCons;
@@ -2824,13 +2907,11 @@ export function AuthProvider({ children }) {
 
     if (isSupabaseConfigured && supabase) {
       try {
+        // Send only valid columns to Supabase: status & masukan_dosen (with category tag)
         const payload = {
           status: status,
-          masukan_dosen: feedbackNotes || ''
+          masukan_dosen: noteWithTag
         };
-        if (resolvedJenisRevisi) {
-          payload.jenis_revisi = resolvedJenisRevisi;
-        }
         const { error } = await supabase
           .from('thesis_consultations')
           .update(payload)

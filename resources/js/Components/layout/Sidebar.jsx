@@ -27,7 +27,8 @@ import {
   Layers,
   LayoutGrid,
   Bell,
-  ClipboardList
+  ClipboardList,
+  Lock
 } from 'lucide-react';
 
 export default function Sidebar() {
@@ -71,17 +72,44 @@ export default function Sidebar() {
 
   const getMenuGroups = () => {
     switch (currentUser?.role) {
-      case 'mahasiswa':
+      case 'mahasiswa': {
+        const isMhsPending = !currentUser?.is_profile_completed;
         return {
-          dashboard: { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+          dashboard: { 
+            to: isMhsPending ? '/profile?first_login=true' : '/dashboard', 
+            label: 'Dashboard', 
+            icon: LayoutDashboard,
+            isLocked: isMhsPending
+          },
           items: [
-            { to: '/thesis/submit', label: 'Ajukan Tugas Akhir', icon: FileText },
-            { to: '/thesis/consultations', label: 'Entry Bimbingan', icon: FileCheck },
-            { to: '/thesis/consultations/card', label: 'Kartu Bimbingan Digital', icon: Printer },
-            { to: '/thesis/archive', label: 'Arsip Tugas Akhir', icon: BookOpen }
+            { 
+              to: isMhsPending ? '/profile?first_login=true' : '/thesis/submit', 
+              label: 'Ajukan Tugas Akhir', 
+              icon: FileText,
+              isLocked: isMhsPending
+            },
+            { 
+              to: isMhsPending ? '/profile?first_login=true' : '/thesis/consultations', 
+              label: 'Entry Bimbingan', 
+              icon: FileCheck,
+              isLocked: isMhsPending
+            },
+            { 
+              to: isMhsPending ? '/profile?first_login=true' : '/thesis/consultations/card', 
+              label: 'Kartu Bimbingan Digital', 
+              icon: Printer,
+              isLocked: isMhsPending
+            },
+            { 
+              to: isMhsPending ? '/profile?first_login=true' : '/thesis/archive', 
+              label: 'Arsip Tugas Akhir', 
+              icon: BookOpen,
+              isLocked: isMhsPending
+            }
           ],
           groups: []
         };
+      }
 
       case 'kaprodi':
         return {
@@ -303,18 +331,45 @@ export default function Sidebar() {
 
         {/* Primary/Flat Navigation Items */}
         <div className="space-y-1">
+          {/* Activation Required Notice for Mahasiswa with default/uncompleted profile */}
+          {currentUser?.role === 'mahasiswa' && !currentUser?.is_profile_completed && (
+            <div className="p-3 mb-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 shadow-2xs space-y-1.5 animate-in fade-in">
+              <div className="flex items-center space-x-1.5 font-bold text-amber-900 text-xs">
+                <Lock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                <span>Aktivasi Akun Wajib</span>
+              </div>
+              <p className="text-[11px] text-amber-800 leading-snug">
+                Lengkapi kontak & buat kata sandi baru untuk membuka akses menu.
+              </p>
+              <Link
+                href="/profile?first_login=true"
+                className="inline-flex items-center space-x-1 text-xs font-bold text-blue-700 hover:text-blue-900 pt-0.5"
+              >
+                <span>Atur Profil Sekarang →</span>
+              </Link>
+            </div>
+          )}
+
           {/* Standalone Dashboard Item */}
           {menuData.dashboard && (
             <Link
               href={menuData.dashboard.to}
-              className={`flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${
+              className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${
                 isRouteActive(menuData.dashboard.to)
                   ? 'bg-indigo-50 text-indigo-700 border-l-4 border-indigo-600 shadow-2xs'
                   : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
               }`}
             >
-              <DashboardIcon className={`w-4 h-4 ${isRouteActive(menuData.dashboard.to) ? 'text-indigo-600' : 'text-slate-500'}`} />
-              <span>{menuData.dashboard.label}</span>
+              <div className="flex items-center space-x-3">
+                <DashboardIcon className={`w-4 h-4 ${isRouteActive(menuData.dashboard.to) ? 'text-indigo-600' : 'text-slate-500'}`} />
+                <span>{menuData.dashboard.label}</span>
+              </div>
+              {menuData.dashboard.isLocked && (
+                <span className="text-[10px] text-amber-600 font-semibold flex items-center space-x-1">
+                  <Lock className="w-3 h-3 text-amber-500" />
+                  <span className="hidden lg:inline text-[9px] uppercase tracking-wide">Terkunci</span>
+                </span>
+              )}
             </Link>
           )}
 
@@ -326,14 +381,22 @@ export default function Sidebar() {
               <Link
                 key={item.to}
                 href={item.to}
-                className={`flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${
                   isActive
                     ? 'bg-indigo-50 text-indigo-700 border-l-4 border-indigo-600 shadow-2xs'
                     : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
                 }`}
               >
-                <Icon className={`w-4 h-4 ${isActive ? 'text-indigo-600' : 'text-slate-500'}`} />
-                <span>{item.label}</span>
+                <div className="flex items-center space-x-3">
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-indigo-600' : 'text-slate-500'}`} />
+                  <span>{item.label}</span>
+                </div>
+                {item.isLocked && (
+                  <span className="text-[10px] text-amber-600 font-semibold flex items-center space-x-1">
+                    <Lock className="w-3 h-3 text-amber-500" />
+                    <span className="hidden lg:inline text-[9px] uppercase tracking-wide">Terkunci</span>
+                  </span>
+                )}
               </Link>
             );
           })}

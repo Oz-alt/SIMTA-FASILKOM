@@ -14405,6 +14405,7 @@ export const MOCK_CONSULTATIONS = [
     masukan_dosen: 'Latar belakang sudah bagus. Perjelas urgensi pengintegrasian Similarity Check Engine pada Bab 1.3.',
     file_revisi_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
     status: 'disetujui',
+    jenis_revisi: 'Diterima',
     created_at: '2026-08-20T10:00:00Z'
   },
   {
@@ -14421,6 +14422,7 @@ export const MOCK_CONSULTATIONS = [
     masukan_dosen: 'Tambahkan referensi jurnal terindeks SINTA/Scopus 3 tahun terakhir pada bagian persamaan Trigram.',
     file_revisi_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
     status: 'disetujui',
+    jenis_revisi: 'Diterima',
     created_at: '2026-08-27T13:30:00Z'
   },
   {
@@ -14437,6 +14439,7 @@ export const MOCK_CONSULTATIONS = [
     masukan_dosen: 'Desain ERD sudah lengkap. Lanjutkan ke tahap pengujian prototype web.',
     file_revisi_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
     status: 'disetujui',
+    jenis_revisi: 'Diterima',
     created_at: '2026-09-05T09:00:00Z'
   },
   {
@@ -14453,6 +14456,7 @@ export const MOCK_CONSULTATIONS = [
     masukan_dosen: 'Mohon rapikan tabel pengujian black-box dan lengkapi screenshot antarmuka.',
     file_revisi_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
     status: 'perlu_revisi',
+    jenis_revisi: 'Minor',
     created_at: '2026-09-10T14:00:00Z'
   },
   {
