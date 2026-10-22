@@ -136,13 +136,6 @@ export default function BimbinganTAPage() {
 
           {isStudentRole && (
             <div className="pt-2 flex flex-wrap items-center gap-3">
-              <button
-                onClick={() => setIsModalOpen(true)}
-                className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md shadow-blue-600/30 transition-all flex items-center space-x-2 cursor-pointer"
-              >
-                <PlusCircle className="w-4 h-4" />
-                <span>Catat Sesi Bimbingan Baru</span>
-              </button>
               <Link
                 href="/thesis/consultations/card"
                 className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs border border-white/20 backdrop-blur-md transition-all flex items-center space-x-2"
@@ -161,7 +154,7 @@ export default function BimbinganTAPage() {
           reminder={reminderStatus} 
           studentEmail={currentUser?.email}
           studentUser={currentUser}
-          onAddBimbingan={() => setIsModalOpen(true)}
+          showAction={false}
         />
       )}
 
@@ -328,14 +321,16 @@ export default function BimbinganTAPage() {
 
                 {/* Bab & Catatan Mahasiswa */}
                 <div className="space-y-2 text-xs">
-                    <div className="font-bold text-slate-900 text-sm flex items-center space-x-2">
-                      <BookOpen className="w-4 h-4 text-blue-600 shrink-0" />
-                      <span>{item.bab_topik}</span>
-                    </div>
+                    {item.bab_topik && item.bab_topik !== item.catatan_mahasiswa && (
+                      <div className="font-bold text-slate-900 text-sm flex items-center space-x-2">
+                        <BookOpen className="w-4 h-4 text-blue-600 shrink-0" />
+                        <span>{item.bab_topik}</span>
+                      </div>
+                    )}
 
                     <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-slate-700 leading-relaxed">
-                      <span className="font-bold text-slate-900 block mb-0.5">Catatan Progres Mahasiswa:</span>
-                      <p>{item.catatan_mahasiswa}</p>
+                      <span className="font-bold text-slate-900 block mb-0.5">Catatan Konsultasi &amp; Poin Progres:</span>
+                      <p>{item.catatan_mahasiswa || item.bab_topik}</p>
                     </div>
                   </div>
 

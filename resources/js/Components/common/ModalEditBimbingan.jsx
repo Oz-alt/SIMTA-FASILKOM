@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { 
   X, 
@@ -10,11 +10,61 @@ import {
   Link2,
   ExternalLink,
   Building2,
-  Video
+  Video,
+  Info
 } from 'lucide-react';
 
+function getNextDateString(dateStr) {
+  if (!dateStr) return '';
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const d = new Date(year, month - 1, day);
+  d.setDate(d.getDate() + 1);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function formatIndoDate(dateStr) {
+  if (!dateStr) return '';
+  try {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const d = new Date(year, month - 1, day);
+    return d.toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+  } catch {
+    return dateStr;
+  }
+}
+
 export default function ModalEditBimbingan({ isOpen, onClose, consultation, onSaved }) {
-  const { updateConsultation } = useAuth();
+  const { consultations, updateConsultation } = useAuth();
+
+  const studentNim = String(consultation?.mhs_nim || '').trim();
+
+  // Cari tanggal bimbingan sebelumnya untuk mahasiswa ini
+  const precedingBimbinganDate = useMemo(() => {
+    if (!consultation || !studentNim) return null;
+
+    // Filter konsultasi mahasiswa selain yang sedang diedit
+    const studentCons = (consultations || [])
+      .filter(c => String(c.mhs_nim || '').trim() === studentNim && c.id !== consultation.id && c.status !== 'ditolak')
+      .sort((a, b) => (a.tanggal || '').localeCompare(b.tanggal || ''));
+
+    // Cari sesi yang tanggalnya lebih awal dari sesi yang diedit
+    const earlier = studentCons.filter(c => c.tanggal && c.tanggal < (consultation.tanggal || '9999-99-99'));
+    if (earlier.length > 0) {
+      return earlier[earlier.length - 1].tanggal;
+    }
+    return null;
+  }, [consultations, consultation, studentNim]);
+
+  const minAllowedDate = useMemo(() => {
+    return precedingBimbinganDate ? getNextDateString(precedingBimbinganDate) : '';
+  }, [precedingBimbinganDate]);
 
   const [formData, setFormData] = useState({
     pembimbing: 'Pembimbing 1',
@@ -39,7 +89,7 @@ export default function ModalEditBimbingan({ isOpen, onClose, consultation, onSa
         tanggal: consultation.tanggal || '',
         waktu: consultation.waktu || '09:00',
         bab_topik: consultation.bab_topik || '',
-        catatan_mahasiswa: consultation.catatan_mahasiswa || '',
+        catatan_mahasiswa: consultation.catatan_mahasiswa || consultation.bab_topik || '',
         file_revisi_url: consultation.file_revisi_url || ''
       });
       setErrorMsg('');
@@ -63,19 +113,23 @@ export default function ModalEditBimbingan({ isOpen, onClose, consultation, onSa
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    setErrorMsg('');
+    if (name === 'tanggal' && precedingBimbinganDate && value && value <= precedingBimbinganDate) {
+      setErrorMsg(`Tanggal bimbingan harus lebih besar dari tanggal bimbingan sebelumnya (${formatIndoDate(precedingBimbinganDate)}). Minimal tanggal yang diizinkan adalah ${formatIndoDate(minAllowedDate)}.`);
+    } else {
+      setErrorMsg('');
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.bab_topik.trim()) {
-      setErrorMsg('Bab / Topik bimbingan wajib diisi.');
+    if (!formData.catatan_mahasiswa.trim()) {
+      setErrorMsg('Catatan konsultasi & poin progres wajib diisi.');
       return;
     }
 
-    if (!formData.catatan_mahasiswa.trim()) {
-      setErrorMsg('Catatan konsultasi / progres bimbingan wajib diisi.');
+    if (precedingBimbinganDate && formData.tanggal <= precedingBimbinganDate) {
+      setErrorMsg(`Tanggal bimbingan harus lebih besar dari tanggal bimbingan sebelumnya (${formatIndoDate(precedingBimbinganDate)}). Minimal tanggal yang diizinkan adalah ${formatIndoDate(minAllowedDate)}.`);
       return;
     }
 
@@ -83,14 +137,17 @@ export default function ModalEditBimbingan({ isOpen, onClose, consultation, onSa
     setErrorMsg('');
 
     try {
+      const catatanTrimmed = formData.catatan_mahasiswa.trim();
+      const babTopikVal = catatanTrimmed.split('\n')[0].trim().slice(0, 100) || catatanTrimmed;
+
       await updateConsultation(consultation.id, {
         pembimbing: formData.pembimbing,
         dosen_nama: formData.dosen_nama,
         metode: formData.metode || 'luring',
         tanggal: formData.tanggal,
         waktu: formData.waktu,
-        bab_topik: formData.bab_topik.trim(),
-        catatan_mahasiswa: formData.catatan_mahasiswa.trim(),
+        bab_topik: babTopikVal,
+        catatan_mahasiswa: catatanTrimmed,
         file_revisi_url: formData.file_revisi_url.trim()
       });
 
@@ -162,14 +219,19 @@ export default function ModalEditBimbingan({ isOpen, onClose, consultation, onSa
             </div>
 
             <div className="space-y-1">
-              <label className="font-bold text-slate-700">Tanggal &amp; Waktu</label>
+              <label className="font-bold text-slate-700">Tanggal &amp; Waktu *</label>
               <div className="flex items-center space-x-2">
                 <input
                   type="date"
                   name="tanggal"
                   value={formData.tanggal}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 font-semibold text-slate-900 bg-white"
+                  min={minAllowedDate || undefined}
+                  className={`w-full px-3 py-2 rounded-xl border font-semibold text-slate-900 bg-white ${
+                    precedingBimbinganDate && formData.tanggal && formData.tanggal <= precedingBimbinganDate
+                      ? 'border-rose-400 ring-2 ring-rose-200'
+                      : 'border-slate-300'
+                  }`}
                 />
                 <input
                   type="time"
@@ -179,6 +241,14 @@ export default function ModalEditBimbingan({ isOpen, onClose, consultation, onSa
                   className="w-28 px-3 py-2 rounded-xl border border-slate-300 font-semibold text-slate-900 bg-white"
                 />
               </div>
+              {precedingBimbinganDate && (
+                <div className="flex items-start space-x-1.5 text-[11px] text-slate-500 pt-0.5">
+                  <Info className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+                  <span>
+                    Bimbingan sebelumnya: <strong className="text-slate-700">{formatIndoDate(precedingBimbinganDate)}</strong> (minimal <strong className="text-amber-700">{formatIndoDate(minAllowedDate)}</strong>).
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -237,32 +307,17 @@ export default function ModalEditBimbingan({ isOpen, onClose, consultation, onSa
             </div>
           </div>
 
-          {/* Bab / Topik */}
+          {/* Catatan Konsultasi & Poin Progres */}
           <div className="space-y-1">
             <label className="font-bold text-slate-700">
-              Bab / Topik Bimbingan <span className="text-rose-500">*</span>
-            </label>
-            <input
-              type="text"
-              name="bab_topik"
-              value={formData.bab_topik}
-              onChange={handleChange}
-              placeholder="Contoh: Bab 1 - Pendahuluan & Latar Belakang"
-              className="w-full px-3 py-2 rounded-xl border border-slate-300 font-semibold text-slate-900 bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none"
-            />
-          </div>
-
-          {/* Catatan Mahasiswa */}
-          <div className="space-y-1">
-            <label className="font-bold text-slate-700">
-              Catatan Progres Mahasiswa <span className="text-rose-500">*</span>
+              Catatan Konsultasi &amp; Poin Progres <span className="text-rose-500">*</span>
             </label>
             <textarea
               name="catatan_mahasiswa"
               value={formData.catatan_mahasiswa}
               onChange={handleChange}
               rows={4}
-              placeholder="Tuliskan poin-poin progres konsultasi terbaru..."
+              placeholder="Tuliskan bab/topik pembahasan, poin-poin yang dikonsultasikan, atau pertanyaan untuk pembimbing..."
               className="w-full p-3 rounded-xl border border-slate-300 font-medium text-slate-900 bg-white leading-relaxed focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none"
             />
           </div>

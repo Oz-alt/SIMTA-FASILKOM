@@ -6,13 +6,41 @@ import BimbinganReminderBanner from '../../Components/common/BimbinganReminderBa
 import { calculateBimbinganReminder } from '../../lib/bimbinganReminder.js';
 
 export default function KartuBimbinganPage() {
-  const { currentUser, consultations, studentAdvisors, advisors } = useAuth();
+  const { currentUser, consultations, studentAdvisors, advisors, thesisTitles = [] } = useAuth();
 
   // Find advisor assignment for current student dynamically
   const studentNim = currentUser?.nim || '';
   const reminderStatus = useMemo(() => {
     return calculateBimbinganReminder(consultations, studentNim, 2);
   }, [consultations, studentNim]);
+
+  // Dynamic thesis title for current student (strip '-' if not yet submitted)
+  const judulTa = useMemo(() => {
+    if (!currentUser) return '-';
+    const cleanNim = String(studentNim || currentUser?.nim || '').trim();
+    const cleanId = String(currentUser?.id || '').trim();
+    const cleanNama = String(currentUser?.nama || '').trim().toLowerCase();
+
+    if (Array.isArray(thesisTitles) && thesisTitles.length > 0) {
+      const matched = thesisTitles.filter(t => {
+        const matchNim = cleanNim && String(t.mhs_nim || '').trim() === cleanNim;
+        const matchId = cleanId && String(t.profile_id || '').trim() === cleanId;
+        const matchNama = cleanNama && String(t.mhs_nama || '').trim().toLowerCase() === cleanNama;
+        return matchNim || matchId || matchNama;
+      });
+
+      if (matched.length > 0) {
+        const approved = matched.find(t => t.status === 'disetujui' || t.status === 'judul_fix');
+        if (approved?.judul) return approved.judul;
+        if (matched[0]?.judul) return matched[0].judul;
+      }
+    }
+
+    if (currentUser?.judul_ta) return currentUser.judul_ta;
+    if (currentUser?.judul) return currentUser.judul;
+
+    return '-';
+  }, [thesisTitles, currentUser, studentNim]);
   const sa = useMemo(() => {
     if (!studentNim) return null;
     return studentAdvisors.find(s => String(s.student_nim).trim() === String(studentNim).trim());
@@ -142,21 +170,26 @@ export default function KartuBimbinganPage() {
             <p><span className="w-28 inline-block font-bold">Nama</span>: {currentUser?.nama || '-'}</p>
             <p><span className="w-28 inline-block font-bold">NIM</span>: {studentNim || '-'}</p>
             <p><span className="w-28 inline-block font-bold">Program Studi</span>: {currentUser?.prodi || 'D3 Manajemen Informatika'}</p>
+            <p className="flex items-start">
+              <span className="w-28 inline-block font-bold shrink-0">Judul TA</span>
+              <span className="mr-1">:</span>
+              <span className="flex-1 font-semibold leading-relaxed">{judulTa}</span>
+            </p>
           </div>
           <div className="space-y-1">
-            <p><span className="w-24 inline-block font-bold">Dospem 1</span>: {dospem1Nama}</p>
-            <p><span className="w-24 inline-block font-bold">Dospem 2</span>: {dospem2Nama}</p>
+            <p><span className="w-28 inline-block font-bold">Pembimbing 1</span>: {dospem1Nama}</p>
+            <p><span className="w-28 inline-block font-bold">Pembimbing 2</span>: {dospem2Nama}</p>
           </div>
         </div>
 
-        {/* Tabel Pertemuan */}
+        {/* Tabel Bimbingan */}
         <table className="w-full border-collapse border border-black text-xs text-black">
           <thead>
             <tr className="bg-slate-100">
               <th className="border border-black py-2 px-1 text-center w-10">No</th>
-              <th className="border border-black py-2 px-2 text-center w-28">Tanggal<br/>Pertemuan</th>
+              <th className="border border-black py-2 px-2 text-center w-28">Tanggal<br/>Bimbingan</th>
               <th className="border border-black py-2 px-3 text-center">Materi / Bab<br/>Konsultasi</th>
-              <th className="border border-black py-2 px-2 text-center w-20">Paraf<br/>Mahasiswa</th>
+              <th className="border border-black py-2 px-2 text-center w-24">Status</th>
               <th className="border border-black py-2 px-2 text-center w-28 sm:w-32">Paraf<br/>Pembimbing 1</th>
               <th className="border border-black py-2 px-2 text-center w-28 sm:w-32">Paraf<br/>Pembimbing 2</th>
             </tr>
@@ -169,24 +202,14 @@ export default function KartuBimbinganPage() {
                   <td className="border border-black py-2 px-1 text-center font-semibold align-middle">{index + 1}</td>
                   <td className="border border-black py-2 px-2 text-center align-middle">{data ? data.tanggal : ''}</td>
                   <td className="border border-black py-2 px-3 text-left font-medium align-middle">
-                    {data ? (
-                      <div className="flex items-center justify-between gap-1.5 flex-wrap">
-                        <span>{data.bab_topik}</span>
-                        <div className="flex items-center space-x-1 shrink-0">
-                          {data.jenis_revisi && (
-                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded border border-slate-300 text-slate-800 uppercase tracking-wider print:border-black print:text-black">
-                              {data.jenis_revisi}
-                            </span>
-                          )}
-                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded border border-slate-300 text-slate-600 uppercase tracking-wider print:border-black print:text-black">
-                            {data.metode === 'daring' ? 'Daring' : 'Luring'}
-                          </span>
-                        </div>
-                      </div>
-                    ) : ''}
+                    {data ? data.bab_topik : ''}
                   </td>
-                  <td className="border border-black p-2 text-center align-middle">
-                    {/* Paraf Mahasiswa dikosongkan */}
+                  <td className="border border-black p-1.5 text-center align-middle">
+                    {data ? (
+                      <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded border border-emerald-300 bg-emerald-50 text-emerald-800 uppercase tracking-wider print:border-black print:text-black print:bg-transparent">
+                        {data.status === 'disetujui' ? 'Disetujui' : data.status}
+                      </span>
+                    ) : ''}
                   </td>
                   <td className="border border-black p-1.5 text-center align-middle">
                     {data && (data.pembimbing === 'Pembimbing 1' || !data.pembimbing) ? (
@@ -194,7 +217,7 @@ export default function KartuBimbinganPage() {
                         <a href={`${verifyUrl}?log=${data.id}`} target="_blank" rel="noopener noreferrer" title="Scan/Klik QR Verifikasi Bimbingan">
                           <img 
                             src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`${verifyUrl}?log=${data.id}`)}`}
-                            alt="QR Paraf Dospem 1" 
+                            alt="QR Paraf Pembimbing 1" 
                             className="w-14 h-14 sm:w-16 sm:h-16 object-contain inline-block border border-slate-300 p-1 rounded-sm shadow-2xs hover:scale-105 transition-transform"
                           />
                         </a>
@@ -207,7 +230,7 @@ export default function KartuBimbinganPage() {
                         <a href={`${verifyUrl}?log=${data.id}`} target="_blank" rel="noopener noreferrer" title="Scan/Klik QR Verifikasi Bimbingan">
                           <img 
                             src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`${verifyUrl}?log=${data.id}`)}`}
-                            alt="QR Paraf Dospem 2" 
+                            alt="QR Paraf Pembimbing 2" 
                             className="w-14 h-14 sm:w-16 sm:h-16 object-contain inline-block border border-slate-300 p-1 rounded-sm shadow-2xs hover:scale-105 transition-transform"
                           />
                         </a>

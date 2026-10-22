@@ -74,34 +74,13 @@ export default function Sidebar() {
       case 'mahasiswa':
         return {
           dashboard: { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-          groups: [
-            {
-              id: 'tugas_akhir',
-              label: 'Tugas Akhir',
-              icon: GraduationCap,
-              items: [
-                { to: '/thesis/submit', label: 'Ajukan Tugas Akhir', icon: FileText },
-                { to: '/thesis/status', label: 'Status Pengajuan', icon: Clock }
-              ]
-            },
-            {
-              id: 'bimbingan',
-              label: 'Bimbingan',
-              icon: FileCheck,
-              items: [
-                { to: '/thesis/consultations', label: 'Entry Bimbingan', icon: FileCheck },
-                { to: '/thesis/consultations/card', label: 'Kartu Bimbingan Digital', icon: Printer }
-              ]
-            },
-            {
-              id: 'database',
-              label: 'Database',
-              icon: Database,
-              items: [
-                { to: '/thesis/archive', label: 'Arsip Tugas Akhir', icon: BookOpen }
-              ]
-            }
-          ]
+          items: [
+            { to: '/thesis/submit', label: 'Ajukan Tugas Akhir', icon: FileText },
+            { to: '/thesis/consultations', label: 'Entry Bimbingan', icon: FileCheck },
+            { to: '/thesis/consultations/card', label: 'Kartu Bimbingan Digital', icon: Printer },
+            { to: '/thesis/archive', label: 'Arsip Tugas Akhir', icon: BookOpen }
+          ],
+          groups: []
         };
 
       case 'kaprodi':
@@ -274,6 +253,7 @@ export default function Sidebar() {
     if (currentPath.startsWith(targetPath + '/')) {
       const allItems = [
         ...(menuData.dashboard ? [menuData.dashboard] : []),
+        ...(menuData.items || []),
         ...(menuData.groups?.flatMap(g => g.items) || [])
       ];
       const hasExactMatch = allItems.some(i => {
@@ -321,9 +301,10 @@ export default function Sidebar() {
       {/* Top Navigation Items */}
       <div className="space-y-4 flex-1 pb-4">
 
-        {/* Standalone Dashboard Item */}
-        {menuData.dashboard && (
-          <div>
+        {/* Primary/Flat Navigation Items */}
+        <div className="space-y-1">
+          {/* Standalone Dashboard Item */}
+          {menuData.dashboard && (
             <Link
               href={menuData.dashboard.to}
               className={`flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${
@@ -332,67 +313,90 @@ export default function Sidebar() {
                   : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
               }`}
             >
-              <DashboardIcon className="w-4 h-4 text-indigo-600" />
+              <DashboardIcon className={`w-4 h-4 ${isRouteActive(menuData.dashboard.to) ? 'text-indigo-600' : 'text-slate-500'}`} />
               <span>{menuData.dashboard.label}</span>
             </Link>
-          </div>
-        )}
+          )}
 
-        <div className="border-t border-slate-100 pt-2 space-y-3">
-          {menuData.groups.map((group) => {
-            const GroupIcon = group.icon;
-            const isOpen = openGroups[group.id] ?? true;
-
+          {/* Direct Flat Items (e.g. for Mahasiswa) */}
+          {menuData.items?.map((item) => {
+            const Icon = item.icon;
+            const isActive = isRouteActive(item.to);
             return (
-              <div key={group.id} className="space-y-1">
-                {/* Group Accordion Header */}
-                <button
-                  type="button"
-                  onClick={() => toggleGroup(group.id)}
-                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-bold text-slate-700 hover:bg-slate-100/70 transition-colors cursor-pointer group"
-                >
-                  <div className="flex items-center space-x-2.5">
-                    <GroupIcon className="w-4 h-4 text-slate-500 group-hover:text-indigo-600 transition-colors" />
-                    <span className="tracking-wide uppercase text-[11px] text-slate-600 font-extrabold">{group.label}</span>
-                  </div>
-                  <ChevronDown 
-                    className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-300 ${
-                      isOpen ? 'rotate-180 text-slate-700' : ''
-                    }`} 
-                  />
-                </button>
-
-                {/* Collapsible Sub-items Container */}
-                <div 
-                  className={`grid transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] overflow-hidden ${
-                    isOpen ? 'grid-rows-[1fr] opacity-100 my-1' : 'grid-rows-[0fr] opacity-0 my-0'
-                  }`}
-                >
-                  <div className="min-h-0 pl-2 space-y-1 border-l-2 border-slate-100 ml-4">
-                    {group.items.map((item) => {
-                      const Icon = item.icon;
-                      const isActive = isRouteActive(item.to);
-                      return (
-                        <Link
-                          key={item.to}
-                          href={item.to}
-                          className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-                            isActive
-                              ? 'bg-indigo-50 text-indigo-700 font-semibold border-l-4 border-indigo-600 shadow-2xs'
-                              : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-                          }`}
-                        >
-                          <Icon className="w-3.5 h-3.5" />
-                          <span>{item.label}</span>
-                        </Link>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
+              <Link
+                key={item.to}
+                href={item.to}
+                className={`flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                  isActive
+                    ? 'bg-indigo-50 text-indigo-700 border-l-4 border-indigo-600 shadow-2xs'
+                    : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
+                }`}
+              >
+                <Icon className={`w-4 h-4 ${isActive ? 'text-indigo-600' : 'text-slate-500'}`} />
+                <span>{item.label}</span>
+              </Link>
             );
           })}
         </div>
+
+        {/* Grouped Accordions (if any) */}
+        {menuData.groups && menuData.groups.length > 0 && (
+          <div className="border-t border-slate-100 pt-2 space-y-3">
+            {menuData.groups.map((group) => {
+              const GroupIcon = group.icon;
+              const isOpen = openGroups[group.id] ?? true;
+
+              return (
+                <div key={group.id} className="space-y-1">
+                  {/* Group Accordion Header */}
+                  <button
+                    type="button"
+                    onClick={() => toggleGroup(group.id)}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-bold text-slate-700 hover:bg-slate-100/70 transition-colors cursor-pointer group"
+                  >
+                    <div className="flex items-center space-x-2.5">
+                      <GroupIcon className="w-4 h-4 text-slate-500 group-hover:text-indigo-600 transition-colors" />
+                      <span className="tracking-wide uppercase text-[11px] text-slate-600 font-extrabold">{group.label}</span>
+                    </div>
+                    <ChevronDown 
+                      className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-300 ${
+                        isOpen ? 'rotate-180 text-slate-700' : ''
+                      }`} 
+                    />
+                  </button>
+
+                  {/* Collapsible Sub-items Container */}
+                  <div 
+                    className={`grid transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] overflow-hidden ${
+                      isOpen ? 'grid-rows-[1fr] opacity-100 my-1' : 'grid-rows-[0fr] opacity-0 my-0'
+                    }`}
+                  >
+                    <div className="min-h-0 pl-2 space-y-1 border-l-2 border-slate-100 ml-4">
+                      {group.items.map((item) => {
+                        const Icon = item.icon;
+                        const isActive = isRouteActive(item.to);
+                        return (
+                          <Link
+                            key={item.to}
+                            href={item.to}
+                            className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                              isActive
+                                ? 'bg-indigo-50 text-indigo-700 font-semibold border-l-4 border-indigo-600 shadow-2xs'
+                                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                            }`}
+                          >
+                            <Icon className="w-3.5 h-3.5" />
+                            <span>{item.label}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
       </div>
 

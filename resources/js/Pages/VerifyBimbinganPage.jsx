@@ -174,6 +174,12 @@ export default function VerifyBimbinganPage({ nim: propNim }) {
                     </td>
                   </tr>
                   <tr className="hover:bg-slate-50/80 transition-colors">
+                    <td className="py-3 px-4 text-slate-500 font-semibold border-r border-slate-100 bg-slate-50/60">Jenis Bimbingan</td>
+                    <td className="py-3 px-4 font-bold text-slate-900 capitalize">
+                      {targetLog.metode ? (targetLog.metode.toLowerCase() === 'daring' ? 'Daring' : 'Luring') : 'Luring'}
+                    </td>
+                  </tr>
+                  <tr className="hover:bg-slate-50/80 transition-colors">
                     <td className="py-3 px-4 text-slate-500 font-semibold border-r border-slate-100 bg-slate-50/60">Bimbingan Ke</td>
                     <td className="py-3 px-4 font-bold text-slate-900">
                       {bimbinganKe}
@@ -189,6 +195,18 @@ export default function VerifyBimbinganPage({ nim: propNim }) {
                     <td className="py-3 px-4 text-slate-500 font-semibold border-r border-slate-100 bg-slate-50/60">NIP Dosen Pembimbing</td>
                     <td className="py-3 px-4 font-bold text-slate-900">
                       {dospemNIP}
+                    </td>
+                  </tr>
+                  <tr className="hover:bg-slate-50/80 transition-colors">
+                    <td className="py-3 px-4 text-slate-500 font-semibold border-r border-slate-100 bg-slate-50/60">Materi Konsultasi</td>
+                    <td className="py-3 px-4 font-semibold text-slate-900 leading-relaxed">
+                      {targetLog.bab_topik || targetLog.catatan_mahasiswa || '-'}
+                    </td>
+                  </tr>
+                  <tr className="hover:bg-slate-50/80 transition-colors">
+                    <td className="py-3 px-4 text-slate-500 font-semibold border-r border-slate-100 bg-slate-50/60">Catatan Pembimbing</td>
+                    <td className="py-3 px-4 font-semibold text-slate-900 leading-relaxed">
+                      {targetLog.masukan_dosen || '-'}
                     </td>
                   </tr>
                 </tbody>

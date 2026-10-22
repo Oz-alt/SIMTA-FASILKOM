@@ -38,7 +38,7 @@ Route::get('/thesis/submit', function () {
 });
 
 Route::get('/thesis/status', function () {
-    return Inertia::render('mahasiswa/StatusJudulPage');
+    return redirect('/dashboard');
 });
 
 Route::get('/thesis/consultations', function () {
