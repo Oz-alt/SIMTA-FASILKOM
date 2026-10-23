@@ -3157,6 +3157,7 @@ export const MOCK_USERS = [
     "password": "198410012009121005",
     "prodi": "D3 Manajemen Informatika",
     "department_id": "dept-mi-1",
+    "pendidikan": "S3 (Doktor)",
     "link_wa_group": "https://chat.whatsapp.com/BimbinganTA-DrAbdiansah",
     "no_hp": "081278901001"
   },
@@ -3170,6 +3171,7 @@ export const MOCK_USERS = [
     "password": "198810052023212046",
     "prodi": "D3 Manajemen Informatika",
     "department_id": "dept-mi-1",
+    "pendidikan": "S2 (Magister)",
     "no_hp": "081278901002"
   },
   {
@@ -3182,6 +3184,7 @@ export const MOCK_USERS = [
     "password": "198803052019031010",
     "prodi": "D3 Manajemen Informatika",
     "department_id": "dept-mi-1",
+    "pendidikan": "S2 (Magister)",
     "no_hp": "081278901003"
   },
   {
@@ -3192,6 +3195,7 @@ export const MOCK_USERS = [
     "role": "dosen",
     "email": "dewisartika@unsri.ac.id",
     "password": "199012222024062001",
+    "pendidikan": "S2 (Magister)",
     "department_id": "dept-mi-1"
   },
   {
@@ -3202,6 +3206,7 @@ export const MOCK_USERS = [
     "role": "dosen",
     "email": "hasnanafif@unsri.ac.id",
     "password": "198910142023211013",
+    "pendidikan": "S2 (Magister)",
     "department_id": "dept-mi-1"
   },
   {
@@ -3212,6 +3217,7 @@ export const MOCK_USERS = [
     "role": "dosen",
     "email": "iinseprina@unsri.ac.id",
     "password": "198303182023212034",
+    "pendidikan": "S2 (Magister)",
     "department_id": "dept-mi-1"
   },
   {
@@ -3222,6 +3228,7 @@ export const MOCK_USERS = [
     "role": "dosen",
     "email": "niyaamnz@gmail.com",
     "password": "198906262024212001",
+    "pendidikan": "S2 (Magister)",
     "department_id": "dept-mi-1"
   },
   {
@@ -3232,6 +3239,7 @@ export const MOCK_USERS = [
     "role": "dosen",
     "email": "qurhanul.rizqie@ilkom.unsri.ac.id",
     "password": "198712032022031006",
+    "pendidikan": "S3 (Doktor)",
     "department_id": "dept-mi-1"
   },
   {
@@ -3242,6 +3250,7 @@ export const MOCK_USERS = [
     "role": "dosen",
     "email": "witasari92@gmail.com",
     "password": "199206092019032025",
+    "pendidikan": "S2 (Magister)",
     "department_id": "dept-mi-1"
   },
   {
@@ -3252,6 +3261,7 @@ export const MOCK_USERS = [
     "role": "dosen",
     "email": "rusdie@unsri.ac.id",
     "password": "198201022024211001",
+    "pendidikan": "S2 (Magister)",
     "department_id": "dept-mi-1"
   },
   {
@@ -3262,6 +3272,7 @@ export const MOCK_USERS = [
     "role": "dosen",
     "email": "willy@unsri.ac.id",
     "password": "198710092024211001",
+    "pendidikan": "S2 (Magister)",
     "department_id": "dept-mi-1"
   },
   {
@@ -3272,6 +3283,7 @@ export const MOCK_USERS = [
     "role": "dosen",
     "email": "yesintaflorensia@unsri.ac.id",
     "password": "199306042024062006",
+    "pendidikan": "S2 (Magister)",
     "department_id": "dept-mi-1"
   },
   {
@@ -14625,6 +14637,7 @@ export const MOCK_ADVISORS = [
     prodi: 'D3 Manajemen Informatika',
     jabatan_fungsional: 'Lektor Kepala / Kaprodi',
     keahlian: ['Kecerdasan Buatan', 'Pemrosesan Bahasa Alami'],
+    pendidikan: 'S3 (Doktor)',
     kuota_dospem1: 8,
     kuota_dospem2: 8,
     status: 'aktif'
@@ -14639,6 +14652,7 @@ export const MOCK_ADVISORS = [
     prodi: 'D3 Manajemen Informatika',
     jabatan_fungsional: 'Asisten Ahli',
     keahlian: ['Rekayasa Perangkat Lunak', 'Sistem Informasi'],
+    pendidikan: 'S2 (Magister)',
     kuota_dospem1: 8,
     kuota_dospem2: 8,
     status: 'aktif'
@@ -14653,6 +14667,7 @@ export const MOCK_ADVISORS = [
     prodi: 'D3 Manajemen Informatika',
     jabatan_fungsional: 'Lektor',
     keahlian: ['Sistem Informasi', 'Manajemen Basis Data'],
+    pendidikan: 'S2 (Magister)',
     kuota_dospem1: 8,
     kuota_dospem2: 8,
     status: 'aktif'
@@ -14667,6 +14682,7 @@ export const MOCK_ADVISORS = [
     prodi: 'D3 Manajemen Informatika',
     jabatan_fungsional: 'Lektor',
     keahlian: ['Sistem Informasi', 'Pemrograman Web'],
+    pendidikan: 'S2 (Magister)',
     kuota_dospem1: 8,
     kuota_dospem2: 8,
     status: 'aktif'
@@ -14681,6 +14697,7 @@ export const MOCK_ADVISORS = [
     prodi: 'D3 Manajemen Informatika',
     jabatan_fungsional: 'Asisten Ahli',
     keahlian: ['Jaringan Komputer', 'Keamanan Siber'],
+    pendidikan: 'S2 (Magister)',
     kuota_dospem1: 8,
     kuota_dospem2: 8,
     status: 'aktif'
@@ -14695,6 +14712,7 @@ export const MOCK_ADVISORS = [
     prodi: 'D3 Manajemen Informatika',
     jabatan_fungsional: 'Lektor',
     keahlian: ['Sistem Informasi', 'Desain Interaksi UI/UX'],
+    pendidikan: 'S2 (Magister)',
     kuota_dospem1: 8,
     kuota_dospem2: 8,
     status: 'aktif'
@@ -14709,6 +14727,7 @@ export const MOCK_ADVISORS = [
     prodi: 'D3 Manajemen Informatika',
     jabatan_fungsional: 'Asisten Ahli',
     keahlian: ['Rekayasa Perangkat Lunak', 'Sistem Informasi'],
+    pendidikan: 'S2 (Magister)',
     kuota_dospem1: 8,
     kuota_dospem2: 8,
     status: 'aktif'
@@ -14723,6 +14742,7 @@ export const MOCK_ADVISORS = [
     prodi: 'D3 Manajemen Informatika',
     jabatan_fungsional: 'Lektor',
     keahlian: ['Data Science', 'Machine Learning'],
+    pendidikan: 'S3 (Doktor)',
     kuota_dospem1: 8,
     kuota_dospem2: 8,
     status: 'aktif'
@@ -14737,6 +14757,7 @@ export const MOCK_ADVISORS = [
     prodi: 'D3 Manajemen Informatika',
     jabatan_fungsional: 'Lektor',
     keahlian: ['Sains Data', 'Analisis Sistem Informasi'],
+    pendidikan: 'S2 (Magister)',
     kuota_dospem1: 8,
     kuota_dospem2: 8,
     status: 'aktif'
@@ -14750,6 +14771,7 @@ export const MOCK_ADVISORS = [
     prodi: 'D3 Manajemen Informatika',
     jabatan_fungsional: 'Lektor',
     keahlian: ['Sistem Informasi', 'Teknologi Pembelajaran'],
+    pendidikan: 'S2 (Magister)',
     kuota_dospem1: 8,
     kuota_dospem2: 8,
     status: 'aktif'
@@ -14763,6 +14785,7 @@ export const MOCK_ADVISORS = [
     prodi: 'D3 Manajemen Informatika',
     jabatan_fungsional: 'Asisten Ahli',
     keahlian: ['Pemrograman Aplikasi Mobile', 'Rekayasa Perangkat Lunak'],
+    pendidikan: 'S2 (Magister)',
     kuota_dospem1: 8,
     kuota_dospem2: 8,
     status: 'aktif'
@@ -14776,6 +14799,7 @@ export const MOCK_ADVISORS = [
     prodi: 'D3 Manajemen Informatika',
     jabatan_fungsional: 'Asisten Ahli',
     keahlian: ['E-Business', 'Sistem Informasi Bisnis'],
+    pendidikan: 'S2 (Magister)',
     kuota_dospem1: 8,
     kuota_dospem2: 8,
     status: 'aktif'

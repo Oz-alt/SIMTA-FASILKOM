@@ -734,7 +734,18 @@ export function AuthProvider({ children }) {
       const saved = localStorage.getItem('simta_advisors');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Merge pendidikan from MOCK_ADVISORS if missing (for old cached data)
+          return parsed.map(adv => {
+            if (adv.pendidikan) return adv;
+            const mock = MOCK_ADVISORS.find(m => m.nip === adv.nip);
+            if (mock?.pendidikan) return { ...adv, pendidikan: mock.pendidikan };
+            // Derive from name as fallback
+            const n = adv.nama || '';
+            const isDoktor = /\bDr\.\s/i.test(n) || /Ph\.D/i.test(n);
+            return { ...adv, pendidikan: isDoktor ? 'S3 (Doktor)' : 'S2 (Magister)' };
+          });
+        }
       }
     } catch {}
     return MOCK_ADVISORS;
