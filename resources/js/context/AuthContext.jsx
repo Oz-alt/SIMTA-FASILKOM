@@ -217,6 +217,16 @@ export function AuthProvider({ children }) {
             cleaned.push(dosenAbdiansahObj);
           }
 
+          // Ensure Admin accounts have their usernames set
+          const adminSimtaIdx = cleaned.findIndex(u => u.role === 'admin' || u.id === 'user-admin-simta');
+          if (adminSimtaIdx >= 0) {
+            cleaned[adminSimtaIdx] = { ...cleaned[adminSimtaIdx], username: cleaned[adminSimtaIdx].username || 'admin' };
+          }
+          const adminSaranaIdx = cleaned.findIndex(u => u.role === 'admin_sarana' || u.id === 'user-admin-sarana');
+          if (adminSaranaIdx >= 0) {
+            cleaned[adminSaranaIdx] = { ...cleaned[adminSaranaIdx], username: cleaned[adminSaranaIdx].username || 'admin_sarana' };
+          }
+
           const sanitizedList = cleaned.map(u => sanitizeProfile(u));
           
           // Deduplicate entries by unique role + identifier
@@ -261,6 +271,7 @@ export function AuthProvider({ children }) {
       },
       {
         id: 'user-admin-simta',
+        username: 'admin',
         nama: 'Rina Agustina, S.Kom. (Admin SIMTA)',
         nim: '198503152010122001',
         nip: '198503152010122001',
@@ -271,6 +282,7 @@ export function AuthProvider({ children }) {
       },
       {
         id: 'user-admin-sarana',
+        username: 'admin_sarana',
         nama: 'Budi Santoso, S.Kom. (Admin Ruang)',
         nim: '198204102008121003',
         nip: '198204102008121003',
@@ -1393,25 +1405,43 @@ export function AuthProvider({ children }) {
   }, [currentUser, consultations]);
 
   // Authenticate user strictly:
-  // - Kaprodi: username "Koprodi", password "Koprodi123"
-  // - Dosen Dr. Abdiansah: NIP "198410012009121005", password "198410012009121005"
-  // - Selain dari Koprodi, tidak bisa login menggunakan username (wajib NIP atau NIM)
+  // - Kaprodi & Admin: dapat login menggunakan Username (atau NIP/Email)
+  // - Dosen & Mahasiswa: wajib menggunakan NIP atau NIM (atau Email)
+  // - Pesan kesalahan aman & standar tanpa membocorkan kata sandi / hint
   const login = async (credential = '', password = '') => {
     const term = String(credential).trim();
     const termLower = term.toLowerCase();
     const inputPass = String(password).trim();
 
     if (!term) {
-      throw new Error('NIM / NIP atau Username Koprodi wajib diisi.');
+      throw new Error('NIM / NIP atau Username wajib diisi.');
     }
     if (!inputPass) {
       throw new Error('Kata sandi wajib diisi.');
     }
 
-    // 1. Khusus Akun Kaprodi: login pakai username "Koprodi" dan password "Koprodi123"
+    const isEmail = term.includes('@');
+    const isNumeric = /^[0-9]+$/.test(term);
+    const isUsername = !isEmail && !isNumeric;
+
+    // Helper to validate input password against user object
+    const isValidPassword = (user) => {
+      if (!inputPass) return false;
+      const userPass = String(user.password || '').trim();
+      const userNim = String(user.nim || '').trim();
+      const userNip = String(user.nip || '').trim();
+
+      return (
+        (userPass && inputPass.toLowerCase() === userPass.toLowerCase()) ||
+        (userNim && inputPass.toLowerCase() === userNim.toLowerCase()) ||
+        (userNip && inputPass.toLowerCase() === userNip.toLowerCase())
+      );
+    };
+
+    // 1. Akun Kaprodi (dapat login dengan username "koprodi" / "kaprodi" atau NIP/Email)
     if (termLower === 'koprodi' || termLower === 'kaprodi') {
       if (inputPass !== 'Koprodi123') {
-        throw new Error('Kata sandi untuk akun Koprodi salah. Kata sandi yang benar adalah "Koprodi123".');
+        throw new Error('Kata sandi salah.');
       }
       let savedWa = 'https://chat.whatsapp.com/BimbinganTA-DrAbdiansah';
       try {
@@ -1436,19 +1466,82 @@ export function AuthProvider({ children }) {
       return '/kaprodi/dashboard';
     }
 
-    // 2. ATURAN KETAT: Selain dari Koprodi tidak bisa login pake username!
-    // Hanya diperbolehkan nomor induk (NIP/NIM numerik) atau alamat email resmi (@)
-    const isEmail = term.includes('@');
-    const isNumeric = /^[0-9]+$/.test(term);
-
-    if (!isEmail && !isNumeric) {
-      throw new Error('Login dengan username hanya berlaku untuk akun Koprodi. Untuk Dosen, Admin, dan Mahasiswa silakan gunakan NIP atau NIM.');
+    // 2. Akun Admin SIMTA (dapat login dengan username "admin", "admin_simta", "adminsimta" atau NIP/Email)
+    if (
+      termLower === 'admin' ||
+      termLower === 'admin_simta' ||
+      termLower === 'adminsimta' ||
+      term === '198503152010122001' ||
+      termLower === 'admin.simta@unsri.ac.id'
+    ) {
+      if (inputPass !== '198503152010122001' && inputPass !== 'admin') {
+        throw new Error('Kata sandi salah.');
+      }
+      const adminUser = {
+        id: 'user-admin-simta',
+        username: 'admin',
+        nama: 'Rina Agustina, S.Kom. (Admin SIMTA)',
+        nip: '198503152010122001',
+        nim: '198503152010122001',
+        email: 'admin.simta@unsri.ac.id',
+        role: 'admin',
+        kelas: 'Admin SIMTA'
+      };
+      setCurrentUser(adminUser);
+      return '/admin-simta/dashboard';
     }
 
-    // 3. Khusus Akun Dosen Baru Dr. Abdiansah: login pakai NIP dan Password dari NIP
+    // 3. Akun Admin Sarana (dapat login dengan username "admin_sarana", "adminsarana" atau NIP/Email)
+    if (
+      termLower === 'admin_sarana' ||
+      termLower === 'adminsarana' ||
+      term === '198204102008121003' ||
+      termLower === 'admin.sarana@unsri.ac.id'
+    ) {
+      if (inputPass !== '198204102008121003' && inputPass !== 'admin') {
+        throw new Error('Kata sandi salah.');
+      }
+      const adminSaranaUser = {
+        id: 'user-admin-sarana',
+        username: 'admin_sarana',
+        nama: 'Budi Santoso, S.Kom. (Admin Ruang)',
+        nip: '198204102008121003',
+        nim: '198204102008121003',
+        email: 'admin.sarana@unsri.ac.id',
+        role: 'admin_sarana',
+        kelas: 'Admin Sarana'
+      };
+      setCurrentUser(adminSaranaUser);
+      return '/admin/dashboard';
+    }
+
+    // 4. ATURAN USERNAME: Username HANYA berlaku untuk akun Kaprodi dan Admin.
+    // Dosen dan Mahasiswa WAJIB menggunakan NIP atau NIM (atau Email).
+    if (isUsername) {
+      const registered = getRegisteredUsers();
+      const customAdmin = registered.find(u => 
+        (u.role === 'admin' || u.role === 'admin_sarana' || u.role === 'kaprodi') &&
+        u.username && String(u.username).toLowerCase() === termLower
+      );
+
+      if (customAdmin) {
+        if (!isValidPassword(customAdmin)) {
+          throw new Error('Kata sandi salah.');
+        }
+        setCurrentUser(customAdmin);
+        if (customAdmin.role === 'kaprodi') return '/kaprodi/dashboard';
+        if (customAdmin.role === 'admin_sarana') return '/admin/dashboard';
+        return '/admin-simta/dashboard';
+      }
+
+      // Jika bukan akun Kaprodi/Admin atau username salah
+      throw new Error('Username salah.');
+    }
+
+    // 5. Akun Dosen Dr. Abdiansah (login via NIP atau Email)
     if (term === '198410012009121005' || termLower === 'abdiansah@unsri.ac.id') {
       if (inputPass !== '198410012009121005') {
-        throw new Error('Kata sandi yang Anda masukkan salah. Kata sandi untuk Dosen Dr. Abdiansah adalah NIP Anda (198410012009121005).');
+        throw new Error('Kata sandi salah.');
       }
       let savedWa = 'https://chat.whatsapp.com/BimbinganTA-DrAbdiansah';
       try {
@@ -1472,72 +1565,7 @@ export function AuthProvider({ children }) {
       return '/dosen/dashboard';
     }
 
-    // 4. Admin SIMTA: NIP 198503152010122001
-    if (term === '198503152010122001' || termLower === 'admin.simta@unsri.ac.id') {
-      if (inputPass !== '198503152010122001' && inputPass !== 'admin') {
-        throw new Error('Kata sandi yang Anda masukkan salah. Kata sandi default untuk Admin SIMTA adalah NIP Anda.');
-      }
-      const adminUser = {
-        id: 'user-admin-simta',
-        nama: 'Rina Agustina, S.Kom. (Admin SIMTA)',
-        nip: '198503152010122001',
-        nim: '198503152010122001',
-        email: 'admin.simta@unsri.ac.id',
-        role: 'admin',
-        kelas: 'Admin SIMTA'
-      };
-      setCurrentUser(adminUser);
-      return '/admin-simta/dashboard';
-    }
-
-    // 5. Admin Sarana: NIP 198204102008121003
-    if (term === '198204102008121003' || termLower === 'admin.sarana@unsri.ac.id') {
-      if (inputPass !== '198204102008121003' && inputPass !== 'admin') {
-        throw new Error('Kata sandi yang Anda masukkan salah. Kata sandi default untuk Admin Sarana adalah NIP Anda.');
-      }
-      const adminSaranaUser = {
-        id: 'user-admin-sarana',
-        nama: 'Budi Santoso, S.Kom. (Admin Ruang)',
-        nip: '198204102008121003',
-        nim: '198204102008121003',
-        email: 'admin.sarana@unsri.ac.id',
-        role: 'admin_sarana',
-        kelas: 'Admin Sarana'
-      };
-      setCurrentUser(adminSaranaUser);
-      return '/admin/dashboard';
-    }
-
-    // Helper to validate input password against user object
-    const isValidPassword = (user) => {
-      if (!inputPass) return false;
-      const userPass = String(user.password || '').trim().toLowerCase();
-      const userNim = String(user.nim || '').trim().toLowerCase();
-      const userNip = String(user.nip || '').trim().toLowerCase();
-      const inputPassLower = inputPass.toLowerCase();
-
-      return (
-        (userPass && inputPassLower === userPass) ||
-        (userNim && inputPassLower === userNim) ||
-        (userNip && inputPassLower === userNip)
-      );
-    };
-
-    const getInvalidPasswordErrorMessage = (user) => {
-      const role = user?.role;
-      if (role === 'dosen') {
-        return 'Kata sandi yang Anda masukkan salah. Kata sandi default untuk Dosen adalah NIP Anda.';
-      }
-      if (role === 'admin' || role === 'admin_sarana') {
-        return 'Kata sandi yang Anda masukkan salah. Kata sandi default untuk Admin adalah NIP Anda.';
-      }
-      if (role === 'mahasiswa') {
-        return 'Kata sandi yang Anda masukkan salah. Kata sandi default untuk Mahasiswa adalah NIM Anda.';
-      }
-      return 'Kata sandi yang Anda masukkan salah. Silakan periksa kembali kata sandi Anda.';
-    };
-
-    // 6. Check local registered users list FIRST by NIM, NIP, or Email
+    // 6. Check local registered users list by NIM, NIP, or Email
     const registered = getRegisteredUsers();
     const localFound = registered.find(u => 
       (u.nim && u.nim.toLowerCase() === termLower) || 
@@ -1547,7 +1575,7 @@ export function AuthProvider({ children }) {
 
     if (localFound) {
       if (!isValidPassword(localFound)) {
-        throw new Error(getInvalidPasswordErrorMessage(localFound));
+        throw new Error('Kata sandi salah.');
       }
       setCurrentUser(localFound);
       if (localFound.role === 'kaprodi') return '/kaprodi/dashboard';
@@ -1606,7 +1634,7 @@ export function AuthProvider({ children }) {
     // 8. Fallback to Mock Dataset Matching strictly by NIM / NIP / Email (No username/role bypass!)
     let foundUser = MOCK_USERS.find(u => 
       (u.nim && u.nim.toLowerCase() === termLower) || 
-      (u.nip && u.nip.toLowerCase() === termLower) ||
+      (u.nip && u.nip.toLowerCase() === termLower) || 
       (u.email && u.email.toLowerCase() === termLower)
     );
 
@@ -1632,7 +1660,7 @@ export function AuthProvider({ children }) {
 
     if (foundUser) {
       if (!isValidPassword(foundUser)) {
-        throw new Error(getInvalidPasswordErrorMessage(foundUser));
+        throw new Error('Kata sandi salah.');
       }
 
       setCurrentUser(foundUser);
@@ -1646,8 +1674,11 @@ export function AuthProvider({ children }) {
       return '/dashboard';
     }
 
-    // 9. If no match found in registered users, Supabase, or mock users, throw invalid credential error
-    throw new Error('NIM / NIP atau Email yang Anda masukkan tidak terdaftar dalam sistem.');
+    // 9. If no match found in registered users, Supabase, or mock users
+    if (isEmail) {
+      throw new Error('Email tidak terdaftar.');
+    }
+    throw new Error('NIM / NIP tidak terdaftar.');
   };
 
   // Register new account (Mahasiswa / Kaprodi)

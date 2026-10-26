@@ -34,7 +34,8 @@ export default function SmoothScroll({ children }) {
     };
 
     gsap.ticker.add(updateTicker);
-    gsap.ticker.lagSmoothing(0);
+    // Enable lag smoothing to prevent stuttering/jumps when frame rate dips temporarily
+    gsap.ticker.lagSmoothing(500, 33);
 
     // 3. Force scroll to top on refresh
     if ('scrollRestoration' in window.history) {

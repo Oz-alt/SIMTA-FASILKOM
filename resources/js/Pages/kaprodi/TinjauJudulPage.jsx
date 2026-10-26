@@ -255,7 +255,7 @@ export default function TinjauJudulPage() {
                 <th className="py-3 px-4 w-1/3">Judul Tugas Akhir</th>
                 <th className="py-3 px-4 text-center w-36">Status Sistem</th>
                 <th className="py-3 px-4 text-center w-28">Similarity</th>
-                <th className="py-3 px-4 text-right w-36">Aksi</th>
+                <th className="py-3 px-4 text-center w-44 whitespace-nowrap">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -312,14 +312,16 @@ export default function TinjauJudulPage() {
                         </span>
                       </td>
 
-                      <td className="py-3.5 px-4 text-right align-top">
-                        <Link
-                          href={`/kaprodi/titles/${t.id}`}
-                          className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs inline-flex items-center space-x-1.5 cursor-pointer transition-colors"
-                        >
-                          <BookOpen className="w-3.5 h-3.5" />
-                          <span>Detail &amp; Catatan</span>
-                        </Link>
+                      <td className="py-3.5 px-4 text-center align-top whitespace-nowrap">
+                        <div className="flex items-center justify-center">
+                          <Link
+                            href={`/kaprodi/titles/${t.id}`}
+                            className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold text-xs rounded-xl shadow-xs inline-flex items-center justify-center space-x-1.5 cursor-pointer transition-colors whitespace-nowrap"
+                          >
+                            <BookOpen className="w-3.5 h-3.5 shrink-0" />
+                            <span>Detail &amp; Catatan</span>
+                          </Link>
+                        </div>
                       </td>
                     </tr>
                   );

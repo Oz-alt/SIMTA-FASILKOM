@@ -23,6 +23,8 @@ import {
   AlertCircle,
   UserCheck,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   FileText
 } from 'lucide-react';
 import { getStudentSemester, AVAILABLE_SEMESTERS } from '../../lib/academicUtils.js';
@@ -174,6 +176,31 @@ export default function MasterMahasiswaPage() {
       return matchQuery && matchClass && matchSemester;
     });
   }, [registeredStudents, searchQuery, classFilter, semesterFilter]);
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(15);
+
+  // Reset to page 1 whenever filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, classFilter, semesterFilter]);
+
+  // Paginated Students
+  const totalPages = Math.max(1, Math.ceil(filteredStudents.length / pageSize));
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, filteredStudents.length);
+  const paginatedStudents = useMemo(() => {
+    return filteredStudents.slice(startIndex, startIndex + pageSize);
+  }, [filteredStudents, startIndex, pageSize]);
+
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages) return;
+    setCurrentPage(newPage);
+    if (window.lenis && typeof window.lenis.resize === 'function') {
+      window.lenis.resize();
+    }
+  };
 
   // Export All / Filtered Students to Excel CSV
   const handleExportDataExcel = () => {
@@ -625,8 +652,8 @@ export default function MasterMahasiswaPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium">
-              {filteredStudents.length > 0 ? (
-                filteredStudents.map((std) => {
+              {paginatedStudents.length > 0 ? (
+                paginatedStudents.map((std) => {
                   const advisorsData = getStudentAdvisors(std);
                   return (
                     <tr key={std.id || std.nim} className="hover:bg-slate-50/80 transition-colors">
@@ -779,6 +806,74 @@ export default function MasterMahasiswaPage() {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Pagination Controls */}
+        <div className="p-4 border-t border-slate-200 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600">
+          <div className="flex items-center space-x-2">
+            <span>Tampilkan</span>
+            <select
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="py-1 px-2.5 rounded-lg border border-slate-200 bg-white font-semibold text-slate-800 text-xs focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer"
+            >
+              <option value={15}>15</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={filteredStudents.length}>Semua ({filteredStudents.length})</option>
+            </select>
+            <span>dari <strong className="text-slate-900">{filteredStudents.length}</strong> mahasiswa</span>
+          </div>
+
+          <div className="flex items-center space-x-1.5">
+            <span className="text-slate-500 mr-2">
+              Halaman <strong>{currentPage}</strong> dari <strong>{totalPages}</strong>
+            </span>
+            <button
+              type="button"
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage <= 1}
+              className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+              title="Halaman Sebelumnya"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <div className="flex items-center space-x-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter(page => page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1)
+                .map((page, idx, arr) => (
+                  <React.Fragment key={page}>
+                    {idx > 0 && arr[idx - 1] !== page - 1 && (
+                      <span className="px-1 text-slate-400">...</span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handlePageChange(page)}
+                      className={`min-w-[28px] h-7 px-2 rounded-lg font-bold text-xs transition-all cursor-pointer ${
+                        currentPage === page
+                          ? 'bg-indigo-600 text-white shadow-xs'
+                          : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  </React.Fragment>
+                ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage >= totalPages}
+              className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+              title="Halaman Selanjutnya"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
       </div>
