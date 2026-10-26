@@ -156,30 +156,8 @@ export default function AjukanJudulPage() {
 
     const processedText = preProcessTitle(judul);
 
-    // Save to real Supabase thesis_titles table
-    if (isSupabaseConfigured && supabase && currentUser?.id) {
-      try {
-        await supabase.from('thesis_titles').insert({
-          profile_id: currentUser.id,
-          mhs_nama: currentUser?.nama || 'Aulia Azzahra',
-          mhs_nim: currentUser?.nim || '09010182428002',
-          mhs_kelas: currentUser?.kelas || 'MI 5A',
-          judul: judul.trim(),
-          judul_processed: processedText,
-          abstrak: abstrak.trim(),
-          skor_similarity: currentScore,
-          pembimbing_1_nip: '',
-          pembimbing_1_nama: '',
-          pembimbing_2_nip: '',
-          pembimbing_2_nama: '',
-          status: 'tinjauan'
-        });
-      } catch (err) {
-        console.error('Supabase insert title error:', err);
-      }
-    }
-
-    addThesisTitle({
+    // Satu jalur tulis: addThesisTitle() menyimpan ke state + tabel Supabase `thesis_titles`.
+    await addThesisTitle({
       judul: judul.trim(),
       abstrak: abstrak.trim(),
       deskripsi: abstrak.trim(),

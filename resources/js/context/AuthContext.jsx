@@ -25,7 +25,187 @@ import { calculateBimbinganReminder } from '../lib/bimbinganReminder.js';
 
 const AuthContext = createContext();
 
+// ── Migrasi sekali jalan: bersihkan nomor HP/WA sisa seed lama di cache browser ──
+// Nomor harus kosong secara default; hanya terisi bila pengguna mengisinya sendiri.
+const runLegacyPhoneMigration = () => {
+  const FLAG = 'simta_phone_defaults_cleared_v1';
+  try {
+    if (localStorage.getItem(FLAG)) return;
+
+    const clearList = (raw) => {
+      if (!raw) return raw;
+      try {
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) return raw;
+        return JSON.stringify(parsed.map(u => (u && u.no_hp ? { ...u, no_hp: '' } : u)));
+      } catch {
+        return raw;
+      }
+    };
+
+    const regKey = 'simta_registered_users';
+    const regRaw = localStorage.getItem(regKey);
+    if (regRaw) localStorage.setItem(regKey, clearList(regRaw));
+
+    const activeKey = 'simta_active_user';
+    const activeRaw = localStorage.getItem(activeKey);
+    if (activeRaw) {
+      try {
+        const parsedActive = JSON.parse(activeRaw);
+        if (parsedActive && parsedActive.no_hp) {
+          localStorage.setItem(activeKey, JSON.stringify({ ...parsedActive, no_hp: '' }));
+        }
+      } catch {}
+    }
+
+    localStorage.setItem(FLAG, '1');
+  } catch {}
+};
+
+runLegacyPhoneMigration();
+
 import { supabase, isSupabaseConfigured } from '../services/supabase.js';
+
+const generateRowId = () => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `title-${Date.now()}`;
+};
+
+/**
+ * Menyeragamkan satu baris tabel `thesis_titles` menjadi bentuk yang dipakai halaman.
+ * Tabel asli hanya punya kolom inti, jadi field turunan diisi default yang aman.
+ */
+const normalizeThesisTitleRecord = (row) => {
+  if (!row) return row;
+  const score = row.skor_kemiripan_terakhir ?? row.skor_similarity ?? 0;
+  const d1Nama = row.pembimbing_1_nama || row.pembimbing_1 || '';
+  const d2Nama = row.pembimbing_2_nama || row.pembimbing_2 || '';
+
+  return {
+    ...row,
+    judul: row.judul || '',
+    deskripsi: row.deskripsi || '',
+    abstrak: row.abstrak || row.deskripsi || '',
+    judul_processed: row.judul_processed || '',
+    status: row.status || 'tinjauan',
+    skor_kemiripan_terakhir: Number(score) || 0,
+    mhs_nim: row.mhs_nim || '',
+    mhs_nama: row.mhs_nama || '',
+    mhs_kelas: row.mhs_kelas || '',
+    prodi: row.prodi || 'D3 Manajemen Informatika',
+    angkatan: row.angkatan || '',
+    pembimbing_1_nip: row.pembimbing_1_nip || '',
+    pembimbing_2_nip: row.pembimbing_2_nip || '',
+    pembimbing_1_nama: d1Nama,
+    pembimbing_2_nama: d2Nama,
+    pembimbing_1: d1Nama,
+    pembimbing_2: d2Nama,
+    dospem_confirmed: Boolean(row.dospem_confirmed),
+    catatan_kaprodi: row.catatan_kaprodi || '',
+    catatan_dospem: row.catatan_dospem || '',
+    rekomendasi_dospem_status: row.rekomendasi_dospem_status || 'menunggu_validasi',
+    riwayat_revisi: Array.isArray(row.riwayat_revisi) ? row.riwayat_revisi : [],
+    status_kelulusan: row.status_kelulusan || 'aktif_proses',
+    status_sidang: row.status_sidang || 'bimbingan',
+    jadwal_sidang: row.jadwal_sidang || null,
+    created_at: row.created_at || new Date().toISOString(),
+    updated_at: row.updated_at || row.created_at || new Date().toISOString()
+  };
+};
+
+/**
+ * Melengkapi identitas mahasiswa & dosen dari tabel profiles / student_advisors
+ * untuk baris lama yang hanya menyimpan profile_id.
+ */
+const enrichThesisTitleRecord = (title, profiles = [], advisorRows = []) => {
+  if (!title) return title;
+  if (title.mhs_nama && title.mhs_kelas) return title;
+
+  const profile = (profiles || []).find(p =>
+    (title.profile_id && String(p.id) === String(title.profile_id)) ||
+    (title.mhs_nim && String(p.nim || p.nip || '') === String(title.mhs_nim))
+  );
+  const advisorRow = (advisorRows || []).find(sa =>
+    title.mhs_nim && String(sa.student_nim || '').trim() === String(title.mhs_nim).trim()
+  );
+
+  const mhsNama = title.mhs_nama || profile?.nama || advisorRow?.student_nama || '';
+  const mhsNim = title.mhs_nim || profile?.nim || profile?.nip || advisorRow?.student_nim || '';
+
+  if (!mhsNama && !mhsNim) return title;
+
+  return {
+    ...title,
+    mhs_nama: mhsNama,
+    mhs_nim: mhsNim,
+    mhs_kelas: title.mhs_kelas || profile?.kelas || advisorRow?.kelas || '',
+    prodi: title.prodi || profile?.prodi || advisorRow?.prodi || 'D3 Manajemen Informatika'
+  };
+};
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * profile_id hanya boleh diisi bila memang UUID milik baris public.profiles.
+ * Akun hasil login lokal memakai id seperti `user-mhs-...` yang akan melanggar FK.
+ */
+const toProfileUuid = (value) => (value && UUID_PATTERN.test(String(value)) ? String(value) : null);
+
+/** Kolom inti yang dijamin ada di tabel asli (sebelum migrasi). */
+const buildMinimalThesisTitlePayload = (title) => ({
+  id: title.id,
+  profile_id: toProfileUuid(title.profile_id),
+  judul: title.judul || '',
+  deskripsi: title.deskripsi || '',
+  judul_processed: title.judul_processed || '',
+  status: title.status || 'tinjauan',
+  skor_kemiripan_terakhir: Number(title.skor_kemiripan_terakhir) || 0,
+  updated_at: new Date().toISOString()
+});
+
+const isMissingColumnError = (error) => {
+  if (!error) return false;
+  const code = String(error.code || '');
+  const message = String(error.message || '');
+  return code === '42703' || code === 'PGRST204' || message.includes('does not exist') || message.includes('Could not find the');
+};
+
+/** Payload tulis ke Supabase: hanya kolom yang benar-benar ada di tabel. */
+const buildThesisTitlePayload = (title) => ({
+  id: title.id,
+  profile_id: toProfileUuid(title.profile_id),
+  judul: title.judul || '',
+  deskripsi: title.deskripsi || '',
+  abstrak: title.abstrak || title.deskripsi || '',
+  judul_processed: title.judul_processed || '',
+  status: title.status || 'tinjauan',
+  skor_kemiripan_terakhir: Number(title.skor_kemiripan_terakhir) || 0,
+  mhs_nim: title.mhs_nim || null,
+  mhs_nama: title.mhs_nama || null,
+  mhs_kelas: title.mhs_kelas || null,
+  prodi: title.prodi || 'D3 Manajemen Informatika',
+  angkatan: title.angkatan || null,
+  pembimbing_1_nip: title.pembimbing_1_nip || null,
+  pembimbing_1_nama: title.pembimbing_1_nama || title.pembimbing_1 || null,
+  pembimbing_2_nip: title.pembimbing_2_nip || null,
+  pembimbing_2_nama: title.pembimbing_2_nama || title.pembimbing_2 || null,
+  dospem_confirmed: Boolean(title.dospem_confirmed),
+  dospem_confirmed_at: title.dospem_confirmed_at || null,
+  catatan_kaprodi: title.catatan_kaprodi || '',
+  catatan_dospem: title.catatan_dospem || '',
+  rekomendasi_dospem_status: title.rekomendasi_dospem_status || null,
+  rekomendasi_oleh: title.rekomendasi_oleh || null,
+  riwayat_revisi: Array.isArray(title.riwayat_revisi) ? title.riwayat_revisi : [],
+  status_kelulusan: title.status_kelulusan || 'aktif_proses',
+  status_sidang: title.status_sidang || 'bimbingan',
+  nilai_sidang: title.nilai_sidang || null,
+  tanggal_lulus: title.tanggal_lulus || null,
+  no_sk_lulus: title.no_sk_lulus || null,
+  jadwal_sidang: title.jadwal_sidang || null,
+  updated_at: new Date().toISOString()
+});
 
 export function AuthProvider({ children }) {
   // Helper to sanitize profile names to guarantee full name and correct role are used
@@ -227,18 +407,23 @@ export function AuthProvider({ children }) {
             cleaned[adminSaranaIdx] = { ...cleaned[adminSaranaIdx], username: cleaned[adminSaranaIdx].username || 'admin_sarana' };
           }
 
-          const sanitizedList = cleaned.map(u => sanitizeProfile(u));
-          
+          const sanitizedList = cleaned.map(u => sanitizeProfile(u)).filter(Boolean);
+
           // Deduplicate entries by unique role + identifier
           const uniqueMap = new Map();
           sanitizedList.forEach(u => {
-            if (u && u.nama) {
-              const key = u.role === 'mahasiswa' ? `mhs-${u.nim || u.nama}` : (u.id || `${u.role}-${u.nip}`);
-              uniqueMap.set(key, u);
-            }
+            const key = u.role === 'mahasiswa' ? `mhs-${u.nim || u.nama || u.id}` : (u.id || `${u.role}-${u.nip}`);
+            uniqueMap.set(key, u);
           });
 
           const deduplicated = Array.from(uniqueMap.values());
+
+          // Jangan pernah menimpa daftar akun dengan hasil kosong: bila seluruh baris
+          // terbuang, cache lama justru harus dipertahankan agar kata sandi tidak hilang.
+          if (deduplicated.length === 0) {
+            return parsed;
+          }
+
           localStorage.setItem('simta_registered_users', JSON.stringify(deduplicated));
           return deduplicated;
         }
@@ -296,10 +481,10 @@ export function AuthProvider({ children }) {
         nama: 'AULIA AZZAHRA',
         nim: '09010182428002',
         email: '09010182428002@student.unsri.ac.id',
-        no_hp: '0812781011',
         password: '09010182428002',
         role: 'mahasiswa',
         kelas: 'MI 2024',
+        no_hp: '',
         is_profile_completed: false
       }
     ];
@@ -453,7 +638,10 @@ export function AuthProvider({ children }) {
   };
 
   // Reactive state databases
+  // Data judul TA: sumber utama adalah tabel Supabase `thesis_titles`.
+  // Mock hanya dipakai sebagai fallback demo saat Supabase belum dikonfigurasi.
   const [thesisTitles, setThesisTitles] = useState(() => {
+    if (isSupabaseConfigured) return [];
     try {
       const saved = localStorage.getItem('simta_thesis_titles');
       if (saved) {
@@ -485,10 +673,80 @@ export function AuthProvider({ children }) {
   });
 
   useEffect(() => {
+    // Saat Supabase aktif, tabel adalah sumber kebenaran; jangan timpa dengan cache lokal.
+    if (isSupabaseConfigured) return;
     try {
       localStorage.setItem('simta_thesis_titles', JSON.stringify(thesisTitles));
     } catch {}
   }, [thesisTitles]);
+
+  // ── Persistensi thesis_titles ke Supabase ─────────────────────────────────
+  // Semua mutasi memanggil ini agar daftar tinjauan kaprodi berasal dari data riil,
+  // bukan dari state lokal saja.
+  const persistThesisTitle = async (record) => {
+    if (!isSupabaseConfigured || !supabase || !record) return;
+    try {
+      const { error } = await supabase
+        .from('thesis_titles')
+        .upsert(buildThesisTitlePayload(record), { onConflict: 'id' });
+
+      // Sebelum migrasi dijalankan, kolom tambahan belum ada: simpan kolom inti saja.
+      if (isMissingColumnError(error)) {
+        const { error: minimalError } = await supabase
+          .from('thesis_titles')
+          .upsert(buildMinimalThesisTitlePayload(record), { onConflict: 'id' });
+        if (minimalError) {
+          console.warn('Gagal menyimpan thesis_titles (mode minimal):', minimalError.message);
+        } else {
+          console.warn('thesis_titles tersimpan dengan kolom inti saja. Jalankan scripts/thesis_titles_realtime.sql agar data lengkap tersimpan.');
+        }
+        return;
+      }
+
+      if (error) {
+        console.warn('Gagal menyimpan thesis_titles ke Supabase:', error.message, error.details || '');
+      }
+    } catch (err) {
+      console.warn('Gagal menyimpan thesis_titles ke Supabase:', err);
+    }
+  };
+
+  const persistThesisTitles = async (records) => {
+    if (!isSupabaseConfigured || !supabase || !Array.isArray(records) || records.length === 0) return;
+    try {
+      const { error } = await supabase
+        .from('thesis_titles')
+        .upsert(records.map(buildThesisTitlePayload), { onConflict: 'id' });
+
+      if (isMissingColumnError(error)) {
+        const { error: minimalError } = await supabase
+          .from('thesis_titles')
+          .upsert(records.map(buildMinimalThesisTitlePayload), { onConflict: 'id' });
+        if (minimalError) {
+          console.warn('Gagal menyimpan thesis_titles (mode minimal):', minimalError.message);
+        }
+        return;
+      }
+
+      if (error) {
+        console.warn('Gagal menyimpan thesis_titles ke Supabase:', error.message, error.details || '');
+      }
+    } catch (err) {
+      console.warn('Gagal menyimpan thesis_titles ke Supabase:', err);
+    }
+  };
+
+  const deleteThesisTitleRecord = async (titleId) => {
+    if (!isSupabaseConfigured || !supabase || !titleId) return;
+    try {
+      const { error } = await supabase.from('thesis_titles').delete().eq('id', titleId);
+      if (error) {
+        console.warn('Gagal menghapus thesis_titles dari Supabase:', error.message);
+      }
+    } catch (err) {
+      console.warn('Gagal menghapus thesis_titles dari Supabase:', err);
+    }
+  };
   const [historicalTitles, setHistoricalTitles] = useState(MOCK_HISTORICAL_TITLES);
   const [thesisStages, setThesisStages] = useState(MOCK_THESIS_STAGES);
   const [bookings, setBookings] = useState(MOCK_BOOKINGS);
@@ -727,6 +985,9 @@ export function AuthProvider({ children }) {
 
   // Thesis Consultation Sessions state with local persistence
   const [consultations, setConsultations] = useState(() => {
+    // Saat Supabase aktif, tabel `thesis_consultations` adalah sumber kebenaran.
+    // Mock hanya dipakai sebagai demo saat Supabase belum dikonfigurasi.
+    if (isSupabaseConfigured) return [];
     try {
       const saved = localStorage.getItem('simta_consultations');
       if (saved) {
@@ -892,12 +1153,13 @@ export function AuthProvider({ children }) {
     });
 
     // 2. Langsung sinkronkan ke thesisTitles (Point 25: Perubahan pembimbing langsung diperbarui)
+    let syncedTitle = null;
     setThesisTitles(prev => {
       let matched = false;
       const updated = prev.map(t => {
         if (String(t.mhs_nim || '').trim() === cleanNim) {
           matched = true;
-          return {
+          syncedTitle = {
             ...t,
             pembimbing_1_nip: dospem1Nip || '',
             pembimbing_1_nama: d1Nama,
@@ -909,6 +1171,7 @@ export function AuthProvider({ children }) {
             dospem_confirmed_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           };
+          return syncedTitle;
         }
         return t;
       });
@@ -917,6 +1180,10 @@ export function AuthProvider({ children }) {
       }
       return updated;
     });
+
+    if (syncedTitle) {
+      persistThesisTitle(syncedTitle);
+    }
 
     if (isSupabaseConfigured && supabase && updatedRecord) {
       try {
@@ -971,6 +1238,7 @@ export function AuthProvider({ children }) {
     });
 
     // 2. Langsung sinkronkan ke thesisTitles (Point 25: Perubahan pembimbing langsung diperbarui)
+    const bulkSyncedTitles = [];
     setThesisTitles(prev => {
       const assignmentMap = new Map();
       assignments.forEach(a => {
@@ -989,7 +1257,7 @@ export function AuthProvider({ children }) {
         const d1Nama = d1?.nama || '';
         const d2Nama = d2?.nama || '';
 
-        return {
+        const synced = {
           ...t,
           pembimbing_1_nip: item.dospem1_nip || '',
           pembimbing_1_nama: d1Nama,
@@ -1001,6 +1269,8 @@ export function AuthProvider({ children }) {
           dospem_confirmed_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         };
+        bulkSyncedTitles.push(synced);
+        return synced;
       });
 
       if (hasChanges) {
@@ -1008,6 +1278,10 @@ export function AuthProvider({ children }) {
       }
       return updated;
     });
+
+    if (bulkSyncedTitles.length > 0) {
+      persistThesisTitles(bulkSyncedTitles);
+    }
 
     if (isSupabaseConfigured && supabase && assignments.length > 0) {
       try {
@@ -1169,6 +1443,7 @@ export function AuthProvider({ children }) {
       // Real-time WebSocket listener for cross-device live bimbingan updates
       let consultationsChannel = null;
       let studentAdvisorsChannel = null;
+      let thesisTitlesChannel = null;
 
       try {
         if (typeof supabase.getChannels === 'function') {
@@ -1264,14 +1539,63 @@ export function AuthProvider({ children }) {
             }
           )
           .subscribe();
+
+        // Real-time WebSocket listener: pengajuan judul baru langsung muncul di kaprodi
+        thesisTitlesChannel = supabase
+          .channel(`schema-db-changes-thesis-titles-${Date.now()}`)
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'thesis_titles' },
+            (payload) => {
+              if ((payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') && payload.new) {
+                const incoming = normalizeThesisTitleRecord(payload.new);
+                setThesisTitles(prev => {
+                  const idx = prev.findIndex(t => String(t.id) === String(incoming.id));
+                  const existing = idx >= 0 ? prev[idx] : null;
+                  // Pertahankan field hasil enrich (mis. mhs_kelas) bila kosong dari tabel.
+                  const merged = {
+                    ...(existing || {}),
+                    ...incoming,
+                    mhs_nama: incoming.mhs_nama || existing?.mhs_nama || '',
+                    mhs_nim: incoming.mhs_nim || existing?.mhs_nim || '',
+                    mhs_kelas: incoming.mhs_kelas || existing?.mhs_kelas || ''
+                  };
+                  if (idx >= 0) {
+                    const next = [...prev];
+                    next[idx] = merged;
+                    return next;
+                  }
+                  return [merged, ...prev];
+                });
+              } else if (payload.eventType === 'DELETE' && payload.old) {
+                setThesisTitles(prev => prev.filter(t => String(t.id) !== String(payload.old.id)));
+              }
+            }
+          )
+          .subscribe();
       } catch (realtimeErr) {
         console.warn('Realtime subscription error handled safely:', realtimeErr);
       }
-      supabase.from('thesis_titles').select('*')
-        .then(({ data, error }) => {
-          if (!error && data && data.length > 0) {
-            setThesisTitles(data);
+      supabase.from('thesis_titles').select('*').order('created_at', { ascending: false })
+        .then(async ({ data, error }) => {
+          if (error) {
+            console.warn('Gagal memuat thesis_titles dari Supabase:', error.message);
+            return;
           }
+          const rows = (data || []).map(normalizeThesisTitleRecord);
+          if (rows.length === 0) {
+            // Tabel adalah sumber kebenaran: kosong berarti belum ada pengajuan.
+            setThesisTitles([]);
+            return;
+          }
+
+          // Baris lama hanya menyimpan profile_id; lengkapi dari profiles & student_advisors.
+          const [{ data: profileRows }, { data: advisorRows }] = await Promise.all([
+            supabase.from('profiles').select('id,nim,nip,nama,kelas,prodi'),
+            supabase.from('student_advisors').select('student_nim,student_nama,prodi')
+          ]);
+
+          setThesisTitles(rows.map(row => enrichThesisTitleRecord(row, profileRows || [], advisorRows || [])));
         });
       supabase.from('bookings').select('*')
         .then(({ data, error }) => {
@@ -1353,12 +1677,17 @@ export function AuthProvider({ children }) {
         if (studentAdvisorsChannel) {
           try { supabase.removeChannel(studentAdvisorsChannel); } catch {}
         }
+        if (thesisTitlesChannel) {
+          try { supabase.removeChannel(thesisTitlesChannel); } catch {}
+        }
       };
     }
   }, []);
 
   // Cross-tab synchronization for consultations state
   useEffect(() => {
+    // Saat Supabase aktif, sinkronisasi lintas tab ditangani realtime channel.
+    if (isSupabaseConfigured) return;
     const handleStorageChange = (e) => {
       if (e.key === 'simta_consultations' && e.newValue) {
         try {
@@ -1424,18 +1753,28 @@ export function AuthProvider({ children }) {
     const isNumeric = /^[0-9]+$/.test(term);
     const isUsername = !isEmail && !isNumeric;
 
-    // Helper to validate input password against user object
+    // Validasi password terhadap user object.
+    // Aturan: NIM/NIP hanya berlaku sebagai kata sandi DEFAULT, yaitu selama
+    // pengguna belum pernah mengganti kata sandinya. Setelah kata sandi diganti,
+    // NIM/NIP tidak boleh lagi dipakai untuk login.
     const isValidPassword = (user) => {
       if (!inputPass) return false;
-      const userPass = String(user.password || '').trim();
-      const userNim = String(user.nim || '').trim();
-      const userNip = String(user.nip || '').trim();
+      const pass = inputPass.toLowerCase();
+      const userPass = String(user.password || '').trim().toLowerCase();
+      const userNim = String(user.nim || '').trim().toLowerCase();
+      const userNip = String(user.nip || '').trim().toLowerCase();
 
-      return (
-        (userPass && inputPass.toLowerCase() === userPass.toLowerCase()) ||
-        (userNim && inputPass.toLowerCase() === userNim.toLowerCase()) ||
-        (userNip && inputPass.toLowerCase() === userNip.toLowerCase())
-      );
+      if (userPass && pass === userPass) {
+        return true;
+      }
+
+      // Kata sandi masih default bila kosong atau masih sama dengan NIM/NIP.
+      const passwordStillDefault = !userPass || userPass === userNim || userPass === userNip;
+      if (passwordStillDefault && ((userNim && pass === userNim) || (userNip && pass === userNip))) {
+        return true;
+      }
+
+      return false;
     };
 
     // 1. Akun Kaprodi (dapat login dengan username "koprodi" / "kaprodi" atau NIP/Email)
@@ -1612,7 +1951,7 @@ export function AuthProvider({ children }) {
             nama: authData.user.user_metadata?.nama || authData.user.user_metadata?.full_name || matchedReg?.nama || 'AULIA AZZAHRA',
             email: authData.user.email,
             nim: term,
-            no_hp: authData.user.user_metadata?.no_hp || matchedReg?.no_hp || '0812781011',
+            no_hp: authData.user.user_metadata?.no_hp || matchedReg?.no_hp || '',
             role: authData.user.user_metadata?.role || matchedReg?.role || 'mahasiswa',
             kelas: authData.user.user_metadata?.kelas || matchedReg?.kelas || 'MI 2024'
           };
@@ -1770,8 +2109,8 @@ export function AuthProvider({ children }) {
   };
 
   // Add new Title Submission (Mahasiswa proposes title + dospem 1 & 2)
-  const addThesisTitle = (newTitleData) => {
-    const newId = `title-${Date.now()}`;
+  const addThesisTitle = async (newTitleData) => {
+    const newId = generateRowId();
     const d1Nip = newTitleData.pembimbing_1_nip || '';
     const d2Nip = newTitleData.pembimbing_2_nip || '';
     const d1Obj = advisors.find(a => a.nip === d1Nip);
@@ -1814,6 +2153,9 @@ export function AuthProvider({ children }) {
     };
 
     setThesisTitles(prev => [createdTitle, ...prev]);
+
+    // Simpan ke tabel riil Supabase agar masuk daftar tinjauan Kaprodi
+    await persistThesisTitle(createdTitle);
 
     const newNotifs = [];
 
@@ -1904,6 +2246,7 @@ export function AuthProvider({ children }) {
     });
 
     if (affectedTitle) {
+      persistThesisTitle(affectedTitle);
       // Notifikasi ke Mahasiswa dengan Integrasi Email
       const studentUser = MOCK_USERS.find(u => u.nim === affectedTitle.mhs_nim);
       const studentEmail = studentUser?.email || (affectedTitle.mhs_nim ? `${affectedTitle.mhs_nim}@student.unsri.ac.id` : '09010182428002@student.unsri.ac.id');
@@ -1960,6 +2303,7 @@ export function AuthProvider({ children }) {
     }));
 
     if (affectedTitle) {
+      persistThesisTitle(affectedTitle);
       const studentUser = MOCK_USERS.find(u => u.nim === affectedTitle.mhs_nim);
       const studentEmail = studentUser?.email || (affectedTitle.mhs_nim ? `${affectedTitle.mhs_nim}@student.unsri.ac.id` : '09010182428002@student.unsri.ac.id');
       const notifTitle = 'Catatan Revisi Pengajuan Judul dari Rapat Prodi';
@@ -2016,6 +2360,7 @@ export function AuthProvider({ children }) {
     }));
 
     if (affectedTitle) {
+      persistThesisTitle(affectedTitle);
       const kaprodiUser = MOCK_USERS.find(u => u.role === 'kaprodi');
       if (kaprodiUser) {
         const notifKaprodi = {
@@ -2037,13 +2382,7 @@ export function AuthProvider({ children }) {
     const targetTitle = thesisTitles.find(t => t.id === titleId);
     setThesisTitles(prev => prev.filter(t => t.id !== titleId));
 
-    if (isSupabaseConfigured && supabase) {
-      try {
-        await supabase.from('thesis_titles').delete().eq('id', titleId);
-      } catch (err) {
-        console.warn('Supabase delete thesis title error:', err);
-      }
-    }
+    await deleteThesisTitleRecord(titleId);
 
     if (targetTitle) {
       const kaprodiUser = MOCK_USERS.find(u => u.role === 'kaprodi');
@@ -2113,6 +2452,9 @@ export function AuthProvider({ children }) {
     }));
 
     if (updatedTitle) {
+      // 0. Simpan status Judul Fix ke tabel riil
+      persistThesisTitle(updatedTitle);
+
       // 1. Auto-assign student advisors in student_advisors record
       assignStudentAdvisors(
         updatedTitle.mhs_nim,
@@ -2221,16 +2563,23 @@ export function AuthProvider({ children }) {
 
   // ── Update Status Akademik & Kelulusan Mahasiswa D3 (Kaprodi) ──
   const updateThesisAcademicStatus = (titleId, statusData) => {
+    let updatedTitle = null;
+
     setThesisTitles(prev => prev.map(t => {
       if (t.id === titleId) {
-        return {
+        updatedTitle = {
           ...t,
           ...statusData,
           updated_at: new Date().toISOString()
         };
+        return updatedTitle;
       }
       return t;
     }));
+
+    if (updatedTitle) {
+      persistThesisTitle(updatedTitle);
+    }
   };
 
   // ── Dispatcher Pengingat Kepatuhan Bimbingan (Min. 2x/Bulan) ke Mahasiswa & Dospem ──
@@ -2503,6 +2852,7 @@ export function AuthProvider({ children }) {
     });
 
     if (updatedTitle) {
+      persistThesisTitle(updatedTitle);
       assignStudentAdvisors(
         updatedTitle.mhs_nim,
         d1Nip,
@@ -2531,6 +2881,8 @@ export function AuthProvider({ children }) {
       return updated;
     });
 
+    persistThesisTitle(target);
+
     // Notifikasi sistem lokal tanpa spamming email berulang (Point 27)
     const notifMhs = {
       id: `notif-mhs-${Date.now()}`,
@@ -2552,19 +2904,26 @@ export function AuthProvider({ children }) {
     if (!titleIds.length) return;
     const idSet = new Set(titleIds);
     const nowIso = new Date().toISOString();
+    const confirmedTitles = [];
 
     setThesisTitles(prev => {
       const updated = prev.map((t, idx) => {
         if (!idSet.has(t.id) || t.dospem_confirmed) return t;
-        return {
+        const next = {
           ...t,
           dospem_confirmed: true,
           dospem_confirmed_at: nowIso
         };
+        confirmedTitles.push(next);
+        return next;
       });
       try { localStorage.setItem('simta_thesis_titles', JSON.stringify(updated)); } catch {}
       return updated;
     });
+
+    if (confirmedTitles.length > 0) {
+      persistThesisTitles(confirmedTitles);
+    }
   };
 
   // Mark all notifications as read
@@ -2876,10 +3235,40 @@ export function AuthProvider({ children }) {
 
     if (isSupabaseConfigured && supabase) {
       try {
-        // Only send columns that exist in the Supabase table (exclude local-only columns)
-        const { dosen_nip, metode, ...supabasePayload } = newEntry;
-        const { error } = await supabase.from('thesis_consultations').insert([supabasePayload]);
-        if (error) console.warn('Supabase consultation insert warning:', error.message);
+        const fullPayload = {
+          id: newEntry.id,
+          mhs_nim: newEntry.mhs_nim,
+          mhs_nama: newEntry.mhs_nama,
+          pembimbing: newEntry.pembimbing,
+          dosen_nama: newEntry.dosen_nama,
+          dosen_nip: newEntry.dosen_nip,
+          metode: newEntry.metode,
+          tanggal: newEntry.tanggal,
+          waktu: newEntry.waktu,
+          bab_topik: newEntry.bab_topik,
+          catatan_mahasiswa: newEntry.catatan_mahasiswa,
+          masukan_dosen: newEntry.masukan_dosen,
+          file_revisi_url: newEntry.file_revisi_url,
+          status: newEntry.status,
+          created_at: newEntry.created_at
+        };
+
+        let { error } = await supabase.from('thesis_consultations').insert([fullPayload]);
+
+        // Kolom metode/dosen_nip belum ada sebelum migrasi dijalankan:
+        // simpan kolom inti dulu supaya konsultasi tetap tercatat.
+        if (error && (error.code === '42703' || error.code === 'PGRST204' || String(error.message || '').includes('does not exist') || String(error.message || '').includes('Could not find'))) {
+          const { dosen_nip, metode, ...minimalPayload } = fullPayload;
+          const retry = await supabase.from('thesis_consultations').insert([minimalPayload]);
+          error = retry.error;
+          if (error) {
+            console.warn('Supabase consultation insert warning:', error.message);
+          } else {
+            console.warn('Konsultasi tersimpan tanpa kolom metode/dosen_nip. Jalankan scripts/thesis_titles_realtime.sql agar grafik metode & peringkat dosen terisi.');
+          }
+        } else if (error) {
+          console.warn('Supabase consultation insert warning:', error.message);
+        }
       } catch (err) {
         console.warn('Failed to insert consultation to Supabase:', err);
       }

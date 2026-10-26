@@ -91,7 +91,7 @@ export default function MahasiswaBimbinganPage() {
         totalConsultations: mhsConsultations.length,
         approvedConsultations: approvedConsultations.length,
         roleInStudent: isD1 ? 'Pembimbing 1' : 'Pembimbing 2',
-        noHp: student.no_hp || '081234567890'
+        noHp: student.no_hp || ''
       };
     });
   }, [assignedStudents, thesisTitles, thesisStages, consultations, userNip, userNama]);
@@ -250,11 +250,15 @@ export default function MahasiswaBimbinganPage() {
                       <Clock className="w-3.5 h-3.5 text-teal-600" />
                       <span>{student.approvedConsultations} Bimbingan Tervalidasi</span>
                     </span>
-                    <span className="text-slate-300">•</span>
-                    <span className="flex items-center space-x-1">
-                      <Phone className="w-3 h-3 text-slate-400" />
-                      <span>{student.noHp}</span>
-                    </span>
+                    {student.noHp && (
+                      <>
+                        <span className="text-slate-300">•</span>
+                        <span className="flex items-center space-x-1">
+                          <Phone className="w-3 h-3 text-slate-400" />
+                          <span>{student.noHp}</span>
+                        </span>
+                      </>
+                    )}
                   </div>
                 </div>
 

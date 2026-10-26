@@ -1,52 +1,35 @@
 import React, { useState, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { Link } from '@inertiajs/react';
-import StatusBadge from '../../Components/common/StatusBadge.jsx';
-import { 
-  calculateBimbinganDashboardStats,
-  MONTH_NAMES
+import {
+  calculateBimbinganDashboardStats
 } from '../../lib/bimbinganDashboardData.js';
-import { 
-  Users, 
-  UserCheck, 
-  FileCheck, 
-  Award, 
-  CheckCircle2, 
-  AlertCircle, 
-  AlertTriangle, 
-  TrendingUp, 
-  TrendingDown, 
-  BarChart3, 
-  PieChart, 
-  Calendar, 
-  CalendarDays, 
-  Clock, 
-  Search, 
-  Filter, 
-  ArrowUpDown, 
-  Download, 
-  FileSpreadsheet, 
-  RefreshCw, 
-  ChevronRight, 
-  X, 
-  ExternalLink, 
-  Sparkles, 
-  ShieldCheck, 
-  Globe, 
-  Building2, 
-  Check, 
-  SlidersHorizontal, 
-  Bell, 
-  Send, 
-  History, 
-  GraduationCap, 
-  FileText, 
-  Printer, 
+import {
+  Users,
+  UserCheck,
+  FileCheck,
+  Award,
+  CheckCircle2,
+  AlertCircle,
+  AlertTriangle,
+  BarChart3,
+  PieChart,
+  Calendar,
+  CalendarDays,
+  Clock,
+  Search,
+  ArrowUpDown,
+  Download,
+  ChevronRight,
+  X,
+  Sparkles,
+  Globe,
+  GraduationCap,
+  FileText,
   Edit3,
-  Layers,
-  ArrowRight
+  ArrowRight,
+  Database
 } from 'lucide-react';
-import { getSimilarityColorMeta } from './DashboardKaprodiSimilarityHelper.js';
 
 /**
  * Reusable interactive SVG Donut Chart with center tooltip and legend
@@ -176,19 +159,11 @@ function DonutChart({
 export default function DashboardKaprodi() {
   const { 
     thesisTitles = [], 
-    thesisStages = [], 
-    bookings = [], 
-    defenseSchedules = [], 
     advisors = [], 
     studentAdvisors = [],
     consultations = [],
-    registeredUsers = [],
-    remindAdvisorAboutThesis,
-    updateThesisAcademicStatus 
+    registeredUsers = []
   } = useAuth();
-
-  // Active Main Navigation Tab: 'ringkasan_prodi' (Default) | 'pemantauan_judul'
-  const [activeMainTab, setActiveMainTab] = useState('ringkasan_prodi');
 
   // =========================================================================
   // 1. DATA COMPUTATION FOR RINGKASAN KONDISI BIMBINGAN SELURUH PRODI
@@ -334,111 +309,12 @@ export default function DashboardKaprodi() {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Rekap_Bimbingan_${selectedMonthModal.monthData.short}_2026.csv`);
+    link.setAttribute('download', `Rekap_Bimbingan_${selectedMonthModal.monthData.short}_${selectedMonthModal.monthData.year}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     showToast(`Berhasil mengunduh berkas CSV rekap bimbingan bulan ${selectedMonthModal.monthData.name}!`);
   };
-
-  // =========================================================================
-  // 2. STATE FOR TAB 2 (MONITORING JUDUL & KELULUSAN D3)
-  // =========================================================================
-  const [similarityThreshold, setSimilarityThreshold] = useState(30);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeFilterTab, setActiveFilterTab] = useState('all');
-  const [sortBy, setSortBy] = useState('similarity_desc');
-  const [selectedAdvisorFilter, setSelectedAdvisorFilter] = useState('');
-
-  const [reminderModal, setReminderModal] = useState({
-    isOpen: false,
-    title: null,
-    targetAdvisorNip: 'all',
-    customMessage: '',
-    isSending: false
-  });
-
-  const [historyModal, setHistoryModal] = useState({
-    isOpen: false,
-    title: null
-  });
-
-  const [academicDetailModal, setAcademicDetailModal] = useState({ isOpen: false, student: null });
-  const [academicEditModal, setAcademicEditModal] = useState({
-    isOpen: false,
-    student: null,
-    status_kelulusan: 'aktif_proses',
-    status_sidang: 'bimbingan',
-    nilai_sidang: '',
-    tanggal_lulus: '',
-    no_sk_lulus: ''
-  });
-
-  // KPI for Title Monitoring
-  const kpiData = useMemo(() => {
-    const total = thesisTitles.length;
-    const safeCount = thesisTitles.filter(t => (Number(t.skor_kemiripan_terakhir) || 0) <= similarityThreshold).length;
-    const warningCount = thesisTitles.filter(t => (Number(t.skor_kemiripan_terakhir) || 0) > similarityThreshold).length;
-    const withRevisionsCount = thesisTitles.filter(t => Array.isArray(t.riwayat_revisi) && t.riwayat_revisi.length > 1).length;
-    const fixCount = thesisTitles.filter(t => t.status === 'disetujui' || t.status === 'judul_fix').length;
-
-    return { total, safeCount, warningCount, withRevisionsCount, fixCount };
-  }, [thesisTitles, similarityThreshold]);
-
-  // Filtered titles
-  const filteredAndSortedTitles = useMemo(() => {
-    let result = [...thesisTitles];
-
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
-      result = result.filter(t => 
-        (t.mhs_nama && t.mhs_nama.toLowerCase().includes(q)) ||
-        (t.mhs_nim && t.mhs_nim.toLowerCase().includes(q)) ||
-        (t.judul && t.judul.toLowerCase().includes(q)) ||
-        (t.pembimbing_1_nama && t.pembimbing_1_nama.toLowerCase().includes(q)) ||
-        (t.pembimbing_2_nama && t.pembimbing_2_nama.toLowerCase().includes(q))
-      );
-    }
-
-    if (selectedAdvisorFilter) {
-      result = result.filter(t => 
-        t.pembimbing_1_nip === selectedAdvisorFilter || 
-        t.pembimbing_2_nip === selectedAdvisorFilter
-      );
-    }
-
-    if (activeFilterTab === 'above_threshold') {
-      result = result.filter(t => (Number(t.skor_kemiripan_terakhir) || 0) > similarityThreshold);
-    } else if (activeFilterTab === 'safe') {
-      result = result.filter(t => (Number(t.skor_kemiripan_terakhir) || 0) <= similarityThreshold);
-    } else if (activeFilterTab === 'has_revisions') {
-      result = result.filter(t => Array.isArray(t.riwayat_revisi) && t.riwayat_revisi.length > 1);
-    } else if (activeFilterTab === 'fix') {
-      result = result.filter(t => t.status === 'disetujui' || t.status === 'judul_fix');
-    }
-
-    result.sort((a, b) => {
-      const simA = Number(a.skor_kemiripan_terakhir) || 0;
-      const simB = Number(b.skor_kemiripan_terakhir) || 0;
-
-      if (sortBy === 'similarity_desc') return simB - simA;
-      if (sortBy === 'similarity_asc') return simA - simB;
-      if (sortBy === 'name') return (a.mhs_nama || '').localeCompare(b.mhs_nama || '');
-      return new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0);
-    });
-
-    return result;
-  }, [thesisTitles, searchQuery, selectedAdvisorFilter, activeFilterTab, sortBy, similarityThreshold]);
-
-  // Unique Advisors for Filter dropdown
-  const advisorOptions = useMemo(() => {
-    const map = new Map();
-    thesisTitles.forEach(t => {
-      if (t.pembimbing_1_nip && t.pembimbing_1_nama) map.set(t.pembimbing_1_nip, t.pembimbing_1_nama);
-      if (t.pembimbing_2_nip && t.pembimbing_2_nama) map.set(t.pembimbing_2_nip, t.pembimbing_2_nama);
-    });
-    return Array.from(map.entries()).map(([nip, nama]) => ({ nip, nama }));
-  }, [thesisTitles]);
 
   return (
     <div className="space-y-6">
@@ -514,51 +390,26 @@ export default function DashboardKaprodi() {
         </div>
       </div>
 
-      {/* Main Tab Switcher Bar */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-1.5 shadow-2xs flex items-center justify-between">
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => setActiveMainTab('ringkasan_prodi')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
-              activeMainTab === 'ringkasan_prodi'
-                ? 'bg-indigo-600 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <BarChart3 className="w-4 h-4" />
-            <span>1. Ringkasan Kondisi Bimbingan Seluruh Prodi</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveMainTab('pemantauan_judul')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
-              activeMainTab === 'pemantauan_judul'
-                ? 'bg-indigo-600 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <ShieldCheck className="w-4 h-4" />
-            <span>2. Pemantauan Similarity &amp; Kelulusan D3</span>
-          </button>
+      {/* Header periode akademik */}
+      <div className="bg-white border border-slate-200 rounded-2xl px-3 py-2 shadow-2xs flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <BarChart3 className="w-4 h-4 text-indigo-600" />
+          <span className="text-xs font-bold text-slate-800">Ringkasan Kondisi Bimbingan Seluruh Prodi</span>
         </div>
 
         <div className="hidden md:flex items-center gap-2 pr-2 text-xs text-slate-500 font-medium">
           <CalendarDays className="w-3.5 h-3.5 text-slate-400" />
-          <span>Tahun Akademik 2026/2027 &bull; Semester Ganjil</span>
+          <span>{dashboardStats.academicPeriod.full}</span>
         </div>
       </div>
 
       {/* ========================================================================= */}
-      {/* VIEW 1: RINGKASAN KONDISI BIMBINGAN SELURUH PRODI (USER SPECIFICATION)     */}
-      {/* Layout:                                                                   */}
+      {/* RINGKASAN KONDISI BIMBINGAN SELURUH PRODI                                  */}
       {/* Baris 1: 4 kartu ringkasan                                                */}
       {/* Baris 2: chart batang Beban Bimbingan (kiri) & Bimbingan per Bulan (kanan) */}
       {/* Baris 3: donut Status, donut Jenis, tabel Dosen, tabel Mahasiswa Top 10    */}
       {/* ========================================================================= */}
-      {activeMainTab === 'ringkasan_prodi' && (
-        <div className="space-y-6 animate-in fade-in duration-300">
+      <div className="space-y-6 animate-in fade-in duration-300">
           
           {/* ===================================================================== */}
           {/* BARIS 1: 4 KARTU RINGKASAN                                            */}
@@ -594,11 +445,11 @@ export default function DashboardKaprodi() {
                     onClick={() => setIsExcelInfoOpen(true)}
                     className="text-indigo-600 hover:text-indigo-800 font-bold lowercase text-[10px]"
                   >
-                    excel sync
+                    sumber data
                   </button>
                 </div>
                 
-                <div className="grid grid-cols-3 gap-1.5 text-center">
+                <div className="grid grid-cols-4 gap-1.5 text-center">
                   <div className="bg-blue-50/80 border border-blue-200/70 rounded-lg py-1 px-1">
                     <span className="text-[9px] font-bold text-blue-700 block uppercase">Aktif</span>
                     <span className="text-xs font-black text-blue-900">{dashboardStats.studentStatus.aktif}</span>
@@ -614,6 +465,11 @@ export default function DashboardKaprodi() {
                     <span className="text-xs font-black text-rose-900">{dashboardStats.studentStatus.tidakAktif}</span>
                     <span className="text-[9px] text-rose-600 font-medium block">({dashboardStats.studentStatus.persenTidakAktif}%)</span>
                   </div>
+                  <div className="bg-slate-50/80 border border-slate-200/70 rounded-lg py-1 px-1">
+                    <span className="text-[9px] font-bold text-slate-600 block uppercase">Belum Ajukan</span>
+                    <span className="text-xs font-black text-slate-800">{dashboardStats.studentStatus.belumMengajukan}</span>
+                    <span className="text-[9px] text-slate-500 font-medium block">({dashboardStats.studentStatus.persenBelumMengajukan}%)</span>
+                  </div>
                 </div>
 
                 {/* Mini Segmented Bar */}
@@ -621,6 +477,7 @@ export default function DashboardKaprodi() {
                   <div className="bg-blue-600 h-full" style={{ width: `${dashboardStats.studentStatus.persenAktif}%` }} title={`Aktif: ${dashboardStats.studentStatus.aktif}`} />
                   <div className="bg-emerald-500 h-full" style={{ width: `${dashboardStats.studentStatus.persenLulus}%` }} title={`Lulus: ${dashboardStats.studentStatus.lulus}`} />
                   <div className="bg-rose-400 h-full" style={{ width: `${dashboardStats.studentStatus.persenTidakAktif}%` }} title={`Tidak Aktif: ${dashboardStats.studentStatus.tidakAktif}`} />
+                  <div className="bg-slate-400 h-full" style={{ width: `${dashboardStats.studentStatus.persenBelumMengajukan}%` }} title={`Belum Mengajukan: ${dashboardStats.studentStatus.belumMengajukan}`} />
                 </div>
               </div>
             </div>
@@ -645,12 +502,14 @@ export default function DashboardKaprodi() {
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-slate-500 font-medium">Beban Kuota Rata-rata:</span>
                   <span className="font-extrabold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-200 text-[11px]">
-                    ~16 Mhs / Dosen
+                    ~{dashboardStats.advisorWorkloadSummary.rataRataBeban} Mhs / Dosen
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                  <span>100% Pembimbing aktif membimbing P1 &amp; P2</span>
+                  <span>
+                    {dashboardStats.advisorWorkloadSummary.advisorAktifCount} dari {dashboardStats.advisorWorkloadSummary.totalDosen} dosen sudah membimbing ({dashboardStats.advisorWorkloadSummary.persenAdvisorAktif}%)
+                  </span>
                 </div>
               </div>
             </div>
@@ -773,25 +632,32 @@ export default function DashboardKaprodi() {
                       <span className="text-[11px] font-bold text-slate-700">Pembimbing-2 (P2)</span>
                     </div>
                   </div>
-                  <span className="text-[10px] text-slate-400 font-medium">Kapasitas Max: 16 Mhs</span>
+                  <span className="text-[10px] text-slate-400 font-medium">Kuota Maks: {dashboardStats.advisorWorkloadSummary.kapasitasMaksBeban} Mhs</span>
                 </div>
 
                 {/* Sumbu Y & Gridlines with Scrollable X-Axis */}
                 <div className="relative border-b border-slate-200">
                   {/* Horizontal Gridlines */}
                   <div className="absolute inset-0 flex flex-col justify-between pointer-events-none text-[9px] text-slate-400 pb-12">
-                    <div className="border-b border-slate-100 w-full flex items-center justify-between"><span className="bg-white/90 px-0.5">16</span></div>
-                    <div className="border-b border-slate-100 w-full flex items-center justify-between"><span className="bg-white/90 px-0.5">12</span></div>
-                    <div className="border-b border-slate-100 w-full flex items-center justify-between"><span className="bg-white/90 px-0.5">8</span></div>
-                    <div className="border-b border-slate-100 w-full flex items-center justify-between"><span className="bg-white/90 px-0.5">4</span></div>
-                    <div className="border-b border-slate-200 w-full flex items-center justify-between"><span className="bg-white/90 px-0.5">0</span></div>
+                    {(() => {
+                      const maxTick = dashboardStats.advisorWorkloadSummary.kapasitasMaksBeban;
+                      const ticks = [1, 0.75, 0.5, 0.25, 0].map(f => Math.round(maxTick * f));
+                      return ticks.map((val, i) => (
+                        <div
+                          key={`tick-${i}`}
+                          className={`border-b w-full flex items-center justify-between ${i === ticks.length - 1 ? 'border-slate-200' : 'border-slate-100'}`}
+                        >
+                          <span className="bg-white/90 px-0.5">{val}</span>
+                        </div>
+                      ));
+                    })()}
                   </div>
 
                   {/* Scrollable Columns */}
                   <div className="overflow-x-auto pb-1 pl-5">
                     <div className="h-56 flex items-end justify-between gap-3 min-w-[620px] pt-4">
                       {sortedWorkloads.map((adv) => {
-                        const maxVal = 16;
+                        const maxVal = dashboardStats.advisorWorkloadSummary.kapasitasMaksBeban;
                         const heightP1 = Math.min(100, Math.round((adv.p1Count / maxVal) * 100));
                         const heightP2 = Math.min(100, Math.round((adv.p2Count / maxVal) * 100));
                         const displayName = adv.nama.replace(/^(Dr\.|Prof\.|Ir\.)\s*/i, '').split(',')[0].trim();
@@ -887,9 +753,9 @@ export default function DashboardKaprodi() {
                 {/* Chart Area */}
                 <div className="h-56 flex items-end justify-between gap-2 sm:gap-2.5 px-1 border-b border-slate-200">
                   {dashboardStats.monthlyChartData.map((m) => {
-                    const maxMonthly = 350;
-                    const heightPercent = Math.min(100, Math.max(12, Math.round((m.total / maxMonthly) * 100)));
-                    const isOctober = m.key === '2026-10';
+                    const maxMonthly = Math.max(1, dashboardStats.summary.maxMonthlyTotal);
+                    const heightPercent = Math.min(100, Math.max(2, Math.round((m.total / maxMonthly) * 100)));
+                    const isCurrentMonth = m.key === dashboardStats.summary.currentMonthKey;
 
                     return (
                       <div 
@@ -910,7 +776,7 @@ export default function DashboardKaprodi() {
                         >
                           <div 
                             className={`w-full h-full transition-all duration-300 rounded-t-lg flex flex-col justify-between p-1 ${
-                              isOctober 
+                              isCurrentMonth 
                                 ? 'bg-gradient-to-t from-emerald-600 to-teal-500 ring-2 ring-emerald-400' 
                                 : 'bg-gradient-to-t from-emerald-600 to-emerald-400 group-hover:from-emerald-500 group-hover:to-teal-300'
                             }`}
@@ -926,7 +792,7 @@ export default function DashboardKaprodi() {
 
                         {/* Label Sumbu X: MM/YYYY */}
                         <span className={`text-[10px] font-bold mt-2 transition-colors font-mono ${
-                          isOctober ? 'text-emerald-700 font-black' : 'text-slate-600 group-hover:text-emerald-600'
+                          isCurrentMonth ? 'text-emerald-700 font-black' : 'text-slate-600 group-hover:text-emerald-600'
                         }`}>
                           {m.labelMMYYYY}
                         </span>
@@ -1194,176 +1060,6 @@ export default function DashboardKaprodi() {
           </div>
 
         </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* VIEW 2: PEMANTAUAN JUDUL & SIMILARITY CHECK (RETAINED FROM PREVIOUS)      */}
-      {/* ========================================================================= */}
-      {activeMainTab === 'pemantauan_judul' && (
-        <div className="space-y-6 animate-in fade-in duration-300">
-          
-          {/* KPI Title Monitoring */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs space-y-1">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Total Usulan Dipantau</span>
-              <div className="text-2xl font-black text-slate-900 pt-1">{kpiData.total} Mahasiswa</div>
-              <p className="text-[11px] text-slate-500">Usulan judul aktif dalam sistem</p>
-            </div>
-
-            <div 
-              onClick={() => setActiveFilterTab('above_threshold')}
-              className={`cursor-pointer bg-white border rounded-xl p-4 shadow-2xs space-y-1 transition-all ${
-                activeFilterTab === 'above_threshold' ? 'ring-2 ring-rose-500 border-rose-300 bg-rose-50/20' : 'border-slate-200 hover:border-rose-400'
-              }`}
-            >
-              <div className="text-xs font-bold text-rose-700 uppercase tracking-wider flex items-center justify-between">
-                <span>Di Atas Ambang (&gt; {similarityThreshold}%)</span>
-                <AlertTriangle className="w-4 h-4 text-rose-600" />
-              </div>
-              <div className="text-2xl font-black text-rose-700 pt-1">{kpiData.warningCount} Mahasiswa</div>
-              <p className="text-[11px] text-rose-600 font-medium">Perlu perhatian &amp; revisi</p>
-            </div>
-
-            <div 
-              onClick={() => setActiveFilterTab('safe')}
-              className={`cursor-pointer bg-white border rounded-xl p-4 shadow-2xs space-y-1 transition-all ${
-                activeFilterTab === 'safe' ? 'ring-2 ring-emerald-500 border-emerald-300 bg-emerald-50/20' : 'border-slate-200 hover:border-emerald-400'
-              }`}
-            >
-              <div className="text-xs font-bold text-emerald-700 uppercase tracking-wider flex items-center justify-between">
-                <span>Aman (&le; {similarityThreshold}%)</span>
-                <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              </div>
-              <div className="text-2xl font-black text-emerald-600 pt-1">{kpiData.safeCount} Mahasiswa</div>
-              <p className="text-[11px] text-emerald-600 font-medium">Batas aman bimbingan</p>
-            </div>
-
-            <div 
-              onClick={() => setActiveFilterTab('has_revisions')}
-              className={`cursor-pointer bg-white border rounded-xl p-4 shadow-2xs space-y-1 transition-all ${
-                activeFilterTab === 'has_revisions' ? 'ring-2 ring-indigo-500 border-indigo-300 bg-indigo-50/20' : 'border-slate-200 hover:border-indigo-400'
-              }`}
-            >
-              <span className="text-xs font-bold text-indigo-700 uppercase tracking-wider block">Ada Riwayat Revisi</span>
-              <div className="text-2xl font-black text-indigo-700 pt-1">{kpiData.withRevisionsCount} Mahasiswa</div>
-              <p className="text-[11px] text-indigo-600">Telah mengunggah perbaikan</p>
-            </div>
-
-            <div 
-              onClick={() => setActiveFilterTab('fix')}
-              className={`cursor-pointer bg-white border rounded-xl p-4 shadow-2xs space-y-1 transition-all ${
-                activeFilterTab === 'fix' ? 'ring-2 ring-teal-500 border-teal-300 bg-teal-50/20' : 'border-slate-200 hover:border-teal-400'
-              }`}
-            >
-              <span className="text-xs font-bold text-teal-800 uppercase tracking-wider block">Judul Fix Disetujui</span>
-              <div className="text-2xl font-black text-teal-700 pt-1">{kpiData.fixCount} Judul</div>
-              <p className="text-[11px] text-teal-600">Disetujui rapat prodi</p>
-            </div>
-          </div>
-
-          {/* Threshold Controls */}
-          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-3">
-            <div className="space-y-0.5">
-              <div className="flex items-center gap-2">
-                <SlidersHorizontal className="w-4 h-4 text-indigo-600" />
-                <span className="text-xs font-bold text-slate-900">
-                  Ambang Batas Toleransi Similarity: {similarityThreshold}%
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-500">Judul di bawah batas ini dianggap aman melanjutkan pembimbingan proposal.</p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              {[20, 25, 30, 35, 40].map(val => (
-                <button
-                  key={val}
-                  type="button"
-                  onClick={() => setSimilarityThreshold(val)}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                    similarityThreshold === val
-                      ? 'bg-indigo-600 text-white shadow-xs'
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                  }`}
-                >
-                  {val}%
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Table Titles */}
-          <div className="bg-white border border-slate-200 rounded-xl shadow-2xs overflow-hidden">
-            <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <Users className="w-4 h-4 text-indigo-600" />
-                <span>Matriks Pemantauan Similarity Judul Tugas Akhir D3</span>
-              </h3>
-              
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  placeholder="Cari nama, NIM, judul..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 w-60"
-                />
-              </div>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-slate-50/80 border-b border-slate-200 font-bold text-slate-600 uppercase text-[10px]">
-                    <th className="py-3 px-4">Mahasiswa</th>
-                    <th className="py-3 px-4">Judul yang Diusulkan</th>
-                    <th className="py-3 px-4 text-center">Similarity</th>
-                    <th className="py-3 px-4">Dosen Pembimbing</th>
-                    <th className="py-3 px-4 text-right">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filteredAndSortedTitles.map(t => {
-                    const currentScore = Number(t.skor_kemiripan_terakhir) || 0;
-                    const colorMeta = getSimilarityColorMeta(currentScore, similarityThreshold);
-
-                    return (
-                      <tr key={t.id} className="hover:bg-slate-50/60 transition-colors">
-                        <td className="py-3 px-4 font-semibold text-slate-900">
-                          <div>{t.mhs_nama}</div>
-                          <div className="text-[10px] text-slate-400 font-mono">{t.mhs_nim} &bull; {t.mhs_kelas}</div>
-                        </td>
-                        <td className="py-3 px-4 max-w-md">
-                          <p className="font-medium text-slate-900">{t.judul}</p>
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <span className={`text-base font-black ${colorMeta.scoreText}`}>
-                            {currentScore.toFixed(1)}%
-                          </span>
-                          <div className="text-[10px] font-bold text-slate-500">{colorMeta.statusLabel}</div>
-                        </td>
-                        <td className="py-3 px-4 text-slate-700">
-                          <div>P1: {t.pembimbing_1_nama || '-'}</div>
-                          <div>P2: {t.pembimbing_2_nama || '-'}</div>
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          <button
-                            type="button"
-                            onClick={() => setHistoryModal({ isOpen: true, title: t })}
-                            className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold rounded-lg transition-colors"
-                          >
-                            Riwayat
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-        </div>
-      )}
 
       {/* ========================================================================= */}
       {/* DRILLDOWN MODAL: DETAIL LOG BIMBINGAN BULAN TERPILIH (REQUIREMENT 4)      */}
@@ -1568,7 +1264,7 @@ export default function DashboardKaprodi() {
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL METADATA EXCEL SYNC INFO                                           */}
+      {/* MODAL SUMBER DATA STATUS MAHASISWA                                        */}
       {/* ========================================================================= */}
       {isExcelInfoOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
@@ -1576,14 +1272,14 @@ export default function DashboardKaprodi() {
             <div className="flex items-start justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center space-x-3">
                 <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-200 shrink-0">
-                  <FileSpreadsheet className="w-5 h-5" />
+                  <Database className="w-5 h-5" />
                 </div>
                 <div>
                   <h3 className="text-base font-extrabold text-slate-900">
-                    Metadata Sinkronisasi Excel Prodi
+                    Sumber Data Status Mahasiswa
                   </h3>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    Informasi pembaruan berkas status mahasiswa TA
+                    Dihitung langsung dari database SIMTA, bukan dari berkas manual
                   </p>
                 </div>
               </div>
@@ -1594,25 +1290,25 @@ export default function DashboardKaprodi() {
 
             <div className="space-y-2.5 text-xs bg-slate-50 p-4 rounded-xl border border-slate-200">
               <div>
-                <span className="text-slate-500 block">Nama Berkas Sumber:</span>
-                <span className="font-mono font-bold text-slate-900 text-xs">{dashboardStats.studentStatus.excelMeta.fileName}</span>
+                <span className="text-slate-500 block">Sumber Data:</span>
+                <span className="font-mono font-bold text-slate-900 text-xs break-all">{dashboardStats.studentStatus.excelMeta.fileName}</span>
               </div>
               <div>
-                <span className="text-slate-500 block">Waktu Sinkronisasi Terakhir:</span>
+                <span className="text-slate-500 block">Pembaruan Terakhir:</span>
                 <span className="font-bold text-slate-900">{dashboardStats.studentStatus.excelMeta.lastSync}</span>
               </div>
               <div>
-                <span className="text-slate-500 block">Total Baris Terproses:</span>
+                <span className="text-slate-500 block">Total Mahasiswa Terhitung:</span>
                 <span className="font-bold text-slate-900">{dashboardStats.studentStatus.excelMeta.totalRows} Mahasiswa</span>
               </div>
               <div>
-                <span className="text-slate-500 block">Pengunggah:</span>
+                <span className="text-slate-500 block">Metode:</span>
                 <span className="font-bold text-slate-900">{dashboardStats.studentStatus.excelMeta.importedBy}</span>
               </div>
             </div>
 
             <p className="text-xs text-slate-600 leading-relaxed">
-              Data status (Aktif, Lulus, dan Tidak Aktif) diperbarui secara periodik dengan mengunggah template Excel prodi pada menu Bulk Import.
+              {dashboardStats.studentStatus.excelMeta.keterangan}
             </p>
 
             <div className="pt-2 flex justify-end gap-2 border-t border-slate-100">
@@ -1627,27 +1323,6 @@ export default function DashboardKaprodi() {
                 onClick={() => setIsExcelInfoOpen(false)}
                 className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-colors"
               >
-                Tutup
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Retention of Modal History & Reminder for Tab 2 */}
-      {historyModal.isOpen && historyModal.title && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[85vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-sm font-bold text-slate-900">Riwayat Usulan Judul</h3>
-              <button onClick={() => setHistoryModal({ isOpen: false, title: null })}>
-                <X className="w-5 h-5 text-slate-400" />
-              </button>
-            </div>
-            <p className="text-xs text-slate-700 font-serif italic">&ldquo;{historyModal.title.judul}&rdquo;</p>
-            <div className="text-xs text-slate-500">Skor Terakhir: {historyModal.title.skor_kemiripan_terakhir}%</div>
-            <div className="flex justify-end pt-2">
-              <button onClick={() => setHistoryModal({ isOpen: false, title: null })} className="px-4 py-1.5 bg-slate-100 text-xs font-bold rounded-lg">
                 Tutup
               </button>
             </div>

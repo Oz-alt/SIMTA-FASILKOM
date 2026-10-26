@@ -119,7 +119,7 @@ export default function Sidebar() {
               label: 'Tugas Akhir',
               icon: GraduationCap,
               items: [
-                { to: '/kaprodi/titles', label: 'Tinjau Pengajuan TA', icon: CheckSquare },
+                { to: '/kaprodi/titles', label: 'Monitoring Tugas Akhir', icon: CheckSquare },
                 { to: '/kaprodi/advisors', label: 'Pembagian Dosen Pembimbing', icon: UserCheck },
                 { to: '/kaprodi/defense-schedules', label: 'Manajemen Jadwal Sidang', icon: CalendarDays }
               ]
@@ -376,7 +376,7 @@ export default function Sidebar() {
             const isActive = isRouteActive(item.to);
             return (
               <Link
-                key={item.to}
+                key={item.label}
                 href={item.to}
                 className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${
                   isActive

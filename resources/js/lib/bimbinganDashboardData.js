@@ -1,216 +1,164 @@
 /**
  * SIMTA - Kaprodi Bimbingan Dashboard Analytics Data Engine
- * Menyediakan agregasi metrik ringkasan kondisi bimbingan seluruh prodi D3 Manajemen Informatika
+ *
+ * Semua angka dihitung dari data riil tabel Supabase:
+ * student_advisors, advisors, thesis_consultations, thesis_titles.
+ * Tidak ada angka dummy / generator acak / fallback karangan.
  */
 
-export const MONTH_NAMES = [
-  { key: '2026-01', name: 'Januari 2026', short: 'Jan', labelMMYYYY: '01/2026' },
-  { key: '2026-02', name: 'Februari 2026', short: 'Feb', labelMMYYYY: '02/2026' },
-  { key: '2026-03', name: 'Maret 2026', short: 'Mar', labelMMYYYY: '03/2026' },
-  { key: '2026-04', name: 'April 2026', short: 'Apr', labelMMYYYY: '04/2026' },
-  { key: '2026-05', name: 'Mei 2026', short: 'Mei', labelMMYYYY: '05/2026' },
-  { key: '2026-06', name: 'Juni 2026', short: 'Jun', labelMMYYYY: '06/2026' },
-  { key: '2026-07', name: 'Juli 2026', short: 'Jul', labelMMYYYY: '07/2026' },
-  { key: '2026-08', name: 'Agustus 2026', short: 'Ags', labelMMYYYY: '08/2026' },
-  { key: '2026-09', name: 'September 2026', short: 'Sep', labelMMYYYY: '09/2026' },
-  { key: '2026-10', name: 'Oktober 2026', short: 'Okt', labelMMYYYY: '10/2026' },
+const MONTH_SHORT_ID = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
+const MONTH_FULL_ID = [
+  'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
 ];
 
-// Sample realistic topics for consultations
-const SAMPLE_TOPICS = [
-  'Bab 1 - Latar Belakang & Batasan Masalah',
-  'Bab 1 - Perumusan Masalah & Tujuan Penelitian',
-  'Bab 2 - Kajian Pustaka & State-of-the-Art',
-  'Bab 2 - Landasan Teori Algoritma & Arsitektur',
-  'Bab 3 - Metodologi, Flowchart & Use Case',
-  'Bab 3 - Perancangan Basis Data (ERD & DFD)',
-  'Bab 3 - Desain Antarmuka Pengguna (UI/UX Mockup)',
-  'Bab 4 - Implementasi Backend API & Frontend',
-  'Bab 4 - Pengujian Fungsional Black Box Testing',
-  'Bab 4 - Analisis Kecepatan & Pengujian UAT',
-  'Bab 5 - Kesimpulan, Saran & Draf Laporan Akhir'
-];
+const CHART_MONTH_WINDOW = 10;
 
-const SAMPLE_FEEDBACK = [
-  'Format penulisan sudah sesuai panduan TA. Lanjutkan bab berikutnya.',
-  'Perjelas batasan masalah sistem pada sub-bab 1.2.',
-  'Tambahkan referensi jurnal terindeks 3 tahun terakhir.',
-  'Perbaiki relasi ERD pada entitas transaksi dan relasi many-to-many.',
-  'Desain antarmuka sudah clean dan responsif. Siapkan draf pengujian.',
-  'Perbaiki tabel pengujian black box dan sertakan screenshot error handling.',
-  'Hasil UAT memuaskan. Lengkapi abstrak bahasa Indonesia dan Inggris.',
-  'Perlu perbaikan struktur kalimat pada Bab 4.3.',
-  'Revisi minor pada diagram alur data telah diverifikasi.',
-  'Draf laporan akhir telah disetujui untuk pendaftaran sidang.'
-];
-
-/**
- * Deterministic PRNG to generate consistent, realistic data based on seed
- */
-function pseudoRandom(seed) {
-  const x = Math.sin(seed++) * 10000;
-  return x - Math.floor(x);
+/** 10 bulan terakhir s.d. bulan berjalan, dihitung dari tanggal sistem. */
+export function buildMonthRange(referenceDate = new Date(), windowSize = CHART_MONTH_WINDOW) {
+  const months = [];
+  for (let i = windowSize - 1; i >= 0; i--) {
+    const d = new Date(referenceDate.getFullYear(), referenceDate.getMonth() - i, 1);
+    const year = d.getFullYear();
+    const monthIdx = d.getMonth();
+    months.push({
+      key: `${year}-${String(monthIdx + 1).padStart(2, '0')}`,
+      name: `${MONTH_FULL_ID[monthIdx]} ${year}`,
+      short: MONTH_SHORT_ID[monthIdx],
+      year,
+      labelMMYYYY: `${String(monthIdx + 1).padStart(2, '0')}/${year}`
+    });
+  }
+  return months;
 }
 
-/**
- * Generate comprehensive monthly consultation log records
- */
-export function generateMonthlyConsultationLogs(advisors = [], studentAdvisors = []) {
-  const logsByMonth = {};
-  
-  MONTH_NAMES.forEach(m => {
-    logsByMonth[m.key] = [];
-  });
+export const MONTH_NAMES = buildMonthRange();
 
-  if (!studentAdvisors.length || !advisors.length) {
-    return logsByMonth;
+/** Ambil kunci bulan (YYYY-MM) dari sebuah tanggal. */
+const monthKeyOf = (value) => {
+  if (!value) return '';
+  const raw = String(value);
+  const iso = /^(\d{4})-(\d{2})/.exec(raw);
+  if (iso) return `${iso[1]}-${iso[2]}`;
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return '';
+  return `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}`;
+};
+
+/** Status konsultasi Supabase → 4 kategori dasbor. */
+export const normalizeConsultationStatus = (consultation) => {
+  const raw = String(consultation?.status || '').toLowerCase();
+  const jenis = String(consultation?.jenis_revisi || '').toLowerCase();
+
+  if (raw === 'disetujui') return 'disetujui';
+  if (raw === 'ditolak') return 'revisi_mayor';
+  if (raw === 'revisi_mayor') return 'revisi_mayor';
+  if (raw === 'revisi_minor') return 'revisi_minor';
+  if (raw === 'perlu_revisi' || raw === 'revisi') {
+    return jenis === 'mayor' ? 'revisi_mayor' : 'revisi_minor';
   }
+  return 'menunggu_validasi';
+};
 
-  // Pre-index advisors by NIP
-  const advisorMap = new Map();
-  advisors.forEach(a => advisorMap.set(a.nip, a));
+/** Metode bimbingan; kosong berarti belum dicatat (bukan asumsi Luring). */
+export const normalizeConsultationMetode = (consultation) => {
+  const raw = String(consultation?.metode || '').trim().toLowerCase();
+  if (raw === 'daring' || raw === 'online') return 'Daring';
+  if (raw === 'luring' || raw === 'offline' || raw === 'tatap muka') return 'Luring';
+  return 'Belum Dicatat';
+};
 
-  let globalIdCounter = 1;
-  const totalStudents = studentAdvisors.length;
-  // Approximately 68% (e.g. 75 of 110) fulfill the >= 24 consultations criteria
-  const targetCompletedCount = Math.round(totalStudents * 0.682);
+/** Kelompokkan konsultasi riil per bulan (YYYY-MM). */
+export function bucketConsultationsByMonth(liveConsultations = [], months = MONTH_NAMES) {
+  const logsByMonth = {};
+  months.forEach(m => { logsByMonth[m.key] = []; });
 
-  // Generate sessions per student based on their progress cohort
-  studentAdvisors.forEach((student, studentIdx) => {
-    const isCompleted = studentIdx < targetCompletedCount;
-    // Students who met target have 24 - 31 sessions; in-progress students have 11 - 22 sessions
-    const totalStudentSessions = isCompleted 
-      ? 24 + (studentIdx % 8) 
-      : 11 + (studentIdx % 12);
-
-    const adv1 = advisorMap.get(student.dospem1_nip) || advisors[0];
-    const adv2 = advisorMap.get(student.dospem2_nip) || advisors[1 % advisors.length];
-
-    for (let s = 0; s < totalStudentSessions; s++) {
-      // Map session index across the 10 months (Jan - Oct)
-      const mIdx = Math.min(9, Math.floor((s / totalStudentSessions) * 10));
-      const monthObj = MONTH_NAMES[mIdx];
-      const yearMonth = monthObj.key;
-      const daysInMonth = mIdx === 1 ? 28 : (mIdx === 3 || mIdx === 5 || mIdx === 8 ? 30 : 31);
-
-      // Alternate between P1 and P2
-      const isP1 = (s % 2 === 0);
-      const adv = isP1 ? adv1 : adv2;
-      const roleLabel = isP1 ? 'Pembimbing 1' : 'Pembimbing 2';
-
-      const daySeed = pseudoRandom(studentIdx * 43 + s * 17);
-      const day = Math.min(daysInMonth, Math.max(1, Math.floor(daySeed * daysInMonth) + 1));
-      const dayFormatted = String(day).padStart(2, '0');
-      const tanggal = `${yearMonth}-${dayFormatted}`;
-
-      const hour = 8 + Math.floor(pseudoRandom(studentIdx * 29 + s * 13) * 8);
-      const minute = pseudoRandom(studentIdx * 31 + s * 19) > 0.5 ? '30' : '00';
-      const waktu = `${String(hour).padStart(2, '0')}:${minute} WIB`;
-
-      // Status distribution: Menunggu Validasi (8%), Revisi Mayor (14%), Revisi Minor (23%), Disetujui (55%)
-      const statusRand = pseudoRandom(studentIdx * 53 + s * 37);
-      let status = 'disetujui';
-      if (statusRand < 0.08) status = 'menunggu_validasi';
-      else if (statusRand < 0.22) status = 'revisi_mayor';
-      else if (statusRand < 0.45) status = 'revisi_minor';
-
-      // Method: Daring (42%) vs Luring (58%)
-      const metode = pseudoRandom(studentIdx * 19 + s * 23) < 0.42 ? 'Daring' : 'Luring';
-
-      const topicIdx = Math.min(SAMPLE_TOPICS.length - 1, Math.floor((s / totalStudentSessions) * SAMPLE_TOPICS.length));
-      const feedbackIdx = (studentIdx + s) % SAMPLE_FEEDBACK.length;
-
-      logsByMonth[monthObj.key].push({
-        id: `cons-auto-${globalIdCounter++}`,
-        tanggal,
-        waktu,
-        mhs_nim: student.student_nim,
-        mhs_nama: student.student_nama,
-        mhs_kelas: (studentIdx % 3 === 0) ? 'MI 5A' : (studentIdx % 3 === 1 ? 'MI 5B' : 'MI 5C'),
-        dosen_nip: adv.nip,
-        dosen_nama: adv.nama,
-        pembimbing: roleLabel,
-        metode,
-        status,
-        bab_topik: SAMPLE_TOPICS[topicIdx],
-        catatan_mahasiswa: `Konsultasi progres pengerjaan ${SAMPLE_TOPICS[topicIdx]} dan penyelarasan draf laporan tugas akhir.`,
-        masukan_dosen: SAMPLE_FEEDBACK[feedbackIdx],
-        created_at: `${tanggal}T${String(hour).padStart(2, '0')}:${minute}:00Z`
-      });
-    }
+  (Array.isArray(liveConsultations) ? liveConsultations : []).forEach(c => {
+    const key = monthKeyOf(c.tanggal || c.created_at);
+    if (!key) return;
+    if (!logsByMonth[key]) logsByMonth[key] = [];
+    logsByMonth[key].push(c);
   });
 
-  // Sort logs inside each month by date descending
-  MONTH_NAMES.forEach(monthObj => {
-    logsByMonth[monthObj.key].sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime());
+  Object.keys(logsByMonth).forEach(key => {
+    logsByMonth[key].sort((a, b) => {
+      const da = new Date(a.tanggal || a.created_at || 0).getTime();
+      const db = new Date(b.tanggal || b.created_at || 0).getTime();
+      return db - da;
+    });
   });
 
   return logsByMonth;
 }
 
+/** Peta NIM -> identitas & status akademik mahasiswa. */
+const buildStudentInfoMap = (thesisTitles = [], registeredUsers = []) => {
+  const map = new Map();
+
+  (Array.isArray(registeredUsers) ? registeredUsers : []).forEach(u => {
+    const nim = String(u.nim || u.nip || '').trim();
+    if (!nim) return;
+    map.set(nim, { nama: u.nama || '', kelas: u.kelas || '', prodi: u.prodi || '' });
+  });
+
+  (Array.isArray(thesisTitles) ? thesisTitles : []).forEach(t => {
+    const nim = String(t.mhs_nim || '').trim();
+    if (!nim) return;
+    const existing = map.get(nim) || {};
+    map.set(nim, {
+      ...existing,
+      nama: existing.nama || t.mhs_nama || '',
+      kelas: t.mhs_kelas || existing.kelas || '',
+      prodi: t.prodi || existing.prodi || '',
+      judul: t.judul || existing.judul || '',
+      status_kelulusan: t.status_kelulusan || existing.status_kelulusan || '',
+      status_sidang: t.status_sidang || existing.status_sidang || ''
+    });
+  });
+
+  return map;
+};
+
 /**
  * Calculates all summary stats for Kaprodi Dashboard
  */
 export function calculateBimbinganDashboardStats(advisors = [], studentAdvisors = [], liveConsultations = [], thesisTitles = [], registeredUsers = []) {
-  // 1. Dosen Count
-  const totalDosen = advisors.length || 13;
+  const safeAdvisors = Array.isArray(advisors) ? advisors : [];
+  const safeStudents = Array.isArray(studentAdvisors) ? studentAdvisors : [];
+  const safeConsultations = Array.isArray(liveConsultations) ? liveConsultations : [];
+  const safeTitles = Array.isArray(thesisTitles) ? thesisTitles : [];
 
-  // 2. Mahasiswa Count
-  const totalMahasiswa = studentAdvisors.length || 110;
-  const totalMahasiswaProdi = registeredUsers.filter(u => u.role === 'mahasiswa').length || 223;
+  // 1. Jumlah dosen & mahasiswa (langsung dari tabel)
+  const totalDosen = safeAdvisors.length;
+  const totalMahasiswa = safeStudents.length;
 
-  // 3. Generate or merge consultation logs
-  const monthlyLogs = generateMonthlyConsultationLogs(advisors, studentAdvisors);
-  
-  // Merge any live consultations from auth context into monthlyLogs
-  if (Array.isArray(liveConsultations) && liveConsultations.length > 0) {
-    liveConsultations.forEach(lc => {
-      const dateStr = lc.tanggal || (lc.created_at ? lc.created_at.slice(0, 10) : '2026-10-15');
-      const monthKey = dateStr.slice(0, 7);
-      if (monthlyLogs[monthKey]) {
-        // Prevent duplicate IDs
-        if (!monthlyLogs[monthKey].some(item => item.id === lc.id)) {
-          monthlyLogs[monthKey].unshift({
-            id: lc.id,
-            tanggal: dateStr,
-            waktu: lc.waktu ? `${lc.waktu} WIB` : '10:00 WIB',
-            mhs_nim: lc.mhs_nim,
-            mhs_nama: lc.mhs_nama,
-            mhs_kelas: 'MI 5A',
-            dosen_nip: lc.dosen_nip || '198410012009121005',
-            dosen_nama: lc.dosen_nama || 'Dr. Abdiansah, S.Kom., M.Cs.',
-            pembimbing: lc.pembimbing || 'Pembimbing 1',
-            metode: lc.metode || 'Luring',
-            status: lc.status || 'disetujui',
-            bab_topik: lc.bab_topik || 'Bab 1 - Pendahuluan',
-            catatan_mahasiswa: lc.catatan_mahasiswa || '-',
-            masukan_dosen: lc.masukan_dosen || '-',
-            created_at: lc.created_at || `${dateStr}T10:00:00Z`
-          });
-        }
-      }
-    });
-  }
+  // 2. Konsultasi riil → bucket per bulan
+  const months = buildMonthRange();
+  const monthlyLogs = bucketConsultationsByMonth(safeConsultations, months);
 
-  // Flatten all consultations
-  const allConsultations = Object.values(monthlyLogs).flat();
+  const allConsultations = safeConsultations.map(c => ({
+    ...c,
+    _statusNorm: normalizeConsultationStatus(c),
+    _metodeNorm: normalizeConsultationMetode(c),
+    _monthKey: monthKeyOf(c.tanggal || c.created_at)
+  }));
+
   const totalBimbingan = allConsultations.length;
 
   // Rata-rata bimbingan per mahasiswa
-  const rataRataPerMahasiswa = totalMahasiswa > 0 ? (totalBimbingan / totalMahasiswa).toFixed(1) : '0';
+  const rataRataPerMahasiswa = totalMahasiswa > 0 ? (totalBimbingan / totalMahasiswa).toFixed(1) : '0.0';
 
   // Count consultations per student for requirement: "persentase mahasiswa yang sudah memenuhi ≥24 bimbingan"
   const studentConsultationCounts = new Map();
-  studentAdvisors.forEach(sa => {
-    studentConsultationCounts.set(sa.student_nim, 0);
+  safeStudents.forEach(sa => {
+    const nim = String(sa.student_nim || '').trim();
+    if (nim) studentConsultationCounts.set(nim, 0);
   });
 
   allConsultations.forEach(c => {
-    if (studentConsultationCounts.has(c.mhs_nim)) {
-      studentConsultationCounts.set(c.mhs_nim, studentConsultationCounts.get(c.mhs_nim) + 1);
-    } else {
-      studentConsultationCounts.set(c.mhs_nim, 1);
-    }
+    const nim = String(c.mhs_nim || '').trim();
+    if (!nim) return;
+    studentConsultationCounts.set(nim, (studentConsultationCounts.get(nim) || 0) + 1);
   });
 
   let memenuhiTarget24Count = 0;
@@ -221,34 +169,86 @@ export function calculateBimbinganDashboardStats(advisors = [], studentAdvisors 
   const persenMemenuhiTarget24 = totalMahasiswa > 0 ? Math.round((memenuhiTarget24Count / totalMahasiswa) * 100) : 0;
   const belumMemenuhiCount = Math.max(0, totalMahasiswa - memenuhiTarget24Count);
 
-  // 4. Status Mahasiswa (Aktif, Lulus, Tidak Aktif - Input via Excel)
-  // Berdasarkan data master D3 MI
-  const mhsAktifCount = 82;
-  const mhsLulusCount = 21;
-  const mhsTidakAktifCount = 7;
-  const totalStatusMhs = mhsAktifCount + mhsLulusCount + mhsTidakAktifCount;
+  // 4. Status Mahasiswa (dari status_kelulusan / status_sidang pada data TA)
+  const studentInfo = buildStudentInfoMap(safeTitles, registeredUsers);
+  const statusByNim = new Map();
+  safeTitles.forEach(t => {
+    const nim = String(t.mhs_nim || '').trim();
+    if (!nim) return;
+    statusByNim.set(nim, {
+      status_kelulusan: String(t.status_kelulusan || '').toLowerCase(),
+      status_sidang: String(t.status_sidang || '').toLowerCase()
+    });
+  });
+
+  let mhsAktifCount = 0;
+  let mhsLulusCount = 0;
+  let mhsTidakAktifCount = 0;
+  let mhsBelumMengajukanCount = 0;
+
+  const nimSet = new Set(safeStudents.map(s => String(s.student_nim || '').trim()).filter(Boolean));
+  const extraNims = new Set();
+  safeTitles.forEach(t => {
+    const nim = String(t.mhs_nim || '').trim();
+    if (nim && !nimSet.has(nim)) extraNims.add(nim);
+  });
+
+  const countStatusFor = (nim) => {
+    const info = statusByNim.get(nim);
+    if (!info) {
+      mhsBelumMengajukanCount++;
+      return;
+    }
+    if (info.status_kelulusan === 'lulus' || info.status_sidang === 'selesai') {
+      mhsLulusCount++;
+      return;
+    }
+    if (['tidak_aktif', 'drop_out', 'do', 'non_aktif'].includes(info.status_kelulusan)) {
+      mhsTidakAktifCount++;
+      return;
+    }
+    mhsAktifCount++;
+  };
+
+  nimSet.forEach(countStatusFor);
+  extraNims.forEach(countStatusFor);
+
+  const totalStatusMhs = mhsAktifCount + mhsLulusCount + mhsTidakAktifCount + mhsBelumMengajukanCount;
+  const statusPctOf = (n) => (totalStatusMhs > 0 ? Math.round((n / totalStatusMhs) * 100) : 0);
+
+  const latestStudentUpdate = safeStudents
+    .map(s => s.updated_at)
+    .filter(Boolean)
+    .sort()
+    .pop() || null;
 
   const studentStatusStats = {
     aktif: mhsAktifCount,
     lulus: mhsLulusCount,
     tidakAktif: mhsTidakAktifCount,
+    belumMengajukan: mhsBelumMengajukanCount,
     total: totalStatusMhs,
-    persenAktif: Math.round((mhsAktifCount / totalStatusMhs) * 100),
-    persenLulus: Math.round((mhsLulusCount / totalStatusMhs) * 100),
-    persenTidakAktif: Math.round((mhsTidakAktifCount / totalStatusMhs) * 100),
+    persenAktif: statusPctOf(mhsAktifCount),
+    persenLulus: statusPctOf(mhsLulusCount),
+    persenTidakAktif: statusPctOf(mhsTidakAktifCount),
+    persenBelumMengajukan: statusPctOf(mhsBelumMengajukanCount),
     excelMeta: {
-      fileName: 'Data_Master_Mahasiswa_TA_D3_MI_2026.xlsx',
-      lastSync: '14 Oktober 2026, 09:45 WIB',
+      fileName: 'public.student_advisors + public.thesis_titles',
+      lastSync: latestStudentUpdate
+        ? new Date(latestStudentUpdate).toLocaleString('id-ID', {
+            day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
+          }) + ' WIB'
+        : 'Belum ada pembaruan',
       totalRows: totalStatusMhs,
-      importedBy: 'Kaprodi D3 Manajemen Informatika',
-      keterangan: 'Data mahasiswa diinput dan disinkronkan oleh Prodi melalui berkas Excel master.'
+      importedBy: 'Sinkronisasi database prodi',
+      keterangan: 'Status aktif/lulus/tidak aktif dibaca langsung dari kolom status_kelulusan & status_sidang pada data Tugas Akhir mahasiswa.'
     }
   };
 
   // 5. Beban Bimbingan per Dosen (P1 vs P2)
-  const advisorWorkloads = advisors.map(adv => {
-    const p1Count = studentAdvisors.filter(sa => sa.dospem1_nip === adv.nip).length;
-    const p2Count = studentAdvisors.filter(sa => sa.dospem2_nip === adv.nip).length;
+  const advisorWorkloads = safeAdvisors.map(adv => {
+    const p1Count = safeStudents.filter(sa => sa.dospem1_nip === adv.nip).length;
+    const p2Count = safeStudents.filter(sa => sa.dospem2_nip === adv.nip).length;
     const totalBeban = p1Count + p2Count;
     const selisih = Math.abs(p1Count - p2Count);
 
@@ -256,7 +256,11 @@ export function calculateBimbinganDashboardStats(advisors = [], studentAdvisors 
     let ketimpanganLabel = 'Beban Seimbang';
     let badgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
 
-    if (selisih >= 8 || p1Count === 0 || p2Count === 0) {
+    if (totalBeban === 0) {
+      ketimpanganLevel = 'empty';
+      ketimpanganLabel = 'Belum Ada Mahasiswa';
+      badgeClass = 'bg-slate-100 text-slate-700 border-slate-200';
+    } else if (selisih >= 8 || p1Count === 0 || p2Count === 0) {
       ketimpanganLevel = 'high';
       ketimpanganLabel = 'Timpang Tinggi';
       badgeClass = 'bg-rose-50 text-rose-700 border-rose-200';
@@ -270,10 +274,12 @@ export function calculateBimbinganDashboardStats(advisors = [], studentAdvisors 
       nip: adv.nip,
       nama: adv.nama,
       jabatan: adv.jabatan_fungsional,
-      keahlian: Array.isArray(adv.keahlian) ? adv.keahlian : [adv.keahlian || 'Sistem Informasi'],
+      keahlian: Array.isArray(adv.keahlian) ? adv.keahlian : [adv.keahlian || 'Umum'],
       p1Count,
       p2Count,
       totalBeban,
+      kuotaP1: Number(adv.kuota_dospem1) || 0,
+      kuotaP2: Number(adv.kuota_dospem2) || 0,
       selisih,
       ketimpanganLevel,
       ketimpanganLabel,
@@ -286,35 +292,58 @@ export function calculateBimbinganDashboardStats(advisors = [], studentAdvisors 
 
   const totalTimpang = advisorWorkloads.filter(a => a.ketimpanganLevel === 'high').length;
   const totalSeimbang = advisorWorkloads.filter(a => a.ketimpanganLevel === 'balanced').length;
+  const advisorAktifCount = advisorWorkloads.filter(a => a.totalBeban > 0).length;
+
+  // Kapasitas grafik = kuota terbesar yang benar-benar diset dosen (bukan angka tetap 16)
+  const maxKuota = safeAdvisors.reduce(
+    (max, adv) => Math.max(max, Number(adv.kuota_dospem1) || 0, Number(adv.kuota_dospem2) || 0),
+    0
+  );
+  const maxBebanObserved = advisorWorkloads.reduce((max, a) => Math.max(max, a.p1Count, a.p2Count), 0);
+  const kapasitasMaksBeban = Math.max(1, maxKuota || maxBebanObserved || 1);
+
+  const advisorWorkloadSummary = {
+    totalTimpang,
+    totalSeimbang,
+    totalDosen,
+    advisorAktifCount,
+    persenAdvisorAktif: totalDosen > 0 ? Math.round((advisorAktifCount / totalDosen) * 100) : 0,
+    rataRataBeban: totalDosen > 0 ? (totalMahasiswa * 2 / totalDosen).toFixed(1) : '0.0',
+    kapasitasMaksBeban
+  };
 
   // 6. Chart Bimbingan per Bulan
-  const monthlyChartData = MONTH_NAMES.map(mObj => {
-    const logs = monthlyLogs[mObj.key] || [];
-    const daring = logs.filter(l => l.metode === 'Daring').length;
-    const luring = logs.filter(l => l.metode === 'Luring').length;
-    const uniqueStudents = new Set(logs.map(l => l.mhs_nim)).size;
-    const uniqueAdvisors = new Set(logs.map(l => l.dosen_nip)).size;
+  const monthlyChartData = months.map(mObj => {
+    const logs = (monthlyLogs[mObj.key] || []).map(l => ({
+      ...l,
+      _statusNorm: normalizeConsultationStatus(l),
+      _metodeNorm: normalizeConsultationMetode(l)
+    }));
 
     return {
       key: mObj.key,
       name: mObj.name,
       short: mObj.short,
-      labelMMYYYY: mObj.labelMMYYYY || `${mObj.key.slice(5, 7)}/${mObj.key.slice(0, 4)}`,
+      year: mObj.year,
+      labelMMYYYY: mObj.labelMMYYYY,
       total: logs.length,
-      daringCount: daring,
-      luringCount: luring,
-      uniqueStudentsCount: uniqueStudents,
-      uniqueLecturersCount: uniqueAdvisors,
+      daringCount: logs.filter(l => l._metodeNorm === 'Daring').length,
+      luringCount: logs.filter(l => l._metodeNorm === 'Luring').length,
+      belumDicatatCount: logs.filter(l => l._metodeNorm === 'Belum Dicatat').length,
+      uniqueStudentsCount: new Set(logs.map(l => String(l.mhs_nim || ''))).size,
+      uniqueLecturersCount: new Set(logs.map(l => String(l.dosen_nip || l.dosen_nama || ''))).size,
       consultations: logs
     };
   });
 
+  const maxMonthlyTotal = monthlyChartData.reduce((max, m) => Math.max(max, m.total), 0);
+
   // 7. Chart Status & Jenis Bimbingan
   const statusCounts = {
-    menunggu_validasi: allConsultations.filter(c => c.status === 'menunggu_validasi').length,
-    revisi_mayor: allConsultations.filter(c => c.status === 'revisi_mayor').length,
-    revisi_minor: allConsultations.filter(c => c.status === 'revisi_minor').length,
-    disetujui: allConsultations.filter(c => c.status === 'disetujui').length,
+    menunggu_validasi: allConsultations.filter(c => c._statusNorm === 'menunggu_validasi').length,
+    revisi_mayor: allConsultations.filter(c => c._statusNorm === 'revisi_mayor').length,
+    revisi_minor: allConsultations.filter(c => c._statusNorm === 'revisi_minor').length,
+    disetujui: allConsultations.filter(c => c._statusNorm === 'disetujui').length,
   };
 
   const totalStatusThree = statusCounts.menunggu_validasi + statusCounts.revisi_mayor + statusCounts.revisi_minor;
@@ -345,9 +374,10 @@ export function calculateBimbinganDashboardStats(advisors = [], studentAdvisors 
     }
   ];
 
-  const totalDaring = allConsultations.filter(c => c.metode === 'Daring').length;
-  const totalLuring = allConsultations.filter(c => c.metode === 'Luring').length;
-  const totalMetode = totalDaring + totalLuring;
+  const totalDaring = allConsultations.filter(c => c._metodeNorm === 'Daring').length;
+  const totalLuring = allConsultations.filter(c => c._metodeNorm === 'Luring').length;
+  const totalBelumDicatat = allConsultations.filter(c => c._metodeNorm === 'Belum Dicatat').length;
+  const totalMetode = totalDaring + totalLuring + totalBelumDicatat;
   const jenisDonutItems = [
     {
       id: 'daring',
@@ -355,7 +385,7 @@ export function calculateBimbinganDashboardStats(advisors = [], studentAdvisors 
       sublabel: 'Online via SIMTA / Zoom',
       count: totalDaring,
       color: '#3b82f6', // Blue
-      percentage: totalMetode > 0 ? ((totalDaring / totalMetode) * 100).toFixed(1) : '0'
+      percentage: totalMetode > 0 ? ((totalDaring / totalMetode) * 100).toFixed(1) : '0.0'
     },
     {
       id: 'luring',
@@ -363,7 +393,15 @@ export function calculateBimbinganDashboardStats(advisors = [], studentAdvisors 
       sublabel: 'Tatap Muka di Kampus',
       count: totalLuring,
       color: '#10b981', // Emerald/Teal
-      percentage: totalMetode > 0 ? ((totalLuring / totalMetode) * 100).toFixed(1) : '0'
+      percentage: totalMetode > 0 ? ((totalLuring / totalMetode) * 100).toFixed(1) : '0.0'
+    },
+    {
+      id: 'belum_dicatat',
+      label: 'Belum Dicatat',
+      sublabel: 'Metode belum diisi saat konsultasi',
+      count: totalBelumDicatat,
+      color: '#94a3b8', // Slate
+      percentage: totalMetode > 0 ? ((totalBelumDicatat / totalMetode) * 100).toFixed(1) : '0.0'
     }
   ];
 
@@ -433,34 +471,40 @@ export function calculateBimbinganDashboardStats(advisors = [], studentAdvisors 
   };
 
   // 8. Peringkat Keaktifan Dosen (Tabel Dosen, Jumlah Bimbingan, Jumlah Mahasiswa, Rasio)
-  const advisorRankings = advisors.map(adv => {
-    const dospemConsultations = allConsultations.filter(c => c.dosen_nip === adv.nip);
+  const advisorRankings = safeAdvisors.map(adv => {
+    const dospemConsultations = allConsultations.filter(
+      c => c.dosen_nip === adv.nip || (!c.dosen_nip && c.dosen_nama === adv.nama)
+    );
     const totalBimbinganDosen = dospemConsultations.length;
-    const p1Count = studentAdvisors.filter(sa => sa.dospem1_nip === adv.nip).length;
-    const p2Count = studentAdvisors.filter(sa => sa.dospem2_nip === adv.nip).length;
+    const p1Count = safeStudents.filter(sa => sa.dospem1_nip === adv.nip).length;
+    const p2Count = safeStudents.filter(sa => sa.dospem2_nip === adv.nip).length;
     const totalMhs = p1Count + p2Count;
-    const rasio = totalMhs > 0 ? (totalBimbinganDosen / totalMhs).toFixed(1) : '0';
+    const rasio = totalMhs > 0 ? (totalBimbinganDosen / totalMhs).toFixed(1) : '0.0';
 
-    let kategori = 'Cukup Aktif';
+    let kategori = 'Belum Ada Bimbingan';
     let badgeClass = 'bg-slate-100 text-slate-700 border-slate-200';
 
     const numRasio = Number(rasio);
-    if (numRasio >= 18) {
-      kategori = 'Sangat Aktif';
-      badgeClass = 'bg-emerald-50 text-emerald-800 border-emerald-200';
-    } else if (numRasio >= 14) {
-      kategori = 'Aktif';
-      badgeClass = 'bg-blue-50 text-blue-800 border-blue-200';
-    } else if (numRasio < 10) {
-      kategori = 'Perlu Pendampingan';
-      badgeClass = 'bg-amber-50 text-amber-800 border-amber-200';
+    if (totalBimbinganDosen > 0) {
+      if (numRasio >= 18) {
+        kategori = 'Sangat Aktif';
+        badgeClass = 'bg-emerald-50 text-emerald-800 border-emerald-200';
+      } else if (numRasio >= 14) {
+        kategori = 'Aktif';
+        badgeClass = 'bg-blue-50 text-blue-800 border-blue-200';
+      } else if (numRasio >= 10) {
+        kategori = 'Cukup Aktif';
+      } else {
+        kategori = 'Perlu Pendampingan';
+        badgeClass = 'bg-amber-50 text-amber-800 border-amber-200';
+      }
     }
 
     return {
       nip: adv.nip,
       nama: adv.nama,
       jabatan: adv.jabatan_fungsional,
-      keahlian: Array.isArray(adv.keahlian) ? adv.keahlian : [adv.keahlian || 'Sistem Informasi'],
+      keahlian: Array.isArray(adv.keahlian) ? adv.keahlian : [adv.keahlian || 'Umum'],
       p1Count,
       p2Count,
       totalMahasiswa: totalMhs,
@@ -478,34 +522,43 @@ export function calculateBimbinganDashboardStats(advisors = [], studentAdvisors 
     item.rank = idx + 1;
   });
 
-  // 9. Peringkat Keaktifan Mahasiswa (Tambahan: Top 10 mahasiswa yang paling sering bimbingan dalam sebulan)
-  const currentMonthKey = '2026-10';
-  const currentMonthLogs = monthlyLogs[currentMonthKey] || [];
-  
+  // 9. Top 10 mahasiswa paling aktif pada bulan berjalan (riil, tanpa angka karangan)
+  const currentMonthKey = monthKeyOf(new Date().toISOString());
+  const currentMonthLogs = allConsultations.filter(c => c._monthKey === currentMonthKey);
+
   const currentMonthCounts = new Map();
   currentMonthLogs.forEach(log => {
-    currentMonthCounts.set(log.mhs_nim, (currentMonthCounts.get(log.mhs_nim) || 0) + 1);
+    const nim = String(log.mhs_nim || '').trim();
+    if (!nim) return;
+    currentMonthCounts.set(nim, (currentMonthCounts.get(nim) || 0) + 1);
   });
 
-  const studentTopList = studentAdvisors.map(sa => {
-    const bimbinganBulanIni = currentMonthCounts.get(sa.student_nim) || Math.floor(pseudoRandom(parseInt(sa.student_nim.slice(-4)) || 1) * 7) + 2;
-    const totalBimbinganStudent = studentConsultationCounts.get(sa.student_nim) || (bimbinganBulanIni + 16);
-    const p1Adv = advisors.find(a => a.nip === sa.dospem1_nip);
-    const p2Adv = advisors.find(a => a.nip === sa.dospem2_nip);
-
+  const studentTopList = safeStudents.map(sa => {
+    const nim = String(sa.student_nim || '').trim();
+    const info = studentInfo.get(nim) || {};
+    const bimbinganBulanIni = currentMonthCounts.get(nim) || 0;
+    const totalBimbinganStudent = studentConsultationCounts.get(nim) || 0;
+    const p1Adv = safeAdvisors.find(a => a.nip === sa.dospem1_nip);
+    const p2Adv = safeAdvisors.find(a => a.nip === sa.dospem2_nip);
+    const isLulus = info.status_kelulusan === 'lulus' || info.status_sidang === 'selesai';
     const isMemenuhi24 = totalBimbinganStudent >= 24;
 
+    let statusLabel = 'Belum Ada Bimbingan';
+    if (isLulus) statusLabel = 'Lulus';
+    else if (isMemenuhi24) statusLabel = 'Memenuhi Syarat ≥24';
+    else if (totalBimbinganStudent > 0) statusLabel = 'Sedang Berproses';
+
     return {
-      mhs_nim: sa.student_nim,
-      mhs_nama: sa.student_nama,
-      mhs_kelas: 'MI 5A',
+      mhs_nim: nim,
+      mhs_nama: sa.student_nama || info.nama || '-',
+      mhs_kelas: info.kelas || '-',
       bimbinganBulanIni,
       totalBimbingan: totalBimbinganStudent,
       isMemenuhi24,
-      p1_nama: p1Adv?.nama || 'Dosen Pembimbing 1',
-      p2_nama: p2Adv?.nama || 'Dosen Pembimbing 2',
-      judul: sa.judul_ta || 'Sistem Informasi Manajemen Tugas Akhir',
-      status: isMemenuhi24 ? 'Siap Daftar Sidang' : 'Aktif Konsisten'
+      p1_nama: p1Adv?.nama || 'Belum Ditetapkan',
+      p2_nama: p2Adv?.nama || 'Belum Ditetapkan',
+      judul: info.judul || sa.judul_ta || 'Belum mengajukan judul',
+      status: statusLabel
     };
   });
 
@@ -516,28 +569,37 @@ export function calculateBimbinganDashboardStats(advisors = [], studentAdvisors 
     rank: idx + 1
   }));
 
+  // 10. Periode akademik berjalan (dihitung dari tanggal sistem)
+  const now = new Date();
+  const monthNow = now.getMonth() + 1;
+  const isGanjil = monthNow >= 9 || monthNow <= 2;
+  const academicStartYear = monthNow >= 9 ? now.getFullYear() : (monthNow <= 2 ? now.getFullYear() - 1 : now.getFullYear());
+  const academicPeriod = {
+    label: `${academicStartYear}/${academicStartYear + 1}`,
+    semester: isGanjil ? 'Ganjil' : 'Genap'
+  };
+  academicPeriod.full = `Tahun Akademik ${academicPeriod.label} • Semester ${academicPeriod.semester}`;
+
   return {
     summary: {
       totalMahasiswa,
-      totalMahasiswaProdi,
+      totalMahasiswaProdi: totalMahasiswa,
       totalDosen,
       totalBimbingan,
       rataRataPerMahasiswa,
       memenuhiTarget24Count,
       persenMemenuhiTarget24,
-      belumMemenuhiCount
+      belumMemenuhiCount,
+      maxMonthlyTotal,
+      currentMonthKey
     },
     studentStatus: studentStatusStats,
     advisorWorkloads,
-    advisorWorkloadSummary: {
-      totalTimpang,
-      totalSeimbang,
-      totalDosen,
-      rataRataBeban: totalDosen > 0 ? (totalMahasiswa * 2 / totalDosen).toFixed(1) : '16'
-    },
+    advisorWorkloadSummary,
     monthlyChartData,
     statusAndMethodStats,
     advisorRankings,
-    top10ActiveStudents
+    top10ActiveStudents,
+    academicPeriod
   };
 }

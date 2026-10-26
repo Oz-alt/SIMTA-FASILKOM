@@ -10,7 +10,6 @@ import {
   ArrowRight, 
   UserCheck, 
   ExternalLink, 
-  Printer, 
   FileCheck,
   MessageSquare,
   FileText,
@@ -125,35 +124,6 @@ export default function BimbinganTimeline({ consultations = [], currentUser }) {
           <p className="text-xs text-slate-500 leading-relaxed max-w-2xl">
             Pantau jejak riwayat konsultasi, masukan arahan dosen pembimbing, serta progres pemenuhan syarat 24 sesi sidang akhir.
           </p>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs hover:shadow-md transition-all flex items-center space-x-1.5 cursor-pointer"
-          >
-            <PlusCircle className="w-4 h-4" />
-            <span>Catat Bimbingan</span>
-          </button>
-          
-          <Link
-            href="/thesis/consultations/card"
-            className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-all flex items-center space-x-1.5"
-            title="Lihat & Cetak Kartu Bimbingan Digital"
-          >
-            <Printer className="w-4 h-4 text-slate-500" />
-            <span className="hidden sm:inline">Kartu Digital</span>
-          </Link>
-
-          <Link
-            href="/thesis/consultations"
-            className="px-3 py-2 rounded-xl border border-slate-200 hover:border-blue-300 hover:text-blue-600 text-slate-700 font-bold text-xs transition-all flex items-center space-x-1.5"
-            title="Buka Halaman Entry Bimbingan Lengkap"
-          >
-            <span>Entry Bimbingan</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
         </div>
       </div>
 

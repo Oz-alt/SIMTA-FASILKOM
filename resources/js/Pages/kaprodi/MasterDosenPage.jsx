@@ -226,7 +226,7 @@ export default function MasterDosenPage() {
 
   const handleDownloadTemplate = () => {
     const headers = 'NIP,Nama,Email,No_HP,Jabatan_Fungsional,Keahlian,Pendidikan,Prodi,Status,Kuota_Dospem1,Kuota_Dospem2';
-    const example = '198410012009121005,Dr. Abdiansah S.Kom. M.Cs.,abdiansah@unsri.ac.id,081278901001,Lektor Kepala,Kecerdasan Buatan,S3 (Doktor),D3 Manajemen Informatika,aktif,8,8';
+    const example = '198410012009121005,Dr. Abdiansah S.Kom. M.Cs.,abdiansah@unsri.ac.id,,Lektor Kepala,Kecerdasan Buatan,S3 (Doktor),D3 Manajemen Informatika,aktif,8,8';
     const csv = `${headers}\n${example}`;
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -383,7 +383,7 @@ export default function MasterDosenPage() {
                 <th className="py-3.5 px-4">Jabatan Fungsional</th>
                 <th className="py-3.5 px-4">Kontak / Email</th>
                 <th className="py-3.5 px-4">Bidang Keahlian</th>
-                <th className="py-3.5 px-4 text-right">Aksi</th>
+                <th className="py-3.5 px-4 text-center w-24">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium">
@@ -443,15 +443,15 @@ export default function MasterDosenPage() {
                       </div>
                     </td>
 
-                    <td className="py-3.5 px-4 text-right">
-                      <div className="flex items-center justify-end space-x-1">
+                    <td className="py-3.5 px-4 text-center">
+                      <div className="flex items-center justify-center space-x-1">
                         <button
                           type="button"
                           onClick={() => openEditModal(adv)}
                           className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-blue-600 transition-colors cursor-pointer"
                           title="Edit Data Dosen"
                         >
-                          <Edit2 className="w-4 h-4" />
+                          <Edit2 className="w-3.5 h-3.5" />
                         </button>
                         <button
                           type="button"
@@ -459,7 +459,7 @@ export default function MasterDosenPage() {
                           className="p-1.5 hover:bg-rose-50 rounded-lg text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
                           title="Hapus Data Dosen"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </td>
@@ -481,9 +481,21 @@ export default function MasterDosenPage() {
 
       {/* Modal Tambah / Edit Dosen */}
       {(isAddOpen || editingDosen) && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div
+          data-lenis-prevent
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto animate-in fade-in"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setIsAddOpen(false);
+              setEditingDosen(null);
+            }
+          }}
+        >
+          <div
+            data-lenis-prevent
+            className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 animate-in zoom-in-95 flex flex-col max-h-[90vh] overflow-hidden"
+          >
+            <div className="flex items-center justify-between border-b border-slate-100 px-6 pt-6 pb-3 shrink-0">
               <div className="flex items-center space-x-2">
                 <UserCheck className="w-5 h-5 text-blue-600" />
                 <h3 className="font-extrabold text-slate-900 text-base">
@@ -499,7 +511,11 @@ export default function MasterDosenPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSaveDosen} className="space-y-4 text-xs font-medium">
+            <form onSubmit={handleSaveDosen} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+              <div
+                data-lenis-prevent
+                className="px-6 py-4 space-y-4 text-xs font-medium overflow-y-auto flex-1 overscroll-contain"
+              >
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-slate-700 font-bold mb-1">NIP Dosen <span className="text-rose-500">*</span></label>
@@ -624,7 +640,9 @@ export default function MasterDosenPage() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-100">
+              </div>
+
+              <div className="flex items-center justify-end space-x-2 px-6 py-3 border-t border-slate-100 shrink-0 bg-white">
                 <button
                   type="button"
                   onClick={() => { setIsAddOpen(false); setEditingDosen(null); }}

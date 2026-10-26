@@ -269,11 +269,12 @@ export default function MasterMahasiswaPage() {
       'Status'
     ].join(',');
 
-    // Example rows using real advisor NIPs so users have a clear working template
+    // Example rows using real advisor NIPs so users have a clear working template.
+    // Kolom No_HP sengaja dikosongkan agar import tidak membawa nomor palsu.
     const sampleRows = [
-      '09010582428099,"RAFFI AHMAD PRATAMA",09010582428099@student.unsri.ac.id,0812781001,"D3 Manajemen Informatika","MI 5A",198803052019031010,198303182023212034,aktif',
-      '09010582428100,"NADIA ZAHRA",09010582428100@student.unsri.ac.id,0812781002,"D3 Manajemen Informatika","MI 5B",198410012009121005,198710092024211001,aktif',
-      '09010582428101,"DIMAS SETIAWAN",09010582428101@student.unsri.ac.id,0812781003,"D3 Manajemen Informatika","MI 5A",,,aktif'
+      '09010582428099,"RAFFI AHMAD PRATAMA",09010582428099@student.unsri.ac.id,,"D3 Manajemen Informatika","MI 5A",198803052019031010,198303182023212034,aktif',
+      '09010582428100,"NADIA ZAHRA",09010582428100@student.unsri.ac.id,,"D3 Manajemen Informatika","MI 5B",198410012009121005,198710092024211001,aktif',
+      '09010582428101,"DIMAS SETIAWAN",09010582428101@student.unsri.ac.id,,"D3 Manajemen Informatika","MI 5A",,,aktif'
     ].join('\n');
 
     const csvContent = '\uFEFF' + `${headers}\n${sampleRows}`;
@@ -648,7 +649,7 @@ export default function MasterMahasiswaPage() {
                 <th className="py-3 px-3 max-w-[140px]">Prodi &amp; Kelas</th>
                 <th className="py-3 px-3 min-w-[170px]">Dosen Pembimbing</th>
                 <th className="py-3 px-3 w-24 text-center">Status</th>
-                <th className="py-3 px-3 text-right w-16">Aksi</th>
+                <th className="py-3 px-3 w-20 text-center">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium">
@@ -773,8 +774,8 @@ export default function MasterMahasiswaPage() {
                       </td>
 
                       {/* Aksi */}
-                      <td className="py-3 px-3 text-right whitespace-nowrap">
-                        <div className="flex items-center justify-end space-x-0.5">
+                      <td className="py-3 px-3 text-center whitespace-nowrap">
+                        <div className="flex items-center justify-center space-x-1">
                           <button
                             type="button"
                             onClick={() => openEditModal(std)}
@@ -880,9 +881,21 @@ export default function MasterMahasiswaPage() {
 
       {/* Modal Tambah / Edit Mahasiswa */}
       {(isAddOpen || editingStudent) && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in">
-          <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div
+          data-lenis-prevent
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto animate-in fade-in"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setIsAddOpen(false);
+              setEditingStudent(null);
+            }
+          }}
+        >
+          <div
+            data-lenis-prevent
+            className="bg-white rounded-2xl max-w-xl w-full shadow-2xl border border-slate-200 animate-in zoom-in-95 flex flex-col max-h-[90vh] overflow-hidden"
+          >
+            <div className="flex items-center justify-between border-b border-slate-100 px-6 pt-6 pb-3 shrink-0">
               <div className="flex items-center space-x-2">
                 <GraduationCap className="w-5 h-5 text-indigo-600" />
                 <h3 className="font-extrabold text-slate-900 text-base">
@@ -898,7 +911,11 @@ export default function MasterMahasiswaPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSaveStudent} className="space-y-4 text-xs font-medium">
+            <form onSubmit={handleSaveStudent} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+              <div
+                data-lenis-prevent
+                className="px-6 py-4 space-y-4 text-xs font-medium overflow-y-auto flex-1 overscroll-contain"
+              >
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-slate-700 font-bold mb-1">NIM Mahasiswa <span className="text-rose-500">*</span></label>
@@ -1023,7 +1040,9 @@ export default function MasterMahasiswaPage() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-100">
+              </div>
+
+              <div className="flex items-center justify-end space-x-2 px-6 py-3 border-t border-slate-100 shrink-0 bg-white">
                 <button
                   type="button"
                   onClick={() => { setIsAddOpen(false); setEditingStudent(null); }}

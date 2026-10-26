@@ -610,7 +610,7 @@ export default function ProfilePage() {
               ) : (
                 <div className="flex items-center space-x-2 text-slate-900 font-semibold pt-0.5">
                   <Phone className="w-4 h-4 text-slate-400" />
-                  <span>{currentUser?.no_hp || '081278901234'}</span>
+                  <span>{currentUser?.no_hp && currentUser.no_hp !== '-' ? currentUser.no_hp : <span className="text-slate-400 font-normal italic">Belum diisi</span>}</span>
                 </div>
               )}
             </div>

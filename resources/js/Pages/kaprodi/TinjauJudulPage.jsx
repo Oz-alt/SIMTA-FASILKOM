@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Link } from '@inertiajs/react';
 import { useAuth } from '../../context/AuthContext.jsx';
-import StatusBadge from '../../Components/common/StatusBadge.jsx';
 import { getStudentSemester, AVAILABLE_SEMESTERS } from '../../lib/academicUtils.js';
 import { 
   CheckCircle2, 
@@ -251,25 +250,26 @@ export default function TinjauJudulPage() {
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 font-bold text-slate-600 uppercase text-[10px]">
-                <th className="py-3 px-4 w-1/4">Mahasiswa (NIM &amp; Kelas)</th>
-                <th className="py-3 px-4 w-1/3">Judul Tugas Akhir</th>
-                <th className="py-3 px-4 text-center w-36">Status Sistem</th>
-                <th className="py-3 px-4 text-center w-28">Similarity</th>
-                <th className="py-3 px-4 text-center w-44 whitespace-nowrap">Aksi</th>
+                <th className="py-3 px-4 w-[18%]">Mahasiswa (NIM &amp; Kelas)</th>
+                <th className="py-3 px-4 w-[26%]">Judul Tugas Akhir</th>
+                <th className="py-3 px-3 w-[16%]">Pembimbing 1</th>
+                <th className="py-3 px-3 w-[16%]">Pembimbing 2</th>
+                <th className="py-3 px-4 text-center w-24">Similarity</th>
+                <th className="py-3 px-4 text-center w-40 whitespace-nowrap">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredTitles.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-12 text-center text-slate-400">
+                  <td colSpan={6} className="py-12 text-center text-slate-400">
                     Tidak ada pengajuan TA yang sesuai dengan kriteria filter saat ini.
                   </td>
                 </tr>
               ) : (
                 filteredTitles.map(t => {
                   const studentSem = getStudentSemester(t);
-                  const isFix = t.status === 'disetujui' || t.status === 'judul_fix';
-                  const isRevisi = t.status === 'perlu_revisi';
+                  const pembimbing1Nama = t.pembimbing_1_nama || t.pembimbing_1;
+                  const pembimbing2Nama = t.pembimbing_2_nama || t.pembimbing_2;
 
                   return (
                     <tr key={t.id} className="hover:bg-slate-50/60 transition-colors">
@@ -298,8 +298,48 @@ export default function TinjauJudulPage() {
                         )}
                       </td>
 
-                      <td className="py-3.5 px-4 text-center align-top">
-                        <StatusBadge type="thesis" status={t.status} />
+                      <td className="py-3.5 px-3 align-top">
+                        {pembimbing1Nama ? (
+                          <div className="min-w-0">
+                            <div className="flex items-start space-x-1.5">
+                              <span className="w-4 h-4 rounded bg-indigo-50 text-indigo-700 font-extrabold text-[9px] flex items-center justify-center shrink-0 border border-indigo-100 mt-0.5">
+                                1
+                              </span>
+                              <span className="font-semibold text-slate-800 text-[11px] leading-snug" title={pembimbing1Nama}>
+                                {pembimbing1Nama}
+                              </span>
+                            </div>
+                            {t.pembimbing_1_nip && (
+                              <span className="block mt-1 pl-5 text-[9px] text-slate-400 font-mono">
+                                {t.pembimbing_1_nip}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-[11px] text-slate-400 italic">Belum Ditetapkan</span>
+                        )}
+                      </td>
+
+                      <td className="py-3.5 px-3 align-top">
+                        {pembimbing2Nama ? (
+                          <div className="min-w-0">
+                            <div className="flex items-start space-x-1.5">
+                              <span className="w-4 h-4 rounded bg-blue-50 text-blue-700 font-extrabold text-[9px] flex items-center justify-center shrink-0 border border-blue-100 mt-0.5">
+                                2
+                              </span>
+                              <span className="font-semibold text-slate-800 text-[11px] leading-snug" title={pembimbing2Nama}>
+                                {pembimbing2Nama}
+                              </span>
+                            </div>
+                            {t.pembimbing_2_nip && (
+                              <span className="block mt-1 pl-5 text-[9px] text-slate-400 font-mono">
+                                {t.pembimbing_2_nip}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-[11px] text-slate-400 italic">Belum Ditetapkan</span>
+                        )}
                       </td>
 
                       <td className="py-3.5 px-4 text-center align-top">
