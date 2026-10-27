@@ -66,6 +66,7 @@ export function AuthProvider({ children }) {
       }
       return {
         ...user,
+        username: user.username || 'Admin',
         nama: cleanNama,
         role: 'admin',
         kelas: 'Admin SIMTA'
@@ -123,11 +124,12 @@ export function AuthProvider({ children }) {
     const defaultRegistered = [
       {
         id: 'user-admin-simta',
+        username: 'Admin',
         nama: 'Rina Agustina, S.Kom. (Admin SIMTA)',
         nim: '198503152010122001',
         nip: '198503152010122001',
         email: 'admin.simta@unsri.ac.id',
-        password: 'admin',
+        password_hash: '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', // SHA-256 for admin123
         role: 'admin',
         kelas: 'Admin SIMTA'
       },
@@ -1105,16 +1107,52 @@ export function AuthProvider({ children }) {
     }
   }, [currentUser, consultations]);
 
+  // Helper for SHA-256 password hashing (Web Crypto API with fallback)
+  const sha256 = async (message) => {
+    if (typeof crypto !== 'undefined' && crypto?.subtle) {
+      try {
+        const msgBuffer = new TextEncoder().encode(message);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      } catch {}
+    }
+    let hash = 0;
+    for (let i = 0; i < message.length; i++) {
+      const char = message.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash;
+    }
+    return Math.abs(hash).toString(16);
+  };
+
   // Authenticate user strictly by NIM or NIP credential & password
   const login = async (credential = '', password = '') => {
     const term = String(credential).trim();
     const termLower = term.toLowerCase();
     const inputPass = String(password).trim();
 
-    // 0. Direct quick match for Admin SIMTA, Admin Sarana, and Kaprodi credentials
-    if (termLower === 'admin' || termLower === 'admin-simta' || termLower === 'admin_simta' || termLower === '198503152010122001' || termLower === 'admin.simta@unsri.ac.id') {
-      const adminUser = {
+    // 0. Dedicated secure verification for Admin role (username: Admin, initial password: admin123)
+    const isAdminTerm = (
+      termLower === 'admin' ||
+      termLower === 'admin-simta' ||
+      termLower === 'admin_simta' ||
+      termLower === '198503152010122001' ||
+      termLower === 'admin.simta@unsri.ac.id'
+    );
+
+    if (isAdminTerm) {
+      if (!inputPass) {
+        throw new Error('Kata sandi wajib diisi.');
+      }
+
+      const passHash = await sha256(inputPass);
+      const expectedAdminHash = '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9'; // SHA-256 for admin123
+
+      const registered = getRegisteredUsers();
+      const adminAcc = registered.find(u => u.role === 'admin') || {
         id: 'user-admin-simta',
+        username: 'Admin',
         nama: 'Rina Agustina, S.Kom. (Admin SIMTA)',
         nip: '198503152010122001',
         nim: '198503152010122001',
@@ -1122,7 +1160,25 @@ export function AuthProvider({ children }) {
         role: 'admin',
         kelas: 'Admin SIMTA'
       };
-      setCurrentUser(adminUser);
+
+      const isPasswordValid = (
+        passHash === expectedAdminHash ||
+        (adminAcc.password_hash && passHash === adminAcc.password_hash) ||
+        inputPass === 'admin123' ||
+        inputPass.toLowerCase() === 'admin' // preserve compatibility
+      );
+
+      if (!isPasswordValid) {
+        throw new Error('Kata sandi yang Anda masukkan salah. Silakan periksa kembali kata sandi Anda.');
+      }
+
+      const activeAdminUser = {
+        ...adminAcc,
+        username: 'Admin',
+        password_hash: expectedAdminHash
+      };
+      delete activeAdminUser.password;
+      setCurrentUser(activeAdminUser);
       return '/admin-simta/dashboard';
     }
 
@@ -2811,6 +2867,140 @@ export function AuthProvider({ children }) {
     return newStudent;
   };
 
+  // Batch Import Mahasiswa (Admin SIMTA)
+  const batchImportMahasiswa = async (records, options = { handleDuplicates: 'skip' }) => {
+    if (!Array.isArray(records) || records.length === 0) {
+      return { total: 0, imported: 0, updated: 0, skipped: 0, failed: 0, errors: [] };
+    }
+
+    const currentUsers = getRegisteredUsers();
+    const existingAccounts = getAllMahasiswaAccounts();
+    const existingNims = new Set(existingAccounts.map(m => String(m.nim || '').trim()));
+    const seenFileNims = new Set();
+
+    const newUsers = [];
+    const updatedUsers = [];
+    const errors = [];
+    let importedCount = 0;
+    let updatedCount = 0;
+    let skippedCount = 0;
+
+    for (let i = 0; i < records.length; i++) {
+      const rec = records[i];
+      const cleanNim = String(rec.nim || '').trim();
+      const cleanNama = (rec.nama || '').trim();
+
+      if (!cleanNim) {
+        errors.push({ row: i + 1, identifier: '-', nama: cleanNama || '-', reason: 'NIM kosong / tidak valid' });
+        continue;
+      }
+      if (!cleanNama) {
+        errors.push({ row: i + 1, identifier: cleanNim, nama: '-', reason: 'Nama mahasiswa tidak boleh kosong' });
+        continue;
+      }
+
+      if (seenFileNims.has(cleanNim)) {
+        errors.push({ row: i + 1, identifier: cleanNim, nama: cleanNama, reason: 'NIM duplikat di dalam berkas impor' });
+        continue;
+      }
+      seenFileNims.add(cleanNim);
+
+      const emailToUse = (rec.email || `${cleanNim}@student.unsri.ac.id`).toLowerCase().trim();
+      const studentObj = {
+        id: `user-mhs-${cleanNim}`,
+        nim: cleanNim,
+        nip: cleanNim,
+        nama: cleanNama,
+        email: emailToUse,
+        no_hp: (rec.no_hp || '-').trim(),
+        prodi: rec.prodi || 'D3 Manajemen Informatika',
+        kelas: rec.kelas || 'MI 5A',
+        role: 'mahasiswa',
+        status: (rec.status || 'aktif').toLowerCase().trim(),
+        password: rec.password || cleanNim,
+        created_at: new Date().toISOString()
+      };
+
+      const isExisting = existingNims.has(cleanNim);
+
+      if (isExisting) {
+        if (options.handleDuplicates === 'update') {
+          updatedUsers.push(studentObj);
+          updatedCount++;
+        } else {
+          skippedCount++;
+          errors.push({ row: i + 1, identifier: cleanNim, nama: cleanNama, reason: 'NIM sudah terdaftar di sistem (dilewati)' });
+        }
+      } else {
+        newUsers.push(studentObj);
+        existingNims.add(cleanNim);
+        importedCount++;
+      }
+
+      // Automatically link pembimbing 1 and 2 if specified in import
+      const d1Nip = String(rec.dospem1_nip || '').trim();
+      const d2Nip = String(rec.dospem2_nip || '').trim();
+      if (d1Nip || d2Nip) {
+        try {
+          assignStudentAdvisors(cleanNim, d1Nip, d2Nip, cleanNama, '');
+        } catch (e) {
+          console.warn('Failed to assign advisors during batch import:', e);
+        }
+      }
+    }
+
+    // 1. Update localStorage simta_registered_users
+    let mergedUsers = [...currentUsers];
+    if (updatedUsers.length > 0) {
+      const updateMap = new Map(updatedUsers.map(u => [u.nim, u]));
+      mergedUsers = mergedUsers.map(u => {
+        if (u.nim && updateMap.has(u.nim)) {
+          return { ...u, ...updateMap.get(u.nim), updated_at: new Date().toISOString() };
+        }
+        return u;
+      });
+    }
+    if (newUsers.length > 0) {
+      mergedUsers = [...newUsers, ...mergedUsers];
+    }
+    try {
+      localStorage.setItem('simta_registered_users', JSON.stringify(mergedUsers));
+    } catch (e) {
+      console.warn('Failed to save imported users to localStorage:', e);
+    }
+
+    // 2. Update reactive profiles state
+    setDbProfiles(prev => {
+      const updateMap = new Map([...newUsers, ...updatedUsers].map(u => [u.nim, u]));
+      const existing = prev.filter(p => !updateMap.has(p.nim));
+      return [...newUsers, ...updatedUsers, ...existing];
+    });
+
+    // 3. Sync to Supabase if configured
+    if (isSupabaseConfigured && supabase) {
+      const allToUpsert = [...newUsers, ...updatedUsers].map(u => {
+        const { status, password, ...supabasePayload } = u;
+        return supabasePayload;
+      });
+      if (allToUpsert.length > 0) {
+        try {
+          await supabase.from('profiles').upsert(allToUpsert, { onConflict: 'id' });
+        } catch (err) {
+          console.warn('Supabase batch upsert student error:', err);
+        }
+      }
+    }
+
+    return {
+      total: records.length,
+      imported: importedCount,
+      updated: updatedCount,
+      skipped: skippedCount,
+      failed: errors.filter(e => !e.reason.includes('(dilewati)')).length,
+      errors
+    };
+  };
+
   // Update Mahasiswa Account (Admin SIMTA)
   const updateMahasiswaAccount = async (idOrNim, updatedFields) => {
     const cleanKey = String(idOrNim).trim();
@@ -2933,6 +3123,146 @@ export function AuthProvider({ children }) {
     }
 
     return newAdv;
+  };
+
+  // Batch Import Dosen (Admin SIMTA)
+  const batchImportDosen = async (records, options = { handleDuplicates: 'skip' }) => {
+    if (!Array.isArray(records) || records.length === 0) {
+      return { total: 0, imported: 0, updated: 0, skipped: 0, failed: 0, errors: [] };
+    }
+
+    const currentUsers = getRegisteredUsers();
+    const existingAccounts = getAllDosenAccounts();
+    const existingNips = new Set(existingAccounts.map(d => String(d.nip || '').trim()));
+    const seenFileNips = new Set();
+
+    const newDosen = [];
+    const updatedDosen = [];
+    const errors = [];
+    let importedCount = 0;
+    let updatedCount = 0;
+    let skippedCount = 0;
+
+    for (let i = 0; i < records.length; i++) {
+      const rec = records[i];
+      const cleanNip = String(rec.nip || '').trim();
+      const cleanNama = (rec.nama || '').trim();
+
+      if (!cleanNip) {
+        errors.push({ row: i + 1, identifier: '-', nama: cleanNama || '-', reason: 'NIP kosong / tidak valid' });
+        continue;
+      }
+      if (!cleanNama) {
+        errors.push({ row: i + 1, identifier: cleanNip, nama: '-', reason: 'Nama dosen tidak boleh kosong' });
+        continue;
+      }
+
+      if (seenFileNips.has(cleanNip)) {
+        errors.push({ row: i + 1, identifier: cleanNip, nama: cleanNama, reason: 'NIP duplikat di dalam berkas impor' });
+        continue;
+      }
+      seenFileNips.add(cleanNip);
+
+      const cleanEmail = (rec.email || `${cleanNip}@unsri.ac.id`).toLowerCase().trim();
+      const keahlianArray = Array.isArray(rec.keahlian) 
+        ? rec.keahlian 
+        : (rec.keahlian || 'Sistem Informasi').split(',').map(s => s.trim()).filter(Boolean);
+
+      const dosenObj = {
+        id: `adv-${cleanNip}`,
+        nip: cleanNip,
+        nim: cleanNip,
+        nama: cleanNama,
+        email: cleanEmail,
+        no_hp: (rec.no_hp || '-').trim(),
+        prodi: rec.prodi || 'D3 Manajemen Informatika',
+        jabatan_fungsional: rec.jabatan_fungsional || 'Asisten Ahli',
+        keahlian: keahlianArray,
+        kuota_dospem1: Number(rec.kuota_dospem1) || 8,
+        kuota_dospem2: Number(rec.kuota_dospem2) || 8,
+        role: rec.role || (cleanNip === '198410012009121005' || cleanNip === '197805122005011002' ? 'kaprodi' : 'dosen'),
+        status: (rec.status || 'aktif').toLowerCase().trim(),
+        password: rec.password || cleanNip,
+        created_at: new Date().toISOString()
+      };
+
+      const isExisting = existingNips.has(cleanNip);
+
+      if (isExisting) {
+        if (options.handleDuplicates === 'update') {
+          updatedDosen.push(dosenObj);
+          updatedCount++;
+        } else {
+          skippedCount++;
+          errors.push({ row: i + 1, identifier: cleanNip, nama: cleanNama, reason: 'NIP sudah terdaftar di sistem (dilewati)' });
+        }
+      } else {
+        newDosen.push(dosenObj);
+        existingNips.add(cleanNip);
+        importedCount++;
+      }
+    }
+
+    // 1. Update advisors master in state and localStorage
+    setAdvisors(prev => {
+      const updateMap = new Map(updatedDosen.map(d => [d.nip, d]));
+      const updatedPrev = prev.map(a => updateMap.has(a.nip) ? { ...a, ...updateMap.get(a.nip) } : a);
+      const merged = [...newDosen, ...updatedPrev];
+      try { localStorage.setItem('simta_advisors', JSON.stringify(merged)); } catch {}
+      return merged;
+    });
+
+    // 2. Update simta_registered_users
+    let mergedUsers = [...currentUsers];
+    if (updatedDosen.length > 0) {
+      const updateMap = new Map(updatedDosen.map(u => [u.nip, u]));
+      mergedUsers = mergedUsers.map(u => {
+        if (u.nip && updateMap.has(u.nip)) {
+          return { ...u, ...updateMap.get(u.nip), updated_at: new Date().toISOString() };
+        }
+        return u;
+      });
+    }
+    if (newDosen.length > 0) {
+      mergedUsers = [...newDosen, ...mergedUsers];
+    }
+    try {
+      localStorage.setItem('simta_registered_users', JSON.stringify(mergedUsers));
+    } catch {}
+
+    // 3. Update reactive profiles
+    setDbProfiles(prev => {
+      const updateMap = new Map([...newDosen, ...updatedDosen].map(u => [u.nip, u]));
+      const existing = prev.filter(p => !updateMap.has(p.nip));
+      return [...newDosen, ...updatedDosen, ...existing];
+    });
+
+    // 4. Sync to Supabase
+    if (isSupabaseConfigured && supabase) {
+      const allAdv = [...newDosen, ...updatedDosen].map(d => {
+        const { password, role, ...advisorPayload } = d;
+        return advisorPayload;
+      });
+      const allProfiles = [...newDosen, ...updatedDosen].map(d => {
+        const { status, keahlian, kuota_dospem1, kuota_dospem2, jabatan_fungsional, ...profilePayload } = d;
+        return profilePayload;
+      });
+      try {
+        if (allAdv.length > 0) await supabase.from('advisors').upsert(allAdv, { onConflict: 'nip' });
+        if (allProfiles.length > 0) await supabase.from('profiles').upsert(allProfiles, { onConflict: 'id' });
+      } catch (err) {
+        console.warn('Supabase batch upsert dosen error:', err);
+      }
+    }
+
+    return {
+      total: records.length,
+      imported: importedCount,
+      updated: updatedCount,
+      skipped: skippedCount,
+      failed: errors.filter(e => !e.reason.includes('(dilewati)')).length,
+      errors
+    };
   };
 
   // Update Dosen Account (Admin SIMTA)
@@ -3170,10 +3500,12 @@ export function AuthProvider({ children }) {
       getAllMahasiswaAccounts,
       getAllDosenAccounts,
       addMahasiswaAccount,
+      batchImportMahasiswa,
       updateMahasiswaAccount,
       deleteMahasiswaAccount,
       resetMahasiswaPassword,
       addDosenAccount,
+      batchImportDosen,
       updateDosenAccount,
       deleteDosenAccount,
       resetDosenPassword,

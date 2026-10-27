@@ -21,6 +21,24 @@ export default function SmoothScroll({ children }) {
       wheelMultiplier: 1,
       touchMultiplier: 2,
       infinite: false,
+      allowNestedScroll: true,
+      prevent: (node) => {
+        if (!node || typeof node.closest !== 'function') return false;
+        return Boolean(
+          node.hasAttribute('data-lenis-prevent') ||
+          node.closest('[data-lenis-prevent]') ||
+          node.closest('[role="dialog"]') ||
+          node.closest('[aria-modal="true"]') ||
+          node.closest('.fixed') ||
+          node.closest('.overflow-y-auto') ||
+          node.closest('.overflow-y-scroll') ||
+          node.closest('.overflow-x-auto') ||
+          node.closest('.overflow-x-scroll') ||
+          node.closest('.overflow-auto') ||
+          node.closest('.overflow-scroll') ||
+          node.closest('aside')
+        );
+      }
     });
 
     lenisRef.current = lenis;
@@ -54,12 +72,13 @@ export default function SmoothScroll({ children }) {
 
     // 4. Reset scroll on route change using Inertia router events
     const unsubscribeRouter = router.on('navigate', () => {
+      document.body.style.overflow = 'unset';
       resetScroll();
     });
 
     // 5. Automatically pause Lenis when modals are open (body overflow hidden)
     const bodyObserver = new MutationObserver(() => {
-      if (document.body.style.overflow === 'hidden') {
+      if (document.body.style.overflow === 'hidden' || document.documentElement.style.overflow === 'hidden') {
         lenis.stop();
       } else {
         lenis.start();

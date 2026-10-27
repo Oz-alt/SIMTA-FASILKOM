@@ -24,13 +24,17 @@ import {
   Sparkles,
   Layers,
   GraduationCap,
-  UserX
+  UserX,
+  Upload,
+  FileSpreadsheet
 } from 'lucide-react';
+import ModalImportMasterData from '../../Components/common/ModalImportMasterData.jsx';
 
 export default function MasterDosenAdminPage() {
   const { 
     getAllDosenAccounts, 
     addDosenAccount, 
+    batchImportDosen,
     updateDosenAccount, 
     deleteDosenAccount,
     advisors = [],
@@ -44,6 +48,7 @@ export default function MasterDosenAdminPage() {
   const [prodiFilter, setProdiFilter] = useState('ALL');
 
   // Modal States
+  const [isImportOpen, setIsImportOpen] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingDosen, setEditingDosen] = useState(null);
   const [viewingDosen, setViewingDosen] = useState(null);
@@ -76,7 +81,7 @@ export default function MasterDosenAdminPage() {
 
   // Lock background scroll when modal is open
   useEffect(() => {
-    const isModalOpen = Boolean(isAddOpen || editingDosen || viewingDosen || statusManagingDosen || deletingDosen);
+    const isModalOpen = Boolean(isImportOpen || isAddOpen || editingDosen || viewingDosen || statusManagingDosen || deletingDosen);
     if (isModalOpen) {
       document.body.style.overflow = 'hidden';
     } else {
@@ -85,7 +90,7 @@ export default function MasterDosenAdminPage() {
     return () => {
       document.body.style.overflow = 'unset';
     };
-  }, [isAddOpen, editingDosen, viewingDosen, statusManagingDosen, deletingDosen]);
+  }, [isImportOpen, isAddOpen, editingDosen, viewingDosen, statusManagingDosen, deletingDosen]);
 
   // Master Dosen Dataset
   const rawDosenList = useMemo(() => {
@@ -314,13 +319,23 @@ export default function MasterDosenAdminPage() {
               <ShieldCheck className="w-3.5 h-3.5 text-indigo-300" />
               <span>Admin SIMTA • Data Master</span>
             </div>
-            <h1 className="text-2xl font-extrabold tracking-tight">Data Master Dosen</h1>
+            <h1 className="text-2xl font-extrabold tracking-tight">Data Dosen</h1>
             <p className="text-xs sm:text-sm text-indigo-100/90 mt-1 max-w-2xl leading-relaxed">
-              Kelola data master pengajar, NIP resmi, jabatan fungsional, bidang keahlian riset, alokasi kuota bimbingan, serta status keaktifan akademik Fakultas Ilmu Komputer UNSRI.
+              Kelola data pengajar, NIP resmi, jabatan fungsional, bidang keahlian riset, alokasi kuota bimbingan, serta status keaktifan akademik Fakultas Ilmu Komputer UNSRI.
             </p>
           </div>
 
           <div className="flex items-center gap-2.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => setIsImportOpen(true)}
+              className="inline-flex items-center space-x-2 px-3.5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold shadow-md shadow-emerald-700/20 transition-all cursor-pointer"
+              title="Import data dosen dari berkas Excel (.xlsx) atau CSV"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-200" />
+              <span>Import Excel</span>
+            </button>
+
             <button
               type="button"
               onClick={handleExportCSV}
@@ -652,13 +667,13 @@ export default function MasterDosenAdminPage() {
       {/* MODAL 1: DETAIL DOSEN */}
       {/* ============================================================== */}
       {viewingDosen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-slate-100 relative space-y-5 animate-in zoom-in-95 max-h-[90vh] overflow-y-auto">
+        <div data-lenis-prevent className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in overflow-y-auto overscroll-contain">
+          <div data-lenis-prevent className="bg-white rounded-3xl max-w-xl w-full max-h-[90vh] flex flex-col overflow-hidden my-auto p-6 shadow-2xl border border-slate-100 relative space-y-4 animate-in zoom-in-95 overscroll-contain">
             
-            {/* Modal Header */}
-            <div className="flex items-start justify-between">
+            {/* Modal Header (Fixed at top) */}
+            <div className="flex items-start justify-between shrink-0">
               <div className="flex items-center space-x-3.5">
-                <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white font-extrabold text-lg flex items-center justify-center shadow-md shadow-blue-600/30">
+                <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white font-extrabold text-lg flex items-center justify-center shadow-md shadow-blue-600/30 shrink-0">
                   {viewingDosen.nama ? viewingDosen.nama.charAt(0).toUpperCase() : 'D'}
                 </div>
                 <div>
@@ -673,14 +688,14 @@ export default function MasterDosenAdminPage() {
               <button
                 type="button"
                 onClick={() => setViewingDosen(null)}
-                className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+                className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors shrink-0"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Academic & Identity Cards */}
-            <div className="space-y-3">
+            {/* Scrollable Academic & Identity Cards */}
+            <div data-lenis-prevent className="flex-1 min-h-0 overflow-y-auto overscroll-contain space-y-3 pr-1 py-1">
               <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 space-y-3">
                 <div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Data Fungsional &amp; Prodi</div>
                 <div className="grid grid-cols-2 gap-3 text-xs">
@@ -752,7 +767,7 @@ export default function MasterDosenAdminPage() {
                   </span>
                 </div>
                 {dosenAdvisees.length > 0 ? (
-                  <div className="divide-y divide-indigo-100/80 max-h-40 overflow-y-auto space-y-1">
+                  <div className="divide-y divide-indigo-100/80 max-h-40 overflow-y-auto overscroll-contain space-y-1 pr-1">
                     {dosenAdvisees.map(t => (
                       <div key={t.id} className="pt-1.5 text-slate-700">
                         <div className="font-bold text-slate-900 flex items-center justify-between">
@@ -769,8 +784,8 @@ export default function MasterDosenAdminPage() {
               </div>
             </div>
 
-            {/* Modal Actions */}
-            <div className="flex items-center justify-end space-x-2 pt-2 border-t border-slate-100">
+            {/* Modal Actions (Fixed at bottom) */}
+            <div className="flex items-center justify-end space-x-2 pt-2 border-t border-slate-100 shrink-0">
               <button
                 type="button"
                 onClick={() => {
@@ -799,12 +814,13 @@ export default function MasterDosenAdminPage() {
       {/* MODAL 2: TAMBAH / EDIT DOSEN */}
       {/* ============================================================== */}
       {(isAddOpen || editingDosen) && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 relative space-y-4 animate-in zoom-in-95 max-h-[90vh] overflow-y-auto">
+        <div data-lenis-prevent className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in overflow-y-auto overscroll-contain">
+          <div data-lenis-prevent className="bg-white rounded-3xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden my-auto p-6 shadow-2xl border border-slate-100 relative space-y-4 animate-in zoom-in-95 overscroll-contain">
             
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            {/* Modal Header (Fixed at top) */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
               <div className="flex items-center space-x-2.5">
-                <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
                   <UserCheck className="w-5 h-5" />
                 </div>
                 <div>
@@ -820,158 +836,161 @@ export default function MasterDosenAdminPage() {
                   setIsAddOpen(false);
                   setEditingDosen(null);
                 }}
-                className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+                className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors shrink-0"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveDosen} className="space-y-3.5 text-xs">
+            <form onSubmit={handleSaveDosen} className="flex flex-col flex-1 min-h-0 overflow-hidden text-xs" data-lenis-prevent>
               
-              {/* NIP */}
-              <div>
-                <label className="block text-slate-700 font-bold mb-1">
-                  Nomor Induk Pegawai (NIP) <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  disabled={Boolean(editingDosen)}
-                  value={dosenForm.nip}
-                  onChange={(e) => setDosenForm({ ...dosenForm, nip: e.target.value })}
-                  placeholder="Contoh: 198410012009121005"
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 font-mono focus:ring-2 focus:ring-blue-500 focus:outline-hidden disabled:bg-slate-100 disabled:text-slate-500"
-                />
-              </div>
-
-              {/* Nama Lengkap + Gelar */}
-              <div>
-                <label className="block text-slate-700 font-bold mb-1">
-                  Nama Lengkap &amp; Gelar <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={dosenForm.nama}
-                  onChange={(e) => setDosenForm({ ...dosenForm, nama: e.target.value })}
-                  placeholder="Contoh: Dr. Ir. Hendra Kusuma, M.T."
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
-                />
-              </div>
-
-              {/* Email */}
-              <div>
-                <label className="block text-slate-700 font-bold mb-1">Email Resmi</label>
-                <input
-                  type="email"
-                  value={dosenForm.email}
-                  onChange={(e) => setDosenForm({ ...dosenForm, email: e.target.value })}
-                  placeholder={dosenForm.nip ? `${dosenForm.nip}@unsri.ac.id` : 'dosen@unsri.ac.id'}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
-                />
-                <span className="text-[10px] text-slate-400 mt-0.5 block">Biarkan kosong untuk otomatis memakai format NIP@unsri.ac.id</span>
-              </div>
-
-              {/* No HP */}
-              <div>
-                <label className="block text-slate-700 font-bold mb-1">No. Handphone / WhatsApp</label>
-                <input
-                  type="text"
-                  value={dosenForm.no_hp}
-                  onChange={(e) => setDosenForm({ ...dosenForm, no_hp: e.target.value })}
-                  placeholder="Contoh: 081298765432"
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
-                />
-              </div>
-
-              {/* Jabatan Fungsional & Prodi */}
-              <div className="grid grid-cols-2 gap-3">
+              {/* Dedicated Scrollable Form Body */}
+              <div data-lenis-prevent className="flex-1 min-h-0 overflow-y-auto overscroll-contain space-y-3.5 pr-1 py-1">
+                {/* NIP */}
                 <div>
-                  <label className="block text-slate-700 font-bold mb-1">Jabatan Fungsional</label>
-                  <select
-                    value={dosenForm.jabatan_fungsional}
-                    onChange={(e) => setDosenForm({ ...dosenForm, jabatan_fungsional: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-medium focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
-                  >
-                    <option value="Tenaga Pengajar">Tenaga Pengajar</option>
-                    <option value="Asisten Ahli">Asisten Ahli</option>
-                    <option value="Lektor">Lektor</option>
-                    <option value="Lektor Kepala">Lektor Kepala</option>
-                    <option value="Guru Besar">Guru Besar</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-slate-700 font-bold mb-1">Program Studi</label>
-                  <select
-                    value={dosenForm.prodi}
-                    onChange={(e) => setDosenForm({ ...dosenForm, prodi: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-medium focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
-                  >
-                    <option value="D3 Manajemen Informatika">D3 Manajemen Informatika</option>
-                    <option value="D3 Komputerisasi Akuntansi">D3 Komputerisasi Akuntansi</option>
-                    <option value="S1 Sistem Informasi">S1 Sistem Informasi</option>
-                    <option value="S1 Teknik Informatika">S1 Teknik Informatika</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Bidang Keahlian */}
-              <div>
-                <label className="block text-slate-700 font-bold mb-1">Bidang Keahlian / Riset</label>
-                <input
-                  type="text"
-                  value={dosenForm.keahlian}
-                  onChange={(e) => setDosenForm({ ...dosenForm, keahlian: e.target.value })}
-                  placeholder="Contoh: Rekayasa Web, Sistem Informasi, Basis Data (Pisahkan koma)"
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
-                />
-              </div>
-
-              {/* Kuota Dospem 1 & 2 */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-700 font-bold mb-1">Kuota Pembimbing 1</label>
+                  <label className="block text-slate-700 font-bold mb-1">
+                    Nomor Induk Pegawai (NIP) <span className="text-rose-500">*</span>
+                  </label>
                   <input
-                    type="number"
-                    min="1"
-                    max="30"
-                    value={dosenForm.kuota_dospem1}
-                    onChange={(e) => setDosenForm({ ...dosenForm, kuota_dospem1: Number(e.target.value) })}
+                    type="text"
+                    required
+                    disabled={Boolean(editingDosen)}
+                    value={dosenForm.nip}
+                    onChange={(e) => setDosenForm({ ...dosenForm, nip: e.target.value })}
+                    placeholder="Contoh: 198410012009121005"
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 font-mono focus:ring-2 focus:ring-blue-500 focus:outline-hidden disabled:bg-slate-100 disabled:text-slate-500"
+                  />
+                </div>
+
+                {/* Nama Lengkap + Gelar */}
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1">
+                    Nama Lengkap &amp; Gelar <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={dosenForm.nama}
+                    onChange={(e) => setDosenForm({ ...dosenForm, nama: e.target.value })}
+                    placeholder="Contoh: Dr. Ir. Hendra Kusuma, M.T."
                     className="w-full px-3.5 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
                   />
                 </div>
 
+                {/* Email */}
                 <div>
-                  <label className="block text-slate-700 font-bold mb-1">Kuota Pembimbing 2</label>
+                  <label className="block text-slate-700 font-bold mb-1">Email Resmi</label>
                   <input
-                    type="number"
-                    min="1"
-                    max="30"
-                    value={dosenForm.kuota_dospem2}
-                    onChange={(e) => setDosenForm({ ...dosenForm, kuota_dospem2: Number(e.target.value) })}
+                    type="email"
+                    value={dosenForm.email}
+                    onChange={(e) => setDosenForm({ ...dosenForm, email: e.target.value })}
+                    placeholder={dosenForm.nip ? `${dosenForm.nip}@unsri.ac.id` : 'dosen@unsri.ac.id'}
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                  />
+                  <span className="text-[10px] text-slate-400 mt-0.5 block">Biarkan kosong untuk otomatis memakai format NIP@unsri.ac.id</span>
+                </div>
+
+                {/* No HP */}
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1">No. Handphone / WhatsApp</label>
+                  <input
+                    type="text"
+                    value={dosenForm.no_hp}
+                    onChange={(e) => setDosenForm({ ...dosenForm, no_hp: e.target.value })}
+                    placeholder="Contoh: 081298765432"
                     className="w-full px-3.5 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
                   />
                 </div>
+
+                {/* Jabatan Fungsional & Prodi */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-700 font-bold mb-1">Jabatan Fungsional</label>
+                    <select
+                      value={dosenForm.jabatan_fungsional}
+                      onChange={(e) => setDosenForm({ ...dosenForm, jabatan_fungsional: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-medium focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                    >
+                      <option value="Tenaga Pengajar">Tenaga Pengajar</option>
+                      <option value="Asisten Ahli">Asisten Ahli</option>
+                      <option value="Lektor">Lektor</option>
+                      <option value="Lektor Kepala">Lektor Kepala</option>
+                      <option value="Guru Besar">Guru Besar</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-700 font-bold mb-1">Program Studi</label>
+                    <select
+                      value={dosenForm.prodi}
+                      onChange={(e) => setDosenForm({ ...dosenForm, prodi: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-medium focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                    >
+                      <option value="D3 Manajemen Informatika">D3 Manajemen Informatika</option>
+                      <option value="D3 Komputerisasi Akuntansi">D3 Komputerisasi Akuntansi</option>
+                      <option value="S1 Sistem Informasi">S1 Sistem Informasi</option>
+                      <option value="S1 Teknik Informatika">S1 Teknik Informatika</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Bidang Keahlian */}
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1">Bidang Keahlian / Riset</label>
+                  <input
+                    type="text"
+                    value={dosenForm.keahlian}
+                    onChange={(e) => setDosenForm({ ...dosenForm, keahlian: e.target.value })}
+                    placeholder="Contoh: Rekayasa Web, Sistem Informasi, Basis Data (Pisahkan koma)"
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                  />
+                </div>
+
+                {/* Kuota Dospem 1 & 2 */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-700 font-bold mb-1">Kuota Pembimbing 1</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="30"
+                      value={dosenForm.kuota_dospem1}
+                      onChange={(e) => setDosenForm({ ...dosenForm, kuota_dospem1: Number(e.target.value) })}
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-700 font-bold mb-1">Kuota Pembimbing 2</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="30"
+                      value={dosenForm.kuota_dospem2}
+                      onChange={(e) => setDosenForm({ ...dosenForm, kuota_dospem2: Number(e.target.value) })}
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                    />
+                  </div>
+                </div>
+
+                {/* Status */}
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1">Status Keaktifan</label>
+                  <select
+                    value={dosenForm.status}
+                    onChange={(e) => setDosenForm({ ...dosenForm, status: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-medium focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                  >
+                    <option value="aktif">Aktif</option>
+                    <option value="tugas_belajar">Tugas Belajar</option>
+                    <option value="cuti">Cuti</option>
+                    <option value="nonaktif">Nonaktif</option>
+                  </select>
+                </div>
               </div>
 
-              {/* Status */}
-              <div>
-                <label className="block text-slate-700 font-bold mb-1">Status Keaktifan</label>
-                <select
-                  value={dosenForm.status}
-                  onChange={(e) => setDosenForm({ ...dosenForm, status: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-medium focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
-                >
-                  <option value="aktif">Aktif</option>
-                  <option value="tugas_belajar">Tugas Belajar</option>
-                  <option value="cuti">Cuti</option>
-                  <option value="nonaktif">Nonaktif</option>
-                </select>
-              </div>
-
-              {/* Submit Buttons */}
-              <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-100">
+              {/* Submit Buttons (Fixed at bottom) */}
+              <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-100 shrink-0">
                 <button
                   type="button"
                   onClick={() => {
@@ -1000,10 +1019,10 @@ export default function MasterDosenAdminPage() {
       {/* MODAL 3: KELOLA STATUS CEPAT */}
       {/* ============================================================== */}
       {statusManagingDosen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 relative space-y-4 animate-in zoom-in-95">
+        <div data-lenis-prevent className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in overflow-y-auto overscroll-contain">
+          <div data-lenis-prevent className="bg-white rounded-3xl max-w-sm w-full max-h-[90vh] overflow-y-auto my-auto p-6 shadow-2xl border border-slate-100 relative space-y-4 animate-in zoom-in-95 overscroll-contain">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
                 <ShieldCheck className="w-5 h-5" />
               </div>
               <div>
@@ -1061,8 +1080,8 @@ export default function MasterDosenAdminPage() {
       {/* MODAL 4: KONFIRMASI HAPUS */}
       {/* ============================================================== */}
       {deletingDosen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 relative space-y-4 animate-in zoom-in-95">
+        <div data-lenis-prevent className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in overflow-y-auto overscroll-contain">
+          <div data-lenis-prevent className="bg-white rounded-3xl max-w-sm w-full max-h-[90vh] overflow-y-auto my-auto p-6 shadow-2xl border border-slate-100 relative space-y-4 animate-in zoom-in-95 overscroll-contain">
             <div className="flex items-center space-x-3 text-rose-600">
               <div className="w-10 h-10 rounded-2xl bg-rose-50 flex items-center justify-center shrink-0">
                 <AlertTriangle className="w-5 h-5" />
@@ -1096,6 +1115,18 @@ export default function MasterDosenAdminPage() {
           </div>
         </div>
       )}
+
+      {/* Modal Import Data Master Dosen */}
+      <ModalImportMasterData
+        isOpen={isImportOpen}
+        onClose={() => setIsImportOpen(false)}
+        entityType="dosen"
+        existingData={rawDosenList}
+        onImport={batchImportDosen}
+        onSuccess={(result) => {
+          showToast(`Import data selesai: ${result.imported} dosen baru ditambahkan, ${result.updated} diperbarui.`);
+        }}
+      />
 
     </div>
   );

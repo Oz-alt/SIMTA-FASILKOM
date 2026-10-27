@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { CheckSquare, CheckCircle2, XCircle, AlertTriangle, Building2, Calendar } from 'lucide-react';
 
@@ -7,6 +7,18 @@ export default function KelolaPeminjamanPage() {
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [filterStatus, setFilterStatus] = useState('ALL');
+
+  // Lock background scroll when modal is open
+  useEffect(() => {
+    if (selectedBooking) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [selectedBooking]);
 
   const filteredBookings = filterStatus === 'ALL'
     ? bookings
@@ -115,8 +127,8 @@ export default function KelolaPeminjamanPage() {
 
       {/* Mandatory Rejection Reason Modal */}
       {selectedBooking && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+        <div data-lenis-prevent className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 z-50 overflow-y-auto overscroll-contain animate-in fade-in">
+          <div data-lenis-prevent className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto overscroll-contain my-auto p-6 shadow-2xl space-y-4">
             <div className="flex items-center space-x-2 text-rose-600 font-bold text-base">
               <AlertTriangle className="w-5 h-5" />
               <h3>Alasan Penolakan Peminjaman Ruang</h3>
