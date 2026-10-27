@@ -10,16 +10,11 @@ import {
   BookOpen, 
   Building2,
   Mail,
-<<<<<<< HEAD
   Sparkles,
   ExternalLink,
-  Check
-=======
   ArrowRight,
-  Sparkles,
   Volume2,
   VolumeX
->>>>>>> d3224455277fe9f742ed03bb34a835469cf7eadc
 } from 'lucide-react';
 
 import unsriLogo from '../../assets/photo/unsri logo.png';
@@ -29,29 +24,14 @@ export default function Navbar() {
     currentUser, 
     switchRole, 
     notifications, 
-<<<<<<< HEAD
     markAllNotificationsAsRead, 
-    markNotificationAsRead 
-=======
-    markAllNotificationsAsRead,
+    markNotificationAsRead,
     soundEnabled,
     setSoundEnabled,
     realtimeNotifEnabled
->>>>>>> d3224455277fe9f742ed03bb34a835469cf7eadc
   } = useAuth();
   const [showNotif, setShowNotif] = useState(false);
   const [showRoleMenu, setShowRoleMenu] = useState(false);
-
-  const handleNotificationClick = (notif) => {
-    if (notif.id && markNotificationAsRead) {
-      markNotificationAsRead(notif.id);
-    }
-    const targetUrl = notif.action_url || (notif.related_id ? `/kaprodi/titles/${notif.related_id}` : null);
-    if (targetUrl) {
-      setShowNotif(false);
-      router.visit(targetUrl);
-    }
-  };
 
   // Filter notifications relevant to the current active user
   const userNotifications = notifications.filter(n => {
@@ -92,12 +72,18 @@ export default function Navbar() {
 
   const handleNotificationClick = (n) => {
     setShowNotif(false);
-    if (n.related_type === 'bimbingan_status' || n.related_type === 'consultation' || n.related_type === 'bimbingan_reminder') {
+    if (n.id && markNotificationAsRead) {
+      markNotificationAsRead(n.id);
+    }
+    const targetUrl = n.action_url || (n.related_id && (n.related_type === 'thesis_title' || n.related_type === 'thesis_title_revised')
+      ? `/kaprodi/titles/${n.related_id}`
+      : null);
+    if (targetUrl) {
+      router.visit(targetUrl);
+    } else if (n.related_type === 'bimbingan_status' || n.related_type === 'consultation' || n.related_type === 'bimbingan_reminder') {
       router.visit('/thesis/consultations');
     } else if (n.related_type === 'booking') {
       router.visit('/booking/status');
-    } else if (n.related_type === 'thesis_title') {
-      router.visit('/dashboard');
     }
   };
 
@@ -171,9 +157,9 @@ export default function Navbar() {
                     <div className="flex items-center space-x-1.5 font-bold">
                       <span className="relative flex h-2 w-2">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                        <span className={`relative inline-flex rounded-full h-2 w-2 ${realtimeNotifEnabled ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
                       </span>
-                      <span className="text-emerald-800">Real-time Notifikasi: ON</span>
+                      <span className="text-emerald-800">Real-time Notifikasi: {realtimeNotifEnabled ? 'ON' : 'OFF'}</span>
                     </div>
                     <button 
                       onClick={() => setSoundEnabled && setSoundEnabled(!soundEnabled)}
@@ -213,21 +199,21 @@ export default function Navbar() {
                       <div className="p-6 text-center text-xs text-slate-400">Tidak ada notifikasi baru</div>
                     ) : (
                       userNotifications.map(n => {
-<<<<<<< HEAD
                         const isThesisNotif = n.related_type === 'thesis_title' || n.related_type === 'thesis_title_revised' || Boolean(n.action_url);
-=======
                         const isBimbingan = n.related_type === 'bimbingan_status' || n.related_type === 'consultation';
                         const isApproved = n.status === 'disetujui' || n.jenis_revisi === 'Diterima';
                         const isMayor = n.jenis_revisi === 'Mayor';
                         const isDitolak = n.status === 'ditolak' || n.jenis_revisi === 'Ditolak';
->>>>>>> d3224455277fe9f742ed03bb34a835469cf7eadc
 
                         return (
                           <div 
                             key={n.id} 
-<<<<<<< HEAD
-                            onClick={() => isThesisNotif ? handleNotificationClick(n) : markNotificationAsRead?.(n.id)}
-                            className={`p-3.5 hover:bg-slate-50 transition-colors cursor-pointer group ${!n.is_read ? 'bg-indigo-50/30' : ''}`}
+                            onClick={() => handleNotificationClick(n)}
+                            className={`p-3.5 hover:bg-slate-50 transition-colors cursor-pointer group ${
+                              isBimbingan
+                                ? (isApproved ? 'border-l-3 border-l-emerald-500' : isMayor || isDitolak ? 'border-l-3 border-l-rose-500' : 'border-l-3 border-l-blue-500')
+                                : ''
+                            } ${!n.is_read ? 'bg-indigo-50/30' : ''}`}
                           >
                             <div className="flex items-start justify-between gap-2">
                               <div className="flex items-center space-x-1.5 flex-1 min-w-0">
@@ -238,29 +224,7 @@ export default function Navbar() {
                                   {n.title}
                                 </p>
                               </div>
-                              {!n.is_read && (
-                                <span className="w-2 h-2 rounded-full bg-indigo-600 shrink-0 mt-1"></span>
-                              )}
-                            </div>
-
-                            <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
-                              {n.message}
-                            </p>
-                            
-                            {/* Email notification confirmation pill for Mahasiswa */}
-=======
-                            onClick={() => handleNotificationClick(n)}
-                            className={`p-3.5 hover:bg-slate-50 transition-colors cursor-pointer ${
-                              isBimbingan 
-                                ? (isApproved ? 'border-l-3 border-l-emerald-500' : isMayor || isDitolak ? 'border-l-3 border-l-rose-500' : 'border-l-3 border-l-blue-500') 
-                                : ''
-                            } ${!n.is_read ? 'bg-indigo-50/20' : ''}`}
-                          >
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex items-center space-x-1.5">
-                                <p className="text-xs font-bold text-slate-900">{n.title}</p>
-                              </div>
-                              <div className="flex items-center space-x-1 shrink-0">
+                              <div className="flex items-center space-x-1 shrink-0 mt-0.5">
                                 {isBimbingan && (
                                   <span className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold ${
                                     isApproved ? 'bg-emerald-100 text-emerald-800' :
@@ -275,10 +239,12 @@ export default function Navbar() {
                                 )}
                               </div>
                             </div>
-                            <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">{n.message}</p>
+
+                            <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
+                              {n.message}
+                            </p>
                             
-                            {/* Email notification confirmation pill */}
->>>>>>> d3224455277fe9f742ed03bb34a835469cf7eadc
+                            {/* Email notification confirmation pill for Mahasiswa */}
                             {userRole === 'mahasiswa' && (
                               <div className="mt-2 flex items-center space-x-1 text-[10px] text-emerald-700 font-medium bg-emerald-50 border border-emerald-200/60 rounded px-1.5 py-0.5 w-fit">
                                 <Mail className="w-3 h-3 text-emerald-600 shrink-0" />
@@ -286,7 +252,6 @@ export default function Navbar() {
                               </div>
                             )}
 
-<<<<<<< HEAD
                             {/* Kaprodi quick action button for thesis title */}
                             {(userRole === 'kaprodi' || userRole === 'admin') && isThesisNotif && (
                               <div className="mt-2 flex items-center justify-between pt-1">
@@ -301,10 +266,6 @@ export default function Navbar() {
                               </div>
                             )}
 
-                            <span className="text-[10px] text-slate-400 mt-1.5 block">
-                              {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {new Date(n.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
-                            </span>
-=======
                             <div className="mt-1.5 flex items-center justify-between text-[10px] text-slate-400">
                               <span>
                                 {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {new Date(n.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
@@ -316,7 +277,6 @@ export default function Navbar() {
                                 </span>
                               )}
                             </div>
->>>>>>> d3224455277fe9f742ed03bb34a835469cf7eadc
                           </div>
                         );
                       })

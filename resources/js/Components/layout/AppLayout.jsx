@@ -5,11 +5,8 @@ import Navbar from './Navbar.jsx';
 import PublicNavbar from './PublicNavbar.jsx';
 import Sidebar from './Sidebar.jsx';
 import Footer from './Footer.jsx';
-<<<<<<< HEAD
 import RealtimeNotificationToast from '../common/RealtimeNotificationToast.jsx';
-=======
 import RealtimeBimbinganAlert from '../common/RealtimeBimbinganAlert.jsx';
->>>>>>> d3224455277fe9f742ed03bb34a835469cf7eadc
 
 export default function AppLayout({ children }) {
   const { url } = usePage();

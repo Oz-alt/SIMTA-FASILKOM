@@ -64,7 +64,6 @@ const runLegacyPhoneMigration = () => {
 };
 
 import { supabase, isSupabaseConfigured } from '../services/supabase.js';
-import { playNotificationSound } from '../lib/soundUtils.js';
 import { broadcastRealtimeNotification, subscribeToRealtimeNotifications } from '../services/realtimeNotificationBus.js';
 
 const generateRowId = () => {
@@ -760,10 +759,7 @@ export function AuthProvider({ children }) {
   const [rooms, setRooms] = useState(MOCK_ROOMS);
   const [buildings, setBuildings] = useState(MOCK_BUILDINGS);
   const [roomPriorities, setRoomPriorities] = useState(MOCK_ROOM_PRIORITIES);
-<<<<<<< HEAD
-=======
   // Persistent notifications with local storage synchronization
->>>>>>> d3224455277fe9f742ed03bb34a835469cf7eadc
   const [notifications, setNotifications] = useState(() => {
     try {
       const saved = localStorage.getItem('simta_notifications');
@@ -774,15 +770,6 @@ export function AuthProvider({ children }) {
     } catch {}
     return MOCK_NOTIFICATIONS;
   });
-<<<<<<< HEAD
-=======
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('simta_notifications', JSON.stringify(notifications));
-    } catch {}
-  }, [notifications]);
-
   // Real-time Bimbingan Response Alert State for Mahasiswa
   const [activeRealtimeAlert, setActiveRealtimeAlert] = useState(null);
   const [realtimeNotifEnabled, setRealtimeNotifEnabled] = useState(() => {
@@ -826,7 +813,6 @@ export function AuthProvider({ children }) {
   const dismissRealtimeAlert = () => {
     setActiveRealtimeAlert(null);
   };
->>>>>>> d3224455277fe9f742ed03bb34a835469cf7eadc
 
   useEffect(() => {
     try {
@@ -1877,7 +1863,6 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-<<<<<<< HEAD
   // Multi-transport Real-time Bus Listener (BroadcastChannel, Storage Events & Supabase WebSocket)
   useEffect(() => {
     const unsubscribe = subscribeToRealtimeNotifications((envelope) => {
@@ -1912,8 +1897,6 @@ export function AuthProvider({ children }) {
     return () => unsubscribe();
   }, []);
 
-  // Cross-tab synchronization for consultations state
-=======
   // Cross-tab broadcast channel for instant multi-tab realtime sync
   const bimbinganBroadcastChannelRef = useRef(null);
 
@@ -1987,7 +1970,6 @@ export function AuthProvider({ children }) {
   };
 
   // Cross-tab synchronization for consultations and notifications
->>>>>>> d3224455277fe9f742ed03bb34a835469cf7eadc
   useEffect(() => {
     const handleStorageChange = (e) => {
       if (e.key === 'simta_consultations' && e.newValue) {
@@ -4444,7 +4426,6 @@ export function AuthProvider({ children }) {
       triggerSystemAutoReminders,
       submissionBroadcastLogs,
       sendBroadcastSubmissionReminder,
-<<<<<<< HEAD
       latestRealtimeNotif,
       dismissRealtimeNotif,
       markNotificationAsRead,
@@ -4477,8 +4458,7 @@ export function AuthProvider({ children }) {
           title: sample,
           notif: testNotif
         });
-      }
-=======
+      },
       activeRealtimeAlert,
       triggerRealtimeAlert,
       dismissRealtimeAlert,
@@ -4487,7 +4467,6 @@ export function AuthProvider({ children }) {
       soundEnabled,
       setSoundEnabled,
       playNotificationSound
->>>>>>> d3224455277fe9f742ed03bb34a835469cf7eadc
     }}>
       {children}
     </AuthContext.Provider>
