@@ -241,6 +241,13 @@ export default function KartuBimbinganPage() {
             <span>Kembali ke Entry Bimbingan</span>
           </Link>
           <div className="flex items-center space-x-3">
+            <div className="hidden sm:inline-flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-200">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span>Real-time Status: ON</span>
+            </div>
             <button
               onClick={() => window.print()}
               className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition-all flex items-center space-x-2 cursor-pointer"
