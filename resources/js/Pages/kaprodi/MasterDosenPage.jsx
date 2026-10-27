@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { 
   UserCheck, 
@@ -14,7 +14,11 @@ import {
   BookOpen, 
   Tag,
   ShieldCheck,
-  Check
+  Check,
+  FileSpreadsheet,
+  Upload,
+  AlertCircle,
+  Download
 } from 'lucide-react';
 
 export default function MasterDosenPage() {
@@ -33,6 +37,11 @@ export default function MasterDosenPage() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingDosen, setEditingDosen] = useState(null);
   const [deletingDosen, setDeletingDosen] = useState(null);
+  const [isImportOpen, setIsImportOpen] = useState(false);
+  const [importPreview, setImportPreview] = useState([]);
+  const [importError, setImportError] = useState('');
+  const [isDragOver, setIsDragOver] = useState(false);
+  const importFileRef = useRef(null);
 
   // Form State
   const [dosenForm, setDosenForm] = useState({
@@ -43,6 +52,7 @@ export default function MasterDosenPage() {
     prodi: 'D3 Manajemen Informatika',
     jabatan_fungsional: 'Asisten Ahli',
     keahlian: '',
+    pendidikan: 'S2 (Magister)',
     kuota_dospem1: 8,
     kuota_dospem2: 8,
     status: 'aktif'
@@ -98,6 +108,7 @@ export default function MasterDosenPage() {
       prodi: 'D3 Manajemen Informatika',
       jabatan_fungsional: 'Asisten Ahli',
       keahlian: '',
+      pendidikan: 'S2 (Magister)',
       kuota_dospem1: 8,
       kuota_dospem2: 8,
       status: 'aktif'
@@ -123,10 +134,107 @@ export default function MasterDosenPage() {
       prodi: dosen.prodi || 'D3 Manajemen Informatika',
       jabatan_fungsional: dosen.jabatan_fungsional || 'Asisten Ahli',
       keahlian: Array.isArray(dosen.keahlian) ? dosen.keahlian.join(', ') : (dosen.keahlian || ''),
+      pendidikan: dosen.pendidikan || 'S2 (Magister)',
       kuota_dospem1: dosen.kuota_dospem1 || 8,
       kuota_dospem2: dosen.kuota_dospem2 || 8,
       status: dosen.status || 'aktif'
     });
+  };
+
+  // Strip gelar/degree from name for display
+  const stripGelar = (nama) => {
+    if (!nama) return nama;
+    // Remove prefix titles (Dr., Prof., Ir.)
+    let stripped = nama.replace(/^(Dr\.|Prof\.|Ir\.)\s+/i, '');
+    // Take everything before the first comma (which separates name from degrees)
+    const commaIdx = stripped.indexOf(',');
+    if (commaIdx > -1) {
+      stripped = stripped.substring(0, commaIdx);
+    }
+    return stripped.trim();
+  };
+
+  // Derive pendidikan from name if field is missing (handles old localStorage cache)
+  const getPendidikan = (adv) => {
+    if (adv.pendidikan) return adv.pendidikan;
+    const n = adv.nama || '';
+    const isDoktor = /\bDr\.\s/i.test(n) || /Ph\.D/i.test(n) || /\bDr\b/i.test(n);
+    return isDoktor ? 'S3 (Doktor)' : 'S2 (Magister)';
+  };
+
+  // Parse CSV/Excel file for import
+  const handleImportFile = (file) => {
+    if (!file) return;
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (!['csv', 'xlsx', 'xls'].includes(ext)) {
+      setImportError('Format file tidak didukung. Gunakan CSV atau Excel (.xlsx/.xls)');
+      return;
+    }
+    setImportError('');
+    import('papaparse').then(({ default: Papa }) => {
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (results) => {
+          if (!results.data || results.data.length === 0) {
+            setImportError('File kosong atau tidak ada data yang bisa dibaca.');
+            return;
+          }
+          // Normalize column names (case-insensitive)
+          const normalized = results.data.map(row => {
+            const r = {};
+            Object.keys(row).forEach(k => { r[k.toLowerCase().trim()] = row[k]; });
+            return {
+              nip: r['nip'] || r['kode'] || '',
+              nama: r['nama'] || r['nama dosen'] || r['nama_dosen'] || '',
+              email: r['email'] || '',
+              no_hp: r['no_hp'] || r['no hp'] || r['telepon'] || r['hp'] || '',
+              jabatan_fungsional: r['jabatan_fungsional'] || r['jabatan fungsional'] || r['jabatan'] || 'Asisten Ahli',
+              keahlian: r['keahlian'] || r['bidang keahlian'] || r['bidang_keahlian'] || '',
+              pendidikan: r['pendidikan'] || r['pendidikan terakhir'] || '',
+              prodi: r['prodi'] || r['program studi'] || 'D3 Manajemen Informatika',
+              status: r['status'] || 'aktif',
+              kuota_dospem1: Number(r['kuota_dospem1'] || r['kuota dospem1'] || 8),
+              kuota_dospem2: Number(r['kuota_dospem2'] || r['kuota dospem2'] || 8),
+            };
+          }).filter(r => r.nip && r.nama);
+          if (normalized.length === 0) {
+            setImportError('Tidak ada baris valid. Pastikan kolom NIP dan Nama terisi.');
+            return;
+          }
+          setImportPreview(normalized);
+        },
+        error: () => setImportError('Gagal membaca file. Pastikan format CSV yang valid.')
+      });
+    });
+  };
+
+  const handleConfirmImport = () => {
+    let added = 0;
+    importPreview.forEach(row => {
+      const exists = advisors.find(a => String(a.nip) === String(row.nip));
+      if (!exists) {
+        addAdvisor(row);
+        added++;
+      }
+    });
+    showToast(`Berhasil mengimpor ${added} dosen baru.`);
+    setIsImportOpen(false);
+    setImportPreview([]);
+    setImportError('');
+  };
+
+  const handleDownloadTemplate = () => {
+    const headers = 'NIP,Nama,Email,No_HP,Jabatan_Fungsional,Keahlian,Pendidikan,Prodi,Status,Kuota_Dospem1,Kuota_Dospem2';
+    const example = '198410012009121005,Dr. Abdiansah S.Kom. M.Cs.,abdiansah@unsri.ac.id,,Lektor Kepala,Kecerdasan Buatan,S3 (Doktor),D3 Manajemen Informatika,aktif,8,8';
+    const csv = `${headers}\n${example}`;
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'template_import_dosen.csv';
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -224,29 +332,43 @@ export default function MasterDosenPage() {
             </div>
           </div>
 
-          {/* Add Button */}
-          <button
-            type="button"
-            onClick={() => {
-              setDosenForm({
-                nip: '',
-                nama: '',
-                email: '',
-                no_hp: '',
-                prodi: 'D3 Manajemen Informatika',
-                jabatan_fungsional: 'Asisten Ahli',
-                keahlian: '',
-                kuota_dospem1: 8,
-                kuota_dospem2: 8,
-                status: 'aktif'
-              });
-              setIsAddOpen(true);
-            }}
-            className="inline-flex items-center justify-center space-x-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer shrink-0"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Tambah Dosen</span>
-          </button>
+          {/* Action Buttons */}
+          <div className="flex items-center space-x-2 shrink-0">
+            {/* Import Excel Button */}
+            <button
+              type="button"
+              onClick={() => { setImportPreview([]); setImportError(''); setIsImportOpen(true); }}
+              className="inline-flex items-center justify-center space-x-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer"
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              <span>Import Excel</span>
+            </button>
+
+            {/* Add Button */}
+            <button
+              type="button"
+              onClick={() => {
+                setDosenForm({
+                  nip: '',
+                  nama: '',
+                  email: '',
+                  no_hp: '',
+                  prodi: 'D3 Manajemen Informatika',
+                  jabatan_fungsional: 'Asisten Ahli',
+                  keahlian: '',
+                  pendidikan: 'S2 (Magister)',
+                  kuota_dospem1: 8,
+                  kuota_dospem2: 8,
+                  status: 'aktif'
+                });
+                setIsAddOpen(true);
+              }}
+              className="inline-flex items-center justify-center space-x-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Tambah Dosen</span>
+            </button>
+          </div>
 
         </div>
 
@@ -256,12 +378,12 @@ export default function MasterDosenPage() {
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-extrabold uppercase tracking-wider">
                 <th className="py-3.5 px-4">NIP / Kode</th>
-                <th className="py-3.5 px-4">Nama Dosen &amp; Gelar</th>
+                <th className="py-3.5 px-4">Nama Dosen</th>
+                <th className="py-3.5 px-4">Pendidikan</th>
                 <th className="py-3.5 px-4">Jabatan Fungsional</th>
                 <th className="py-3.5 px-4">Kontak / Email</th>
                 <th className="py-3.5 px-4">Bidang Keahlian</th>
-                <th className="py-3.5 px-4">Status</th>
-                <th className="py-3.5 px-4 text-right">Aksi</th>
+                <th className="py-3.5 px-4 text-center w-24">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium">
@@ -272,8 +394,21 @@ export default function MasterDosenPage() {
                       {adv.nip}
                     </td>
                     <td className="py-3.5 px-4">
-                      <p className="font-bold text-slate-900">{adv.nama}</p>
-                      <p className="text-[11px] text-slate-600">{adv.prodi || 'D3 Manajemen Informatika'}</p>
+                      <p className="font-bold text-slate-900">{stripGelar(adv.nama)}</p>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      {(() => {
+                        const pend = getPendidikan(adv);
+                        return (
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold border ${
+                            pend.startsWith('S3')
+                              ? 'bg-violet-50 text-violet-700 border-violet-200'
+                              : 'bg-sky-50 text-sky-700 border-sky-200'
+                          }`}>
+                            {pend}
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td className="py-3.5 px-4">
                       <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200/80">
@@ -307,31 +442,16 @@ export default function MasterDosenPage() {
                         )}
                       </div>
                     </td>
-                    <td className="py-3.5 px-4">
-                      {(() => {
-                        const s = String(adv.status || 'aktif').toLowerCase().trim();
-                        const isAktif = s === 'aktif';
-                        return (
-                          <span className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${
-                            isAktif
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                              : 'bg-rose-50 text-rose-700 border-rose-200'
-                          }`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${isAktif ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                            <span className="capitalize">{adv.status || 'Aktif'}</span>
-                          </span>
-                        );
-                      })()}
-                    </td>
-                    <td className="py-3.5 px-4 text-right">
-                      <div className="flex items-center justify-end space-x-1">
+
+                    <td className="py-3.5 px-4 text-center">
+                      <div className="flex items-center justify-center space-x-1">
                         <button
                           type="button"
                           onClick={() => openEditModal(adv)}
                           className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-blue-600 transition-colors cursor-pointer"
                           title="Edit Data Dosen"
                         >
-                          <Edit2 className="w-4 h-4" />
+                          <Edit2 className="w-3.5 h-3.5" />
                         </button>
                         <button
                           type="button"
@@ -339,7 +459,7 @@ export default function MasterDosenPage() {
                           className="p-1.5 hover:bg-rose-50 rounded-lg text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
                           title="Hapus Data Dosen"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </td>
@@ -361,9 +481,21 @@ export default function MasterDosenPage() {
 
       {/* Modal Tambah / Edit Dosen */}
       {(isAddOpen || editingDosen) && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div
+          data-lenis-prevent
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto animate-in fade-in"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setIsAddOpen(false);
+              setEditingDosen(null);
+            }
+          }}
+        >
+          <div
+            data-lenis-prevent
+            className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 animate-in zoom-in-95 flex flex-col max-h-[90vh] overflow-hidden"
+          >
+            <div className="flex items-center justify-between border-b border-slate-100 px-6 pt-6 pb-3 shrink-0">
               <div className="flex items-center space-x-2">
                 <UserCheck className="w-5 h-5 text-blue-600" />
                 <h3 className="font-extrabold text-slate-900 text-base">
@@ -379,7 +511,11 @@ export default function MasterDosenPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSaveDosen} className="space-y-4 text-xs font-medium">
+            <form onSubmit={handleSaveDosen} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+              <div
+                data-lenis-prevent
+                className="px-6 py-4 space-y-4 text-xs font-medium overflow-y-auto flex-1 overscroll-contain"
+              >
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-slate-700 font-bold mb-1">NIP Dosen <span className="text-rose-500">*</span></label>
@@ -387,7 +523,7 @@ export default function MasterDosenPage() {
                     type="text"
                     required
                     disabled={!!editingDosen}
-                    placeholder="Contoh: 197805122005011002"
+                    placeholder="Contoh: 198410012009121005"
                     value={dosenForm.nip}
                     onChange={(e) => setDosenForm({ ...dosenForm, nip: e.target.value })}
                     className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
@@ -411,11 +547,23 @@ export default function MasterDosenPage() {
                 <input
                   type="text"
                   required
-                  placeholder="Contoh: Dr. Ir. Hendra Kusuma, M.T."
+                  placeholder="Contoh: Dr. Abdiansah, S.Kom., M.Cs."
                   value={dosenForm.nama}
                   onChange={(e) => setDosenForm({ ...dosenForm, nama: e.target.value })}
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500"
                 />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-bold mb-1">Pendidikan Terakhir</label>
+                <select
+                  value={dosenForm.pendidikan}
+                  onChange={(e) => setDosenForm({ ...dosenForm, pendidikan: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500 font-bold text-slate-800"
+                >
+                  <option value="S2 (Magister)">S2 (Magister)</option>
+                  <option value="S3 (Doktor)">S3 (Doktor)</option>
+                </select>
               </div>
 
               <div>
@@ -492,7 +640,9 @@ export default function MasterDosenPage() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-100">
+              </div>
+
+              <div className="flex items-center justify-end space-x-2 px-6 py-3 border-t border-slate-100 shrink-0 bg-white">
                 <button
                   type="button"
                   onClick={() => { setIsAddOpen(false); setEditingDosen(null); }}
@@ -545,6 +695,167 @@ export default function MasterDosenPage() {
                 className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer"
               >
                 Ya, Hapus
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Import Excel */}
+      {isImportOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in">
+          <div className="bg-white rounded-2xl max-w-4xl w-full shadow-2xl border border-slate-200 animate-in zoom-in-95 flex flex-col max-h-[90vh]">
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 shrink-0">
+              <div className="flex items-center space-x-2">
+                <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-sm">Import Data Dosen dari Excel / CSV</h3>
+                  <p className="text-[11px] text-slate-500">Upload file CSV atau Excel dengan kolom: NIP, Nama, Email, No_HP, Jabatan, Keahlian, Pendidikan</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setIsImportOpen(false); setImportPreview([]); setImportError(''); }}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto flex-1 px-6 py-5 space-y-4">
+
+              {/* Download Template */}
+              <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
+                <div className="flex items-center space-x-2">
+                  <Download className="w-4 h-4 text-blue-600" />
+                  <span className="text-xs font-semibold text-blue-800">Belum punya template? Download contoh file CSV terlebih dahulu.</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleDownloadTemplate}
+                  className="text-xs font-bold text-blue-700 hover:text-blue-900 underline cursor-pointer"
+                >
+                  Download Template
+                </button>
+              </div>
+
+              {/* Drag & Drop Zone */}
+              <div
+                className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer ${
+                  isDragOver
+                    ? 'border-emerald-400 bg-emerald-50'
+                    : 'border-slate-300 hover:border-emerald-400 hover:bg-emerald-50/40 bg-slate-50'
+                }`}
+                onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+                onDragLeave={() => setIsDragOver(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setIsDragOver(false);
+                  const file = e.dataTransfer.files[0];
+                  if (file) handleImportFile(file);
+                }}
+                onClick={() => importFileRef.current?.click()}
+              >
+                <input
+                  ref={importFileRef}
+                  type="file"
+                  accept=".csv,.xlsx,.xls"
+                  className="hidden"
+                  onChange={(e) => { if (e.target.files[0]) handleImportFile(e.target.files[0]); }}
+                />
+                <Upload className={`w-10 h-10 mx-auto mb-3 ${isDragOver ? 'text-emerald-500' : 'text-slate-400'}`} />
+                <p className="text-sm font-bold text-slate-700">
+                  {isDragOver ? 'Lepaskan file di sini' : 'Drag & drop file, atau klik untuk pilih'}
+                </p>
+                <p className="text-xs text-slate-400 mt-1">Mendukung format: .CSV, .XLSX, .XLS</p>
+              </div>
+
+              {/* Error Message */}
+              {importError && (
+                <div className="flex items-start space-x-2 bg-rose-50 border border-rose-200 rounded-xl px-4 py-3">
+                  <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                  <p className="text-xs font-semibold text-rose-700">{importError}</p>
+                </div>
+              )}
+
+              {/* Preview Table */}
+              {importPreview.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-bold text-slate-700">
+                      Preview Data <span className="text-emerald-600">({importPreview.length} baris ditemukan)</span>
+                    </p>
+                    <span className="text-[11px] text-slate-400">Hanya NIP yang belum terdaftar akan diimpor</span>
+                  </div>
+                  <div className="overflow-x-auto border border-slate-200 rounded-xl max-h-64">
+                    <table className="w-full text-[11px] border-collapse">
+                      <thead>
+                        <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wide">
+                          <th className="py-2.5 px-3">NIP</th>
+                          <th className="py-2.5 px-3">Nama</th>
+                          <th className="py-2.5 px-3">Pendidikan</th>
+                          <th className="py-2.5 px-3">Jabatan</th>
+                          <th className="py-2.5 px-3">Email</th>
+                          <th className="py-2.5 px-3">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {importPreview.map((row, idx) => {
+                          const exists = advisors.find(a => String(a.nip) === String(row.nip));
+                          return (
+                            <tr key={idx} className={exists ? 'bg-amber-50' : 'hover:bg-slate-50'}>
+                              <td className="py-2 px-3 font-mono font-bold text-slate-800">{row.nip}</td>
+                              <td className="py-2 px-3 font-semibold text-slate-800">{row.nama}</td>
+                              <td className="py-2 px-3">
+                                {row.pendidikan ? (
+                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                                    row.pendidikan.startsWith('S3')
+                                      ? 'bg-violet-50 text-violet-700 border-violet-200'
+                                      : 'bg-sky-50 text-sky-700 border-sky-200'
+                                  }`}>{row.pendidikan}</span>
+                                ) : '—'}
+                              </td>
+                              <td className="py-2 px-3 text-slate-600">{row.jabatan_fungsional}</td>
+                              <td className="py-2 px-3 text-slate-500">{row.email || '—'}</td>
+                              <td className="py-2 px-3">
+                                {exists
+                                  ? <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-200">Sudah Ada</span>
+                                  : <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">Baru</span>
+                                }
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-between border-t border-slate-100 px-6 py-4 shrink-0">
+              <button
+                type="button"
+                onClick={() => { setIsImportOpen(false); setImportPreview([]); setImportError(''); }}
+                className="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 text-xs font-bold cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={importPreview.length === 0}
+                onClick={handleConfirmImport}
+                className="inline-flex items-center space-x-2 px-5 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer transition-all"
+              >
+                <Check className="w-4 h-4" />
+                <span>
+                  Import {importPreview.filter(r => !advisors.find(a => String(a.nip) === String(r.nip))).length} Dosen Baru
+                </span>
               </button>
             </div>
           </div>

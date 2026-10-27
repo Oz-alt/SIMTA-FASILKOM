@@ -62,6 +62,19 @@ export default function KelolaDospemPage() {
   const [isAssignCsvModalOpen, setIsAssignCsvModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
+  // Form state untuk modal Tambah / Edit Dosen Pembimbing
+  const [formData, setFormData] = useState({
+    nip: '',
+    nama: '',
+    email: '',
+    no_hp: '',
+    prodi: 'D3 Manajemen Informatika',
+    keahlian: '',
+    kuota_dospem1: 8,
+    kuota_dospem2: 8,
+    status: 'aktif'
+  });
+
   // CSV Import State for Dospem Data
   const [csvText, setCsvText] = useState('');
   const [parsedCsvRows, setParsedCsvRows] = useState([]);
@@ -203,8 +216,8 @@ export default function KelolaDospemPage() {
     const csvContent =
       'data:text/csv;charset=utf-8,' +
       'NIP,Nama,Email,NoHP,Prodi,Keahlian,KuotaDospem1,KuotaDospem2\n' +
-      '198001012005011001,Dr. Ahmad Fauzi, S.Kom., M.T.,fauzi@unsri.ac.id,081234567890,D3 Manajemen Informatika,"Sistem Informasi, Machine Learning",8,8\n' +
-      '198502022010122002,Nurul Hidayah, M.Kom.,nurul@unsri.ac.id,081398765432,D3 Manajemen Informatika,"UI/UX Design, Web Engineering",8,8';
+      '198710092024211001,Willy, S.Kom., M.Kom.,willy@unsri.ac.id,,D3 Manajemen Informatika,"Sistem Informasi, Machine Learning",8,8\n' +
+      '198303182023212034,Iin Seprina, M.Kom.,iinseprina@unsri.ac.id,,D3 Manajemen Informatika,"UI/UX Design, Web Engineering",8,8';
 
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
@@ -1170,9 +1183,18 @@ export default function KelolaDospemPage() {
 
       {/* MODAL ADD / EDIT DOSEN */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-6 my-8">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+        <div
+          data-lenis-prevent
+          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsAddModalOpen(false);
+          }}
+        >
+          <div
+            data-lenis-prevent
+            className="bg-white rounded-3xl max-w-lg w-full shadow-2xl border border-slate-200 animate-in zoom-in-95 flex flex-col max-h-[90vh] overflow-hidden my-8"
+          >
+            <div className="flex items-center justify-between border-b border-slate-100 px-6 sm:px-8 pt-6 sm:pt-8 pb-4 shrink-0">
               <div className="flex items-center space-x-3">
                 <div className="p-2.5 rounded-2xl bg-indigo-50 text-indigo-600">
                   <UserPlus className="w-6 h-6" />
@@ -1195,7 +1217,8 @@ export default function KelolaDospemPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSaveAdvisor} className="space-y-4">
+            <form onSubmit={handleSaveAdvisor} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+              <div data-lenis-prevent className="px-6 sm:px-8 py-4 space-y-4 overflow-y-auto flex-1 overscroll-contain">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-700">NIP Dosen *</label>
@@ -1216,7 +1239,7 @@ export default function KelolaDospemPage() {
                     required
                     value={formData.nama}
                     onChange={(e) => setFormData({ ...formData, nama: e.target.value })}
-                    placeholder="Dr. Ir. Hendra Kusuma, M.T."
+                    placeholder="Dr. Abdiansah, S.Kom., M.Cs."
                     className="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 text-xs sm:text-sm outline-none transition-all"
                   />
                 </div>
@@ -1283,7 +1306,9 @@ export default function KelolaDospemPage() {
                 </div>
               </div>
 
-              <div className="flex justify-end space-x-3 pt-4 border-t border-slate-100">
+              </div>
+
+              <div className="flex justify-end space-x-3 px-6 sm:px-8 py-4 border-t border-slate-100 shrink-0 bg-white">
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}

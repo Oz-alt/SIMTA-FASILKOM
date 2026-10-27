@@ -42,6 +42,7 @@ export default function SmoothScroll({ children }) {
     });
 
     lenisRef.current = lenis;
+    window.lenis = lenis;
 
     // 2. Synchronize Lenis with GSAP ScrollTrigger
     lenis.on('scroll', ScrollTrigger.update);
@@ -51,7 +52,8 @@ export default function SmoothScroll({ children }) {
     };
 
     gsap.ticker.add(updateTicker);
-    gsap.ticker.lagSmoothing(0);
+    // Enable lag smoothing to prevent stuttering/jumps when frame rate dips temporarily
+    gsap.ticker.lagSmoothing(500, 33);
 
     // 3. Force scroll to top on refresh
     if ('scrollRestoration' in window.history) {
@@ -93,6 +95,7 @@ export default function SmoothScroll({ children }) {
       window.removeEventListener('beforeunload', resetScroll);
       unsubscribeRouter();
       gsap.ticker.remove(updateTicker);
+      window.lenis = null;
       lenis.destroy();
     };
   }, []);

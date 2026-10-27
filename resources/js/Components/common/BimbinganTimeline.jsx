@@ -10,7 +10,6 @@ import {
   ArrowRight, 
   UserCheck, 
   ExternalLink, 
-  Printer, 
   FileCheck,
   MessageSquare,
   FileText,
@@ -112,9 +111,18 @@ export default function BimbinganTimeline({ consultations = [], currentUser }) {
       {/* Header Linimasa */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-100">
         <div className="space-y-1">
-          <div className="inline-flex items-center space-x-2 px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-[11px] font-bold border border-indigo-200/60">
-            <Clock className="w-3.5 h-3.5" />
-            <span>Linimasa Konsultasi Mahasiswa</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex items-center space-x-2 px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-[11px] font-bold border border-indigo-200/60">
+              <Clock className="w-3.5 h-3.5" />
+              <span>Linimasa Konsultasi Mahasiswa</span>
+            </div>
+            <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-bold border border-emerald-200">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span>Real-time Status: ON</span>
+            </div>
           </div>
           <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
             <span>Linimasa Bimbingan Tugas Akhir</span>
@@ -125,35 +133,6 @@ export default function BimbinganTimeline({ consultations = [], currentUser }) {
           <p className="text-xs text-slate-500 leading-relaxed max-w-2xl">
             Pantau jejak riwayat konsultasi, masukan arahan dosen pembimbing, serta progres pemenuhan syarat 24 sesi sidang akhir.
           </p>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs hover:shadow-md transition-all flex items-center space-x-1.5 cursor-pointer"
-          >
-            <PlusCircle className="w-4 h-4" />
-            <span>Catat Bimbingan</span>
-          </button>
-          
-          <Link
-            href="/thesis/consultations/card"
-            className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-all flex items-center space-x-1.5"
-            title="Lihat & Cetak Kartu Bimbingan Digital"
-          >
-            <Printer className="w-4 h-4 text-slate-500" />
-            <span className="hidden sm:inline">Kartu Digital</span>
-          </Link>
-
-          <Link
-            href="/thesis/consultations"
-            className="px-3 py-2 rounded-xl border border-slate-200 hover:border-blue-300 hover:text-blue-600 text-slate-700 font-bold text-xs transition-all flex items-center space-x-1.5"
-            title="Buka Halaman Entry Bimbingan Lengkap"
-          >
-            <span>Entry Bimbingan</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
         </div>
       </div>
 

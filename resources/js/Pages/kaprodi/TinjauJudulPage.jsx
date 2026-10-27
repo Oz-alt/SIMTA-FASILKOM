@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Link } from '@inertiajs/react';
 import { useAuth } from '../../context/AuthContext.jsx';
-import StatusBadge from '../../Components/common/StatusBadge.jsx';
 import { getStudentSemester, AVAILABLE_SEMESTERS } from '../../lib/academicUtils.js';
 import { 
   CheckCircle2, 
@@ -10,11 +9,14 @@ import {
   Search, 
   GraduationCap, 
   BookOpen,
-  MessageSquare
+  MessageSquare,
+  Sparkles,
+  Wifi,
+  Radio
 } from 'lucide-react';
 
 export default function TinjauJudulPage() {
-  const { thesisTitles } = useAuth();
+  const { thesisTitles, triggerRealtimeTestNotif } = useAuth();
 
   // Toast Notification
   const [toastMessage, setToastMessage] = useState('');
@@ -93,17 +95,42 @@ export default function TinjauJudulPage() {
 
       {/* Header Banner */}
       <div className="relative rounded-3xl bg-gradient-to-r from-blue-900 via-blue-800 to-blue-950 text-white p-6 sm:p-8 overflow-hidden shadow-xl border border-blue-700/40">
-        <div className="relative z-10 max-w-3xl space-y-3">
-          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-200 border border-blue-400/30 text-xs font-bold uppercase tracking-wider">
-            <GraduationCap className="w-3.5 h-3.5 text-blue-300" />
-            <span>Portal Kaprodi FASILKOM UNSRI</span>
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="max-w-3xl space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-200 border border-blue-400/30 text-xs font-bold uppercase tracking-wider">
+                <GraduationCap className="w-3.5 h-3.5 text-blue-300" />
+                <span>Portal Kaprodi FASILKOM UNSRI</span>
+              </div>
+              <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-xs font-bold">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
+                </span>
+                <span>Sinkronisasi Real-Time Aktif</span>
+              </div>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+              Peninjauan &amp; Catatan Revisi Judul TA
+            </h1>
+            <p className="text-xs sm:text-sm text-blue-100/90 leading-relaxed font-normal">
+              Pengajuan judul mahasiswa otomatis masuk ke tahap peninjauan secara real-time. Berikan catatan jika terdapat revisi dari rapat Prodi, lacak riwayat perubahan bersama dosen pembimbing, dan tetapkan judul yang sudah fix.
+            </p>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
-            Peninjauan &amp; Catatan Revisi Judul TA
-          </h1>
-          <p className="text-xs sm:text-sm text-blue-100/90 leading-relaxed font-normal">
-            Pengajuan judul mahasiswa otomatis masuk ke tahap peninjauan. Berikan catatan jika terdapat revisi dari rapat Prodi, lacak riwayat perubahan bersama dosen pembimbing, dan tetapkan judul yang sudah fix.
-          </p>
+
+          {triggerRealtimeTestNotif && (
+            <div className="shrink-0">
+              <button
+                type="button"
+                onClick={triggerRealtimeTestNotif}
+                className="inline-flex items-center space-x-2 px-4 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold backdrop-blur-md transition-all border border-white/20 hover:border-white/40 shadow-lg cursor-pointer group"
+                title="Simulasikan notifikasi pengajuan judul mahasiswa secara real-time"
+              >
+                <Sparkles className="w-4 h-4 text-yellow-300 group-hover:rotate-12 transition-transform" />
+                <span>Simulasi Notif Real-Time</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -251,30 +278,39 @@ export default function TinjauJudulPage() {
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 font-bold text-slate-600 uppercase text-[10px]">
-                <th className="py-3 px-4 w-1/4">Mahasiswa (NIM &amp; Kelas)</th>
-                <th className="py-3 px-4 w-1/3">Judul Tugas Akhir</th>
-                <th className="py-3 px-4 text-center w-36">Status Sistem</th>
-                <th className="py-3 px-4 text-center w-28">Similarity</th>
-                <th className="py-3 px-4 text-right w-36">Aksi</th>
+                <th className="py-3 px-4 w-[18%]">Mahasiswa (NIM &amp; Kelas)</th>
+                <th className="py-3 px-4 w-[26%]">Judul Tugas Akhir</th>
+                <th className="py-3 px-3 w-[16%]">Pembimbing 1</th>
+                <th className="py-3 px-3 w-[16%]">Pembimbing 2</th>
+                <th className="py-3 px-4 text-center w-24">Similarity</th>
+                <th className="py-3 px-4 text-center w-40 whitespace-nowrap">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredTitles.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-12 text-center text-slate-400">
+                  <td colSpan={6} className="py-12 text-center text-slate-400">
                     Tidak ada pengajuan TA yang sesuai dengan kriteria filter saat ini.
                   </td>
                 </tr>
               ) : (
                 filteredTitles.map(t => {
                   const studentSem = getStudentSemester(t);
-                  const isFix = t.status === 'disetujui' || t.status === 'judul_fix';
-                  const isRevisi = t.status === 'perlu_revisi';
+                  const pembimbing1Nama = t.pembimbing_1_nama || t.pembimbing_1;
+                  const pembimbing2Nama = t.pembimbing_2_nama || t.pembimbing_2;
 
                   return (
                     <tr key={t.id} className="hover:bg-slate-50/60 transition-colors">
                       <td className="py-3.5 px-4 font-semibold text-slate-900 align-top">
-                        <div className="font-bold text-slate-900 text-sm">{t.mhs_nama}</div>
+                        <div className="flex items-center space-x-2">
+                          <span className="font-bold text-slate-900 text-sm">{t.mhs_nama}</span>
+                          {t.created_at && (Date.now() - new Date(t.created_at).getTime() < 1000 * 60 * 60 * 24) && (
+                            <span className="inline-flex items-center space-x-1 px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-extrabold shrink-0 animate-pulse">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                              <span>Baru</span>
+                            </span>
+                          )}
+                        </div>
                         <div className="text-[10px] text-slate-500 font-mono flex items-center space-x-1.5 mt-0.5">
                           <span>{t.mhs_nim}</span>
                           <span>•</span>
@@ -298,8 +334,48 @@ export default function TinjauJudulPage() {
                         )}
                       </td>
 
-                      <td className="py-3.5 px-4 text-center align-top">
-                        <StatusBadge type="thesis" status={t.status} />
+                      <td className="py-3.5 px-3 align-top">
+                        {pembimbing1Nama ? (
+                          <div className="min-w-0">
+                            <div className="flex items-start space-x-1.5">
+                              <span className="w-4 h-4 rounded bg-indigo-50 text-indigo-700 font-extrabold text-[9px] flex items-center justify-center shrink-0 border border-indigo-100 mt-0.5">
+                                1
+                              </span>
+                              <span className="font-semibold text-slate-800 text-[11px] leading-snug" title={pembimbing1Nama}>
+                                {pembimbing1Nama}
+                              </span>
+                            </div>
+                            {t.pembimbing_1_nip && (
+                              <span className="block mt-1 pl-5 text-[9px] text-slate-400 font-mono">
+                                {t.pembimbing_1_nip}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-[11px] text-slate-400 italic">Belum Ditetapkan</span>
+                        )}
+                      </td>
+
+                      <td className="py-3.5 px-3 align-top">
+                        {pembimbing2Nama ? (
+                          <div className="min-w-0">
+                            <div className="flex items-start space-x-1.5">
+                              <span className="w-4 h-4 rounded bg-blue-50 text-blue-700 font-extrabold text-[9px] flex items-center justify-center shrink-0 border border-blue-100 mt-0.5">
+                                2
+                              </span>
+                              <span className="font-semibold text-slate-800 text-[11px] leading-snug" title={pembimbing2Nama}>
+                                {pembimbing2Nama}
+                              </span>
+                            </div>
+                            {t.pembimbing_2_nip && (
+                              <span className="block mt-1 pl-5 text-[9px] text-slate-400 font-mono">
+                                {t.pembimbing_2_nip}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-[11px] text-slate-400 italic">Belum Ditetapkan</span>
+                        )}
                       </td>
 
                       <td className="py-3.5 px-4 text-center align-top">
@@ -312,14 +388,16 @@ export default function TinjauJudulPage() {
                         </span>
                       </td>
 
-                      <td className="py-3.5 px-4 text-right align-top">
-                        <Link
-                          href={`/kaprodi/titles/${t.id}`}
-                          className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs inline-flex items-center space-x-1.5 cursor-pointer transition-colors"
-                        >
-                          <BookOpen className="w-3.5 h-3.5" />
-                          <span>Detail &amp; Catatan</span>
-                        </Link>
+                      <td className="py-3.5 px-4 text-center align-top whitespace-nowrap">
+                        <div className="flex items-center justify-center">
+                          <Link
+                            href={`/kaprodi/titles/${t.id}`}
+                            className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold text-xs rounded-xl shadow-xs inline-flex items-center justify-center space-x-1.5 cursor-pointer transition-colors whitespace-nowrap"
+                          >
+                            <BookOpen className="w-3.5 h-3.5 shrink-0" />
+                            <span>Detail &amp; Catatan</span>
+                          </Link>
+                        </div>
                       </td>
                     </tr>
                   );

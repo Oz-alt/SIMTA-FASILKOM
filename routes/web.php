@@ -38,7 +38,7 @@ Route::get('/thesis/submit', function () {
 });
 
 Route::get('/thesis/status', function () {
-    return Inertia::render('mahasiswa/StatusJudulPage');
+    return redirect('/dashboard');
 });
 
 Route::get('/thesis/consultations', function () {
@@ -79,6 +79,18 @@ Route::get('/kaprodi/dashboard', function () {
     return Inertia::render('kaprodi/DashboardKaprodi');
 });
 
+Route::get('/kaprodi/monitoring-mahasiswa', function () {
+    return Inertia::render('kaprodi/MonitoringMahasiswaPage');
+});
+
+Route::get('/kaprodi/rekap-bimbingan', function () {
+    return Inertia::render('kaprodi/RekapBimbinganKaprodiPage');
+});
+
+Route::get('/admin-simta/rekap-bimbingan', function () {
+    return Inertia::render('kaprodi/RekapBimbinganKaprodiPage');
+});
+
 Route::get('/kaprodi/titles', function () {
     return Inertia::render('kaprodi/TinjauJudulPage');
 });
@@ -106,11 +118,11 @@ Route::get('/kaprodi/defense-schedules', function () {
 });
 
 Route::get('/kaprodi/reminders', function () {
-    return Inertia::render('kaprodi/ReminderPembimbinganPage');
+    return redirect('/kaprodi/monitoring-mahasiswa');
 });
 
 Route::get('/kaprodi/reminder-pembimbingan', function () {
-    return Inertia::render('kaprodi/ReminderPembimbinganPage');
+    return redirect('/kaprodi/monitoring-mahasiswa');
 });
 
 Route::get('/kaprodi/repository/review', function () {
@@ -229,8 +241,28 @@ Route::get('/dosen/dashboard', function () {
     return Inertia::render('dosen/DashboardDosen');
 });
 
+Route::get('/dosen/mahasiswa', function () {
+    return Inertia::render('dosen/MahasiswaBimbinganPage');
+});
+
+Route::get('/dosen/validasi', function () {
+    return Inertia::render('dosen/ValidasiBimbinganPage');
+});
+
+Route::get('/dosen/monitoring', function () {
+    return Inertia::render('dosen/MonitoringMahasiswaPage');
+});
+
+Route::get('/dosen/rekap', function () {
+    return Inertia::render('dosen/RekapBimbinganPage');
+});
+
+Route::get('/dosen/profil', function () {
+    return Inertia::render('dosen/ProfilDosenPage');
+});
+
 Route::get('/dosen/bimbingan', function () {
-    return Inertia::render('dosen/BimbinganPage');
+    return Inertia::render('dosen/ValidasiBimbinganPage');
 });
 
 Route::get('/dosen/jadwal-sidang', function () {

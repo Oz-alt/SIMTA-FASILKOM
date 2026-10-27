@@ -65,7 +65,7 @@ export default function ManajemenTAPage() {
   const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState(false);
   const [broadcastSubject, setBroadcastSubject] = useState('[Pemberitahuan Prodi D3 MI] Pengingat Batas Pengajuan Usulan Judul Tugas Akhir');
   const [broadcastCustomMessage, setBroadcastCustomMessage] = useState(
-    'Yth. Mahasiswa Program Studi D3 Manajemen Informatika,\n\nBerdasarkan pantauan sistem SIMTA, Anda tercatat belum mengusulkan judul Tugas Akhir untuk semester ini. Mohon segera menyusun usulan judul dan mengajukannya melalui sistem SIMTA agar proses peninjauan topik dan penetapan dosen pembimbing dapat segera dilakukan.\n\nTerima kasih,\nKetua Program Studi D3 Manajemen Informatika\nFakultas Ilmu Komputer, Universitas Sriwijaya'
+    'Yth. Mahasiswa Program Studi D3 Manajemen Informatika,\n\nBerdasarkan pantauan sistem SIMONITA, Anda tercatat belum mengusulkan judul Tugas Akhir untuk semester ini. Mohon segera menyusun usulan judul dan mengajukannya melalui sistem SIMONITA agar proses peninjauan topik dan penetapan dosen pembimbing dapat segera dilakukan.\n\nTerima kasih,\nKetua Program Studi D3 Manajemen Informatika\nFakultas Ilmu Komputer, Universitas Sriwijaya'
   );
   const [isSendingBroadcast, setIsSendingBroadcast] = useState(false);
 
@@ -376,7 +376,7 @@ export default function ManajemenTAPage() {
 
     setIsSendingBroadcast(false);
     setIsBroadcastModalOpen(false);
-    showToast(`Pengingat pengajuan judul serentak berhasil dikirim ke ${unsubmittedStudents.length} mahasiswa D3 MI via Notifikasi SIMTA & Email!`);
+    showToast(`Pengingat pengajuan judul serentak berhasil dikirim ke ${unsubmittedStudents.length} mahasiswa D3 MI via Notifikasi SIMONITA & Email!`);
   };
 
   return (
@@ -724,7 +724,7 @@ export default function ManajemenTAPage() {
                               <span>Belum Mengajukan Judul TA</span>
                             </div>
                             <p className="text-[10px] text-slate-400 italic">
-                              Mahasiswa belum submit proposal judul melalui akun SIMTA.
+                              Mahasiswa belum submit proposal judul melalui akun SIMONITA.
                             </p>
                           </div>
                         )}
@@ -1146,7 +1146,7 @@ export default function ManajemenTAPage() {
                   </span>
                 </div>
                 <p className="text-amber-900 leading-relaxed text-[11px]">
-                  Pengingat ini akan dikirim <strong>sekaligus secara serentak</strong> ke seluruh mahasiswa D3 Manajemen Informatika yang belum mengusulkan judul Tugas Akhir melalui sistem SIMTA &amp; Email resmi.
+                  Pengingat ini akan dikirim <strong>sekaligus secara serentak</strong> ke seluruh mahasiswa D3 Manajemen Informatika yang belum mengusulkan judul Tugas Akhir melalui sistem SIMONITA &amp; Email resmi.
                 </p>
               </div>
 
@@ -1212,7 +1212,7 @@ export default function ManajemenTAPage() {
                 <span className="font-semibold text-slate-700">Saluran:</span>
                 <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold">
                   <Check className="w-3 h-3" />
-                  <span>Notifikasi SIMTA</span>
+                  <span>Notifikasi SIMONITA</span>
                 </span>
                 <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200 font-bold">
                   <Check className="w-3 h-3" />

@@ -19,7 +19,9 @@ import {
   ExternalLink,
   Printer,
   Building2,
-  Video
+  Video,
+  X,
+  AlertTriangle
 } from 'lucide-react';
 import ModalAjukanBimbingan from '../../Components/common/ModalAjukanBimbingan.jsx';
 import ModalEditBimbingan from '../../Components/common/ModalEditBimbingan.jsx';
@@ -118,29 +120,33 @@ export default function BimbinganTAPage() {
       {/* Top Banner Header */}
       <div className="bg-gradient-to-r from-blue-950 via-indigo-900 to-slate-900 rounded-2xl p-6 sm:p-8 text-white shadow-lg relative overflow-hidden">
         <div className="relative z-10 max-w-3xl space-y-3">
-          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 text-xs font-bold border border-blue-400/30 backdrop-blur-md">
-            <BookOpen className="w-3.5 h-3.5" />
-            <span>Form Bimbingan &amp; Konsultasi TA Terpadu</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 text-xs font-bold border border-blue-400/30 backdrop-blur-md">
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>Form Bimbingan &amp; Konsultasi TA Terpadu</span>
+            </div>
+            {isStudentRole && (
+              <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-500/25 text-emerald-200 text-xs font-bold border border-emerald-400/40 backdrop-blur-md shadow-xs">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-300 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
+                </span>
+                <span>Notifikasi Real-time Dosen: AKTIF (ON)</span>
+              </div>
+            )}
           </div>
           <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-white leading-tight">
             Form Bimbingan Tugas Akhir
           </h1>
           <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-normal">
             {isStudentRole 
-              ? 'Catat riwayat pertemuan konsultasi, unggah berkas draf revisi, dapatkan masukan dosen pembimbing, dan pantau kelayakan pendaftaran sidang TA secara real-time.'
+              ? 'Catat riwayat pertemuan konsultasi, unggah berkas draf revisi, dapatkan masukan dosen pembimbing secara real-time, dan pantau kelayakan pendaftaran sidang TA.'
               : 'Tinjau dan validasi catatan konsultasi bimbingan yang diajukan oleh mahasiswa bimbingan Anda.'
             }
           </p>
 
           {isStudentRole && (
             <div className="pt-2 flex flex-wrap items-center gap-3">
-              <button
-                onClick={() => setIsModalOpen(true)}
-                className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md shadow-blue-600/30 transition-all flex items-center space-x-2 cursor-pointer"
-              >
-                <PlusCircle className="w-4 h-4" />
-                <span>Catat Sesi Bimbingan Baru</span>
-              </button>
               <Link
                 href="/thesis/consultations/card"
                 className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs border border-white/20 backdrop-blur-md transition-all flex items-center space-x-2"
@@ -148,6 +154,10 @@ export default function BimbinganTAPage() {
                 <Printer className="w-4 h-4 text-blue-300" />
                 <span>Kartu Bimbingan Digital</span>
               </Link>
+              <div className="flex items-center space-x-2 px-3.5 py-2.5 rounded-xl bg-white/10 text-emerald-300 text-xs font-medium border border-white/15 backdrop-blur-md">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span>Respon status &amp; revisi dari dosen langsung muncul secara realtime</span>
+              </div>
             </div>
           )}
         </div>
@@ -159,7 +169,7 @@ export default function BimbinganTAPage() {
           reminder={reminderStatus} 
           studentEmail={currentUser?.email}
           studentUser={currentUser}
-          onAddBimbingan={() => setIsModalOpen(true)}
+          showAction={false}
         />
       )}
 
@@ -278,51 +288,93 @@ export default function BimbinganTAPage() {
                       <span>{item.tanggal} ({item.waktu})</span>
                     </span>
 
-                    {/* Status Badge */}
-                    {item.status === 'disetujui' && (
-                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold text-[10px] flex items-center space-x-1">
-                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                        <span>Disetujui</span>
-                      </span>
-                    )}
-                    {item.status === 'perlu_revisi' && (
-                      <span className="px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 font-bold text-[10px] flex items-center space-x-1">
-                        <AlertCircle className="w-3 h-3 text-amber-600" />
-                        <span>Perlu Revisi</span>
-                      </span>
-                    )}
-                    {item.status === 'menunggu_tanggapan' && (
-                      <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-800 border border-blue-200 font-bold text-[10px] flex items-center space-x-1">
-                        <Clock className="w-3 h-3 text-blue-600" />
-                        <span>Menunggu Tanggapan</span>
-                      </span>
-                    )}
+                    <div className="flex items-center space-x-2 flex-wrap gap-1">
+                      {/* Jenis Revisi Badge */}
+                      {item.jenis_revisi && (
+                        <span className={`px-2.5 py-0.5 rounded-full font-extrabold text-[10px] flex items-center space-x-1 border ${
+                          item.jenis_revisi === 'Diterima' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
+                          item.jenis_revisi === 'Minor' ? 'bg-blue-100 text-blue-800 border-blue-300' :
+                          item.jenis_revisi === 'Mayor' ? 'bg-rose-100 text-rose-800 border-rose-300' :
+                          item.jenis_revisi === 'Menunggu' ? 'bg-amber-100 text-amber-800 border-amber-300' :
+                          'bg-rose-100 text-rose-800 border-rose-300'
+                        }`}>
+                          {item.jenis_revisi === 'Diterima' && <CheckCircle2 className="w-3 h-3 text-emerald-600" />}
+                          {item.jenis_revisi === 'Minor' && <AlertCircle className="w-3 h-3 text-blue-600" />}
+                          {item.jenis_revisi === 'Mayor' && <AlertTriangle className="w-3 h-3 text-rose-600" />}
+                          {item.jenis_revisi === 'Menunggu' && <Clock className="w-3 h-3 text-amber-600" />}
+                          {item.jenis_revisi === 'Ditolak' && <X className="w-3 h-3 text-rose-600" />}
+                          <span>Revisi: {item.jenis_revisi}</span>
+                        </span>
+                      )}
+
+                      {/* Status Badge */}
+                      {item.status === 'disetujui' && (
+                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold text-[10px] flex items-center space-x-1">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          <span>Disetujui</span>
+                        </span>
+                      )}
+                      {item.status === 'perlu_revisi' && (
+                        <span className="px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 font-bold text-[10px] flex items-center space-x-1">
+                          <AlertCircle className="w-3 h-3 text-amber-600" />
+                          <span>Perlu Revisi</span>
+                        </span>
+                      )}
+                      {item.status === 'ditolak' && (
+                        <span className="px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-800 border border-rose-200 font-bold text-[10px] flex items-center space-x-1">
+                          <X className="w-3 h-3 text-rose-600" />
+                          <span>Ditolak</span>
+                        </span>
+                      )}
+                      {item.status === 'menunggu_tanggapan' && (
+                        <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-800 border border-blue-200 font-bold text-[10px] flex items-center space-x-1">
+                          <Clock className="w-3 h-3 text-blue-600" />
+                          <span>Menunggu Tanggapan</span>
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
                 {/* Bab & Catatan Mahasiswa */}
                 <div className="space-y-2 text-xs">
-                  <div className="font-bold text-slate-900 text-sm flex items-center space-x-2">
-                    <BookOpen className="w-4 h-4 text-blue-600 shrink-0" />
-                    <span>{item.bab_topik}</span>
+                    {item.bab_topik && item.bab_topik !== item.catatan_mahasiswa && (
+                      <div className="font-bold text-slate-900 text-sm flex items-center space-x-2">
+                        <BookOpen className="w-4 h-4 text-blue-600 shrink-0" />
+                        <span>{item.bab_topik}</span>
+                      </div>
+                    )}
+
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-slate-700 leading-relaxed">
+                      <span className="font-bold text-slate-900 block mb-0.5">Catatan Konsultasi &amp; Poin Progres:</span>
+                      <p>{item.catatan_mahasiswa || item.bab_topik}</p>
+                    </div>
                   </div>
 
-                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-slate-700 leading-relaxed">
-                    <span className="font-bold text-slate-900 block mb-0.5">Catatan Progres Mahasiswa:</span>
-                    <p>{item.catatan_mahasiswa}</p>
-                  </div>
-                </div>
-
-                {/* Masukan Dosen Pembimbing */}
-                {item.masukan_dosen && (
-                  <div className="p-3.5 rounded-xl bg-indigo-50/60 border border-indigo-100 text-xs space-y-1">
-                    <span className="font-bold text-indigo-900 flex items-center space-x-1.5">
-                      <MessageSquare className="w-4 h-4 text-indigo-600" />
-                      <span>Masukan / Catatan Dosen Pembimbing:</span>
-                    </span>
-                    <p className="text-indigo-950 leading-relaxed pl-5 font-medium">{item.masukan_dosen}</p>
-                  </div>
-                )}
+                  {/* Masukan Dosen Pembimbing */}
+                  {item.masukan_dosen && (
+                    <div className={`p-3.5 rounded-xl border text-xs space-y-1.5 ${
+                      item.jenis_revisi === 'Diterima' ? 'bg-emerald-50/70 border-emerald-200' :
+                      item.jenis_revisi === 'Minor' ? 'bg-blue-50/70 border-blue-200' :
+                      item.jenis_revisi === 'Mayor' ? 'bg-rose-50/70 border-rose-200' :
+                      item.jenis_revisi === 'Menunggu' ? 'bg-amber-50/70 border-amber-200' :
+                      item.jenis_revisi === 'Ditolak' ? 'bg-rose-50/70 border-rose-200' :
+                      'bg-indigo-50/60 border-indigo-100'
+                    }`}>
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-slate-900 flex items-center space-x-1.5">
+                          <MessageSquare className="w-4 h-4 text-indigo-600" />
+                          <span>Masukan / Catatan Dosen Pembimbing:</span>
+                        </span>
+                        {item.jenis_revisi && (
+                          <span className="text-[10px] font-extrabold text-slate-700 bg-white/90 px-2 py-0.5 rounded-md border border-slate-200 shadow-2xs">
+                            Kategori: {item.jenis_revisi}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-slate-800 leading-relaxed pl-5 font-medium">{String(item.masukan_dosen).replace(/^\[(Revisi Mayor|Revisi Minor|Mayor|Minor|Menunggu|Diterima|Disetujui|Ditolak)\]\s*/i, '')}</p>
+                    </div>
+                  )}
 
                 {/* Link Dokumen Drive & Action Buttons */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-2.5 border-t border-slate-100 text-xs">

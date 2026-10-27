@@ -8,7 +8,7 @@ import { AuthProvider } from './context/AuthContext.jsx';
 import SmoothScrollLenis from './Components/common/SmoothScrollLenis.jsx';
 import AppLayout from './Components/layout/AppLayout.jsx';
 
-const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+const appName = import.meta.env.VITE_APP_NAME || 'SIMONITA FASILKOM';
 
 createInertiaApp({
     title: (title) => `${title} - ${appName}`,

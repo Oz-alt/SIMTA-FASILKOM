@@ -242,12 +242,12 @@ export default function CekAkunMahasiswaPage() {
     const unregisteredList = verificationResults.filter(r => !r.isRegistered);
     if (unregisteredList.length === 0) return;
 
-    let text = `📌 *PEMBERITAHUAN PENDAFTARAN AKUN SIMTA UNSRI*\n`;
-    text += `Daftar Mahasiswa yang *BELUM MENDAFTAR AKUN SIMTA* (${unregisteredList.length} orang):\n\n`;
+    let text = `📌 *PEMBERITAHUAN PENDAFTARAN AKUN SIMONITA UNSRI*\n`;
+    text += `Daftar Mahasiswa yang *BELUM MENDAFTAR AKUN SIMONITA* (${unregisteredList.length} orang):\n\n`;
     unregisteredList.forEach((r, idx) => {
       text += `${idx + 1}. NIM: ${r.cleanNim} ${r.nama && r.nama !== 'Tanpa Nama (dari Berkas)' ? `- ${r.nama}` : ''}\n`;
     });
-    text += `\nMohon untuk segera melakukan registrasi akun di portal SIMTA UNSRI. Terima kasih.`;
+    text += `\nMohon untuk segera melakukan registrasi akun di portal SIMONITA UNSRI. Terima kasih.`;
 
     navigator.clipboard.writeText(text);
     setCopied(true);
@@ -262,7 +262,7 @@ export default function CekAkunMahasiswaPage() {
       No: idx + 1,
       NIM: r.cleanNim,
       Nama_Berkas: r.nama,
-      Status_Akun_SIMTA: r.statusLabel,
+      Status_Akun_SIMONITA: r.statusLabel,
       Nama_Akun_Terdaftar: r.matchedUser?.nama || '-',
       Email_Terdaftar: r.matchedUser?.email || '-',
       Kelas: r.matchedUser?.kelas || '-'
@@ -273,7 +273,7 @@ export default function CekAkunMahasiswaPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `Hasil_Cek_Akun_SIMTA_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `Hasil_Cek_Akun_SIMONITA_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -310,7 +310,7 @@ export default function CekAkunMahasiswaPage() {
           </div>
           <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">Pengecekan Status Akun Mahasiswa</h1>
           <p className="text-xs md:text-sm text-slate-300 mt-1 max-w-2xl leading-relaxed">
-            Upload file Excel, CSV, PDF, atau paste daftar NIM mahasiswa untuk mencocokkan NIM secara otomatis dengan database registrasi akun SIMTA.
+            Upload file Excel, CSV, PDF, atau paste daftar NIM mahasiswa untuk mencocokkan NIM secara otomatis dengan database registrasi akun SIMONITA.
           </p>
         </div>
 
@@ -446,7 +446,7 @@ export default function CekAkunMahasiswaPage() {
                 <span>{stats.registered}</span>
                 <span className="text-sm font-bold text-emerald-600">({stats.regPercentage}%)</span>
               </div>
-              <p className="text-[11px] text-emerald-600/90 font-medium">Mahasiswa sudah memiliki akun aktif SIMTA</p>
+              <p className="text-[11px] text-emerald-600/90 font-medium">Mahasiswa sudah memiliki akun aktif SIMONITA</p>
             </div>
 
             {/* Unregistered Account Count */}
@@ -569,8 +569,8 @@ export default function CekAkunMahasiswaPage() {
                     <th className="py-3 px-4">#</th>
                     <th className="py-3 px-4">NIM Mahasiswa</th>
                     <th className="py-3 px-4">Nama (Berkas/Input)</th>
-                    <th className="py-3 px-4">Status Akun SIMTA</th>
-                    <th className="py-3 px-4">Nama Terdaftar di SIMTA</th>
+                    <th className="py-3 px-4">Status Akun SIMONITA</th>
+                    <th className="py-3 px-4">Nama Terdaftar di SIMONITA</th>
                     <th className="py-3 px-4">Email & Detail Akun</th>
                   </tr>
                 </thead>

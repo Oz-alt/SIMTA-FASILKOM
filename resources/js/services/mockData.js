@@ -16,7 +16,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781000"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282428041",
@@ -30,7 +30,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781001"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182428003",
@@ -44,7 +44,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781002"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582428073",
@@ -58,7 +58,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781003"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282428022",
@@ -72,7 +72,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781004"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282428042",
@@ -86,7 +86,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781005"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582428093",
@@ -100,7 +100,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781006"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282428025",
@@ -114,7 +114,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781007"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282428045",
@@ -128,7 +128,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781008"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282428037",
@@ -142,7 +142,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781009"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582428096",
@@ -156,7 +156,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781010"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182428002",
@@ -170,7 +170,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781011"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582428076",
@@ -184,7 +184,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781012"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182428018",
@@ -198,7 +198,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781013"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582428059",
@@ -212,7 +212,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781014"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582428094",
@@ -226,7 +226,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781015"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282428048",
@@ -240,7 +240,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781016"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282428023",
@@ -254,7 +254,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781017"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582428068",
@@ -268,7 +268,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781018"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182428016",
@@ -282,7 +282,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781019"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282428039",
@@ -296,7 +296,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781020"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282428031",
@@ -310,7 +310,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781021"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582428098",
@@ -324,7 +324,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781022"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582428087",
@@ -338,7 +338,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781023"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182428001",
@@ -352,7 +352,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781024"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582428055",
@@ -366,7 +366,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781025"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582428060",
@@ -380,7 +380,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781026"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582428086",
@@ -394,7 +394,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781027"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282428032",
@@ -408,7 +408,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781028"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182428005",
@@ -422,7 +422,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781029"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182428007",
@@ -436,7 +436,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781030"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582428099",
@@ -450,7 +450,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781031"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582428085",
@@ -464,7 +464,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781032"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582428061",
@@ -478,7 +478,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781033"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182428014",
@@ -492,7 +492,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781034"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282428029",
@@ -506,7 +506,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781035"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582428071",
@@ -520,7 +520,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781036"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582428097",
@@ -534,7 +534,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781037"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582428063",
@@ -548,7 +548,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781038"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582428075",
@@ -562,7 +562,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781039"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182428021",
@@ -576,7 +576,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781040"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282428046",
@@ -590,7 +590,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781041"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582428064",
@@ -604,7 +604,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781042"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282428027",
@@ -618,7 +618,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781043"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282428021",
@@ -632,7 +632,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781044"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582428090",
@@ -646,7 +646,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781045"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582428056",
@@ -660,7 +660,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781046"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282428044",
@@ -674,7 +674,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781047"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282428043",
@@ -688,7 +688,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781048"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582428074",
@@ -702,7 +702,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781049"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282428028",
@@ -716,7 +716,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781050"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582428081",
@@ -730,7 +730,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781051"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582428057",
@@ -744,7 +744,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781052"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282428052",
@@ -758,7 +758,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781053"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582428067",
@@ -772,7 +772,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781054"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582428084",
@@ -786,7 +786,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781055"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282428036",
@@ -800,7 +800,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781056"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282428040",
@@ -814,7 +814,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781057"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582428089",
@@ -828,7 +828,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781058"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282428024",
@@ -842,7 +842,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781059"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182428010",
@@ -856,7 +856,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781060"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182428006",
@@ -870,7 +870,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781061"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182428013",
@@ -884,7 +884,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781062"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282428034",
@@ -898,7 +898,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781063"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582428083",
@@ -912,7 +912,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781064"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582428082",
@@ -926,7 +926,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781065"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182428020",
@@ -940,7 +940,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781066"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182428009",
@@ -954,7 +954,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781067"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282428051",
@@ -968,7 +968,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781068"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582428080",
@@ -982,7 +982,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781069"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182428004",
@@ -996,7 +996,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781070"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582428066",
@@ -1010,7 +1010,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781071"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182428011",
@@ -1024,7 +1024,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781072"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282428030",
@@ -1038,7 +1038,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781073"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582428065",
@@ -1052,7 +1052,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781074"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282428050",
@@ -1066,7 +1066,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781075"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182428008",
@@ -1080,7 +1080,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781076"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182428017",
@@ -1094,7 +1094,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781077"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582428077",
@@ -1108,7 +1108,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781078"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282428054",
@@ -1122,7 +1122,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781079"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582428062",
@@ -1136,7 +1136,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781080"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182428012",
@@ -1150,7 +1150,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781081"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282428035",
@@ -1164,7 +1164,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781082"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582428070",
@@ -1178,7 +1178,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781083"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582428100",
@@ -1192,7 +1192,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781084"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582428069",
@@ -1206,7 +1206,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781085"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282428049",
@@ -1220,7 +1220,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781086"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582428088",
@@ -1234,7 +1234,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781087"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582428072",
@@ -1248,7 +1248,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781088"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582428079",
@@ -1262,7 +1262,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781089"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282428038",
@@ -1276,7 +1276,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781090"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582428091",
@@ -1290,7 +1290,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781091"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282428047",
@@ -1304,7 +1304,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781092"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282428033",
@@ -1318,7 +1318,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781093"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582428078",
@@ -1332,7 +1332,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781094"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182428015",
@@ -1346,7 +1346,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781095"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582428095",
@@ -1360,7 +1360,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781096"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282428053",
@@ -1374,7 +1374,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781097"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582428092",
@@ -1388,7 +1388,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781098"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282428026",
@@ -1402,7 +1402,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781099"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582428058",
@@ -1416,7 +1416,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781100"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582428101",
@@ -1430,7 +1430,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": "0812781101"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182529033",
@@ -1444,7 +1444,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781102"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182529006",
@@ -1458,7 +1458,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781103"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529074",
@@ -1472,7 +1472,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781104"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582529113",
@@ -1486,7 +1486,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781105"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182529037",
@@ -1500,7 +1500,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781106"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529069",
@@ -1514,7 +1514,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781107"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529080",
@@ -1528,7 +1528,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781108"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529060",
@@ -1542,7 +1542,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781109"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182529002",
@@ -1556,7 +1556,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781110"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529086",
@@ -1570,7 +1570,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781111"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182529017",
@@ -1584,7 +1584,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781112"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529085",
@@ -1598,7 +1598,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781113"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182529016",
@@ -1612,7 +1612,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781114"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529046",
@@ -1626,7 +1626,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781115"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182529014",
@@ -1640,7 +1640,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781116"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529042",
@@ -1654,7 +1654,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781117"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529077",
@@ -1668,7 +1668,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781118"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529051",
@@ -1682,7 +1682,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781119"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582529116",
@@ -1696,7 +1696,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781120"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582529096",
@@ -1710,7 +1710,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781121"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529067",
@@ -1724,7 +1724,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781122"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182529021",
@@ -1738,7 +1738,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781123"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182529013",
@@ -1752,7 +1752,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781124"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182529010",
@@ -1766,7 +1766,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781125"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182529034",
@@ -1780,7 +1780,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781126"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529061",
@@ -1794,7 +1794,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781127"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529091",
@@ -1808,7 +1808,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781128"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582529121",
@@ -1822,7 +1822,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781129"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182529027",
@@ -1836,7 +1836,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781130"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529081",
@@ -1850,7 +1850,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781131"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529065",
@@ -1864,7 +1864,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781132"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582529093",
@@ -1878,7 +1878,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781133"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182529036",
@@ -1892,7 +1892,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781134"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529078",
@@ -1906,7 +1906,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781135"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182529009",
@@ -1920,7 +1920,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781136"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582529106",
@@ -1934,7 +1934,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781137"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582529103",
@@ -1948,7 +1948,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781138"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529070",
@@ -1962,7 +1962,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781139"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529040",
@@ -1976,7 +1976,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781140"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582529115",
@@ -1990,7 +1990,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781141"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182529011",
@@ -2004,7 +2004,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781142"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529062",
@@ -2018,7 +2018,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781143"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529066",
@@ -2032,7 +2032,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781144"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529089",
@@ -2046,7 +2046,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781145"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582529109",
@@ -2060,7 +2060,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781146"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182529028",
@@ -2074,7 +2074,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781147"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529049",
@@ -2088,7 +2088,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781148"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582529117",
@@ -2102,7 +2102,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781149"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582529104",
@@ -2116,7 +2116,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781150"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182529007",
@@ -2130,7 +2130,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781151"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182529038",
@@ -2144,7 +2144,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781152"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529064",
@@ -2158,7 +2158,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781153"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182529019",
@@ -2172,7 +2172,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781154"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582529108",
@@ -2186,7 +2186,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781155"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529092",
@@ -2200,7 +2200,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781156"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529079",
@@ -2214,7 +2214,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781157"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529054",
@@ -2228,7 +2228,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781158"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529057",
@@ -2242,7 +2242,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781159"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529045",
@@ -2256,7 +2256,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781160"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529041",
@@ -2270,7 +2270,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781161"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529047",
@@ -2284,7 +2284,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781162"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529072",
@@ -2298,7 +2298,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781163"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529055",
@@ -2312,7 +2312,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781164"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529052",
@@ -2326,7 +2326,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781165"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182529004",
@@ -2340,7 +2340,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781166"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182529032",
@@ -2354,7 +2354,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781167"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529063",
@@ -2368,7 +2368,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781168"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182529020",
@@ -2382,7 +2382,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781169"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182529039",
@@ -2396,7 +2396,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781170"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182529026",
@@ -2410,7 +2410,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781171"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529058",
@@ -2424,7 +2424,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781172"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529082",
@@ -2438,7 +2438,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781173"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582529102",
@@ -2452,7 +2452,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781174"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529073",
@@ -2466,7 +2466,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781175"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182529018",
@@ -2480,7 +2480,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781176"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582529105",
@@ -2494,7 +2494,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781177"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582529097",
@@ -2508,7 +2508,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781178"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182529030",
@@ -2522,7 +2522,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781179"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582529099",
@@ -2536,7 +2536,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781180"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529088",
@@ -2550,7 +2550,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781181"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529071",
@@ -2564,7 +2564,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781182"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182529005",
@@ -2578,7 +2578,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781183"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582529100",
@@ -2592,7 +2592,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781184"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582529095",
@@ -2606,7 +2606,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781185"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582529107",
@@ -2620,7 +2620,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781186"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582529119",
@@ -2634,7 +2634,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781187"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182529025",
@@ -2648,7 +2648,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781188"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182529024",
@@ -2662,7 +2662,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781189"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182529022",
@@ -2676,7 +2676,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781190"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582529114",
@@ -2690,7 +2690,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781191"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182529029",
@@ -2704,7 +2704,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781192"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582529120",
@@ -2718,7 +2718,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781193"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529084",
@@ -2732,7 +2732,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781194"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582529098",
@@ -2746,7 +2746,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781195"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529068",
@@ -2760,7 +2760,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781196"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582529110",
@@ -2774,7 +2774,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781197"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582529112",
@@ -2788,7 +2788,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781198"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182529015",
@@ -2802,7 +2802,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781199"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182529012",
@@ -2816,7 +2816,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781200"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182529008",
@@ -2830,7 +2830,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781201"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182529035",
@@ -2844,7 +2844,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781202"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529087",
@@ -2858,7 +2858,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781203"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529090",
@@ -2872,7 +2872,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781204"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529048",
@@ -2886,7 +2886,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781205"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182529003",
@@ -2900,7 +2900,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781206"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529053",
@@ -2914,7 +2914,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781207"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529043",
@@ -2928,7 +2928,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781208"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529056",
@@ -2942,7 +2942,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781209"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529076",
@@ -2956,7 +2956,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781210"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529083",
@@ -2970,7 +2970,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781211"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582529101",
@@ -2984,7 +2984,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781212"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529075",
@@ -2998,7 +2998,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781213"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582529111",
@@ -3012,7 +3012,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781214"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582529094",
@@ -3026,7 +3026,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781215"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182529001",
@@ -3040,7 +3040,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781216"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529059",
@@ -3054,7 +3054,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781217"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010582529118",
@@ -3068,7 +3068,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781218"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529044",
@@ -3082,7 +3082,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781219"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182529023",
@@ -3096,7 +3096,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781220"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010282529050",
@@ -3110,7 +3110,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781221"
+    "no_hp": ""
   },
   {
     "id": "user-mhs-09010182529031",
@@ -3124,27 +3124,18 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2025",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2025",
-    "no_hp": "0812781222"
+    "no_hp": ""
   },
   {
-    "id": "user-kaprodi-hendra",
-    "nim": "197805122005011002",
-    "nip": "197805122005011002",
-    "nama": "Dr. Ir. Hendra Kusuma, M.T.",
-    "role": "kaprodi",
-    "email": "kaprodi.mi@unsri.ac.id",
-    "password": "Kaprodi123!",
-    "prodi": "D3 Manajemen Informatika",
-    "department_id": "dept-mi-1"
-  },
-  {
-    "id": "user-kaprodi",
+    "id": "user-kaprodi-abdiansah",
+    "username": "Koprodi",
     "nim": "198410012009121005",
     "nip": "198410012009121005",
     "nama": "Dr. Abdiansah, S.Kom., M.Cs.",
     "role": "kaprodi",
-    "email": "abdiansah@unsri.ac.id",
-    "password": "198410012009121005",
+    "email": "koprodi@unsri.ac.id",
+    "password": "Koprodi123",
+    "prodi": "D3 Manajemen Informatika",
     "department_id": "dept-mi-1"
   },
   {
@@ -3164,27 +3155,37 @@ export const MOCK_USERS = [
     "role": "dosen",
     "email": "abdiansah@unsri.ac.id",
     "password": "198410012009121005",
-    "department_id": "dept-mi-1"
+    "prodi": "D3 Manajemen Informatika",
+    "department_id": "dept-mi-1",
+    "pendidikan": "S3 (Doktor)",
+    "link_wa_group": "https://chat.whatsapp.com/BimbinganTA-DrAbdiansah",
+    "no_hp": ""
   },
   {
-    "id": "user-dosen-alfiqnufiq",
-    "nim": "197903202024211001",
-    "nip": "197903202024211001",
-    "nama": "Alfiqnufiq, S.Kom., M.T.",
+    "id": "user-dosen-anna",
+    "nim": "198810052023212046",
+    "nip": "198810052023212046",
+    "nama": "Anna Dwi Marjusalinah, S.Kom., M.Kom.",
     "role": "dosen",
-    "email": "alfiqnufiq@unsri.ac.id",
-    "password": "197903202024211001",
-    "department_id": "dept-mi-1"
+    "email": "annadwimarjusalinah@unsri.ac.id",
+    "password": "198810052023212046",
+    "prodi": "D3 Manajemen Informatika",
+    "department_id": "dept-mi-1",
+    "pendidikan": "S2 (Magister)",
+    "no_hp": ""
   },
   {
     "id": "user-dosen-bayu",
-    "nim": "198604122024211002",
-    "nip": "198604122024211002",
-    "nama": "Bayu Wisata, S.Kom., M.T.",
+    "nim": "198803052019031010",
+    "nip": "198803052019031010",
+    "nama": "Bayu Wijaya Putra, S.Kom., M.Kom.",
     "role": "dosen",
     "email": "bayuwisata@gmail.com",
-    "password": "198604122024211002",
-    "department_id": "dept-mi-1"
+    "password": "198803052019031010",
+    "prodi": "D3 Manajemen Informatika",
+    "department_id": "dept-mi-1",
+    "pendidikan": "S2 (Magister)",
+    "no_hp": ""
   },
   {
     "id": "user-dosen-dewi",
@@ -3194,6 +3195,7 @@ export const MOCK_USERS = [
     "role": "dosen",
     "email": "dewisartika@unsri.ac.id",
     "password": "199012222024062001",
+    "pendidikan": "S2 (Magister)",
     "department_id": "dept-mi-1"
   },
   {
@@ -3204,6 +3206,7 @@ export const MOCK_USERS = [
     "role": "dosen",
     "email": "hasnanafif@unsri.ac.id",
     "password": "198910142023211013",
+    "pendidikan": "S2 (Magister)",
     "department_id": "dept-mi-1"
   },
   {
@@ -3214,6 +3217,7 @@ export const MOCK_USERS = [
     "role": "dosen",
     "email": "iinseprina@unsri.ac.id",
     "password": "198303182023212034",
+    "pendidikan": "S2 (Magister)",
     "department_id": "dept-mi-1"
   },
   {
@@ -3224,6 +3228,7 @@ export const MOCK_USERS = [
     "role": "dosen",
     "email": "niyaamnz@gmail.com",
     "password": "198906262024212001",
+    "pendidikan": "S2 (Magister)",
     "department_id": "dept-mi-1"
   },
   {
@@ -3234,6 +3239,7 @@ export const MOCK_USERS = [
     "role": "dosen",
     "email": "qurhanul.rizqie@ilkom.unsri.ac.id",
     "password": "198712032022031006",
+    "pendidikan": "S3 (Doktor)",
     "department_id": "dept-mi-1"
   },
   {
@@ -3244,6 +3250,7 @@ export const MOCK_USERS = [
     "role": "dosen",
     "email": "witasari92@gmail.com",
     "password": "199206092019032025",
+    "pendidikan": "S2 (Magister)",
     "department_id": "dept-mi-1"
   },
   {
@@ -3254,6 +3261,7 @@ export const MOCK_USERS = [
     "role": "dosen",
     "email": "rusdie@unsri.ac.id",
     "password": "198201022024211001",
+    "pendidikan": "S2 (Magister)",
     "department_id": "dept-mi-1"
   },
   {
@@ -3264,6 +3272,7 @@ export const MOCK_USERS = [
     "role": "dosen",
     "email": "willy@unsri.ac.id",
     "password": "198710092024211001",
+    "pendidikan": "S2 (Magister)",
     "department_id": "dept-mi-1"
   },
   {
@@ -3274,16 +3283,17 @@ export const MOCK_USERS = [
     "role": "dosen",
     "email": "yesintaflorensia@unsri.ac.id",
     "password": "199306042024062006",
+    "pendidikan": "S2 (Magister)",
     "department_id": "dept-mi-1"
   },
   {
     "id": "user-admin-simta",
     "nim": "199203142018011001",
     "nip": "199203142018011001",
-    "nama": "Rina Agustina, S.Kom. (Admin SIMTA)",
+    "nama": "Rina Agustina, S.Kom. (Admin SIMONITA)",
     "role": "admin",
     "email": "admin.simta@unsri.ac.id",
-    "no_hp": "081234567899",
+    "no_hp": "",
     "department_id": "dept-mi-1"
   }
 ];
@@ -6867,18 +6877,18 @@ export const MOCK_THESIS_TITLES = [
       tanggal: '2026-09-28',
       waktu: '09:00 - 10:30',
       ruangan: 'Ruang Sidang Utama DIPKOM',
-      ketua_penguji: 'Dr. Ir. Hendra Kusuma, M.T.',
-      penguji: 'Nurul Hidayah, M.Kom.'
+      ketua_penguji: 'Dr. Abdiansah, S.Kom., M.Cs.',
+      penguji: 'Iin Seprina, M.Kom.'
     },
-    pembimbing_1_nip: '197805122005011002',
-    pembimbing_1_nama: 'Dr. Ir. Hendra Kusuma, M.T.',
-    pembimbing_2_nip: '198804102015042001',
-    pembimbing_2_nama: 'Siti Nurhaliza, S.Kom., M.Kom.',
-    pembimbing_1: 'Dr. Ir. Hendra Kusuma, M.T.',
-    pembimbing_2: 'Siti Nurhaliza, S.Kom., M.Kom.',
+    pembimbing_1_nip: '198410012009121005',
+    pembimbing_1_nama: 'Dr. Abdiansah, S.Kom., M.Cs.',
+    pembimbing_2_nip: '198810052023212046',
+    pembimbing_2_nama: 'Anna Dwi Marjusalinah, S.Kom., M.Kom.',
+    pembimbing_1: 'Dr. Abdiansah, S.Kom., M.Cs.',
+    pembimbing_2: 'Anna Dwi Marjusalinah, S.Kom., M.Kom.',
     rekomendasi_dospem_status: 'direkomendasikan',
     catatan_dospem: 'Topik inovatif dan arsitektur sistem sudah matang.',
-    rekomendasi_oleh: 'Dr. Ir. Hendra Kusuma, M.T.',
+    rekomendasi_oleh: 'Dr. Abdiansah, S.Kom., M.Cs.',
     catatan_kaprodi: 'Judul resmi disetujui FIX dalam rapat Prodi.',
     riwayat_revisi: [
       {
@@ -6921,15 +6931,15 @@ export const MOCK_THESIS_TITLES = [
     nilai_sidang: null,
     tanggal_lulus: null,
     jadwal_sidang: null,
-    pembimbing_1_nip: '198804102015042001',
-    pembimbing_1_nama: 'Siti Nurhaliza, S.Kom., M.Kom.',
-    pembimbing_2_nip: '198509152010121004',
-    pembimbing_2_nama: 'Prof. Dr. Ir. Ahmad Zaki, M.Sc.',
-    pembimbing_1: 'Siti Nurhaliza, S.Kom., M.Kom.',
-    pembimbing_2: 'Prof. Dr. Ir. Ahmad Zaki, M.Sc.',
+    pembimbing_1_nip: '198810052023212046',
+    pembimbing_1_nama: 'Anna Dwi Marjusalinah, S.Kom., M.Kom.',
+    pembimbing_2_nip: '198712032022031006',
+    pembimbing_2_nama: 'M. Qurhanul Rizkie, Ph.D',
+    pembimbing_1: 'Anna Dwi Marjusalinah, S.Kom., M.Kom.',
+    pembimbing_2: 'M. Qurhanul Rizkie, Ph.D',
     rekomendasi_dospem_status: 'direkomendasikan',
     catatan_dospem: 'Usulan topik relevan dengan kebutuhan prodi. Direkomendasikan untuk persetujuan Kaprodi.',
-    rekomendasi_oleh: 'Siti Nurhaliza, S.Kom., M.Kom.',
+    rekomendasi_oleh: 'Anna Dwi Marjusalinah, S.Kom., M.Kom.',
     catatan_kaprodi: 'Hasil rapat Prodi: Skor similarity terdeteksi 58% (melebihi batas aman rekomendasi). Disarankan mengganti studi kasus atau objek penelitian bersama dosen pembimbing.',
     riwayat_revisi: [
       {
@@ -6972,12 +6982,12 @@ export const MOCK_THESIS_TITLES = [
     nilai_sidang: null,
     tanggal_lulus: null,
     jadwal_sidang: null,
-    pembimbing_1_nip: '198001012010011001',
-    pembimbing_1_nama: 'Dr. Budi Dosen, M.Kom.',
-    pembimbing_2_nip: '199001152019032015',
-    pembimbing_2_nama: 'Rina Wijaya, M.T.',
-    pembimbing_1: 'Dr. Budi Dosen, M.Kom.',
-    pembimbing_2: 'Rina Wijaya, M.T.',
+    pembimbing_1_nip: '198201022024211001',
+    pembimbing_1_nama: 'Rusdi Efendi, S.Pd., M.Kom.',
+    pembimbing_2_nip: '198906262024212001',
+    pembimbing_2_nama: 'Junia Kurniati, S.Kom., M.Kom.',
+    pembimbing_1: 'Rusdi Efendi, S.Pd., M.Kom.',
+    pembimbing_2: 'Junia Kurniati, S.Kom., M.Kom.',
     rekomendasi_dospem_status: 'menunggu_validasi',
     catatan_dospem: '',
     rekomendasi_oleh: '',
@@ -7015,15 +7025,15 @@ export const MOCK_THESIS_TITLES = [
     nilai_sidang: null,
     tanggal_lulus: null,
     jadwal_sidang: null,
-    pembimbing_1_nip: '197805122005011002',
-    pembimbing_1_nama: 'Dr. Ir. Hendra Kusuma, M.T.',
-    pembimbing_2_nip: '198001012010011001',
-    pembimbing_2_nama: 'Dr. Budi Dosen, M.Kom.',
-    pembimbing_1: 'Dr. Ir. Hendra Kusuma, M.T.',
-    pembimbing_2: 'Dr. Budi Dosen, M.Kom.',
+    pembimbing_1_nip: '198410012009121005',
+    pembimbing_1_nama: 'Dr. Abdiansah, S.Kom., M.Cs.',
+    pembimbing_2_nip: '198201022024211001',
+    pembimbing_2_nama: 'Rusdi Efendi, S.Pd., M.Kom.',
+    pembimbing_1: 'Dr. Abdiansah, S.Kom., M.Cs.',
+    pembimbing_2: 'Rusdi Efendi, S.Pd., M.Kom.',
     rekomendasi_dospem_status: 'direkomendasikan',
     catatan_dospem: 'Telah direvisi formulasi judul dan metodologinya. Bimbingan lengkap dan siap daftar Sidang Akhir.',
-    rekomendasi_oleh: 'Dr. Ir. Hendra Kusuma, M.T.',
+    rekomendasi_oleh: 'Dr. Abdiansah, S.Kom., M.Cs.',
     catatan_kaprodi: 'Similarity sudah turun drastis ke 19.5% (aman). Silakan lanjutkan pendaftaran Sidang Akhir D3.',
     riwayat_revisi: [
       {
@@ -7076,12 +7086,12 @@ export const MOCK_THESIS_TITLES = [
     nilai_sidang: null,
     tanggal_lulus: null,
     jadwal_sidang: null,
-    pembimbing_1_nip: '198509152010121004',
-    pembimbing_1_nama: 'Prof. Dr. Ir. Ahmad Zaki, M.Sc.',
-    pembimbing_2_nip: '199001152019032015',
-    pembimbing_2_nama: 'Rina Wijaya, M.T.',
-    pembimbing_1: 'Prof. Dr. Ir. Ahmad Zaki, M.Sc.',
-    pembimbing_2: 'Rina Wijaya, M.T.',
+    pembimbing_1_nip: '198712032022031006',
+    pembimbing_1_nama: 'M. Qurhanul Rizkie, Ph.D',
+    pembimbing_2_nip: '198906262024212001',
+    pembimbing_2_nama: 'Junia Kurniati, S.Kom., M.Kom.',
+    pembimbing_1: 'M. Qurhanul Rizkie, Ph.D',
+    pembimbing_2: 'Junia Kurniati, S.Kom., M.Kom.',
     rekomendasi_dospem_status: 'menunggu_validasi',
     catatan_dospem: '',
     rekomendasi_oleh: '',
@@ -7121,18 +7131,18 @@ export const MOCK_THESIS_TITLES = [
       tanggal: '2026-10-25',
       waktu: '09:00 - 10:30',
       ruangan: 'Ruang Sidang Utama DIPKOM',
-      ketua_penguji: 'Dr. Ir. Hendra Kusuma, M.T.',
-      penguji: 'Prof. Dr. Ahmad Dahlan, S.T., M.Kom.'
+      ketua_penguji: 'Dr. Abdiansah, S.Kom., M.Cs.',
+      penguji: 'Hasnan Afif, S.Kom., M.Kom.'
     },
-    pembimbing_1_nip: '198804102015042001',
-    pembimbing_1_nama: 'Siti Nurhaliza, S.Kom., M.Kom.',
-    pembimbing_2_nip: '198001012010011001',
-    pembimbing_2_nama: 'Dr. Budi Dosen, M.Kom.',
-    pembimbing_1: 'Siti Nurhaliza, S.Kom., M.Kom.',
-    pembimbing_2: 'Dr. Budi Dosen, M.Kom.',
+    pembimbing_1_nip: '198810052023212046',
+    pembimbing_1_nama: 'Anna Dwi Marjusalinah, S.Kom., M.Kom.',
+    pembimbing_2_nip: '198201022024211001',
+    pembimbing_2_nama: 'Rusdi Efendi, S.Pd., M.Kom.',
+    pembimbing_1: 'Anna Dwi Marjusalinah, S.Kom., M.Kom.',
+    pembimbing_2: 'Rusdi Efendi, S.Pd., M.Kom.',
     rekomendasi_dospem_status: 'direkomendasikan',
     catatan_dospem: 'Siap untuk maju Sidang Akhir D3.',
-    rekomendasi_oleh: 'Siti Nurhaliza, S.Kom., M.Kom.',
+    rekomendasi_oleh: 'Anna Dwi Marjusalinah, S.Kom., M.Kom.',
     catatan_kaprodi: 'Judul FIX. Skor 24% aman di bawah ambang batas prodi. Jadwal Sidang Akhir telah ditetapkan.',
     riwayat_revisi: [
       {
@@ -7179,18 +7189,18 @@ export const MOCK_THESIS_TITLES = [
       tanggal: '2026-09-25',
       waktu: '13:00 - 14:30',
       ruangan: 'Ruang Sidang 2 Fasilkom',
-      ketua_penguji: 'Dr. Budi Dosen, M.Kom.',
-      penguji: 'Rina Wijaya, M.T.'
+      ketua_penguji: 'Rusdi Efendi, S.Pd., M.Kom.',
+      penguji: 'Junia Kurniati, S.Kom., M.Kom.'
     },
-    pembimbing_1_nip: '198001012010011001',
-    pembimbing_1_nama: 'Dr. Budi Dosen, M.Kom.',
-    pembimbing_2_nip: '199001152019032015',
-    pembimbing_2_nama: 'Rina Wijaya, M.T.',
-    pembimbing_1: 'Dr. Budi Dosen, M.Kom.',
-    pembimbing_2: 'Rina Wijaya, M.T.',
+    pembimbing_1_nip: '198201022024211001',
+    pembimbing_1_nama: 'Rusdi Efendi, S.Pd., M.Kom.',
+    pembimbing_2_nip: '198906262024212001',
+    pembimbing_2_nama: 'Junia Kurniati, S.Kom., M.Kom.',
+    pembimbing_1: 'Rusdi Efendi, S.Pd., M.Kom.',
+    pembimbing_2: 'Junia Kurniati, S.Kom., M.Kom.',
     rekomendasi_dospem_status: 'direkomendasikan',
     catatan_dospem: 'Telah menyelesaikan pengujian sistem dan dinyatakan lulus sidang akhir.',
-    rekomendasi_oleh: 'Dr. Budi Dosen, M.Kom.',
+    rekomendasi_oleh: 'Rusdi Efendi, S.Pd., M.Kom.',
     catatan_kaprodi: 'Telah lulus Sidang Akhir Tugas Akhir D3 dengan predikat Sangat Memuaskan.',
     riwayat_revisi: [
       {
@@ -7237,18 +7247,18 @@ export const MOCK_THESIS_TITLES = [
       tanggal: '2026-09-22',
       waktu: '10:00 - 11:30',
       ruangan: 'Ruang Sidang Utama DIPKOM',
-      ketua_penguji: 'Prof. Dr. Ir. Ahmad Zaki, M.Sc.',
-      penguji: 'Siti Nurhaliza, S.Kom., M.Kom.'
+      ketua_penguji: 'M. Qurhanul Rizkie, Ph.D',
+      penguji: 'Anna Dwi Marjusalinah, S.Kom., M.Kom.'
     },
-    pembimbing_1_nip: '198509152010121004',
-    pembimbing_1_nama: 'Prof. Dr. Ir. Ahmad Zaki, M.Sc.',
-    pembimbing_2_nip: '198804102015042001',
-    pembimbing_2_nama: 'Siti Nurhaliza, S.Kom., M.Kom.',
-    pembimbing_1: 'Prof. Dr. Ir. Ahmad Zaki, M.Sc.',
-    pembimbing_2: 'Siti Nurhaliza, S.Kom., M.Kom.',
+    pembimbing_1_nip: '198712032022031006',
+    pembimbing_1_nama: 'M. Qurhanul Rizkie, Ph.D',
+    pembimbing_2_nip: '198810052023212046',
+    pembimbing_2_nama: 'Anna Dwi Marjusalinah, S.Kom., M.Kom.',
+    pembimbing_1: 'M. Qurhanul Rizkie, Ph.D',
+    pembimbing_2: 'Anna Dwi Marjusalinah, S.Kom., M.Kom.',
     rekomendasi_dospem_status: 'direkomendasikan',
     catatan_dospem: 'Lulus Sidang Akhir dengan perbaikan minor dokumentasi.',
-    rekomendasi_oleh: 'Prof. Dr. Ir. Ahmad Zaki, M.Sc.',
+    rekomendasi_oleh: 'M. Qurhanul Rizkie, Ph.D',
     catatan_kaprodi: 'Telah lulus Sidang Akhir Tugas Akhir D3.',
     riwayat_revisi: [
       {
@@ -14359,10 +14369,10 @@ export const MOCK_THESIS_REPOSITORIES = [
     kelas: 'MI 5A',
     tahun_angkatan: '2022',
     tahun_lulus: '2026',
-    pembimbing_1: 'Dr. Ir. Hendra Kusuma, M.T.',
-    pembimbing_2: 'Siti Nurhaliza, S.Kom., M.Kom.',
-    penguji_1: 'Prof. Dr. Ir. Ahmad Zaki, M.Sc.',
-    penguji_2: 'Budi Santoso, S.Kom., M.Kom.',
+    pembimbing_1: 'Dr. Abdiansah, S.Kom., M.Cs.',
+    pembimbing_2: 'Anna Dwi Marjusalinah, S.Kom., M.Kom.',
+    penguji_1: 'M. Qurhanul Rizkie, Ph.D',
+    penguji_2: 'Hasnan Afif, S.Kom., M.Kom.',
     kata_kunci: ['SIMTA', 'Tugas Akhir', 'Fasilkom UNSRI', 'ReactJS'],
     file_pdf_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
     status: 'menunggu_review_kaprodi',
@@ -14380,10 +14390,10 @@ export const MOCK_THESIS_REPOSITORIES = [
     kelas: 'MI 5B',
     tahun_angkatan: '2022',
     tahun_lulus: '2026',
-    pembimbing_1: 'Siti Nurhaliza, S.Kom., M.Kom.',
-    pembimbing_2: 'Dr. Ir. Hendra Kusuma, M.T.',
-    penguji_1: 'Dr. Endang Sulastri, M.Si.',
-    penguji_2: 'Bambang Irawan, S.Kom., M.T.',
+    pembimbing_1: 'Anna Dwi Marjusalinah, S.Kom., M.Kom.',
+    pembimbing_2: 'Dr. Abdiansah, S.Kom., M.Cs.',
+    penguji_1: 'Hasnan Afif, S.Kom., M.Kom.',
+    penguji_2: 'Rusdi Efendi, S.Pd., M.Kom.',
     kata_kunci: ['IoT', 'MQ-2', 'ESP8266', 'Telegram Bot'],
     file_pdf_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
     status: 'disetujui_kaprodi',
@@ -14398,7 +14408,7 @@ export const MOCK_CONSULTATIONS = [
     mhs_nim: '09010182428002',
     mhs_nama: 'Aulia Azzahra',
     pembimbing: 'Pembimbing 1',
-    dosen_nama: 'Dr. Ir. Hendra Kusuma, M.T.',
+    dosen_nama: 'Dr. Abdiansah, S.Kom., M.Cs.',
     metode: 'luring',
     tanggal: '2026-08-20',
     waktu: '10:00',
@@ -14407,6 +14417,7 @@ export const MOCK_CONSULTATIONS = [
     masukan_dosen: 'Latar belakang sudah bagus. Perjelas urgensi pengintegrasian Similarity Check Engine pada Bab 1.3.',
     file_revisi_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
     status: 'disetujui',
+    jenis_revisi: 'Diterima',
     created_at: '2026-08-20T10:00:00Z'
   },
   {
@@ -14414,7 +14425,7 @@ export const MOCK_CONSULTATIONS = [
     mhs_nim: '09010182428002',
     mhs_nama: 'Aulia Azzahra',
     pembimbing: 'Pembimbing 2',
-    dosen_nama: 'Siti Nurhaliza, S.Kom., M.Kom.',
+    dosen_nama: 'Anna Dwi Marjusalinah, S.Kom., M.Kom.',
     metode: 'daring',
     tanggal: '2026-08-27',
     waktu: '13:30',
@@ -14423,6 +14434,7 @@ export const MOCK_CONSULTATIONS = [
     masukan_dosen: 'Tambahkan referensi jurnal terindeks SINTA/Scopus 3 tahun terakhir pada bagian persamaan Trigram.',
     file_revisi_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
     status: 'disetujui',
+    jenis_revisi: 'Diterima',
     created_at: '2026-08-27T13:30:00Z'
   },
   {
@@ -14430,7 +14442,7 @@ export const MOCK_CONSULTATIONS = [
     mhs_nim: '09010182428002',
     mhs_nama: 'Aulia Azzahra',
     pembimbing: 'Pembimbing 1',
-    dosen_nama: 'Dr. Ir. Hendra Kusuma, M.T.',
+    dosen_nama: 'Dr. Abdiansah, S.Kom., M.Cs.',
     metode: 'luring',
     tanggal: '2026-09-05',
     waktu: '09:00',
@@ -14439,6 +14451,7 @@ export const MOCK_CONSULTATIONS = [
     masukan_dosen: 'Desain ERD sudah lengkap. Lanjutkan ke tahap pengujian prototype web.',
     file_revisi_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
     status: 'disetujui',
+    jenis_revisi: 'Diterima',
     created_at: '2026-09-05T09:00:00Z'
   },
   {
@@ -14446,7 +14459,7 @@ export const MOCK_CONSULTATIONS = [
     mhs_nim: '09010182428002',
     mhs_nama: 'Aulia Azzahra',
     pembimbing: 'Pembimbing 2',
-    dosen_nama: 'Siti Nurhaliza, S.Kom., M.Kom.',
+    dosen_nama: 'Anna Dwi Marjusalinah, S.Kom., M.Kom.',
     metode: 'daring',
     tanggal: '2026-09-10',
     waktu: '14:00',
@@ -14455,6 +14468,7 @@ export const MOCK_CONSULTATIONS = [
     masukan_dosen: 'Mohon rapikan tabel pengujian black-box dan lengkapi screenshot antarmuka.',
     file_revisi_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
     status: 'perlu_revisi',
+    jenis_revisi: 'Minor',
     created_at: '2026-09-10T14:00:00Z'
   },
   {
@@ -14462,7 +14476,7 @@ export const MOCK_CONSULTATIONS = [
     mhs_nim: '09031182328001',
     mhs_nama: 'Ahmad Rizky Pratama',
     pembimbing: 'Pembimbing 1',
-    dosen_nama: 'Dr. Ir. Hendra Kusuma, M.T.',
+    dosen_nama: 'Dr. Abdiansah, S.Kom., M.Cs.',
     metode: 'luring',
     tanggal: '2026-09-22',
     waktu: '09:30',
@@ -14477,7 +14491,7 @@ export const MOCK_CONSULTATIONS = [
     mhs_nim: '09031182328001',
     mhs_nama: 'Ahmad Rizky Pratama',
     pembimbing: 'Pembimbing 2',
-    dosen_nama: 'Siti Nurhaliza, S.Kom., M.Kom.',
+    dosen_nama: 'Anna Dwi Marjusalinah, S.Kom., M.Kom.',
     metode: 'daring',
     tanggal: '2026-10-02',
     waktu: '11:00',
@@ -14492,7 +14506,7 @@ export const MOCK_CONSULTATIONS = [
     mhs_nim: '09031182328002',
     mhs_nama: 'Siti Sarah Rahmawati',
     pembimbing: 'Pembimbing 1',
-    dosen_nama: 'Siti Nurhaliza, S.Kom., M.Kom.',
+    dosen_nama: 'Anna Dwi Marjusalinah, S.Kom., M.Kom.',
     metode: 'luring',
     tanggal: '2026-09-18',
     waktu: '10:00',
@@ -14507,7 +14521,7 @@ export const MOCK_CONSULTATIONS = [
     mhs_nim: '09031182328005',
     mhs_nama: 'Rian Hidayatulloh',
     pembimbing: 'Pembimbing 1',
-    dosen_nama: 'Prof. Dr. Ir. Ahmad Zaki, M.Sc.',
+    dosen_nama: 'M. Qurhanul Rizkie, Ph.D',
     metode: 'luring',
     tanggal: '2026-08-25',
     waktu: '14:00',
@@ -14522,7 +14536,7 @@ export const MOCK_CONSULTATIONS = [
     mhs_nim: '09031182328004',
     mhs_nama: 'Dewi Sartika Lestari',
     pembimbing: 'Pembimbing 1',
-    dosen_nama: 'Dr. Ir. Hendra Kusuma, M.T.',
+    dosen_nama: 'Dr. Abdiansah, S.Kom., M.Cs.',
     metode: 'luring',
     tanggal: '2026-09-24',
     waktu: '13:00',
@@ -14537,7 +14551,7 @@ export const MOCK_CONSULTATIONS = [
     mhs_nim: '09031182328004',
     mhs_nama: 'Dewi Sartika Lestari',
     pembimbing: 'Pembimbing 2',
-    dosen_nama: 'Dr. Budi Dosen, M.Kom.',
+    dosen_nama: 'Rusdi Efendi, S.Pd., M.Kom.',
     metode: 'daring',
     tanggal: '2026-10-04',
     waktu: '15:30',
@@ -14546,6 +14560,91 @@ export const MOCK_CONSULTATIONS = [
     masukan_dosen: 'Teori lengkap. Siapkan rancangan tabel kriteria.',
     status: 'disetujui',
     created_at: '2026-10-04T15:30:00Z'
+  },
+  {
+    id: 'cons-pend-1',
+    mhs_nim: '09010182428003',
+    mhs_nama: 'AKHMAD LATIEF SRI BINTANG PAMUNGKAS',
+    pembimbing: 'Pembimbing 1',
+    dosen_nip: '198410012009121005',
+    dosen_nama: 'Dr. Abdiansah, S.Kom., M.Cs.',
+    metode: 'luring',
+    tanggal: '2026-10-15',
+    waktu: '10:00',
+    bab_topik: 'Bab 2 - Kajian Pustaka & Metodologi',
+    catatan_mahasiswa: 'Konsultasi kelengkapan Bab 2 dan persiapan Bab 3.',
+    masukan_dosen: '',
+    status: 'menunggu_validasi',
+    jenis_revisi: 'Menunggu',
+    created_at: '2026-10-15T10:00:00Z'
+  },
+  {
+    id: 'cons-pend-2',
+    mhs_nim: '09010182428009',
+    mhs_nama: 'MEDINA ZAHRAH',
+    pembimbing: 'Pembimbing 1',
+    dosen_nip: '198410012009121005',
+    dosen_nama: 'Dr. Abdiansah, S.Kom., M.Cs.',
+    metode: 'daring',
+    tanggal: '2026-09-30',
+    waktu: '14:00',
+    bab_topik: 'Bab 1 - Pendahuluan & Latar Belakang Masalah',
+    catatan_mahasiswa: 'Pengajuan draf Bab 1 dan perumusan tujuan penelitian.',
+    masukan_dosen: '',
+    status: 'menunggu_validasi',
+    jenis_revisi: 'Menunggu',
+    created_at: '2026-09-30T14:00:00Z'
+  },
+  {
+    id: 'cons-pend-3',
+    mhs_nim: '09010182428012',
+    mhs_nama: 'TESA ALIZIA PUTRI',
+    pembimbing: 'Pembimbing 1',
+    dosen_nip: '198410012009121005',
+    dosen_nama: 'Dr. Abdiansah, S.Kom., M.Cs.',
+    metode: 'luring',
+    tanggal: '2026-09-22',
+    waktu: '11:00',
+    bab_topik: 'Bab 1 - Latar Belakang dan Ruang Lingkup',
+    catatan_mahasiswa: 'Konsultasi batasan aplikasi dan kajian sistem berjalan.',
+    masukan_dosen: '',
+    status: 'menunggu_validasi',
+    jenis_revisi: 'Menunggu',
+    created_at: '2026-09-22T11:00:00Z'
+  },
+  {
+    id: 'cons-pend-4',
+    mhs_nim: '09010282428031',
+    mhs_nama: 'MUHAMMAD RIZKY ELPARIZA',
+    pembimbing: 'Pembimbing 1',
+    dosen_nip: '198410012009121005',
+    dosen_nama: 'Dr. Abdiansah, S.Kom., M.Cs.',
+    metode: 'luring',
+    tanggal: '2026-09-15',
+    waktu: '09:30',
+    bab_topik: 'Bab 1 - Pendahuluan & Batasan Masalah',
+    catatan_mahasiswa: 'Revisi latar belakang sesuai arahan sebelumnya.',
+    masukan_dosen: '',
+    status: 'menunggu_validasi',
+    jenis_revisi: 'Menunggu',
+    created_at: '2026-09-15T09:30:00Z'
+  },
+  {
+    id: 'cons-pend-5',
+    mhs_nim: '09010182428011',
+    mhs_nama: 'MELVA OLIFIA',
+    pembimbing: 'Pembimbing 1',
+    dosen_nip: '198410012009121005',
+    dosen_nama: 'Dr. Abdiansah, S.Kom., M.Cs.',
+    metode: 'luring',
+    tanggal: '2026-09-11',
+    waktu: '13:00',
+    bab_topik: 'Bab 1 - Rumusan Masalah & Tujuan',
+    catatan_mahasiswa: 'Pengajuan draf bab 1 untuk validasi pembimbing.',
+    masukan_dosen: '',
+    status: 'menunggu_validasi',
+    jenis_revisi: 'Menunggu',
+    created_at: '2026-09-11T13:00:00Z'
   }
 ];
 
@@ -14558,17 +14657,17 @@ export const MOCK_BIMBINGAN_REMINDER_LOGS = [
     student_email: '09031182328005@student.unsri.ac.id',
     student_kelas: 'MI 5A',
     judul_ta: 'Aplikasi Mobile Pengenalan Kampus Menggunakan Augmented Reality Berbasis Markerless',
-    dospem_1_nip: '198509152010121004',
-    dospem_1_nama: 'Prof. Dr. Ir. Ahmad Zaki, M.Sc.',
-    dospem_1_email: '198509152010121004@unsri.ac.id',
-    dospem_2_nip: '199001152019032015',
-    dospem_2_nama: 'Rina Wijaya, M.T.',
-    dospem_2_email: '199001152019032015@unsri.ac.id',
+    dospem_1_nip: '198712032022031006',
+    dospem_1_nama: 'M. Qurhanul Rizkie, Ph.D',
+    dospem_1_email: 'qurhanul.rizqie@ilkom.unsri.ac.id',
+    dospem_2_nip: '198906262024212001',
+    dospem_2_nama: 'Junia Kurniati, S.Kom., M.Kom.',
+    dospem_2_email: 'niyaamnz@gmail.com',
     target_penerima: 'both',
     recipients_emails: [
       '09031182328005@student.unsri.ac.id',
-      '198509152010121004@unsri.ac.id',
-      '199001152019032015@unsri.ac.id'
+      'qurhanul.rizqie@ilkom.unsri.ac.id',
+      'niyaamnz@gmail.com'
     ],
     status_kepatuhan: 'critical',
     hari_sejak_terakhir: 37,
@@ -14588,16 +14687,17 @@ export const MOCK_BIMBINGAN_REMINDER_LOGS = [
     student_email: '09031182328002@student.unsri.ac.id',
     student_kelas: 'MI 5B',
     judul_ta: 'Rancang Bangun Sistem Informasi Pendataan Alumni dan Tracert Study D3 MI',
-    dospem_1_nip: '198804102015042001',
-    dospem_1_nama: 'Siti Nurhaliza, S.Kom., M.Kom.',
-    dospem_1_email: '198804102015042001@unsri.ac.id',
-    dospem_2_nip: '198509152010121004',
-    dospem_2_nama: 'Prof. Dr. Ir. Ahmad Zaki, M.Sc.',
-    dospem_2_email: '198509152010121004@unsri.ac.id',
+    dospem_1_nip: '198810052023212046',
+    dospem_1_nama: 'Anna Dwi Marjusalinah, S.Kom., M.Kom.',
+    dospem_1_email: 'annadwimarjusalinah@unsri.ac.id',
+    dospem_2_nip: '198712032022031006',
+    dospem_2_nama: 'M. Qurhanul Rizkie, Ph.D',
+    dospem_2_email: 'qurhanul.rizqie@ilkom.unsri.ac.id',
     target_penerima: 'both',
     recipients_emails: [
       '09031182328002@student.unsri.ac.id',
-      '198804102015042001@unsri.ac.id'
+      'annadwimarjusalinah@unsri.ac.id',
+      'qurhanul.rizqie@ilkom.unsri.ac.id'
     ],
     status_kepatuhan: 'warning',
     hari_sejak_terakhir: 16,
@@ -14613,29 +14713,16 @@ export const MOCK_BIMBINGAN_REMINDER_LOGS = [
 
 export const MOCK_ADVISORS = [
   {
-    id: 'adv-mi-000',
-    nip: '197805122005011002',
-    nama: 'Dr. Ir. Hendra Kusuma, M.T.',
-    email: 'kaprodi.mi@unsri.ac.id',
-    no_hp: '081278901000',
-    link_wa_group: 'https://chat.whatsapp.com/BimbinganTA-HendraKusuma',
-    prodi: 'D3 Manajemen Informatika',
-    jabatan_fungsional: 'Lektor Kepala / Kaprodi',
-    keahlian: ['Sistem Informasi', 'Arsitektur Enterprise'],
-    kuota_dospem1: 8,
-    kuota_dospem2: 8,
-    status: 'aktif'
-  },
-  {
     id: 'adv-mi-001',
     nip: '198410012009121005',
     nama: 'Dr. Abdiansah, S.Kom., M.Cs.',
     email: 'abdiansah@unsri.ac.id',
-    no_hp: '081278901001',
+    no_hp: '',
     link_wa_group: 'https://chat.whatsapp.com/BimbinganTA-DrAbdiansah',
     prodi: 'D3 Manajemen Informatika',
-    jabatan_fungsional: 'Lektor Kepala',
+    jabatan_fungsional: 'Lektor Kepala / Kaprodi',
     keahlian: ['Kecerdasan Buatan', 'Pemrosesan Bahasa Alami'],
+    pendidikan: 'S3 (Doktor)',
     kuota_dospem1: 8,
     kuota_dospem2: 8,
     status: 'aktif'
@@ -14645,11 +14732,12 @@ export const MOCK_ADVISORS = [
     nip: '198810052023212046',
     nama: 'Anna Dwi Marjusalinah, S.Kom., M.Kom.',
     email: 'annadwimarjusalinah@unsri.ac.id',
-    no_hp: '081278901002',
+    no_hp: '',
     link_wa_group: 'https://chat.whatsapp.com/BimbinganTA-AnnaDwi',
     prodi: 'D3 Manajemen Informatika',
     jabatan_fungsional: 'Asisten Ahli',
     keahlian: ['Rekayasa Perangkat Lunak', 'Sistem Informasi'],
+    pendidikan: 'S2 (Magister)',
     kuota_dospem1: 8,
     kuota_dospem2: 8,
     status: 'aktif'
@@ -14659,11 +14747,12 @@ export const MOCK_ADVISORS = [
     nip: '198803052019031010',
     nama: 'Bayu Wijaya Putra, S.Kom., M.Kom.',
     email: 'bayuwisata@gmail.com',
-    no_hp: '081278901003',
+    no_hp: '',
     link_wa_group: 'https://chat.whatsapp.com/BimbinganTA-BayuWijaya',
     prodi: 'D3 Manajemen Informatika',
     jabatan_fungsional: 'Lektor',
     keahlian: ['Sistem Informasi', 'Manajemen Basis Data'],
+    pendidikan: 'S2 (Magister)',
     kuota_dospem1: 8,
     kuota_dospem2: 8,
     status: 'aktif'
@@ -14673,11 +14762,12 @@ export const MOCK_ADVISORS = [
     nip: '199012222024062001',
     nama: 'Dewi Sartika, S.Kom., M.Kom.',
     email: 'dewisartika@unsri.ac.id',
-    no_hp: '081278901004',
+    no_hp: '',
     link_wa_group: 'https://chat.whatsapp.com/BimbinganTA-DewiSartika',
     prodi: 'D3 Manajemen Informatika',
     jabatan_fungsional: 'Lektor',
     keahlian: ['Sistem Informasi', 'Pemrograman Web'],
+    pendidikan: 'S2 (Magister)',
     kuota_dospem1: 8,
     kuota_dospem2: 8,
     status: 'aktif'
@@ -14687,11 +14777,12 @@ export const MOCK_ADVISORS = [
     nip: '198910142023211013',
     nama: 'Hasnan Afif, S.Kom., M.Kom.',
     email: 'hasnanafif@unsri.ac.id',
-    no_hp: '081278901005',
+    no_hp: '',
     link_wa_group: 'https://chat.whatsapp.com/BimbinganTA-HasnanAfif',
     prodi: 'D3 Manajemen Informatika',
     jabatan_fungsional: 'Asisten Ahli',
     keahlian: ['Jaringan Komputer', 'Keamanan Siber'],
+    pendidikan: 'S2 (Magister)',
     kuota_dospem1: 8,
     kuota_dospem2: 8,
     status: 'aktif'
@@ -14701,11 +14792,12 @@ export const MOCK_ADVISORS = [
     nip: '198303182023212034',
     nama: 'Iin Seprina, M.Kom.',
     email: 'iinseprina@unsri.ac.id',
-    no_hp: '081278901006',
+    no_hp: '',
     link_wa_group: 'https://chat.whatsapp.com/BimbinganTA-IinSeprina',
     prodi: 'D3 Manajemen Informatika',
     jabatan_fungsional: 'Lektor',
     keahlian: ['Sistem Informasi', 'Desain Interaksi UI/UX'],
+    pendidikan: 'S2 (Magister)',
     kuota_dospem1: 8,
     kuota_dospem2: 8,
     status: 'aktif'
@@ -14715,11 +14807,12 @@ export const MOCK_ADVISORS = [
     nip: '198906262024212001',
     nama: 'Junia Kurniati, S.Kom., M.Kom.',
     email: 'niyaamnz@gmail.com',
-    no_hp: '081278901007',
+    no_hp: '',
     link_wa_group: 'https://chat.whatsapp.com/BimbinganTA-JuniaKurniati',
     prodi: 'D3 Manajemen Informatika',
     jabatan_fungsional: 'Asisten Ahli',
     keahlian: ['Rekayasa Perangkat Lunak', 'Sistem Informasi'],
+    pendidikan: 'S2 (Magister)',
     kuota_dospem1: 8,
     kuota_dospem2: 8,
     status: 'aktif'
@@ -14729,11 +14822,12 @@ export const MOCK_ADVISORS = [
     nip: '198712032022031006',
     nama: 'M. Qurhanul Rizkie, Ph.D',
     email: 'qurhanul.rizqie@ilkom.unsri.ac.id',
-    no_hp: '081278901008',
+    no_hp: '',
     link_wa_group: 'https://chat.whatsapp.com/BimbinganTA-QurhanulRizkie',
     prodi: 'D3 Manajemen Informatika',
     jabatan_fungsional: 'Lektor',
     keahlian: ['Data Science', 'Machine Learning'],
+    pendidikan: 'S3 (Doktor)',
     kuota_dospem1: 8,
     kuota_dospem2: 8,
     status: 'aktif'
@@ -14743,11 +14837,12 @@ export const MOCK_ADVISORS = [
     nip: '199206092019032025',
     nama: 'Purwita Sari, S.Si., M.Kom.',
     email: 'witasari92@gmail.com',
-    no_hp: '081278901009',
+    no_hp: '',
     link_wa_group: 'https://chat.whatsapp.com/BimbinganTA-PurwitaSari',
     prodi: 'D3 Manajemen Informatika',
     jabatan_fungsional: 'Lektor',
     keahlian: ['Sains Data', 'Analisis Sistem Informasi'],
+    pendidikan: 'S2 (Magister)',
     kuota_dospem1: 8,
     kuota_dospem2: 8,
     status: 'aktif'
@@ -14757,10 +14852,11 @@ export const MOCK_ADVISORS = [
     nip: '198201022024211001',
     nama: 'Rusdi Efendi, S.Pd., M.Kom.',
     email: 'rusdie@unsri.ac.id',
-    no_hp: '081278901010',
+    no_hp: '',
     prodi: 'D3 Manajemen Informatika',
     jabatan_fungsional: 'Lektor',
     keahlian: ['Sistem Informasi', 'Teknologi Pembelajaran'],
+    pendidikan: 'S2 (Magister)',
     kuota_dospem1: 8,
     kuota_dospem2: 8,
     status: 'aktif'
@@ -14770,10 +14866,11 @@ export const MOCK_ADVISORS = [
     nip: '198710092024211001',
     nama: 'Willy, S.Kom., M.Kom.',
     email: 'willy@unsri.ac.id',
-    no_hp: '081278901011',
+    no_hp: '',
     prodi: 'D3 Manajemen Informatika',
     jabatan_fungsional: 'Asisten Ahli',
     keahlian: ['Pemrograman Aplikasi Mobile', 'Rekayasa Perangkat Lunak'],
+    pendidikan: 'S2 (Magister)',
     kuota_dospem1: 8,
     kuota_dospem2: 8,
     status: 'aktif'
@@ -14783,10 +14880,11 @@ export const MOCK_ADVISORS = [
     nip: '199306042024062006',
     nama: 'Yesinta Florensia, S.Kom., M.Kom.',
     email: 'yesintaflorensia@unsri.ac.id',
-    no_hp: '081278901012',
+    no_hp: '',
     prodi: 'D3 Manajemen Informatika',
     jabatan_fungsional: 'Asisten Ahli',
     keahlian: ['E-Business', 'Sistem Informasi Bisnis'],
+    pendidikan: 'S2 (Magister)',
     kuota_dospem1: 8,
     kuota_dospem2: 8,
     status: 'aktif'
@@ -15683,6 +15781,26 @@ export const MOCK_STUDENT_ADVISORS = [
     "dospem2_nip": "198201022024211001",
     "status_pembagian": "lengkap",
     "updated_at": "2026-09-24T04:21:37.035421+00:00"
+  },
+  {
+    "student_nim": "09010582428095",
+    "student_nama": "ALDURRA HADI PRAMANTYO",
+    "prodi": "D3 Manajemen Informatika",
+    "judul_ta": "",
+    "dospem1_nip": "198410012009121005",
+    "dospem2_nip": "198201022024211001",
+    "status_pembagian": "lengkap",
+    "updated_at": "2026-09-24T04:21:37.035421+00:00"
+  },
+  {
+    "student_nim": "09010582428096",
+    "student_nama": "ALIEF RIDOVI PANJAITAN",
+    "prodi": "D3 Manajemen Informatika",
+    "judul_ta": "",
+    "dospem1_nip": "198410012009121005",
+    "dospem2_nip": "198201022024211001",
+    "status_pembagian": "lengkap",
+    "updated_at": "2026-09-24T04:21:37.035421+00:00"
   }
 ];
 
@@ -15763,9 +15881,9 @@ export const MOCK_ADMIN_DOCUMENTS = [
 export const MOCK_ADMIN_CMS = [
   {
     id: 'cms-1',
-    judul: 'Selamat Datang di SIMTA',
+    judul: 'Selamat Datang di SIMONITA',
     kategori: 'Beranda',
-    isi: 'Selamat datang di Sistem Informasi Manajemen Tugas Akhir (SIMTA) Fakultas Ilmu Komputer Universitas Sriwijaya. Platform ini dirancang untuk memudahkan proses pengajuan, pembimbingan, dan sidang tugas akhir mahasiswa D3 Manajemen Informatika.',
+    isi: 'Selamat datang di Sistem Monitoring Tugas Akhir (SIMONITA) Fakultas Ilmu Komputer Universitas Sriwijaya. Platform ini dirancang untuk memudahkan proses pengajuan, pembimbingan, dan sidang tugas akhir mahasiswa D3 Manajemen Informatika.',
     status: 'publikasi',
     updated_at: '2026-09-01T08:00:00Z',
     penulis: 'Rina Agustina'
@@ -15801,7 +15919,7 @@ export const MOCK_ADMIN_CMS = [
     id: 'cms-5',
     judul: 'Kontak dan Layanan Akademik',
     kategori: 'Informasi',
-    isi: 'Untuk pertanyaan seputar administrasi tugas akhir, silakan menghubungi Admin SIMTA di admin.simta@unsri.ac.id atau datang langsung ke Gedung DIPKOM Lt. 1, Kampus Bukit Palembang, pada hari Senin-Jumat pukul 08.00-16.00 WIB.',
+    isi: 'Untuk pertanyaan seputar administrasi tugas akhir, silakan menghubungi Admin SIMONITA di admin.simonita@unsri.ac.id atau datang langsung ke Gedung DIPKOM Lt. 1, Kampus Bukit Palembang, pada hari Senin-Jumat pukul 08.00-16.00 WIB.',
     status: 'publikasi',
     updated_at: '2026-09-10T11:00:00Z',
     penulis: 'Rina Agustina'
@@ -15898,14 +16016,14 @@ export const MOCK_DEFENSE_SCHEDULES = [
     waktu_mulai: '09:00',
     waktu_selesai: '10:30',
     ruangan: 'Ruang Sidang Utama DIPKOM',
-    ketua_penguji_nama: 'Dr. Ir. Hendra Kusuma, M.T.',
-    ketua_penguji_nip: '197805122005011002',
-    sekretaris_nama: 'Dr. Ahmad Fauzi, S.Kom., M.T.',
-    sekretaris_nip: '198001012005011001',
-    penguji1_nama: 'Nurul Hidayah, M.Kom.',
-    penguji1_nip: '198502022010122002',
-    penguji2_nama: 'Prof. Dr. Ahmad Dahlan, S.T., M.Kom.',
-    penguji2_nip: '198203112008031003',
+    ketua_penguji_nama: 'Dr. Abdiansah, S.Kom., M.Cs.',
+    ketua_penguji_nip: '198410012009121005',
+    sekretaris_nama: 'Willy, S.Kom., M.Kom.',
+    sekretaris_nip: '198710092024211001',
+    penguji1_nama: 'Iin Seprina, M.Kom.',
+    penguji1_nip: '198303182023212034',
+    penguji2_nama: 'Hasnan Afif, S.Kom., M.Kom.',
+    penguji2_nip: '198910142023211013',
     status: 'terjadwal',
     catatan: 'Mahasiswa wajib membawa berkas draft rangkap 4 dan slide presentasi 15 menit.',
     link_berkas: '',
@@ -15922,14 +16040,14 @@ export const MOCK_DEFENSE_SCHEDULES = [
     waktu_mulai: '09:00',
     waktu_selesai: '10:30',
     ruangan: 'Ruang Sidang Utama DIPKOM',
-    ketua_penguji_nama: 'Dr. Ir. Hendra Kusuma, M.T.',
-    ketua_penguji_nip: '197805122005011002',
-    sekretaris_nama: 'Nurul Hidayah, M.Kom.',
-    sekretaris_nip: '198502022010122002',
-    penguji1_nama: 'Prof. Dr. Ahmad Dahlan, S.T., M.Kom.',
-    penguji1_nip: '198203112008031003',
-    penguji2_nama: 'Rina Wijaya, M.T.',
-    penguji2_nip: '199001152019032015',
+    ketua_penguji_nama: 'Dr. Abdiansah, S.Kom., M.Cs.',
+    ketua_penguji_nip: '198410012009121005',
+    sekretaris_nama: 'Iin Seprina, M.Kom.',
+    sekretaris_nip: '198303182023212034',
+    penguji1_nama: 'Hasnan Afif, S.Kom., M.Kom.',
+    penguji1_nip: '198910142023211013',
+    penguji2_nama: 'Junia Kurniati, S.Kom., M.Kom.',
+    penguji2_nip: '198906262024212001',
     status: 'terjadwal',
     catatan: 'Mahasiswa wajib membawa berkas draft rangkap 4 dan slide presentasi 15 menit.',
     link_berkas: '',

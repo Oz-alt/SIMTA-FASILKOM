@@ -295,7 +295,7 @@ export default function StatusJudulPage() {
                       {t.skor_kemiripan_terakhir}% {t.skor_kemiripan_terakhir <= 40 ? '(Aman < 40%)' : '(Perlu Perhatian)'}
                     </span>
                   </div>
-                  <span className="text-[11px] text-slate-400">Pemeriksaan Otomatis Terhadap Arsip SIMTA</span>
+                  <span className="text-[11px] text-slate-400">Pemeriksaan Otomatis Terhadap Arsip SIMONITA</span>
                 </div>
 
                 {/* CALLOUT BERDASARKAN STATUS */}

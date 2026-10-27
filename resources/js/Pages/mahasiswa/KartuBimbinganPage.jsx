@@ -6,13 +6,41 @@ import BimbinganReminderBanner from '../../Components/common/BimbinganReminderBa
 import { calculateBimbinganReminder } from '../../lib/bimbinganReminder.js';
 
 export default function KartuBimbinganPage() {
-  const { currentUser, consultations, studentAdvisors, advisors } = useAuth();
+  const { currentUser, consultations, studentAdvisors, advisors, thesisTitles = [] } = useAuth();
 
   // Find advisor assignment for current student dynamically
   const studentNim = currentUser?.nim || '';
   const reminderStatus = useMemo(() => {
     return calculateBimbinganReminder(consultations, studentNim, 2);
   }, [consultations, studentNim]);
+
+  // Dynamic thesis title for current student (strip '-' if not yet submitted)
+  const judulTa = useMemo(() => {
+    if (!currentUser) return '-';
+    const cleanNim = String(studentNim || currentUser?.nim || '').trim();
+    const cleanId = String(currentUser?.id || '').trim();
+    const cleanNama = String(currentUser?.nama || '').trim().toLowerCase();
+
+    if (Array.isArray(thesisTitles) && thesisTitles.length > 0) {
+      const matched = thesisTitles.filter(t => {
+        const matchNim = cleanNim && String(t.mhs_nim || '').trim() === cleanNim;
+        const matchId = cleanId && String(t.profile_id || '').trim() === cleanId;
+        const matchNama = cleanNama && String(t.mhs_nama || '').trim().toLowerCase() === cleanNama;
+        return matchNim || matchId || matchNama;
+      });
+
+      if (matched.length > 0) {
+        const approved = matched.find(t => t.status === 'disetujui' || t.status === 'judul_fix');
+        if (approved?.judul) return approved.judul;
+        if (matched[0]?.judul) return matched[0].judul;
+      }
+    }
+
+    if (currentUser?.judul_ta) return currentUser.judul_ta;
+    if (currentUser?.judul) return currentUser.judul;
+
+    return '-';
+  }, [thesisTitles, currentUser, studentNim]);
   const sa = useMemo(() => {
     if (!studentNim) return null;
     return studentAdvisors.find(s => String(s.student_nim).trim() === String(studentNim).trim());
@@ -38,7 +66,117 @@ export default function KartuBimbinganPage() {
     return '-';
   }, [advisors, sa, consultations, studentNim]);
 
-  // Filter consultations for current student, only approved ones in strict chronological order (oldest to newest: Bimbingan 1, 2, 3...)
+  // Helper render status bimbingan sesuai 4 respon dosen:
+  // 1. Revisi Mayor -> Merah (Rose)
+  // 2. Revisi Minor -> Biru (Blue)
+  // 3. Menunggu -> Kuning (Amber)
+  // 4. Diterima -> Hijau (Emerald)
+  const getStatusBadge = (data) => {
+    if (!data) return null;
+
+    let jenis = data.jenis_revisi;
+    const note = data.masukan_dosen || '';
+    if (note.includes('[Revisi Mayor]') || note.includes('[Mayor]')) {
+      jenis = 'Mayor';
+    } else if (note.includes('[Revisi Minor]') || note.includes('[Minor]')) {
+      jenis = 'Minor';
+    } else if (note.includes('[Diterima]') || note.includes('[Disetujui]')) {
+      jenis = 'Diterima';
+    } else if (note.includes('[Menunggu]')) {
+      jenis = 'Menunggu';
+    }
+
+    if (!jenis) {
+      if (data.status === 'disetujui') {
+        jenis = 'Diterima';
+      } else if (data.status === 'menunggu_tanggapan') {
+        jenis = 'Menunggu';
+      } else if (data.status === 'perlu_revisi') {
+        jenis = 'Minor';
+      } else if (data.status === 'ditolak') {
+        jenis = 'Ditolak';
+      } else {
+        jenis = 'Menunggu';
+      }
+    }
+
+    const j = String(jenis).trim();
+
+    if (j === 'Mayor' || j.toLowerCase() === 'revisi mayor') {
+      return (
+        <span className="inline-block text-[10px] font-extrabold px-2 py-0.5 rounded border border-rose-300 bg-rose-50 text-rose-700 uppercase tracking-wider print:border-black print:text-black print:bg-transparent">
+          Revisi Mayor
+        </span>
+      );
+    }
+
+    if (j === 'Minor' || j.toLowerCase() === 'revisi minor') {
+      return (
+        <span className="inline-block text-[10px] font-extrabold px-2 py-0.5 rounded border border-blue-300 bg-blue-50 text-blue-700 uppercase tracking-wider print:border-black print:text-black print:bg-transparent">
+          Revisi Minor
+        </span>
+      );
+    }
+
+    if (j === 'Menunggu' || j.toLowerCase() === 'menunggu tanggapan') {
+      return (
+        <span className="inline-block text-[10px] font-extrabold px-2 py-0.5 rounded border border-amber-300 bg-amber-50 text-amber-700 uppercase tracking-wider print:border-black print:text-black print:bg-transparent">
+          Menunggu
+        </span>
+      );
+    }
+
+    if (j === 'Diterima' || j.toLowerCase() === 'disetujui') {
+      return (
+        <span className="inline-block text-[10px] font-extrabold px-2 py-0.5 rounded border border-emerald-300 bg-emerald-50 text-emerald-700 uppercase tracking-wider print:border-black print:text-black print:bg-transparent">
+          Diterima
+        </span>
+      );
+    }
+
+    if (j === 'Ditolak') {
+      return (
+        <span className="inline-block text-[10px] font-extrabold px-2 py-0.5 rounded border border-rose-300 bg-rose-50 text-rose-700 uppercase tracking-wider print:border-black print:text-black print:bg-transparent">
+          Ditolak
+        </span>
+      );
+    }
+
+    return (
+      <span className="inline-block text-[10px] font-extrabold px-2 py-0.5 rounded border border-slate-300 bg-slate-50 text-slate-700 uppercase tracking-wider print:border-black print:text-black print:bg-transparent">
+        {j}
+      </span>
+    );
+  };
+
+  // Validasi Paraf Dosen: QR Paraf HANYA muncul jika status bimbingan BUKAN "Menunggu"
+  const isConsultationValidated = (data) => {
+    if (!data) return false;
+
+    let jenis = data.jenis_revisi;
+    const note = data.masukan_dosen || '';
+    if (note.includes('[Revisi Mayor]') || note.includes('[Mayor]')) {
+      jenis = 'Mayor';
+    } else if (note.includes('[Revisi Minor]') || note.includes('[Minor]')) {
+      jenis = 'Minor';
+    } else if (note.includes('[Diterima]') || note.includes('[Disetujui]')) {
+      jenis = 'Diterima';
+    } else if (note.includes('[Menunggu]')) {
+      jenis = 'Menunggu';
+    }
+
+    if (jenis === 'Menunggu') return false;
+    if (data.status === 'menunggu_tanggapan' || data.status === 'menunggu') return false;
+
+    // Jika telah disetujui, perlu_revisi, atau memiliki kategori respon aktif (Diterima, Minor, Mayor)
+    if (data.status === 'disetujui' || data.status === 'perlu_revisi' || jenis === 'Diterima' || jenis === 'Minor' || jenis === 'Mayor') {
+      return true;
+    }
+
+    return false;
+  };
+
+  // Filter consultations for current student in strict chronological order (oldest to newest: Bimbingan 1, 2, 3...)
   const studentConsultations = useMemo(() => {
     if (!studentNim) return [];
     
@@ -48,7 +186,7 @@ export default function KartuBimbinganPage() {
     };
 
     return consultations
-      .filter(c => String(c.mhs_nim).trim() === String(studentNim).trim() && c.status === 'disetujui')
+      .filter(c => String(c.mhs_nim).trim() === String(studentNim).trim())
       .sort((a, b) => {
         // 1. Primary: Compare tanggal (YYYY-MM-DD)
         const dateA = a.tanggal || '';
@@ -103,6 +241,13 @@ export default function KartuBimbinganPage() {
             <span>Kembali ke Entry Bimbingan</span>
           </Link>
           <div className="flex items-center space-x-3">
+            <div className="hidden sm:inline-flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-200">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span>Real-time Status: ON</span>
+            </div>
             <button
               onClick={() => window.print()}
               className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition-all flex items-center space-x-2 cursor-pointer"
@@ -142,21 +287,26 @@ export default function KartuBimbinganPage() {
             <p><span className="w-28 inline-block font-bold">Nama</span>: {currentUser?.nama || '-'}</p>
             <p><span className="w-28 inline-block font-bold">NIM</span>: {studentNim || '-'}</p>
             <p><span className="w-28 inline-block font-bold">Program Studi</span>: {currentUser?.prodi || 'D3 Manajemen Informatika'}</p>
+            <p className="flex items-start">
+              <span className="w-28 inline-block font-bold shrink-0">Judul TA</span>
+              <span className="mr-1">:</span>
+              <span className="flex-1 font-semibold leading-relaxed">{judulTa}</span>
+            </p>
           </div>
           <div className="space-y-1">
-            <p><span className="w-24 inline-block font-bold">Dospem 1</span>: {dospem1Nama}</p>
-            <p><span className="w-24 inline-block font-bold">Dospem 2</span>: {dospem2Nama}</p>
+            <p><span className="w-28 inline-block font-bold">Pembimbing 1</span>: {dospem1Nama}</p>
+            <p><span className="w-28 inline-block font-bold">Pembimbing 2</span>: {dospem2Nama}</p>
           </div>
         </div>
 
-        {/* Tabel Pertemuan */}
+        {/* Tabel Bimbingan */}
         <table className="w-full border-collapse border border-black text-xs text-black">
           <thead>
             <tr className="bg-slate-100">
               <th className="border border-black py-2 px-1 text-center w-10">No</th>
-              <th className="border border-black py-2 px-2 text-center w-28">Tanggal<br/>Pertemuan</th>
+              <th className="border border-black py-2 px-2 text-center w-28">Tanggal<br/>Bimbingan</th>
               <th className="border border-black py-2 px-3 text-center">Materi / Bab<br/>Konsultasi</th>
-              <th className="border border-black py-2 px-2 text-center w-20">Paraf<br/>Mahasiswa</th>
+              <th className="border border-black py-2 px-2 text-center w-24">Status</th>
               <th className="border border-black py-2 px-2 text-center w-28 sm:w-32">Paraf<br/>Pembimbing 1</th>
               <th className="border border-black py-2 px-2 text-center w-28 sm:w-32">Paraf<br/>Pembimbing 2</th>
             </tr>
@@ -169,42 +319,43 @@ export default function KartuBimbinganPage() {
                   <td className="border border-black py-2 px-1 text-center font-semibold align-middle">{index + 1}</td>
                   <td className="border border-black py-2 px-2 text-center align-middle">{data ? data.tanggal : ''}</td>
                   <td className="border border-black py-2 px-3 text-left font-medium align-middle">
-                    {data ? (
-                      <div className="flex items-center justify-between gap-1.5">
-                        <span>{data.bab_topik}</span>
-                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded border border-slate-300 text-slate-600 uppercase tracking-wider shrink-0 print:border-black print:text-black">
-                          {data.metode === 'daring' ? 'Daring' : 'Luring'}
-                        </span>
-                      </div>
-                    ) : ''}
+                    {data ? data.bab_topik : ''}
                   </td>
-                  <td className="border border-black p-2 text-center align-middle">
-                    {/* Paraf Mahasiswa dikosongkan */}
+                  <td className="border border-black p-1.5 text-center align-middle">
+                    {data ? getStatusBadge(data) : ''}
                   </td>
                   <td className="border border-black p-1.5 text-center align-middle">
                     {data && (data.pembimbing === 'Pembimbing 1' || !data.pembimbing) ? (
-                      <div className="flex justify-center items-center py-1">
-                        <a href={`${verifyUrl}?log=${data.id}`} target="_blank" rel="noopener noreferrer" title="Scan/Klik QR Verifikasi Bimbingan">
-                          <img 
-                            src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`${verifyUrl}?log=${data.id}`)}`}
-                            alt="QR Paraf Dospem 1" 
-                            className="w-14 h-14 sm:w-16 sm:h-16 object-contain inline-block border border-slate-300 p-1 rounded-sm shadow-2xs hover:scale-105 transition-transform"
-                          />
-                        </a>
-                      </div>
+                      isConsultationValidated(data) ? (
+                        <div className="flex justify-center items-center py-1">
+                          <a href={`${verifyUrl}?log=${data.id}`} target="_blank" rel="noopener noreferrer" title="Scan/Klik QR Verifikasi Bimbingan">
+                            <img 
+                              src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`${verifyUrl}?log=${data.id}`)}`}
+                              alt="QR Paraf Pembimbing 1" 
+                              className="w-14 h-14 sm:w-16 sm:h-16 object-contain inline-block border border-slate-300 p-1 rounded-sm shadow-2xs hover:scale-105 transition-transform"
+                            />
+                          </a>
+                        </div>
+                      ) : (
+                        <span className="text-slate-400 font-semibold text-xs print:text-black">-</span>
+                      )
                     ) : ''}
                   </td>
                   <td className="border border-black p-1.5 text-center align-middle">
                     {data && data.pembimbing === 'Pembimbing 2' ? (
-                      <div className="flex justify-center items-center py-1">
-                        <a href={`${verifyUrl}?log=${data.id}`} target="_blank" rel="noopener noreferrer" title="Scan/Klik QR Verifikasi Bimbingan">
-                          <img 
-                            src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`${verifyUrl}?log=${data.id}`)}`}
-                            alt="QR Paraf Dospem 2" 
-                            className="w-14 h-14 sm:w-16 sm:h-16 object-contain inline-block border border-slate-300 p-1 rounded-sm shadow-2xs hover:scale-105 transition-transform"
-                          />
-                        </a>
-                      </div>
+                      isConsultationValidated(data) ? (
+                        <div className="flex justify-center items-center py-1">
+                          <a href={`${verifyUrl}?log=${data.id}`} target="_blank" rel="noopener noreferrer" title="Scan/Klik QR Verifikasi Bimbingan">
+                            <img 
+                              src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`${verifyUrl}?log=${data.id}`)}`}
+                              alt="QR Paraf Pembimbing 2" 
+                              className="w-14 h-14 sm:w-16 sm:h-16 object-contain inline-block border border-slate-300 p-1 rounded-sm shadow-2xs hover:scale-105 transition-transform"
+                            />
+                          </a>
+                        </div>
+                      ) : (
+                        <span className="text-slate-400 font-semibold text-xs print:text-black">-</span>
+                      )
                     ) : ''}
                   </td>
                 </tr>

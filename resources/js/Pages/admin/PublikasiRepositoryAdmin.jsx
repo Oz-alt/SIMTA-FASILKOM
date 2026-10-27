@@ -118,7 +118,7 @@ export default function PublikasiRepositoryAdmin() {
                 <div className="flex items-start justify-between gap-4 flex-wrap">
                   <div className="space-y-1 max-w-3xl">
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-300">
-                      Disetujui Kaprodi: {repo.approved_by_kaprodi || 'Dr. Ir. Hendra Kusuma, M.T.'}
+                      Disetujui Kaprodi: {repo.approved_by_kaprodi || 'Dr. Abdiansah, S.Kom., M.Cs.'}
                     </span>
                     <h3 className="text-base font-bold text-slate-900 leading-snug">{repo.judul}</h3>
                   </div>

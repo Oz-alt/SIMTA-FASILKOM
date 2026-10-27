@@ -202,8 +202,8 @@ export default function DashboardMahasiswa() {
           )}
 
           <div className="pt-2">
-            <Link href="/thesis/status" className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center space-x-1">
-              <span>Lihat Detail Audit & Status</span>
+            <Link href="/thesis/submit" className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center space-x-1">
+              <span>{myTitle ? 'Kelola Pengajuan Tugas Akhir' : 'Ajukan Tugas Akhir Sekarang'}</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>

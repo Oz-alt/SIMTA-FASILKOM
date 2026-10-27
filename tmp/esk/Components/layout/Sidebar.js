@@ -1,0 +1,408 @@
+import React, { useState, useEffect, useRef } from "react";
+import { Link, usePage, router } from "@inertiajs/react";
+import { useAuth } from "../../context/AuthContext.jsx";
+import {
+  LayoutDashboard,
+  FileText,
+  CheckSquare,
+  CalendarDays,
+  Building2,
+  UploadCloud,
+  BarChart3,
+  ListOrdered,
+  Clock,
+  FileCheck,
+  BookOpen,
+  GraduationCap,
+  Database,
+  Globe,
+  Settings,
+  User,
+  UserCheck,
+  Users,
+  LogOut,
+  ChevronDown,
+  Printer,
+  Layers,
+  LayoutGrid,
+  Bell,
+  ClipboardList,
+  Lock
+} from "lucide-react";
+export default function Sidebar() {
+  const { currentUser, logout } = useAuth();
+  const { url } = usePage();
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const settingsRef = useRef(null);
+  const [openGroups, setOpenGroups] = useState({
+    manajemen_akun: true,
+    konten: true,
+    tugas_akhir: true,
+    bimbingan: true,
+    data_master: true,
+    database: true,
+    ruangan: true
+  });
+  const handleLogout = async () => {
+    await logout();
+    router.visit("/");
+  };
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (settingsRef.current && !settingsRef.current.contains(event.target)) {
+        setIsSettingsOpen(false);
+      }
+    };
+    if (isSettingsOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isSettingsOpen]);
+  const getMenuGroups = () => {
+    switch (currentUser?.role) {
+      case "mahasiswa": {
+        const isMhsPending = !currentUser?.is_profile_completed;
+        return {
+          dashboard: {
+            to: isMhsPending ? "/profile?first_login=true" : "/dashboard",
+            label: "Dashboard",
+            icon: LayoutDashboard,
+            isLocked: isMhsPending
+          },
+          items: [
+            {
+              to: isMhsPending ? "/profile?first_login=true" : "/thesis/submit",
+              label: "Ajukan Tugas Akhir",
+              icon: FileText,
+              isLocked: isMhsPending
+            },
+            {
+              to: isMhsPending ? "/profile?first_login=true" : "/thesis/consultations",
+              label: "Entry Bimbingan",
+              icon: FileCheck,
+              isLocked: isMhsPending
+            },
+            {
+              to: isMhsPending ? "/profile?first_login=true" : "/thesis/consultations/card",
+              label: "Kartu Bimbingan Digital",
+              icon: Printer,
+              isLocked: isMhsPending
+            },
+            {
+              to: isMhsPending ? "/profile?first_login=true" : "/thesis/archive",
+              label: "Arsip Tugas Akhir",
+              icon: BookOpen,
+              isLocked: isMhsPending
+            }
+          ],
+          groups: []
+        };
+      }
+      case "kaprodi":
+        return {
+          dashboard: { to: "/kaprodi/dashboard", label: "Dashboard", icon: LayoutDashboard },
+          groups: [
+            {
+              id: "tugas_akhir",
+              label: "Tugas Akhir",
+              icon: GraduationCap,
+              items: [
+                { to: "/kaprodi/titles", label: "Monitoring Tugas Akhir", icon: CheckSquare },
+                { to: "/kaprodi/advisors", label: "Pembagian Dosen Pembimbing", icon: UserCheck },
+                { to: "/kaprodi/defense-schedules", label: "Manajemen Jadwal Sidang", icon: CalendarDays }
+              ]
+            },
+            {
+              id: "bimbingan",
+              label: "Bimbingan",
+              icon: FileCheck,
+              items: [
+                { to: "/kaprodi/monitoring-mahasiswa", label: "Monitoring Mahasiswa", icon: Users },
+                { to: "/kaprodi/rekap-bimbingan", label: "Rekap Bimbingan", icon: ClipboardList }
+              ]
+            },
+            {
+              id: "data_master",
+              label: "Data Master",
+              icon: Users,
+              items: [
+                { to: "/kaprodi/master-data/mahasiswa", label: "Data Mahasiswa", icon: GraduationCap },
+                { to: "/kaprodi/master-data/dosen", label: "Data Dosen", icon: UserCheck }
+              ]
+            },
+            {
+              id: "database",
+              label: "Database",
+              icon: Database,
+              items: [
+                { to: "/thesis/archive", label: "Arsip Tugas Akhir", icon: BookOpen },
+                { to: "/kaprodi/analytics", label: "Analitik & Tren Topik", icon: BarChart3 }
+              ]
+            }
+          ]
+        };
+      case "admin_sarana":
+        return {
+          dashboard: { to: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
+          groups: [
+            {
+              id: "ruangan",
+              label: "Ruangan",
+              icon: Building2,
+              items: [
+                { to: "/admin/bookings", label: "Persetujuan Ruangan", icon: CheckSquare },
+                { to: "/admin/rooms", label: "Kelola Ruang & Gedung", icon: Building2 },
+                { to: "/admin/priorities", label: "Prioritas Ruangan", icon: ListOrdered },
+                { to: "/schedule", label: "Master Schedule Grid", icon: CalendarDays }
+              ]
+            },
+            {
+              id: "database",
+              label: "Database",
+              icon: Database,
+              items: [
+                { to: "/thesis/archive", label: "Arsip Tugas Akhir", icon: BookOpen },
+                { to: "/admin/repository/publish", label: "Publikasi Repositori Global", icon: Globe }
+              ]
+            }
+          ]
+        };
+      case "dosen":
+        return {
+          dashboard: { to: "/dosen/dashboard", label: "Dashboard", icon: LayoutDashboard },
+          groups: [
+            {
+              id: "bimbingan",
+              label: "Menu Bimbingan",
+              icon: FileCheck,
+              items: [
+                { to: "/dosen/mahasiswa", label: "Mahasiswa Bimbingan", icon: Users },
+                { to: "/dosen/validasi-judul", label: "Validasi Usulan Judul", icon: BookOpen },
+                { to: "/dosen/monitoring", label: "Monitoring Mahasiswa", icon: BarChart3 },
+                { to: "/dosen/rekap", label: "Rekap Bimbingan", icon: FileText }
+              ]
+            },
+            {
+              id: "lainnya",
+              label: "Layanan & Akun",
+              icon: Settings,
+              items: [
+                { to: "/dosen/jadwal-sidang", label: "Jadwal Sidang TA", icon: CalendarDays }
+              ]
+            }
+          ]
+        };
+      case "admin":
+        return {
+          dashboard: { to: "/admin-simta/dashboard", label: "Dashboard", icon: LayoutDashboard },
+          groups: [
+            {
+              id: "data_master",
+              label: "Data Master",
+              icon: Database,
+              items: [
+                { to: "/admin-simta/master/mahasiswa", label: "Data Master Mahasiswa", icon: GraduationCap },
+                { to: "/admin-simta/master/dosen", label: "Data Master Dosen", icon: UserCheck }
+              ]
+            },
+            {
+              id: "tugas_akhir",
+              label: "Tugas Akhir",
+              icon: BookOpen,
+              items: [
+                { to: "/admin-simta/thesis-management", label: "Manajemen Tugas Akhir", icon: BookOpen }
+              ]
+            },
+            {
+              id: "manajemen_akun",
+              label: "Manajemen Akun",
+              icon: Users,
+              items: [
+                { to: "/admin-simta/accounts/mahasiswa", label: "Akun Mahasiswa", icon: GraduationCap },
+                { to: "/admin-simta/accounts/dosen", label: "Akun Dosen", icon: UserCheck }
+              ]
+            },
+            {
+              id: "konten",
+              label: "Konten & Dokumen",
+              icon: Layers,
+              items: [
+                { to: "/admin-simta/documents", label: "Dokumen / Surat", icon: FileStack },
+                { to: "/admin-simta/cms", label: "CMS", icon: LayoutGrid },
+                { to: "/admin-simta/templates", label: "Template", icon: FileText }
+              ]
+            },
+            {
+              id: "database",
+              label: "Database & Repositori",
+              icon: Database,
+              items: [
+                { to: "/admin-simta/repository", label: "Manajemen Repositori", icon: Database },
+                { to: "/thesis/archive", label: "Arsip Tugas Akhir", icon: BookOpen }
+              ]
+            }
+          ]
+        };
+      default:
+        return { dashboard: null, groups: [] };
+    }
+  };
+  const menuData = getMenuGroups();
+  const isRouteActive = (targetTo) => {
+    if (!targetTo || !url) return false;
+    const currentPath = url.split("?")[0].replace(/\/+$/, "") || "/";
+    const targetPath = targetTo.split("?")[0].replace(/\/+$/, "") || "/";
+    if (currentPath === targetPath) return true;
+    if (currentPath.startsWith(targetPath + "/")) {
+      const allItems = [
+        ...menuData.dashboard ? [menuData.dashboard] : [],
+        ...menuData.items || [],
+        ...menuData.groups?.flatMap((g) => g.items) || []
+      ];
+      const hasExactMatch = allItems.some((i) => {
+        const p = (i.to || "").split("?")[0].replace(/\/+$/, "") || "/";
+        return p === currentPath;
+      });
+      if (hasExactMatch) return false;
+      const hasMoreSpecificPrefix = allItems.some((i) => {
+        const p = (i.to || "").split("?")[0].replace(/\/+$/, "") || "/";
+        return p !== targetPath && p.length > targetPath.length && currentPath.startsWith(p);
+      });
+      return !hasMoreSpecificPrefix;
+    }
+    return false;
+  };
+  useEffect(() => {
+    if (menuData.groups) {
+      menuData.groups.forEach((group) => {
+        if (group.items.some((item) => isRouteActive(item.to))) {
+          setOpenGroups((prev) => ({ ...prev, [group.id]: true }));
+        }
+      });
+    }
+  }, [url]);
+  const toggleGroup = (groupId) => {
+    setOpenGroups((prev) => ({
+      ...prev,
+      [groupId]: !prev[groupId]
+    }));
+  };
+  const DashboardIcon = menuData.dashboard?.icon || LayoutDashboard;
+  return /* @__PURE__ */ React.createElement(
+    "aside",
+    {
+      "data-lenis-prevent": true,
+      className: "sticky top-16 h-[calc(100vh-4rem)] shrink-0 w-64 bg-white border-r border-slate-200 p-4 hidden md:flex flex-col justify-between select-none overflow-y-auto custom-sidebar-scroll"
+    },
+    /* @__PURE__ */ React.createElement("div", { className: "space-y-4 flex-1 pb-4" }, /* @__PURE__ */ React.createElement("div", { className: "space-y-1" }, currentUser?.role === "mahasiswa" && !currentUser?.is_profile_completed && /* @__PURE__ */ React.createElement("div", { className: "p-3 mb-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 shadow-2xs space-y-1.5 animate-in fade-in" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center space-x-1.5 font-bold text-amber-900 text-xs" }, /* @__PURE__ */ React.createElement(Lock, { className: "w-3.5 h-3.5 text-amber-600 shrink-0" }), /* @__PURE__ */ React.createElement("span", null, "Aktivasi Akun Wajib")), /* @__PURE__ */ React.createElement("p", { className: "text-[11px] text-amber-800 leading-snug" }, "Lengkapi kontak & buat kata sandi baru untuk membuka akses menu."), /* @__PURE__ */ React.createElement(
+      Link,
+      {
+        href: "/profile?first_login=true",
+        className: "inline-flex items-center space-x-1 text-xs font-bold text-blue-700 hover:text-blue-900 pt-0.5"
+      },
+      /* @__PURE__ */ React.createElement("span", null, "Atur Profil Sekarang \u2192")
+    )), menuData.dashboard && /* @__PURE__ */ React.createElement(
+      Link,
+      {
+        href: menuData.dashboard.to,
+        className: `flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${isRouteActive(menuData.dashboard.to) ? "bg-indigo-50 text-indigo-700 border-l-4 border-indigo-600 shadow-2xs" : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"}`
+      },
+      /* @__PURE__ */ React.createElement("div", { className: "flex items-center space-x-3" }, /* @__PURE__ */ React.createElement(DashboardIcon, { className: `w-4 h-4 ${isRouteActive(menuData.dashboard.to) ? "text-indigo-600" : "text-slate-500"}` }), /* @__PURE__ */ React.createElement("span", null, menuData.dashboard.label)),
+      menuData.dashboard.isLocked && /* @__PURE__ */ React.createElement("span", { className: "text-[10px] text-amber-600 font-semibold flex items-center space-x-1" }, /* @__PURE__ */ React.createElement(Lock, { className: "w-3 h-3 text-amber-500" }), /* @__PURE__ */ React.createElement("span", { className: "hidden lg:inline text-[9px] uppercase tracking-wide" }, "Terkunci"))
+    ), menuData.items?.map((item) => {
+      const Icon = item.icon;
+      const isActive = isRouteActive(item.to);
+      return /* @__PURE__ */ React.createElement(
+        Link,
+        {
+          key: item.label,
+          href: item.to,
+          className: `flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${isActive ? "bg-indigo-50 text-indigo-700 border-l-4 border-indigo-600 shadow-2xs" : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"}`
+        },
+        /* @__PURE__ */ React.createElement("div", { className: "flex items-center space-x-3" }, /* @__PURE__ */ React.createElement(Icon, { className: `w-4 h-4 ${isActive ? "text-indigo-600" : "text-slate-500"}` }), /* @__PURE__ */ React.createElement("span", null, item.label)),
+        item.isLocked && /* @__PURE__ */ React.createElement("span", { className: "text-[10px] text-amber-600 font-semibold flex items-center space-x-1" }, /* @__PURE__ */ React.createElement(Lock, { className: "w-3 h-3 text-amber-500" }), /* @__PURE__ */ React.createElement("span", { className: "hidden lg:inline text-[9px] uppercase tracking-wide" }, "Terkunci"))
+      );
+    })), menuData.groups && menuData.groups.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "border-t border-slate-100 pt-2 space-y-3" }, menuData.groups.map((group) => {
+      const GroupIcon = group.icon;
+      const isOpen = openGroups[group.id] ?? true;
+      return /* @__PURE__ */ React.createElement("div", { key: group.id, className: "space-y-1" }, /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          type: "button",
+          onClick: () => toggleGroup(group.id),
+          className: "w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-bold text-slate-700 hover:bg-slate-100/70 transition-colors cursor-pointer group"
+        },
+        /* @__PURE__ */ React.createElement("div", { className: "flex items-center space-x-2.5" }, /* @__PURE__ */ React.createElement(GroupIcon, { className: "w-4 h-4 text-slate-500 group-hover:text-indigo-600 transition-colors" }), /* @__PURE__ */ React.createElement("span", { className: "tracking-wide uppercase text-[11px] text-slate-600 font-extrabold" }, group.label)),
+        /* @__PURE__ */ React.createElement(
+          ChevronDown,
+          {
+            className: `w-3.5 h-3.5 text-slate-400 transition-transform duration-300 ${isOpen ? "rotate-180 text-slate-700" : ""}`
+          }
+        )
+      ), /* @__PURE__ */ React.createElement(
+        "div",
+        {
+          className: `grid transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] overflow-hidden ${isOpen ? "grid-rows-[1fr] opacity-100 my-1" : "grid-rows-[0fr] opacity-0 my-0"}`
+        },
+        /* @__PURE__ */ React.createElement("div", { className: "min-h-0 pl-2 space-y-1 border-l-2 border-slate-100 ml-4" }, group.items.map((item) => {
+          const Icon = item.icon;
+          const isActive = isRouteActive(item.to);
+          return /* @__PURE__ */ React.createElement(
+            Link,
+            {
+              key: item.to,
+              href: item.to,
+              className: `flex items-center space-x-3 px-3 py-2 rounded-lg text-xs font-medium transition-all ${isActive ? "bg-indigo-50 text-indigo-700 font-semibold border-l-4 border-indigo-600 shadow-2xs" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"}`
+            },
+            /* @__PURE__ */ React.createElement(Icon, { className: "w-3.5 h-3.5" }),
+            /* @__PURE__ */ React.createElement("span", null, item.label)
+          );
+        }))
+      ));
+    }))),
+    /* @__PURE__ */ React.createElement("div", { ref: settingsRef, className: "pt-3 mt-4 border-t border-slate-200 shrink-0 relative" }, /* @__PURE__ */ React.createElement(
+      "div",
+      {
+        className: `absolute bottom-full left-0 w-full mb-2 bg-white rounded-2xl border border-slate-200 shadow-xl p-1.5 z-50 transition-all duration-200 ease-out origin-bottom ${isSettingsOpen ? "opacity-100 scale-100 translate-y-0 pointer-events-auto shadow-indigo-100/50" : "opacity-0 scale-95 translate-y-2 pointer-events-none"}`
+      },
+      /* @__PURE__ */ React.createElement("div", { className: "space-y-0.5" }, /* @__PURE__ */ React.createElement(
+        Link,
+        {
+          href: "/profile",
+          onClick: () => setIsSettingsOpen(false),
+          className: `flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${url === "/profile" || url.startsWith("/profile/") ? "bg-indigo-50 text-indigo-700 border-l-4 border-indigo-600" : "text-slate-700 hover:bg-slate-100/80 hover:text-slate-900"}`
+        },
+        /* @__PURE__ */ React.createElement(User, { className: "w-4 h-4 text-slate-500" }),
+        /* @__PURE__ */ React.createElement("span", null, "Profil Saya")
+      ), /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          type: "button",
+          onClick: () => {
+            setIsSettingsOpen(false);
+            handleLogout();
+          },
+          className: "w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-all cursor-pointer"
+        },
+        /* @__PURE__ */ React.createElement(LogOut, { className: "w-4 h-4 text-rose-500" }),
+        /* @__PURE__ */ React.createElement("span", null, "Keluar (Logout)")
+      ))
+    ), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        type: "button",
+        onClick: () => setIsSettingsOpen(!isSettingsOpen),
+        className: `w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer ${isSettingsOpen ? "bg-indigo-50/80 text-indigo-900 border border-indigo-200/80 shadow-2xs" : "text-slate-700 hover:bg-slate-100/70 hover:text-slate-900"}`
+      },
+      /* @__PURE__ */ React.createElement("div", { className: "flex items-center space-x-3" }, /* @__PURE__ */ React.createElement(Settings, { className: `w-4 h-4 text-slate-500 transition-transform duration-300 ${isSettingsOpen ? "rotate-90 text-indigo-600" : ""}` }), /* @__PURE__ */ React.createElement("span", null, "Pengaturan")),
+      /* @__PURE__ */ React.createElement(
+        ChevronDown,
+        {
+          className: `w-4 h-4 text-slate-400 transition-transform duration-300 ${isSettingsOpen ? "rotate-180 text-indigo-600" : ""}`
+        }
+      )
+    ))
+  );
+}

@@ -109,7 +109,7 @@ export default function ResetPassword({ token, email }) {
 
   return (
     <div className="min-h-screen w-full grid grid-cols-1 lg:grid-cols-12 bg-white text-slate-900 font-sans select-none overflow-x-hidden">
-      <Head title="Reset Kata Sandi - SIMTA FASILKOM" />
+      <Head title="Reset Kata Sandi - SIMONITA FASILKOM" />
 
       {/* LEFT COLUMN: 50% / 7 Cols - Background Diklat Photo with UNSRI Blue Overlay */}
       <div className="lg:col-span-6 xl:col-span-7 relative hidden lg:flex flex-col justify-between p-10 xl:p-14 bg-blue-950 text-white overflow-hidden">
@@ -133,7 +133,7 @@ export default function ResetPassword({ token, email }) {
             />
             <div>
               <span className="font-extrabold text-xl tracking-tight text-white uppercase block leading-none">
-                SIMTA FASILKOM
+                SIMONITA FASILKOM
               </span>
               <span className="text-[10px] text-blue-200 uppercase font-semibold tracking-wider block mt-1">
                 Universitas Sriwijaya
@@ -157,7 +157,7 @@ export default function ResetPassword({ token, email }) {
           </h1>
 
           <p className="text-sm text-blue-100/90 leading-relaxed font-normal">
-            Pastikan kata sandi baru Anda kuat, aman, dan mudah diingat untuk mengakses portal SIMTA FASILKOM UNSRI.
+            Pastikan kata sandi baru Anda kuat, aman, dan mudah diingat untuk mengakses portal SIMONITA FASILKOM UNSRI.
           </p>
 
           {/* Security Recommendations */}
@@ -191,7 +191,7 @@ export default function ResetPassword({ token, email }) {
         <div className="lg:hidden flex items-center justify-between pb-6 border-b border-slate-100">
           <Link href="/" className="flex items-center space-x-2.5">
             <img src={unsriLogo} alt="Logo UNSRI" className="h-9 w-auto object-contain" />
-            <span className="font-extrabold text-lg text-slate-900 uppercase">SIMTA</span>
+            <span className="font-extrabold text-lg text-slate-900 uppercase">SIMONITA</span>
           </Link>
           <Link href="/login" className="text-xs font-semibold text-slate-600 hover:text-blue-600 flex items-center space-x-1">
             <ArrowLeft className="w-3.5 h-3.5" />

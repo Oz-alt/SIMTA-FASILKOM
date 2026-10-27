@@ -27,7 +27,7 @@ export default function Footer() {
               />
               <div>
                 <h3 className="font-extrabold text-lg tracking-tight text-white uppercase">
-                  SIMTA FASILKOM
+                  SIMONITA FASILKOM
                 </h3>
                 <p className="text-xs text-white/80 font-semibold">
                   Universitas Sriwijaya
@@ -36,7 +36,7 @@ export default function Footer() {
             </div>
 
             <p className="text-xs text-white/90 leading-relaxed pt-1">
-              Sistem Informasi Manajemen Tugas Akhir & Ruang Sidang terintegrasi untuk mahasiswa, dosen pembimbing, dan pengelola sarana prasarana Fakultas Ilmu Komputer UNSRI Kampus Bukit Besar.
+              Sistem Monitoring Tugas Akhir terintegrasi untuk mahasiswa, dosen pembimbing, dan pengelola sarana prasarana Fakultas Ilmu Komputer UNSRI Kampus Bukit Besar.
             </p>
 
             <div className="pt-2 flex items-center space-x-3 text-xs text-white">

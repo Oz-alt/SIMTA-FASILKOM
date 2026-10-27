@@ -156,7 +156,7 @@ export default function RegisterPage() {
             />
             <div>
               <span className="font-extrabold text-xl tracking-tight text-white uppercase block leading-none">
-                SIMTA FASILKOM
+                SIMONITA FASILKOM
               </span>
               <span className="text-[10px] text-blue-200 uppercase font-semibold tracking-wider block mt-1">
                 Universitas Sriwijaya
@@ -176,7 +176,7 @@ export default function RegisterPage() {
         {/* Middle Main Banner Content */}
         <div ref={leftContentRef} className="relative z-10 max-w-xl my-auto pt-8 space-y-5">
           <h1 className="text-3xl xl:text-4xl font-bold tracking-tight text-white leading-tight">
-            Bergabung ke Portal SIMTA FASILKOM UNSRI
+            Bergabung ke Portal SIMONITA FASILKOM UNSRI
           </h1>
 
           <p className="text-sm text-blue-100/90 leading-relaxed font-normal">
@@ -214,7 +214,7 @@ export default function RegisterPage() {
         <div className="lg:hidden flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
           <Link href="/" className="flex items-center space-x-2.5">
             <img src={unsriLogo} alt="Logo UNSRI" className="h-9 w-auto object-contain" />
-            <span className="font-extrabold text-lg text-slate-900 uppercase">SIMTA</span>
+            <span className="font-extrabold text-lg text-slate-900 uppercase">SIMONITA</span>
           </Link>
           <Link href="/" className="text-xs font-semibold text-slate-600 hover:text-blue-600 flex items-center space-x-1">
             <ArrowLeft className="w-3.5 h-3.5" />

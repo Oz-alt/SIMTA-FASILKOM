@@ -23,7 +23,7 @@ export default function LoginPage({ status }) {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
+  const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccessLoading, setIsSuccessLoading] = useState(false);
   const [loadingText, setLoadingText] = useState('Memverifikasi Akses Akun...');
@@ -31,6 +31,25 @@ export default function LoginPage({ status }) {
 
   const formPanelRef = useRef(null);
   const leftContentRef = useRef(null);
+
+  // Pastikan form selalu kosong saat pertama kali dibuka (bersihkan browser autofill)
+  useEffect(() => {
+    setIdentifier('');
+    setPassword('');
+    const t1 = setTimeout(() => {
+      setIdentifier('');
+      setPassword('');
+    }, 50);
+    const t2 = setTimeout(() => {
+      setIdentifier('');
+      setPassword('');
+    }, 200);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, []);
 
   // GSAP Entrance Animations
   useEffect(() => {
@@ -58,7 +77,7 @@ export default function LoginPage({ status }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!identifier.trim()) {
-      setErrorMessage('NIM / NIP wajib diisi.');
+      setErrorMessage('NIM / NIP atau Username wajib diisi.');
       return;
     }
 
@@ -113,7 +132,7 @@ export default function LoginPage({ status }) {
             />
             <div>
               <span className="font-extrabold text-xl tracking-tight text-white uppercase block leading-none">
-                SIMTA FASILKOM
+                SIMONITA FASILKOM
               </span>
               <span className="text-[10px] text-blue-200 uppercase font-semibold tracking-wider block mt-1">
                 Universitas Sriwijaya
@@ -133,7 +152,7 @@ export default function LoginPage({ status }) {
         {/* Middle Main Banner Content */}
         <div ref={leftContentRef} className="relative z-10 max-w-xl my-auto pt-8 space-y-5">
           <h1 className="text-3xl xl:text-4xl font-bold tracking-tight text-white leading-tight">
-            Manajemen Tugas Akhir &amp; Peminjaman Ruang Sidang
+            Sistem Monitoring Tugas Akhir
           </h1>
 
           <p className="text-sm text-blue-100/90 leading-relaxed font-normal">
@@ -171,7 +190,7 @@ export default function LoginPage({ status }) {
         <div className="lg:hidden flex items-center justify-between pb-6 border-b border-slate-100">
           <Link href="/" className="flex items-center space-x-2.5">
             <img src={unsriLogo} alt="Logo UNSRI" className="h-9 w-auto object-contain" />
-            <span className="font-extrabold text-lg text-slate-900 uppercase">SIMTA</span>
+            <span className="font-extrabold text-lg text-slate-900 uppercase">SIMONITA</span>
           </Link>
           <Link href="/" className="text-xs font-semibold text-slate-600 hover:text-blue-600 flex items-center space-x-1">
             <ArrowLeft className="w-3.5 h-3.5" />
@@ -212,19 +231,29 @@ export default function LoginPage({ status }) {
           )}
 
           {/* Real Form Input Fields */}
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} autoComplete="off" className="space-y-4">
+
+            {/* Decoy hidden inputs to consume browser password autofill */}
+            <input type="text" name="fake_user_autofill_block" tabIndex={-1} autoComplete="off" style={{ display: 'none' }} aria-hidden="true" />
+            <input type="password" name="fake_pass_autofill_block" tabIndex={-1} autoComplete="new-password" style={{ display: 'none' }} aria-hidden="true" />
 
             {/* NIM / NIP Input Field */}
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-700">
-                NIM / NIP (Nomor Induk)
+                NIM / NIP / Username
               </label>
               <div className="relative">
                 <input
                   type="text"
+                  name="simta_identifier"
+                  id="simta_identifier"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck="false"
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
-                  placeholder="Masukkan NIM atau NIP"
+                  placeholder="Masukkan NIM/NIP atau Username"
                   className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 text-xs sm:text-sm text-slate-900 bg-white transition-all outline-none font-medium"
                 />
                 <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -239,6 +268,9 @@ export default function LoginPage({ status }) {
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
+                  name="simta_password"
+                  id="simta_password"
+                  autoComplete="new-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Masukkan kata sandi..."
@@ -287,7 +319,7 @@ export default function LoginPage({ status }) {
                   <span>Memverifikasi Akses...</span>
                 </>
               ) : (
-                <span>Masuk ke Portal SIMTA</span>
+                <span>Masuk ke Portal SIMONITA</span>
               )}
             </button>
 

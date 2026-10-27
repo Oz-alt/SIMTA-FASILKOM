@@ -846,7 +846,6 @@ export default function MasterDosenAdminPage() {
               
               {/* Dedicated Scrollable Form Body */}
               <div data-lenis-prevent className="flex-1 min-h-0 overflow-y-auto overscroll-contain space-y-3.5 pr-1 py-1">
-                {/* NIP */}
                 <div>
                   <label className="block text-slate-700 font-bold mb-1">
                     Nomor Induk Pegawai (NIP) <span className="text-rose-500">*</span>
