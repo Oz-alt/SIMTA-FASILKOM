@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { playNotificationSound } from '../lib/notificationSound.js';
 import { 
   MOCK_USERS, 
   MOCK_THESIS_TITLES, 
@@ -557,6 +558,12 @@ export function AuthProvider({ children }) {
   // Current active user & auth state
   const [currentUser, setCurrentUserState] = useState(getSavedUser);
   const [isAuthenticated, setIsAuthenticated] = useState(() => !!getSavedUser());
+
+  // Ref to always hold fresh currentUser inside async callbacks / WebSocket listeners
+  const currentUserRef = useRef(currentUser);
+  useEffect(() => {
+    currentUserRef.current = currentUser;
+  }, [currentUser]);
   
   // Setter helper that syncs state with localStorage
   const setCurrentUser = (user) => {
@@ -753,7 +760,67 @@ export function AuthProvider({ children }) {
   const [rooms, setRooms] = useState(MOCK_ROOMS);
   const [buildings, setBuildings] = useState(MOCK_BUILDINGS);
   const [roomPriorities, setRoomPriorities] = useState(MOCK_ROOM_PRIORITIES);
-  const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
+  // Persistent notifications with local storage synchronization
+  const [notifications, setNotifications] = useState(() => {
+    try {
+      const saved = localStorage.getItem('simta_notifications');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return MOCK_NOTIFICATIONS;
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('simta_notifications', JSON.stringify(notifications));
+    } catch {}
+  }, [notifications]);
+
+  // Real-time Bimbingan Response Alert State for Mahasiswa
+  const [activeRealtimeAlert, setActiveRealtimeAlert] = useState(null);
+  const [realtimeNotifEnabled, setRealtimeNotifEnabled] = useState(() => {
+    try {
+      const saved = localStorage.getItem('simta_realtime_notif_enabled');
+      return saved !== null ? JSON.parse(saved) : true;
+    } catch {
+      return true;
+    }
+  });
+
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    try {
+      const saved = localStorage.getItem('simta_notif_sound_enabled');
+      return saved !== null ? JSON.parse(saved) : true;
+    } catch {
+      return true;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('simta_realtime_notif_enabled', JSON.stringify(realtimeNotifEnabled));
+    } catch {}
+  }, [realtimeNotifEnabled]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('simta_notif_sound_enabled', JSON.stringify(soundEnabled));
+    } catch {}
+  }, [soundEnabled]);
+
+  const triggerRealtimeAlert = (alertData) => {
+    if (!realtimeNotifEnabled) return;
+    setActiveRealtimeAlert(alertData);
+    if (soundEnabled) {
+      playNotificationSound();
+    }
+  };
+
+  const dismissRealtimeAlert = () => {
+    setActiveRealtimeAlert(null);
+  };
 
   // ── Riwayat & Bukti Pengingat Bimbingan (Minimal 2x/Bulan) ────────────────
   const [bimbinganReminderLogs, setBimbinganReminderLogs] = useState(() => {
@@ -1471,16 +1538,94 @@ export function AuthProvider({ children }) {
                   return updated;
                 });
               } else if (payload.eventType === 'UPDATE' && payload.new) {
+                let prevCons = null;
+                let parsedNew = null;
                 setConsultations(prev => {
                   const updated = prev.map(c => {
                     if (String(c.id) === String(payload.new.id)) {
-                      return parseConsultationItem({ ...c, ...payload.new });
+                      prevCons = c;
+                      parsedNew = parseConsultationItem({ ...c, ...payload.new });
+                      return parsedNew;
                     }
                     return c;
                   });
                   try { localStorage.setItem('simta_consultations', JSON.stringify(updated)); } catch {}
                   return updated;
                 });
+
+                if (parsedNew) {
+                  // Check if this update is a response from dosen pembimbing
+                  const oldStatus = prevCons?.status;
+                  const newStatus = parsedNew.status;
+                  const isStatusResponded = (
+                    (oldStatus === 'menunggu_tanggapan' && newStatus !== 'menunggu_tanggapan') ||
+                    (newStatus === 'disetujui' && oldStatus !== 'disetujui') ||
+                    (newStatus === 'perlu_revisi' && oldStatus !== 'perlu_revisi') ||
+                    (newStatus === 'ditolak' && oldStatus !== 'ditolak') ||
+                    (parsedNew.masukan_dosen && parsedNew.masukan_dosen !== prevCons?.masukan_dosen)
+                  );
+
+                  if (isStatusResponded) {
+                    const studentNim = String(parsedNew.mhs_nim || prevCons?.mhs_nim || '').trim();
+                    const resolvedJenisRevisi = parsedNew.jenis_revisi || (
+                      newStatus === 'disetujui' ? 'Diterima' :
+                      newStatus === 'ditolak' ? 'Ditolak' : 'Minor'
+                    );
+                    const notifTitle = newStatus === 'disetujui'
+                      ? `Bimbingan Disetujui (${resolvedJenisRevisi})`
+                      : `Tanggapan Bimbingan: ${resolvedJenisRevisi === 'Ditolak' ? 'Ditolak' : `Revisi ${resolvedJenisRevisi}`}`;
+                    const cleanNote = String(parsedNew.masukan_dosen || '').replace(/^\[.*?\]\s*/, '').trim();
+                    const notifMessage = `${parsedNew.dosen_nama || 'Dosen Pembimbing'} telah memvalidasi sesi bimbingan "${parsedNew.bab_topik || 'Tugas Akhir'}": "${cleanNote || 'Silakan cek kartu dan catatan bimbingan Anda.'}"`;
+
+                    const notifItem = {
+                      id: `notif-${Date.now()}-${parsedNew.id}`,
+                      profile_id: studentNim || 'user-mhs-aulia',
+                      recipient_role: 'mahasiswa',
+                      recipient_nim: studentNim,
+                      recipient_nama: parsedNew.mhs_nama || '',
+                      related_type: 'bimbingan_status',
+                      consultation_id: parsedNew.id,
+                      status: newStatus,
+                      jenis_revisi: resolvedJenisRevisi,
+                      dosen_nama: parsedNew.dosen_nama || 'Dosen Pembimbing',
+                      bab_topik: parsedNew.bab_topik || '',
+                      title: notifTitle,
+                      message: notifMessage,
+                      is_read: false,
+                      is_email_sent: true,
+                      created_at: new Date().toISOString()
+                    };
+
+                    setNotifications(currNotifs => {
+                      const alreadyExists = currNotifs.some(n => 
+                        n.consultation_id === parsedNew.id && 
+                        n.status === newStatus && 
+                        n.title === notifTitle
+                      );
+                      if (alreadyExists) return currNotifs;
+                      const next = [notifItem, ...currNotifs];
+                      try { localStorage.setItem('simta_notifications', JSON.stringify(next)); } catch {}
+                      return next;
+                    });
+
+                    // Trigger toast alert if current active user is the relevant student
+                    const activeUser = currentUserRef.current;
+                    const isCurrentUserStudent = activeUser?.role === 'mahasiswa' && 
+                      (!activeUser?.nim || String(activeUser?.nim).trim() === studentNim);
+
+                    if (isCurrentUserStudent) {
+                      triggerRealtimeAlert({
+                        id: `alert-${Date.now()}`,
+                        title: notifTitle,
+                        message: cleanNote || notifMessage,
+                        dosen_nama: parsedNew.dosen_nama || 'Dosen Pembimbing',
+                        status: newStatus,
+                        jenis_revisi: resolvedJenisRevisi,
+                        bab_topik: parsedNew.bab_topik || ''
+                      });
+                    }
+                  }
+                }
               } else if (payload.eventType === 'DELETE' && payload.old) {
                 setConsultations(prev => {
                   const updated = prev.filter(c => String(c.id) !== String(payload.old.id));
@@ -1684,16 +1829,94 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  // Cross-tab synchronization for consultations state
+  // Cross-tab broadcast channel for instant multi-tab realtime sync
+  const bimbinganBroadcastChannelRef = useRef(null);
+
   useEffect(() => {
-    // Saat Supabase aktif, sinkronisasi lintas tab ditangani realtime channel.
-    if (isSupabaseConfigured) return;
+    if (typeof window !== 'undefined' && window.BroadcastChannel) {
+      try {
+        const channel = new BroadcastChannel('simta_realtime_bimbingan');
+        bimbinganBroadcastChannelRef.current = channel;
+
+        channel.onmessage = (event) => {
+          if (event.data?.type === 'BIMBINGAN_STATUS_RESPONDED') {
+            const { consultation, notif } = event.data;
+            if (consultation) {
+              setConsultations(prev => {
+                const updated = prev.map(c => {
+                  if (String(c.id) === String(consultation.id)) {
+                    return parseConsultationItem({ ...c, ...consultation });
+                  }
+                  return c;
+                });
+                return updated;
+              });
+            }
+
+            if (notif) {
+              setNotifications(prev => {
+                const exists = prev.some(n => n.id === notif.id);
+                if (exists) return prev;
+                return [notif, ...prev];
+              });
+
+              // If current user in this tab is the student, trigger toast and sound!
+              const current = currentUserRef.current;
+              if (current?.role === 'mahasiswa') {
+                const matchNim = !notif.recipient_nim || !current.nim || String(notif.recipient_nim).trim() === String(current.nim).trim();
+                if (matchNim) {
+                  triggerRealtimeAlert({
+                    id: `alert-${Date.now()}`,
+                    title: notif.title,
+                    message: notif.message,
+                    dosen_nama: notif.dosen_nama || 'Dosen Pembimbing',
+                    status: notif.status,
+                    jenis_revisi: notif.jenis_revisi,
+                    bab_topik: notif.bab_topik || ''
+                  });
+                }
+              }
+            }
+          }
+        };
+
+        return () => {
+          channel.close();
+        };
+      } catch (err) {
+        console.warn('BroadcastChannel error:', err);
+      }
+    }
+  }, []);
+
+  const broadcastBimbinganResponse = (consultation, notif) => {
+    if (bimbinganBroadcastChannelRef.current) {
+      try {
+        bimbinganBroadcastChannelRef.current.postMessage({
+          type: 'BIMBINGAN_STATUS_RESPONDED',
+          consultation,
+          notif
+        });
+      } catch {}
+    }
+  };
+
+  // Cross-tab synchronization for consultations and notifications
+  useEffect(() => {
     const handleStorageChange = (e) => {
       if (e.key === 'simta_consultations' && e.newValue) {
         try {
           const parsed = JSON.parse(e.newValue);
           if (Array.isArray(parsed)) {
             setConsultations(parsed.map(parseConsultationItem));
+          }
+        } catch {}
+      }
+      if (e.key === 'simta_notifications' && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (Array.isArray(parsed)) {
+            setNotifications(parsed);
           }
         } catch {}
       }
@@ -3313,17 +3536,27 @@ export function AuthProvider({ children }) {
     });
 
     if (targetCons) {
-      const studentUser = MOCK_USERS.find(u => u.nim === targetCons.mhs_nim);
-      const studentEmail = studentUser?.email || (targetCons.mhs_nim ? `${targetCons.mhs_nim}@student.unsri.ac.id` : '09010182428002@student.unsri.ac.id');
+      const studentNim = String(targetCons.mhs_nim || '').trim();
+      const studentUser = MOCK_USERS.find(u => u.nim === studentNim);
+      const studentEmail = studentUser?.email || (studentNim ? `${studentNim}@student.unsri.ac.id` : '09010182428002@student.unsri.ac.id');
       const notifTitle = status === 'disetujui' 
         ? `Bimbingan Disetujui (${resolvedJenisRevisi})` 
-        : `Tanggapan Bimbingan: Revisi ${resolvedJenisRevisi}`;
-      const notifMessage = `${currentUser?.nama || targetCons.dosen_nama || 'Dosen Pembimbing'} telah memvalidasi bimbingan dengan kategori "${resolvedJenisRevisi}": "${feedbackNotes || 'Silakan periksa catatan dan kartu bimbingan Anda.'}"`;
+        : `Tanggapan Bimbingan: ${resolvedJenisRevisi === 'Ditolak' ? 'Ditolak' : `Revisi ${resolvedJenisRevisi}`}`;
+      const cleanFeedback = feedbackNotes ? String(feedbackNotes).replace(/^\[.*?\]\s*/, '').trim() : '';
+      const notifMessage = `${currentUser?.nama || targetCons.dosen_nama || 'Dosen Pembimbing'} telah memvalidasi bimbingan "${targetCons.bab_topik || 'Tugas Akhir'}" dengan status "${status === 'disetujui' ? 'Disetujui' : 'Perlu Revisi'}": "${cleanFeedback || 'Silakan periksa catatan dan kartu bimbingan Anda.'}"`;
 
       const notif = {
         id: `notif-${Date.now()}-cons`,
-        profile_id: studentUser?.id || 'user-mhs-aulia',
-        related_type: 'consultation',
+        profile_id: studentUser?.id || studentNim || 'user-mhs-aulia',
+        recipient_role: 'mahasiswa',
+        recipient_nim: studentNim,
+        recipient_nama: targetCons.mhs_nama || '',
+        related_type: 'bimbingan_status',
+        consultation_id: targetCons.id,
+        status: status,
+        jenis_revisi: resolvedJenisRevisi,
+        dosen_nama: currentUser?.nama || targetCons.dosen_nama || 'Dosen Pembimbing',
+        bab_topik: targetCons.bab_topik || '',
         title: notifTitle,
         message: notifMessage,
         is_read: false,
@@ -3332,8 +3565,28 @@ export function AuthProvider({ children }) {
         email_sent_at: new Date().toISOString(),
         created_at: new Date().toISOString()
       };
-      setNotifications(prev => [notif, ...prev]);
+      setNotifications(prev => {
+        const next = [notif, ...prev];
+        try { localStorage.setItem('simta_notifications', JSON.stringify(next)); } catch {}
+        return next;
+      });
       sendEmailNotification(studentEmail, notifTitle, notifMessage);
+
+      // Broadcast across tabs
+      broadcastBimbinganResponse(targetCons, notif);
+
+      // If active user in this session is the student (or testing role in same browser)
+      if (currentUser?.role === 'mahasiswa' && (!currentUser.nim || String(currentUser.nim).trim() === studentNim)) {
+        triggerRealtimeAlert({
+          id: `alert-${Date.now()}`,
+          title: notifTitle,
+          message: cleanFeedback || notifMessage,
+          dosen_nama: currentUser?.nama || targetCons.dosen_nama || 'Dosen Pembimbing',
+          status: status,
+          jenis_revisi: resolvedJenisRevisi,
+          bab_topik: targetCons.bab_topik || ''
+        });
+      }
     }
 
     if (isSupabaseConfigured && supabase) {
@@ -4066,7 +4319,15 @@ export function AuthProvider({ children }) {
       sendBatchBimbinganCadenceReminders,
       triggerSystemAutoReminders,
       submissionBroadcastLogs,
-      sendBroadcastSubmissionReminder
+      sendBroadcastSubmissionReminder,
+      activeRealtimeAlert,
+      triggerRealtimeAlert,
+      dismissRealtimeAlert,
+      realtimeNotifEnabled,
+      setRealtimeNotifEnabled,
+      soundEnabled,
+      setSoundEnabled,
+      playNotificationSound
     }}>
       {children}
     </AuthContext.Provider>

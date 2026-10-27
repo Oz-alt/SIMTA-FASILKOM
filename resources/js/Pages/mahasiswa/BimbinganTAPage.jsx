@@ -120,16 +120,27 @@ export default function BimbinganTAPage() {
       {/* Top Banner Header */}
       <div className="bg-gradient-to-r from-blue-950 via-indigo-900 to-slate-900 rounded-2xl p-6 sm:p-8 text-white shadow-lg relative overflow-hidden">
         <div className="relative z-10 max-w-3xl space-y-3">
-          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 text-xs font-bold border border-blue-400/30 backdrop-blur-md">
-            <BookOpen className="w-3.5 h-3.5" />
-            <span>Form Bimbingan &amp; Konsultasi TA Terpadu</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 text-xs font-bold border border-blue-400/30 backdrop-blur-md">
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>Form Bimbingan &amp; Konsultasi TA Terpadu</span>
+            </div>
+            {isStudentRole && (
+              <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-500/25 text-emerald-200 text-xs font-bold border border-emerald-400/40 backdrop-blur-md shadow-xs">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-300 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
+                </span>
+                <span>Notifikasi Real-time Dosen: AKTIF (ON)</span>
+              </div>
+            )}
           </div>
           <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-white leading-tight">
             Form Bimbingan Tugas Akhir
           </h1>
           <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-normal">
             {isStudentRole 
-              ? 'Catat riwayat pertemuan konsultasi, unggah berkas draf revisi, dapatkan masukan dosen pembimbing, dan pantau kelayakan pendaftaran sidang TA secara real-time.'
+              ? 'Catat riwayat pertemuan konsultasi, unggah berkas draf revisi, dapatkan masukan dosen pembimbing secara real-time, dan pantau kelayakan pendaftaran sidang TA.'
               : 'Tinjau dan validasi catatan konsultasi bimbingan yang diajukan oleh mahasiswa bimbingan Anda.'
             }
           </p>
@@ -143,6 +154,10 @@ export default function BimbinganTAPage() {
                 <Printer className="w-4 h-4 text-blue-300" />
                 <span>Kartu Bimbingan Digital</span>
               </Link>
+              <div className="flex items-center space-x-2 px-3.5 py-2.5 rounded-xl bg-white/10 text-emerald-300 text-xs font-medium border border-white/15 backdrop-blur-md">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span>Respon status &amp; revisi dari dosen langsung muncul secara realtime</span>
+              </div>
             </div>
           )}
         </div>
