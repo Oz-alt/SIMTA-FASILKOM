@@ -62,9 +62,9 @@ const runLegacyPhoneMigration = () => {
   } catch {}
 };
 
-runLegacyPhoneMigration();
-
 import { supabase, isSupabaseConfigured } from '../services/supabase.js';
+import { playNotificationSound } from '../lib/soundUtils.js';
+import { broadcastRealtimeNotification, subscribeToRealtimeNotifications } from '../services/realtimeNotificationBus.js';
 
 const generateRowId = () => {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -753,9 +753,29 @@ export function AuthProvider({ children }) {
   const [rooms, setRooms] = useState(MOCK_ROOMS);
   const [buildings, setBuildings] = useState(MOCK_BUILDINGS);
   const [roomPriorities, setRoomPriorities] = useState(MOCK_ROOM_PRIORITIES);
-  const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState(() => {
+    try {
+      const saved = localStorage.getItem('simta_notifications');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return MOCK_NOTIFICATIONS;
+  });
 
-  // ── Riwayat & Bukti Pengingat Bimbingan (Minimal 2x/Bulan) ────────────────
+  useEffect(() => {
+    try {
+      localStorage.setItem('simta_notifications', JSON.stringify(notifications));
+    } catch {}
+  }, [notifications]);
+
+  // Real-time notification popup banner for Kaprodi
+  const [latestRealtimeNotif, setLatestRealtimeNotif] = useState(null);
+  const dismissRealtimeNotif = () => setLatestRealtimeNotif(null);
+  const markNotificationAsRead = (notifId) => {
+    setNotifications(prev => prev.map(n => String(n.id) === String(notifId) ? { ...n, is_read: true } : n));
+  };
   const [bimbinganReminderLogs, setBimbinganReminderLogs] = useState(() => {
     try {
       const saved = localStorage.getItem('simta_bimbingan_reminders');
@@ -1552,7 +1572,6 @@ export function AuthProvider({ children }) {
                 setThesisTitles(prev => {
                   const idx = prev.findIndex(t => String(t.id) === String(incoming.id));
                   const existing = idx >= 0 ? prev[idx] : null;
-                  // Pertahankan field hasil enrich (mis. mhs_kelas) bila kosong dari tabel.
                   const merged = {
                     ...(existing || {}),
                     ...incoming,
@@ -1567,6 +1586,38 @@ export function AuthProvider({ children }) {
                   }
                   return [merged, ...prev];
                 });
+
+                if (payload.eventType === 'INSERT' || (payload.eventType === 'UPDATE' && payload.new.status === 'tinjauan')) {
+                  const kaprodiNotif = {
+                    id: `notif-${incoming.id}-${Date.now()}-kaprodi`,
+                    profile_id: 'user-kaprodi-abdiansah',
+                    recipient_role: 'kaprodi',
+                    related_type: 'thesis_title',
+                    related_id: incoming.id,
+                    title: payload.eventType === 'INSERT' 
+                      ? 'Pengajuan Judul Baru Masuk Tahap Tinjauan' 
+                      : 'Pembaruan Judul Revisi Masuk Tahap Tinjauan',
+                    message: `${incoming.mhs_nama || 'Mahasiswa'} (${incoming.mhs_nim || ''}) mengajukan judul: "${incoming.judul}". Otomatis masuk tahap peninjauan rapat Prodi.`,
+                    student_name: incoming.mhs_nama || 'Mahasiswa',
+                    student_nim: incoming.mhs_nim || '',
+                    thesis_title: incoming.judul,
+                    action_url: `/kaprodi/titles/${incoming.id}`,
+                    is_read: false,
+                    created_at: incoming.created_at || new Date().toISOString()
+                  };
+
+                  setNotifications(prev => {
+                    const exists = prev.some(n => 
+                      n.id === kaprodiNotif.id || 
+                      (String(n.related_id) === String(incoming.id) && String(n.recipient_role) === 'kaprodi')
+                    );
+                    if (exists) return prev;
+                    return [kaprodiNotif, ...prev];
+                  });
+
+                  setLatestRealtimeNotif(kaprodiNotif);
+                  playNotificationSound();
+                }
               } else if (payload.eventType === 'DELETE' && payload.old) {
                 setThesisTitles(prev => prev.filter(t => String(t.id) !== String(payload.old.id)));
               }
@@ -1682,6 +1733,40 @@ export function AuthProvider({ children }) {
         }
       };
     }
+  }, []);
+
+  // Multi-transport Real-time Bus Listener (BroadcastChannel, Storage Events & Supabase WebSocket)
+  useEffect(() => {
+    const unsubscribe = subscribeToRealtimeNotifications((envelope) => {
+      if (envelope.type === 'THESIS_TITLE_SUBMITTED' || envelope.type === 'THESIS_TITLE_REVISED') {
+        const { title, notif } = envelope.payload || {};
+        if (title) {
+          setThesisTitles(prev => {
+            const idx = prev.findIndex(t => String(t.id) === String(title.id));
+            if (idx >= 0) {
+              const updated = [...prev];
+              updated[idx] = { ...updated[idx], ...title };
+              return updated;
+            }
+            return [title, ...prev];
+          });
+        }
+        if (notif) {
+          setNotifications(prev => {
+            const exists = prev.some(n => 
+              n.id === notif.id || 
+              (String(n.related_id) === String(notif.related_id) && String(n.recipient_role) === 'kaprodi')
+            );
+            if (exists) return prev;
+            return [notif, ...prev];
+          });
+          setLatestRealtimeNotif(notif);
+          playNotificationSound();
+        }
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
 
   // Cross-tab synchronization for consultations state
@@ -2162,16 +2247,22 @@ export function AuthProvider({ children }) {
     // 1. Push notification to Kaprodi
     const kaprodiUser = MOCK_USERS.find(u => u.role === 'kaprodi');
     const kaprodiId = kaprodiUser?.id || 'user-kaprodi-abdiansah';
-    newNotifs.push({
-      id: `notif-${Date.now()}-kaprodi`,
+    const kaprodiNotif = {
+      id: `notif-${createdTitle.id || Date.now()}-kaprodi`,
       profile_id: kaprodiId,
       recipient_role: 'kaprodi',
       related_type: 'thesis_title',
+      related_id: createdTitle.id,
       title: 'Pengajuan Judul Baru Masuk Tahap Tinjauan',
       message: `${currentUser?.nama || 'Mahasiswa'} (${currentUser?.nim || ''}) mengajukan judul: "${newTitleData.judul}". Otomatis masuk tahap peninjauan rapat Prodi.`,
+      student_name: currentUser?.nama || 'Mahasiswa',
+      student_nim: currentUser?.nim || '',
+      thesis_title: newTitleData.judul,
+      action_url: `/kaprodi/titles/${createdTitle.id}`,
       is_read: false,
       created_at: new Date().toISOString()
-    });
+    };
+    newNotifs.push(kaprodiNotif);
     sendEmailNotification(kaprodiUser?.email || 'koprodi@unsri.ac.id', 'Pengajuan Judul Tugas Akhir Baru', `Mahasiswa ${currentUser?.nama} mengajukan judul: "${newTitleData.judul}".`);
 
     // 2. Push notification to Dosen Pembimbing 1
@@ -2213,6 +2304,20 @@ export function AuthProvider({ children }) {
     if (newNotifs.length > 0) {
       setNotifications(prev => [...newNotifs, ...prev]);
     }
+
+    // Real-time broadcast to all active Kaprodi sessions across tabs and devices
+    broadcastRealtimeNotification('THESIS_TITLE_SUBMITTED', {
+      title: createdTitle,
+      notif: kaprodiNotif,
+      sender: {
+        name: currentUser?.nama,
+        nim: currentUser?.nim,
+        role: currentUser?.role
+      }
+    });
+
+    setLatestRealtimeNotif(kaprodiNotif);
+    playNotificationSound();
 
     return createdTitle;
   };
@@ -2366,13 +2471,31 @@ export function AuthProvider({ children }) {
         const notifKaprodi = {
           id: `notif-${Date.now()}-kaprodi-rev`,
           profile_id: kaprodiUser.id,
+          recipient_role: 'kaprodi',
           related_type: 'thesis_title_revised',
+          related_id: affectedTitle.id,
           title: 'Mahasiswa Memperbarui Judul Revisi',
           message: `${affectedTitle.mhs_nama} (${affectedTitle.mhs_nim}) telah memperbarui usulan judul menjadi: "${newJudul.trim()}" (Similarity: ${newSimilarityScore}%). Judul kembali masuk tahap tinjauan Prodi.`,
+          student_name: affectedTitle.mhs_nama,
+          student_nim: affectedTitle.mhs_nim,
+          thesis_title: newJudul.trim(),
+          action_url: `/kaprodi/titles/${affectedTitle.id}`,
           is_read: false,
           created_at: nowIso
         };
         setNotifications(prev => [notifKaprodi, ...prev]);
+
+        broadcastRealtimeNotification('THESIS_TITLE_REVISED', {
+          title: affectedTitle,
+          notif: notifKaprodi,
+          sender: {
+            name: affectedTitle.mhs_nama,
+            nim: affectedTitle.mhs_nim
+          }
+        });
+
+        setLatestRealtimeNotif(notifKaprodi);
+        playNotificationSound();
       }
     }
   };
@@ -4066,7 +4189,40 @@ export function AuthProvider({ children }) {
       sendBatchBimbinganCadenceReminders,
       triggerSystemAutoReminders,
       submissionBroadcastLogs,
-      sendBroadcastSubmissionReminder
+      sendBroadcastSubmissionReminder,
+      latestRealtimeNotif,
+      dismissRealtimeNotif,
+      markNotificationAsRead,
+      triggerRealtimeTestNotif: () => {
+        const sample = thesisTitles[0] || {
+          id: 'test-' + Date.now(),
+          mhs_nama: 'Aulia Azzahra',
+          mhs_nim: '09010182428002',
+          judul: 'Rancang Bangun Sistem Monitoring Skripsi dan Tugas Akhir Real-Time FASILKOM UNSRI'
+        };
+        const testNotif = {
+          id: `notif-test-${Date.now()}-kaprodi`,
+          profile_id: 'user-kaprodi-abdiansah',
+          recipient_role: 'kaprodi',
+          related_type: 'thesis_title',
+          related_id: sample.id,
+          title: 'Pengajuan Judul Baru Masuk Tahap Tinjauan',
+          message: `${sample.mhs_nama} (${sample.mhs_nim}) mengajukan judul: "${sample.judul}". Otomatis masuk tahap peninjauan rapat Prodi.`,
+          student_name: sample.mhs_nama,
+          student_nim: sample.mhs_nim,
+          thesis_title: sample.judul,
+          action_url: `/kaprodi/titles/${sample.id}`,
+          is_read: false,
+          created_at: new Date().toISOString()
+        };
+        setNotifications(prev => [testNotif, ...prev]);
+        setLatestRealtimeNotif(testNotif);
+        playNotificationSound();
+        broadcastRealtimeNotification('THESIS_TITLE_SUBMITTED', {
+          title: sample,
+          notif: testNotif
+        });
+      }
     }}>
       {children}
     </AuthContext.Provider>

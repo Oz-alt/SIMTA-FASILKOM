@@ -9,11 +9,14 @@ import {
   Search, 
   GraduationCap, 
   BookOpen,
-  MessageSquare
+  MessageSquare,
+  Sparkles,
+  Wifi,
+  Radio
 } from 'lucide-react';
 
 export default function TinjauJudulPage() {
-  const { thesisTitles } = useAuth();
+  const { thesisTitles, triggerRealtimeTestNotif } = useAuth();
 
   // Toast Notification
   const [toastMessage, setToastMessage] = useState('');
@@ -92,17 +95,42 @@ export default function TinjauJudulPage() {
 
       {/* Header Banner */}
       <div className="relative rounded-3xl bg-gradient-to-r from-blue-900 via-blue-800 to-blue-950 text-white p-6 sm:p-8 overflow-hidden shadow-xl border border-blue-700/40">
-        <div className="relative z-10 max-w-3xl space-y-3">
-          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-200 border border-blue-400/30 text-xs font-bold uppercase tracking-wider">
-            <GraduationCap className="w-3.5 h-3.5 text-blue-300" />
-            <span>Portal Kaprodi FASILKOM UNSRI</span>
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="max-w-3xl space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-200 border border-blue-400/30 text-xs font-bold uppercase tracking-wider">
+                <GraduationCap className="w-3.5 h-3.5 text-blue-300" />
+                <span>Portal Kaprodi FASILKOM UNSRI</span>
+              </div>
+              <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-xs font-bold">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
+                </span>
+                <span>Sinkronisasi Real-Time Aktif</span>
+              </div>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+              Peninjauan &amp; Catatan Revisi Judul TA
+            </h1>
+            <p className="text-xs sm:text-sm text-blue-100/90 leading-relaxed font-normal">
+              Pengajuan judul mahasiswa otomatis masuk ke tahap peninjauan secara real-time. Berikan catatan jika terdapat revisi dari rapat Prodi, lacak riwayat perubahan bersama dosen pembimbing, dan tetapkan judul yang sudah fix.
+            </p>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
-            Peninjauan &amp; Catatan Revisi Judul TA
-          </h1>
-          <p className="text-xs sm:text-sm text-blue-100/90 leading-relaxed font-normal">
-            Pengajuan judul mahasiswa otomatis masuk ke tahap peninjauan. Berikan catatan jika terdapat revisi dari rapat Prodi, lacak riwayat perubahan bersama dosen pembimbing, dan tetapkan judul yang sudah fix.
-          </p>
+
+          {triggerRealtimeTestNotif && (
+            <div className="shrink-0">
+              <button
+                type="button"
+                onClick={triggerRealtimeTestNotif}
+                className="inline-flex items-center space-x-2 px-4 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold backdrop-blur-md transition-all border border-white/20 hover:border-white/40 shadow-lg cursor-pointer group"
+                title="Simulasikan notifikasi pengajuan judul mahasiswa secara real-time"
+              >
+                <Sparkles className="w-4 h-4 text-yellow-300 group-hover:rotate-12 transition-transform" />
+                <span>Simulasi Notif Real-Time</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -274,7 +302,15 @@ export default function TinjauJudulPage() {
                   return (
                     <tr key={t.id} className="hover:bg-slate-50/60 transition-colors">
                       <td className="py-3.5 px-4 font-semibold text-slate-900 align-top">
-                        <div className="font-bold text-slate-900 text-sm">{t.mhs_nama}</div>
+                        <div className="flex items-center space-x-2">
+                          <span className="font-bold text-slate-900 text-sm">{t.mhs_nama}</span>
+                          {t.created_at && (Date.now() - new Date(t.created_at).getTime() < 1000 * 60 * 60 * 24) && (
+                            <span className="inline-flex items-center space-x-1 px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-extrabold shrink-0 animate-pulse">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                              <span>Baru</span>
+                            </span>
+                          )}
+                        </div>
                         <div className="text-[10px] text-slate-500 font-mono flex items-center space-x-1.5 mt-0.5">
                           <span>{t.mhs_nim}</span>
                           <span>•</span>

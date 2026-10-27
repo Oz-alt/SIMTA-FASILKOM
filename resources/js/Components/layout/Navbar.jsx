@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from '@inertiajs/react';
+import { Link, router } from '@inertiajs/react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { 
   GraduationCap, 
@@ -9,15 +9,35 @@ import {
   CheckCircle2, 
   BookOpen, 
   Building2,
-  Mail
+  Mail,
+  Sparkles,
+  ExternalLink,
+  Check
 } from 'lucide-react';
 
 import unsriLogo from '../../assets/photo/unsri logo.png';
 
 export default function Navbar() {
-  const { currentUser, switchRole, notifications, markAllNotificationsAsRead } = useAuth();
+  const { 
+    currentUser, 
+    switchRole, 
+    notifications, 
+    markAllNotificationsAsRead, 
+    markNotificationAsRead 
+  } = useAuth();
   const [showNotif, setShowNotif] = useState(false);
   const [showRoleMenu, setShowRoleMenu] = useState(false);
+
+  const handleNotificationClick = (notif) => {
+    if (notif.id && markNotificationAsRead) {
+      markNotificationAsRead(notif.id);
+    }
+    const targetUrl = notif.action_url || (notif.related_id ? `/kaprodi/titles/${notif.related_id}` : null);
+    if (targetUrl) {
+      setShowNotif(false);
+      router.visit(targetUrl);
+    }
+  };
 
   // Filter notifications relevant to the current active user
   const userNotifications = notifications.filter(n => {
@@ -132,29 +152,61 @@ export default function Navbar() {
                     {userNotifications.length === 0 ? (
                       <div className="p-6 text-center text-xs text-slate-400">Tidak ada notifikasi baru</div>
                     ) : (
-                      userNotifications.map(n => (
-                        <div key={n.id} className={`p-3.5 hover:bg-slate-50 transition-colors ${!n.is_read ? 'bg-indigo-50/20' : ''}`}>
-                          <div className="flex items-center justify-between">
-                            <p className="text-xs font-bold text-slate-900">{n.title}</p>
-                            {!n.is_read && (
-                              <span className="w-2 h-2 rounded-full bg-indigo-600 shrink-0"></span>
-                            )}
-                          </div>
-                          <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">{n.message}</p>
-                          
-                          {/* Email notification confirmation pill */}
-                          {userRole === 'mahasiswa' && (
-                            <div className="mt-2 flex items-center space-x-1 text-[10px] text-emerald-700 font-medium bg-emerald-50 border border-emerald-200/60 rounded px-1.5 py-0.5 w-fit">
-                              <Mail className="w-3 h-3 text-emerald-600 shrink-0" />
-                              <span>Salinan otomatis terkirim ke email ({n.email_to || currentUser?.email || '09010182428002@student.unsri.ac.id'})</span>
-                            </div>
-                          )}
+                      userNotifications.map(n => {
+                        const isThesisNotif = n.related_type === 'thesis_title' || n.related_type === 'thesis_title_revised' || Boolean(n.action_url);
 
-                          <span className="text-[10px] text-slate-400 mt-1.5 block">
-                            {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {new Date(n.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
-                          </span>
-                        </div>
-                      ))
+                        return (
+                          <div 
+                            key={n.id} 
+                            onClick={() => isThesisNotif ? handleNotificationClick(n) : markNotificationAsRead?.(n.id)}
+                            className={`p-3.5 hover:bg-slate-50 transition-colors cursor-pointer group ${!n.is_read ? 'bg-indigo-50/30' : ''}`}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-center space-x-1.5 flex-1 min-w-0">
+                                {isThesisNotif && (
+                                  <span className="w-1.5 h-1.5 rounded-full bg-blue-600 shrink-0"></span>
+                                )}
+                                <p className="text-xs font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate">
+                                  {n.title}
+                                </p>
+                              </div>
+                              {!n.is_read && (
+                                <span className="w-2 h-2 rounded-full bg-indigo-600 shrink-0 mt-1"></span>
+                              )}
+                            </div>
+
+                            <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
+                              {n.message}
+                            </p>
+                            
+                            {/* Email notification confirmation pill for Mahasiswa */}
+                            {userRole === 'mahasiswa' && (
+                              <div className="mt-2 flex items-center space-x-1 text-[10px] text-emerald-700 font-medium bg-emerald-50 border border-emerald-200/60 rounded px-1.5 py-0.5 w-fit">
+                                <Mail className="w-3 h-3 text-emerald-600 shrink-0" />
+                                <span>Salinan otomatis terkirim ke email ({n.email_to || currentUser?.email || '09010182428002@student.unsri.ac.id'})</span>
+                              </div>
+                            )}
+
+                            {/* Kaprodi quick action button for thesis title */}
+                            {(userRole === 'kaprodi' || userRole === 'admin') && isThesisNotif && (
+                              <div className="mt-2 flex items-center justify-between pt-1">
+                                <span className="inline-flex items-center space-x-1 text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200/70">
+                                  <Sparkles className="w-3 h-3 text-blue-600" />
+                                  <span>Tinjau Judul TA</span>
+                                </span>
+                                <span className="text-[10px] font-semibold text-blue-600 group-hover:underline flex items-center space-x-0.5">
+                                  <span>Buka halaman tinjauan</span>
+                                  <ExternalLink className="w-3 h-3 ml-0.5" />
+                                </span>
+                              </div>
+                            )}
+
+                            <span className="text-[10px] text-slate-400 mt-1.5 block">
+                              {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {new Date(n.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+                            </span>
+                          </div>
+                        );
+                      })
                     )}
                   </div>
                 </div>

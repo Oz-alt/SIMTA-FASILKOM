@@ -5,6 +5,7 @@ import Navbar from './Navbar.jsx';
 import PublicNavbar from './PublicNavbar.jsx';
 import Sidebar from './Sidebar.jsx';
 import Footer from './Footer.jsx';
+import RealtimeNotificationToast from '../common/RealtimeNotificationToast.jsx';
 
 export default function AppLayout({ children }) {
   const { url } = usePage();
@@ -74,6 +75,7 @@ export default function AppLayout({ children }) {
           {children}
         </main>
       </div>
+      <RealtimeNotificationToast />
     </div>
   );
 }
