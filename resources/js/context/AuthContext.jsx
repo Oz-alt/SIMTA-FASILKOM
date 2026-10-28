@@ -3789,6 +3789,27 @@ export function AuthProvider({ children }) {
 
   // ── MANAJEMEN AKUN (ADMIN SIMTA) ──────────────────────────────────────────
 
+  const DELETED_STUDENTS_KEY = 'simta_deleted_students';
+
+  const getDeletedStudentKeys = () => {
+    try {
+      const raw = localStorage.getItem(DELETED_STUDENTS_KEY);
+      if (!raw) return new Set();
+      const parsed = JSON.parse(raw);
+      return new Set(Array.isArray(parsed) ? parsed.map(v => String(v).trim().toLowerCase()) : []);
+    } catch {
+      return new Set();
+    }
+  };
+
+  const isStudentDeleted = (record) => {
+    if (!record) return false;
+    const deleted = getDeletedStudentKeys();
+    if (deleted.size === 0) return false;
+    const keys = [record.id, record.nim, record.nip, record.email].filter(Boolean).map(v => String(v).trim().toLowerCase());
+    return keys.some(k => deleted.has(k));
+  };
+
   // Get all Mahasiswa accounts combining Supabase profiles, student_advisors, and local registry
   const getAllMahasiswaAccounts = () => {
     if (mhsAccountsCacheRef.current) {
@@ -4204,8 +4225,13 @@ export function AuthProvider({ children }) {
       const users = getRegisteredUsers();
       const updated = users.filter(u => u.id !== cleanKey && u.nim !== cleanKey && u.email !== cleanKey);
       localStorage.setItem('simta_registered_users', JSON.stringify(updated));
+
+      const keys = getDeletedStudentKeys();
+      keys.add(cleanKey.toLowerCase());
+      localStorage.setItem(DELETED_STUDENTS_KEY, JSON.stringify(Array.from(keys)));
     } catch (e) { }
 
+    mhsAccountsCacheRef.current = null;
     setDbProfiles(prev => prev.filter(p => p.id !== cleanKey && p.nim !== cleanKey));
 
     if (isSupabaseConfigured && supabase) {
