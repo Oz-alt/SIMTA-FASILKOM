@@ -20,6 +20,7 @@ import {
   Video
 } from 'lucide-react';
 import ModalAjukanBimbingan from './ModalAjukanBimbingan.jsx';
+import { calculateBimbinganEligibility, isConsultationEvaluated } from '../../lib/consultationUtils.js';
 
 export default function BimbinganTimeline({ consultations = [], currentUser }) {
   const [filterAdvisor, setFilterAdvisor] = useState('all'); // 'all', 'Pembimbing 1', 'Pembimbing 2'
@@ -60,17 +61,21 @@ export default function BimbinganTimeline({ consultations = [], currentUser }) {
     return map;
   }, [studentConsultations]);
 
-  // Recap statistics based on 24 session requirement (12 each advisor)
-  const totalApproved = studentConsultations.filter(c => c.status === 'disetujui').length;
-  const countPemb1 = studentConsultations.filter(c => c.pembimbing === 'Pembimbing 1' && c.status === 'disetujui').length;
-  const countPemb2 = studentConsultations.filter(c => c.pembimbing === 'Pembimbing 2' && c.status === 'disetujui').length;
-  
-  const minPerPembimbing = 12;
-  const minRequired = 24;
-  const approvedPemb1 = Math.min(countPemb1, minPerPembimbing);
-  const approvedPemb2 = Math.min(countPemb2, minPerPembimbing);
-  const progressPercent = Math.min(100, Math.round(((approvedPemb1 + approvedPemb2) / minRequired) * 100));
-  const isEligibleForDefense = countPemb1 >= minPerPembimbing && countPemb2 >= minPerPembimbing;
+  // Recap statistics: Sesi terhitung jika status telah dievaluasi (Revisi Mayor, Minor, atau Diterima).
+  // Status 'Menunggu' belum terhitung.
+  const bimbinganStats = useMemo(() => {
+    return calculateBimbinganEligibility(studentConsultations);
+  }, [studentConsultations]);
+
+  const {
+    countPemb1,
+    countPemb2,
+    totalEvaluated,
+    minPerPembimbing,
+    minRequired,
+    progressPercent,
+    isEligibleForDefense
+  } = bimbinganStats;
 
   // Filtered list for display
   const displayedConsultations = useMemo(() => {
@@ -151,7 +156,10 @@ export default function BimbinganTimeline({ consultations = [], currentUser }) {
               </span>
             </div>
             <p className="text-xs font-semibold text-slate-700 mt-0.5">
-              Tercapai <span className="font-extrabold text-indigo-700">{totalApproved}</span> dari target <span className="font-extrabold text-slate-900">{minRequired} Sesi Disetujui</span> (12x masing-masing pembimbing)
+              Tercapai <span className="font-extrabold text-indigo-700">{totalEvaluated}</span> dari target <span className="font-extrabold text-slate-900">{minRequired} Sesi Bimbingan</span> (12x masing-masing pembimbing)
+            </p>
+            <p className="text-[10px] text-slate-400 mt-0.5">
+              Sesi terhitung otomatis setelah dosen memberikan evaluasi (Revisi Mayor, Minor, atau Diterima).
             </p>
           </div>
 

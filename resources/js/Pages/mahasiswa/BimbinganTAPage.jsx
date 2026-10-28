@@ -27,6 +27,7 @@ import ModalAjukanBimbingan from '../../Components/common/ModalAjukanBimbingan.j
 import ModalEditBimbingan from '../../Components/common/ModalEditBimbingan.jsx';
 import BimbinganReminderBanner from '../../Components/common/BimbinganReminderBanner.jsx';
 import { calculateBimbinganReminder } from '../../lib/bimbinganReminder.js';
+import { calculateBimbinganEligibility, isConsultationEvaluated } from '../../lib/consultationUtils.js';
 
 export default function BimbinganTAPage() {
   const { currentUser, consultations, reviewConsultation } = useAuth();
@@ -74,16 +75,21 @@ export default function BimbinganTAPage() {
     });
   }, [consultations, currentUser, isStudentRole]);
 
-  // Recap stats
-  const totalApproved = studentConsultations.filter(c => c.status === 'disetujui').length;
-  const countPemb1 = studentConsultations.filter(c => c.pembimbing === 'Pembimbing 1' && c.status === 'disetujui').length;
-  const countPemb2 = studentConsultations.filter(c => c.pembimbing === 'Pembimbing 2' && c.status === 'disetujui').length;
-  const minRequiredPerPembimbing = 12;
-  const minRequired = 24; // 12x masing-masing pembimbing (Pembimbing 1 & Pembimbing 2)
-  const approvedPemb1 = Math.min(countPemb1, minRequiredPerPembimbing);
-  const approvedPemb2 = Math.min(countPemb2, minRequiredPerPembimbing);
-  const progressPercent = Math.min(100, Math.round(((approvedPemb1 + approvedPemb2) / minRequired) * 100));
-  const isEligibleForDefense = countPemb1 >= minRequiredPerPembimbing && countPemb2 >= minRequiredPerPembimbing;
+  // Recap stats: Sesi bimbingan terhitung jika status telah dievaluasi (Revisi Mayor, Minor, atau Diterima).
+  // Status 'Menunggu' belum terhitung.
+  const bimbinganStats = useMemo(() => {
+    return calculateBimbinganEligibility(studentConsultations);
+  }, [studentConsultations]);
+
+  const {
+    countPemb1,
+    countPemb2,
+    totalEvaluated,
+    minPerPembimbing: minRequiredPerPembimbing,
+    minRequired,
+    progressPercent,
+    isEligibleForDefense
+  } = bimbinganStats;
 
   const handleFeedbackSubmit = (consId, newStatus) => {
     const notes = feedbackInput[consId] || 'Telah diverifikasi pembimbing.';
@@ -193,21 +199,21 @@ export default function BimbinganTAPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-xs font-semibold">
         
         <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-1">
-          <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Total Bimbingan Disetujui</span>
-          <div className="text-2xl font-extrabold text-blue-700">{totalApproved} Sesi</div>
-          <span className="text-[11px] text-slate-500">Dari total {studentConsultations.length} catatan</span>
+          <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Total Bimbingan Terevaluasi</span>
+          <div className="text-2xl font-extrabold text-blue-700">{totalEvaluated} Sesi</div>
+          <span className="text-[11px] text-slate-500">Target {minRequired} sesi (Mayor, Minor, Diterima)</span>
         </div>
 
         <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-1">
           <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Sesi Pembimbing 1</span>
-          <div className="text-2xl font-extrabold text-indigo-700">{countPemb1} Sesi</div>
-          <span className="text-[11px] text-slate-500">Utama (Min. {minRequiredPerPembimbing} Sesi)</span>
+          <div className="text-2xl font-extrabold text-indigo-700">{countPemb1} / {minRequiredPerPembimbing} Sesi</div>
+          <span className="text-[11px] text-slate-500">{countPemb1 >= minRequiredPerPembimbing ? '✓ Target 12x Terpenuhi' : `Kurang ${minRequiredPerPembimbing - countPemb1} sesi`}</span>
         </div>
 
         <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-1">
           <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Sesi Pembimbing 2</span>
-          <div className="text-2xl font-extrabold text-purple-700">{countPemb2} Sesi</div>
-          <span className="text-[11px] text-slate-500">Pendamping (Min. {minRequiredPerPembimbing} Sesi)</span>
+          <div className="text-2xl font-extrabold text-purple-700">{countPemb2} / {minRequiredPerPembimbing} Sesi</div>
+          <span className="text-[11px] text-slate-500">{countPemb2 >= minRequiredPerPembimbing ? '✓ Target 12x Terpenuhi' : `Kurang ${minRequiredPerPembimbing - countPemb2} sesi`}</span>
         </div>
 
         <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-1.5">

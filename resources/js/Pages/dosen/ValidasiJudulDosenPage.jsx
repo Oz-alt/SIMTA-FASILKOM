@@ -66,10 +66,10 @@ export default function ValidasiJudulDosenPage() {
   // 4: Helper warna skor kemiripan (hanya persentase)
   const getSimilarityColor = (score = 0) => {
     const num = Number(score) || 0;
-    if (num < 40) {
+    if (num <= 30) {
       return { textColor: 'text-emerald-700', barColor: 'bg-emerald-500' };
     }
-    if (num <= 70) {
+    if (num <= 50) {
       return { textColor: 'text-amber-700', barColor: 'bg-amber-500' };
     }
     return { textColor: 'text-rose-700', barColor: 'bg-rose-500' };

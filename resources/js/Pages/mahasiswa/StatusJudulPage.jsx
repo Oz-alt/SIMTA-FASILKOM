@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { Link } from '@inertiajs/react';
 import StatusBadge from '../../Components/common/StatusBadge.jsx';
 import SimilarityGauge from '../../Components/common/SimilarityGauge.jsx';
-import { checkClientSimilarity } from '../../lib/similarityEngine.js';
+import { checkClientMultiFieldSimilarity, checkClientSimilarity } from '../../lib/similarityEngine.js';
 import { preProcessTitle } from '@backend/services/titleService.js';
 import { 
   Clock, 
@@ -35,6 +35,7 @@ export default function StatusJudulPage() {
     currentUser, 
     thesisTitles, 
     historicalTitles, 
+    thesisArchives,
     reviseThesisTitle,
     cancelThesisTitle
   } = useAuth();
@@ -130,9 +131,15 @@ export default function StatusJudulPage() {
       }
     }
 
-    // 2. Client similarity fallback (exclude current title being revised)
+    // 2. Client similarity with dual-layer hybrid engine (exclude current title being revised)
     const otherTitles = allDbTitles.filter(t => t.id !== revisionModalTitle?.id);
-    const res = checkClientSimilarity(newJudul, otherTitles);
+    const res = checkClientMultiFieldSimilarity(
+      newJudul,
+      newDeskripsi,
+      otherTitles,
+      thesisArchives || [],
+      { limit: 5 }
+    );
     setSimScore(res.highestScore || 0);
     setHasCheckedSim(true);
     setIsCheckingSim(false);
@@ -150,7 +157,13 @@ export default function StatusJudulPage() {
     let finalSimScore = simScore;
     if (!hasCheckedSim) {
       const otherTitles = allDbTitles.filter(t => t.id !== revisionModalTitle?.id);
-      const res = checkClientSimilarity(newJudul, otherTitles);
+      const res = checkClientMultiFieldSimilarity(
+        newJudul,
+        newDeskripsi,
+        otherTitles,
+        thesisArchives || [],
+        { limit: 5 }
+      );
       finalSimScore = res.highestScore || 0;
     }
 

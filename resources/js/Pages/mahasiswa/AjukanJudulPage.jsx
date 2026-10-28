@@ -2,22 +2,45 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { router } from '@inertiajs/react';
 import SimilarityGauge from '../../Components/common/SimilarityGauge.jsx';
-import { checkClientSimilarity } from '../../lib/similarityEngine.js';
+import { checkClientMultiFieldSimilarity, checkClientSimilarity } from '../../lib/similarityEngine.js';
 import { preProcessTitle, getSimilarityThreshold } from '@backend/services/titleService.js';
-import { FileText, Save, AlertTriangle, ShieldCheck, CheckCircle2, Search, RefreshCw } from 'lucide-react';
+import {
+  FileText,
+  Save,
+  AlertTriangle,
+  ShieldCheck,
+  CheckCircle2,
+  Search,
+  RefreshCw,
+  ExternalLink,
+  BookOpen,
+  Tag,
+  Layers,
+  ChevronDown,
+  ChevronUp
+} from 'lucide-react';
 
 import { supabase, isSupabaseConfigured } from '../../services/supabase.js';
 
 export default function AjukanJudulPage() {
-  const { currentUser, thesisTitles, historicalTitles, addThesisTitle } = useAuth();
+  const { currentUser, thesisTitles, historicalTitles, thesisArchives, addThesisTitle } = useAuth();
   const navigate = (url) => router.visit(url);
 
   const [judul, setJudul] = useState('');
   const [abstrak, setAbstrak] = useState('');
-  const [similarityResult, setSimilarityResult] = useState({ highestScore: 0, processedInput: '', matches: [] });
+  const [similarityResult, setSimilarityResult] = useState({
+    highestScore: 0,
+    highestTitleScore: 0,
+    highestAbstractScore: 0,
+    hasAbstract: false,
+    processedInput: '',
+    extractedConcepts: [],
+    matches: []
+  });
   const [isChecking, setIsChecking] = useState(false);
   const [hasChecked, setHasChecked] = useState(false);
   const [showWarningModal, setShowWarningModal] = useState(false);
+  const [expandedArchiveId, setExpandedArchiveId] = useState(null);
 
   // Auto-resize ref for judul textarea
   const judulRef = useRef(null);
@@ -29,7 +52,7 @@ export default function AjukanJudulPage() {
     }
   }, [judul]);
 
-  // Combine database titles for similarity engine fallback
+  // Combine active and historical titles
   const allDbTitles = [...thesisTitles, ...historicalTitles];
 
   // Explicit Similarity Check triggered by button click
@@ -41,42 +64,15 @@ export default function AjukanJudulPage() {
 
     setIsChecking(true);
 
-    // 1. Call real Supabase RPC check_title_similarity function if configured
-    if (isSupabaseConfigured && supabase) {
-      try {
-        const { data, error } = await supabase.rpc('check_title_similarity', {
-          input_title: judul.trim()
-        });
+    // Call dual-layer hybrid similarity engine against UNSRI repository archives + active titles
+    const result = checkClientMultiFieldSimilarity(
+      judul,
+      abstrak,
+      allDbTitles,
+      thesisArchives || [],
+      { limit: 6 }
+    );
 
-        if (!error && data) {
-          const matches = data.map(item => ({
-            judul: item.matched_title,
-            penulis: item.source_type === 'thesis_titles' ? 'Mahasiswa Aktif' : 'Arsip Alumni',
-            tahun: '2025',
-            skor_fts: item.skor_fts || 0,
-            skor_trigram: item.skor_trigram || 0,
-            skor_gabungan: item.skor_gabungan || 0
-          }));
-
-          const highest = matches.length > 0 ? Math.max(...matches.map(m => m.skor_gabungan)) : 0;
-          const processedText = preProcessTitle(judul);
-
-          setSimilarityResult({
-            highestScore: highest,
-            processedInput: processedText,
-            matches: matches
-          });
-          setHasChecked(true);
-          setIsChecking(false);
-          return;
-        }
-      } catch (err) {
-        console.error('Supabase RPC similarity check error:', err);
-      }
-    }
-
-    // 2. Fallback to client similarity engine
-    const result = checkClientSimilarity(judul, allDbTitles);
     setSimilarityResult(result);
     setHasChecked(true);
     setIsChecking(false);
@@ -102,31 +98,13 @@ export default function AjukanJudulPage() {
     // If user filled in title but hasn't clicked check yet, run check first
     if (judul && judul.trim().length >= 5 && !hasChecked) {
       setIsChecking(true);
-      let res;
-      if (isSupabaseConfigured && supabase) {
-        try {
-          const { data, error } = await supabase.rpc('check_title_similarity', {
-            input_title: judul.trim()
-          });
-          if (!error && data) {
-            const matches = data.map(item => ({
-              judul: item.matched_title,
-              penulis: item.source_type === 'thesis_titles' ? 'Mahasiswa Aktif' : 'Arsip Alumni',
-              tahun: '2025',
-              skor_fts: item.skor_fts || 0,
-              skor_trigram: item.skor_trigram || 0,
-              skor_gabungan: item.skor_gabungan || 0
-            }));
-            const highest = matches.length > 0 ? Math.max(...matches.map(m => m.skor_gabungan)) : 0;
-            res = { highestScore: highest, processedInput: preProcessTitle(judul), matches };
-          }
-        } catch (err) {
-          console.error(err);
-        }
-      }
-      if (!res) {
-        res = checkClientSimilarity(judul, allDbTitles);
-      }
+      const res = checkClientMultiFieldSimilarity(
+        judul,
+        abstrak,
+        allDbTitles,
+        thesisArchives || [],
+        { limit: 6 }
+      );
       setSimilarityResult(res);
       setHasChecked(true);
       setIsChecking(false);
@@ -134,7 +112,7 @@ export default function AjukanJudulPage() {
 
       const checkThreshold = getSimilarityThreshold(currentScore);
       if (!checkThreshold.allowSubmit) {
-        alert('Pengajuan terkunci karena skor kemiripan melebihi 70%. Silakan revisi judul Anda terlebih dahulu.');
+        alert('Pengajuan terkunci karena skor kemiripan melebihi 50% terhadap Repositori UNSRI. Silakan modifikasi judul atau objek studi Anda terlebih dahulu.');
         return;
       }
 
@@ -144,7 +122,7 @@ export default function AjukanJudulPage() {
       }
     } else if (hasChecked) {
       if (!threshold.allowSubmit) {
-        alert('Pengajuan terkunci karena skor kemiripan melebihi 70%. Silakan revisi judul Anda terlebih dahulu.');
+        alert('Pengajuan terkunci karena skor kemiripan melebihi 50% terhadap Repositori UNSRI. Silakan modifikasi judul atau objek studi Anda terlebih dahulu.');
         return;
       }
 
@@ -183,7 +161,7 @@ export default function AjukanJudulPage() {
           <span>Pengajuan Tugas Akhir</span>
         </h1>
         <p className="text-xs text-slate-500 mt-1">
-          Sistem akan memeriksa kemiripan judul Anda terhadap arsip historis D3 MI UNSRI melalui tombol Cek Similarity.
+          Sistem akan memeriksa kemiripan judul dan abstrak Anda terhadap arsip historis D3 MI Fasilkom yang terhubung langsung ke <strong>Repositori UNSRI</strong>.
         </p>
       </div>
 
@@ -217,31 +195,41 @@ export default function AjukanJudulPage() {
                     setHasChecked(false);
                   }
                 }}
-                placeholder="Contoh: Rancang Bangun Sistem Informasi Manajemen Penjualan Alat Kesehatan Berbasis Web..."
+                placeholder="Contoh: Rancang Bangun Sistem Manajemen Pemesanan Menu dengan QR Code pada Kafe Jalan Pulang..."
                 className="w-full text-xs p-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 leading-relaxed font-medium overflow-hidden resize-none transition-[height] duration-75 min-h-[75px]"
               />
               <p className="text-[10px] text-slate-400 mt-1">
-                Pre-processing otomatis akan menghapus kata umum (stop-words) dan memeriksa kemiripan saat tombol Cek Similarity diklik.
+                Pre-processing otomatis akan menyaring kata umum (stop-words) dan menghitung kemiripan terhadap judul di Repositori UNSRI.
               </p>
             </div>
 
             {/* Abstrak Input */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                Abstrak <span className="text-red-500 font-bold">*</span>
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-bold text-slate-700">
+                  Abstrak Tugas Akhir <span className="text-red-500 font-bold">*</span>
+                </label>
+                <span className="text-[10px] font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100">
+                  Bilingual ID / EN
+                </span>
+              </div>
               <textarea
                 rows={6}
                 required
                 data-lenis-prevent
                 value={abstrak}
-                onChange={(e) => setAbstrak(e.target.value)}
+                onChange={(e) => {
+                  setAbstrak(e.target.value);
+                  if (hasChecked) {
+                    setHasChecked(false);
+                  }
+                }}
                 onWheel={(e) => e.stopPropagation()}
-                placeholder="Masukkan ringkasan abstrak penelitian tugas akhir (latar belakang, rumusan masalah, metode, dan tujuan penelitian)..."
+                placeholder="Masukkan ringkasan abstrak penelitian tugas akhir (latar belakang, rumusan masalah, metodologi seperti RAD/Waterfall/Agile, framework, dan metode pengujian)..."
                 className="w-full text-xs p-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 leading-relaxed overflow-y-auto overscroll-contain no-scrollbar h-36 max-h-56 resize-none"
               />
               <p className="text-[10px] text-slate-400 mt-1">
-                Wajib diisi secara lengkap sebagai ringkasan substansi topik tugas akhir.
+                Engine akan mengekstrak konsep metode, framework, dan domain bisnis secara bilingual mencocokkan abstrak bahasa Indonesia maupun Inggris di Repositori UNSRI.
               </p>
             </div>
 
@@ -257,7 +245,7 @@ export default function AjukanJudulPage() {
                 }`}
               >
                 <Save className="w-4 h-4" />
-                <span>Simpan</span>
+                <span>Simpan Pengajuan</span>
               </button>
             </div>
 
@@ -270,6 +258,9 @@ export default function AjukanJudulPage() {
           <div className="space-y-3">
             <SimilarityGauge 
               score={similarityResult.highestScore} 
+              titleScore={similarityResult.highestTitleScore}
+              abstractScore={similarityResult.highestAbstractScore}
+              hasAbstract={similarityResult.hasAbstract}
               isChecking={isChecking} 
               hasChecked={hasChecked}
             />
@@ -284,21 +275,38 @@ export default function AjukanJudulPage() {
               {isChecking ? (
                 <>
                   <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>Sedang Memeriksa Kemiripan...</span>
+                  <span>Sedang Memeriksa Kemiripan Multi-Field...</span>
                 </>
               ) : (
                 <>
                   <Search className="w-4 h-4" />
-                  <span>{hasChecked ? 'Cek Ulang Similarity' : 'Cek Similarity'}</span>
+                  <span>{hasChecked ? 'Cek Ulang Similarity' : 'Cek Similarity (Judul & Abstrak)'}</span>
                 </>
               )}
             </button>
           </div>
 
+          {/* Detected Concepts & Keyphrases */}
+          {hasChecked && similarityResult.extractedConcepts && similarityResult.extractedConcepts.length > 0 && (
+            <div className="bg-indigo-50/60 border border-indigo-100 rounded-xl p-3.5 text-xs space-y-1.5">
+              <span className="font-bold text-indigo-900 flex items-center gap-1.5">
+                <Tag className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Konsep & Metodologi Terdeteksi:</span>
+              </span>
+              <div className="flex flex-wrap gap-1.5 pt-0.5">
+                {similarityResult.extractedConcepts.map((c, idx) => (
+                  <span key={idx} className="bg-white border border-indigo-200 text-indigo-700 px-2 py-0.5 rounded text-[11px] font-medium shadow-2xs">
+                    {c.label}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Text Pre-processing Token Breakdown */}
           {hasChecked && similarityResult.processedInput && (
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-xs">
-              <span className="font-bold text-slate-700 block mb-1">Hasil Pre-processing (Token Inti):</span>
+              <span className="font-bold text-slate-700 block mb-1">Hasil Pre-processing Judul (Token Inti):</span>
               <div className="flex flex-wrap gap-1.5 mt-1">
                 {similarityResult.processedInput.split(' ').map((token, idx) => (
                   <span key={idx} className="bg-white border border-slate-300 px-2 py-0.5 rounded text-[11px] font-mono text-slate-700">
@@ -309,38 +317,130 @@ export default function AjukanJudulPage() {
             </div>
           )}
 
-          {/* Matched Titles List */}
+          {/* Matched Titles List with UNSRI Repository Links */}
           <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs space-y-3">
-            <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-              Daftar Judul Pembanding Mirip {hasChecked ? `(${similarityResult.matches.length})` : ''}
-            </h4>
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                <BookOpen className="w-4 h-4 text-indigo-600" />
+                <span>Daftar Arsip Pembanding Mirip {hasChecked ? `(${similarityResult.matches.length})` : ''}</span>
+              </h4>
+            </div>
 
             {!hasChecked ? (
               <div className="text-center py-6 text-xs text-slate-400">
-                Klik tombol <strong>"Cek Similarity"</strong> untuk melihat perbandingan kemiripan dengan arsip judul.
+                Klik tombol <strong>"Cek Similarity (Judul & Abstrak)"</strong> untuk melihat pembandingan terhadap {thesisArchives?.length || 400}+ arsip tugas akhir Repositori UNSRI.
               </div>
             ) : similarityResult.matches.length === 0 ? (
-              <div className="text-center py-6 text-xs text-slate-400">
-                Tidak ada judul historis yang mirip.
+              <div className="text-center py-6 text-xs text-emerald-600 bg-emerald-50/60 border border-emerald-100 rounded-lg p-3">
+                <ShieldCheck className="w-5 h-5 mx-auto mb-1 text-emerald-500" />
+                <p className="font-semibold">Tidak ditemukan tugas akhir dengan kemiripan signifikan di Repositori UNSRI.</p>
+                <p className="text-[11px] text-slate-500 mt-0.5">Topik dan metodologi Anda memiliki kebaruan (novelty) yang baik.</p>
               </div>
             ) : (
-              <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1">
-                {similarityResult.matches.map((m, idx) => (
-                  <div key={idx} className="p-2.5 rounded-lg border border-slate-100 bg-slate-50/50 space-y-1">
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="font-semibold text-slate-700 truncate max-w-[200px]">{m.penulis} ({m.tahun})</span>
-                      <span className="font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">
-                        {m.skor_gabungan}%
-                      </span>
+              <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+                {similarityResult.matches.map((m, idx) => {
+                  const isExpanded = expandedArchiveId === m.id;
+                  const scoreColor = m.skor_gabungan <= 30
+                    ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                    : m.skor_gabungan <= 50
+                    ? 'text-amber-700 bg-amber-50 border-amber-200'
+                    : 'text-red-700 bg-red-50 border-red-200';
+
+                  return (
+                    <div key={idx} className="p-3 rounded-xl border border-slate-200/90 bg-slate-50/70 hover:bg-slate-50 transition-all space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="text-[11px] font-semibold text-slate-800">
+                            {m.penulis} ({m.tahun})
+                          </div>
+                          <div className="text-[10px] text-slate-400 font-medium">
+                            {m.prodi || 'D3 Manajemen Informatika'}
+                          </div>
+                        </div>
+
+                        {/* Combined Score Badge */}
+                        <div className={`px-2 py-0.5 rounded-lg border text-xs font-bold text-center shrink-0 ${scoreColor}`}>
+                          <div>{m.skor_gabungan}%</div>
+                          <div className="text-[9px] font-medium opacity-80">Kemiripan</div>
+                        </div>
+                      </div>
+
+                      {/* Thesis Title */}
+                      <p className="text-xs font-semibold text-slate-800 leading-snug">
+                        {m.judul}
+                      </p>
+
+                      {/* Sub-Scores Breakdown */}
+                      <div className="text-[10px] text-slate-500 flex flex-wrap items-center gap-2 pt-0.5">
+                        <span className="bg-white border border-slate-200 px-1.5 py-0.5 rounded">
+                          Skor Judul: <strong>{m.skor_judul}%</strong>
+                        </span>
+                        <span className="bg-white border border-slate-200 px-1.5 py-0.5 rounded">
+                          Skor Abstrak: <strong>{m.skor_abstrak}%</strong>
+                        </span>
+                      </div>
+
+                      {/* Matched Keywords Tags */}
+                      {m.matched_keywords && m.matched_keywords.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-1 pt-1">
+                          <span className="text-[10px] font-bold text-slate-500 mr-0.5">Kecocokan:</span>
+                          {m.matched_keywords.slice(0, 3).map((kw, kidx) => (
+                            <span key={kidx} className="text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-200 px-1.5 py-0.2 rounded font-medium">
+                              {kw}
+                            </span>
+                          ))}
+                          {m.matched_keywords.length > 3 && (
+                            <span className="text-[10px] text-slate-400 font-medium">
+                              +{m.matched_keywords.length - 3} lagi
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Abstract Snippet / Expandable */}
+                      {m.abstrak_preview && (
+                        <div className="pt-1">
+                          <div className="text-[11px] text-slate-600 bg-white p-2 rounded-lg border border-slate-200/80 leading-relaxed">
+                            <span className="font-semibold text-slate-700 block text-[10px] uppercase mb-0.5 text-slate-400">
+                              Kutipan Abstrak Arsip:
+                            </span>
+                            {isExpanded ? m.abstrak : m.abstrak_preview}
+                          </div>
+                          {m.abstrak && m.abstrak.length > 170 && (
+                            <button
+                              type="button"
+                              onClick={() => setExpandedArchiveId(isExpanded ? null : m.id)}
+                              className="text-[10px] font-semibold text-indigo-600 hover:text-indigo-800 mt-1 inline-flex items-center gap-0.5"
+                            >
+                              {isExpanded ? (
+                                <><span>Tutup Abstrak</span><ChevronUp className="w-3 h-3" /></>
+                              ) : (
+                                <><span>Lihat Abstrak Lengkap</span><ChevronDown className="w-3 h-3" /></>
+                              )}
+                            </button>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Action: Open in UNSRI Repository */}
+                      {m.link_repo_unsri && (
+                        <div className="pt-1.5 flex justify-end">
+                          <a
+                            href={m.link_repo_unsri}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 text-[11px] font-bold text-indigo-600 hover:text-white bg-indigo-50 hover:bg-indigo-600 border border-indigo-200 px-2.5 py-1 rounded-lg transition-colors cursor-pointer shadow-2xs"
+                          >
+                            <BookOpen className="w-3.5 h-3.5" />
+                            <span>Buka di Repository UNSRI</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        </div>
+                      )}
+
                     </div>
-                    <p className="text-xs font-medium text-slate-800 leading-snug">{m.judul}</p>
-                    <div className="text-[10px] text-slate-400 flex items-center space-x-2 pt-0.5">
-                      <span>FTS: {m.skor_fts}%</span>
-                      <span>•</span>
-                      <span>Trigram: {m.skor_trigram}%</span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -355,15 +455,15 @@ export default function AjukanJudulPage() {
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
             <div className="flex items-center space-x-3 text-amber-600">
               <AlertTriangle className="w-7 h-7 shrink-0" />
-              <h3 className="text-base font-bold text-slate-900">Peringatan Kemiripan Judul (41% - 70%)</h3>
+              <h3 className="text-base font-bold text-slate-900">Peringatan Kemiripan Topik (31% - 50%)</h3>
             </div>
             
             <p className="text-xs text-slate-600 leading-relaxed">
-              Judul Anda memiliki tingkat kemiripan <strong>{similarityResult.highestScore}%</strong> terhadap arsip judul sebelumnya. Anda tetap diizinkan mengajukan judul ini, namun pastikan Anda dapat menjelaskan kebaruan (novelty) topik Anda saat ditinjau oleh Kaprodi.
+              Pengajuan Anda memiliki tingkat kemiripan <strong>{similarityResult.highestScore}%</strong> terhadap arsip tugas akhir di Repositori UNSRI. Anda tetap diizinkan mengajukan judul ini, namun pastikan Anda dapat menjelaskan kebaruan (novelty) topik dan perbedaan studi kasus saat ditinjau oleh Kaprodi.
             </p>
 
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
-              Apakah Anda yakin ingin tetap mengajukan judul ini?
+              Apakah Anda yakin ingin tetap mengajukan usulan ini?
             </div>
 
             <div className="flex justify-end space-x-3 pt-2">
@@ -371,7 +471,7 @@ export default function AjukanJudulPage() {
                 onClick={() => setShowWarningModal(false)}
                 className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg"
               >
-                Revisi Judul Dulu
+                Revisi Topik Dulu
               </button>
               <button
                 onClick={(e) => {
@@ -390,3 +490,4 @@ export default function AjukanJudulPage() {
     </div>
   );
 }
+
