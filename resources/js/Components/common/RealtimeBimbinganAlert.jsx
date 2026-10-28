@@ -74,7 +74,10 @@ export default function RealtimeBimbinganAlert() {
   const handleOpenAction = () => {
     dismissRealtimeAlert();
     if (isDosenView) {
-      router.visit(action_url || '/dosen/bimbingan');
+      const targetUrl = (action_url && !action_url.endsWith('/dosen/bimbingan')) 
+        ? action_url 
+        : (mhs_nim ? `/dosen/validasi?nim=${mhs_nim}` : '/dosen/monitoring');
+      router.visit(targetUrl);
     } else {
       router.visit('/thesis/consultations');
     }
@@ -83,7 +86,7 @@ export default function RealtimeBimbinganAlert() {
   const handleOpenSecondary = () => {
     dismissRealtimeAlert();
     if (isDosenView) {
-      router.visit('/dosen/mahasiswa');
+      router.visit('/dosen/monitoring');
     } else {
       router.visit('/thesis/consultations/card');
     }

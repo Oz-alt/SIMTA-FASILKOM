@@ -11,6 +11,58 @@ export const MIN_SESSIONS_PER_ADVISOR = 12;
 export const MIN_TOTAL_SESSIONS_DEFENSE = 24;
 
 /**
+ * Comparator kronologis untuk sesi bimbingan: terlama di atas.
+ * Dipakai bersama oleh halaman dosen dan kartu bimbingan mahasiswa supaya
+ * nomor "Pertemuan" konsisten dengan urutan tanggal.
+ *
+ * Urutan prioritas: tanggal (YYYY-MM-DD) -> waktu (HH:MM) -> created_at -> id.
+ *
+ * @param {Object} a sesi bimbingan
+ * @param {Object} b sesi bimbingan
+ * @returns {number}
+ */
+export function compareConsultationChronologically(a, b) {
+  const dateA = String(a?.tanggal || '');
+  const dateB = String(b?.tanggal || '');
+  if (dateA !== dateB) {
+    return dateA.localeCompare(dateB);
+  }
+
+  const waktuA = String(a?.waktu || '');
+  const waktuB = String(b?.waktu || '');
+  if (waktuA !== waktuB) {
+    return waktuA.localeCompare(waktuB);
+  }
+
+  const createdA = a?.created_at ? new Date(a.created_at).getTime() : 0;
+  const createdB = b?.created_at ? new Date(b.created_at).getTime() : 0;
+  if (createdA !== 0 && createdB !== 0 && createdA !== createdB) {
+    return createdA - createdB;
+  }
+
+  const numericId = (value) => {
+    const match = String(value ?? '').match(/\d+/);
+    return match ? Number(match[0]) : 0;
+  };
+  const numA = numericId(a?.id);
+  const numB = numericId(b?.id);
+  if (numA !== 0 && numB !== 0 && numA !== numB) {
+    return numA - numB;
+  }
+
+  return String(a?.id ?? '').localeCompare(String(b?.id ?? ''));
+}
+
+/**
+ * Urutkan sesi bimbingan secara kronologis (terlama ke terbaru).
+ * @param {Array} consultations
+ * @returns {Array}
+ */
+export function sortConsultationsChronologically(consultations = []) {
+  return [...(consultations || [])].sort(compareConsultationChronologically);
+}
+
+/**
  * Memeriksa apakah suatu sesi bimbingan telah dievaluasi oleh dosen
  * (berubah dari 'Menunggu' menjadi 'Revisi Mayor', 'Revisi Minor', atau 'Diterima')
  * @param {Object} consultation 

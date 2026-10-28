@@ -4,7 +4,7 @@ import { Link } from '@inertiajs/react';
 import StatusBadge from '../../Components/common/StatusBadge.jsx';
 import SimilarityGauge from '../../Components/common/SimilarityGauge.jsx';
 import { checkClientMultiFieldSimilarity, checkClientSimilarity } from '../../lib/similarityEngine.js';
-import { preProcessTitle } from '@backend/services/titleService.js';
+import { preProcessTitle } from '../../services/titleService.js';
 import { 
   Clock, 
   CheckCircle2, 

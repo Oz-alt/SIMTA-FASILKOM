@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { getSimilarityThreshold } from '@backend/services/titleService.js';
+import { getSimilarityThreshold } from '../../services/titleService.js';
 import { ShieldCheck, AlertTriangle, XCircle, Info, HelpCircle, BookOpen, Layers } from 'lucide-react';
 import gsap from 'gsap';
 

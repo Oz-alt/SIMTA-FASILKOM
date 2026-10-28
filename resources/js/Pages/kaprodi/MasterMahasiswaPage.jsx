@@ -37,13 +37,15 @@ export default function MasterMahasiswaPage() {
     deleteStudentUser,
     advisors = [],
     studentAdvisors = [],
-    assignStudentAdvisors
+    assignStudentAdvisors,
+    accountsVersion
   } = useAuth();
 
   // Search & Filter States
   const [searchQuery, setSearchQuery] = useState('');
   const [classFilter, setClassFilter] = useState('ALL');
   const [semesterFilter, setSemesterFilter] = useState('Semua Semester');
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Modal States
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -97,7 +99,7 @@ export default function MasterMahasiswaPage() {
   // Registered Students List
   const registeredStudents = useMemo(() => {
     return getAllRegisteredStudents();
-  }, [getAllRegisteredStudents]);
+  }, [getAllRegisteredStudents, accountsVersion, refreshTrigger]);
 
   // Map of advisors by NIP
   const advisorByNip = useMemo(() => {
@@ -366,6 +368,7 @@ export default function MasterMahasiswaPage() {
         added++;
       }
     }
+    setRefreshTrigger(v => v + 1);
     showToast(`Berhasil menambahkan ${added} mahasiswa baru dari file Excel.`);
     setIsImportOpen(false);
     setImportPreview([]);
@@ -390,6 +393,7 @@ export default function MasterMahasiswaPage() {
       if (assignStudentAdvisors) {
         await assignStudentAdvisors(studentForm.nim, studentForm.dospem1_nip, studentForm.dospem2_nip, studentForm.nama);
       }
+      setRefreshTrigger(v => v + 1);
       showToast(`Berhasil memperbarui data mahasiswa ${studentForm.nama}`);
       setEditingStudent(null);
     } else {
@@ -397,6 +401,7 @@ export default function MasterMahasiswaPage() {
       if (assignStudentAdvisors && (studentForm.dospem1_nip || studentForm.dospem2_nip)) {
         await assignStudentAdvisors(studentForm.nim, studentForm.dospem1_nip, studentForm.dospem2_nip, studentForm.nama);
       }
+      setRefreshTrigger(v => v + 1);
       showToast(`Berhasil menambahkan mahasiswa baru ${studentForm.nama}`);
       setIsAddOpen(false);
     }
@@ -418,7 +423,8 @@ export default function MasterMahasiswaPage() {
   // Handle Delete Student
   const handleDeleteStudent = async () => {
     if (!deletingStudent) return;
-    await deleteStudentUser(deletingStudent.id || deletingStudent.nim);
+    await deleteStudentUser(deletingStudent);
+    setRefreshTrigger(v => v + 1);
     showToast(`Mahasiswa ${deletingStudent.nama} telah dihapus.`);
     setDeletingStudent(null);
   };

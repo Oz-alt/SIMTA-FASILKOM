@@ -86,10 +86,43 @@ export default function DashboardMahasiswa() {
   const directWaLink1 = getDirectWaLink(dospem1NoWa, dospem1Nama);
   const directWaLink2 = getDirectWaLink(dospem2NoWa, dospem2Nama);
 
-  // Resolusi Tautan Grup WhatsApp Bimbingan
+  // Resolusi Tautan Grup WhatsApp Bimbingan Dosen Pembimbing
   const getAdvisorWaGroupLink = (dospemObj, dospemNamaFallback, label) => {
     if (dospemObj?.link_wa_group) return dospemObj.link_wa_group;
     if (dospemObj?.wa_group_url) return dospemObj.wa_group_url;
+
+    const advisorNip = dospemObj?.nip;
+
+    // 1. Cari tautan dari daftar advisors di state
+    if (advisors && advisors.length > 0) {
+      const match = advisors.find(a => 
+        (advisorNip && String(a.nip).trim() === String(advisorNip).trim()) || 
+        (dospemNamaFallback && a.nama === dospemNamaFallback) ||
+        (dospemNamaFallback && a.nama?.toLowerCase() === dospemNamaFallback.toLowerCase())
+      );
+      if (match?.link_wa_group) return match.link_wa_group;
+      if (match?.wa_group_url) return match.wa_group_url;
+    }
+
+    // 2. Cari dari data akun dosen terdaftar di simta_registered_users (akun Dosen Pembimbing)
+    try {
+      const regUsers = JSON.parse(localStorage.getItem('simta_registered_users') || '[]');
+      const regMatch = regUsers.find(u => 
+        u.role === 'dosen' && (
+          (advisorNip && (String(u.nip).trim() === String(advisorNip).trim() || String(u.nim).trim() === String(advisorNip).trim())) ||
+          (dospemNamaFallback && u.nama?.toLowerCase() === dospemNamaFallback.toLowerCase())
+        )
+      );
+      if (regMatch?.link_wa_group) return regMatch.link_wa_group;
+    } catch {}
+
+    // 3. Fallback ke MOCK_ADVISORS
+    const matchMock = MOCK_ADVISORS.find(m => 
+      (advisorNip && String(m.nip).trim() === String(advisorNip).trim()) || 
+      (dospemNamaFallback && m.nama === dospemNamaFallback) ||
+      (dospemNamaFallback && (m.nama?.toLowerCase().includes(dospemNamaFallback.toLowerCase()) || dospemNamaFallback.toLowerCase().includes(m.nama?.toLowerCase())))
+    );
+    if (matchMock?.link_wa_group) return matchMock.link_wa_group;
 
     const rawName = dospemObj?.nama || dospemNamaFallback || '';
     const cleanName = rawName

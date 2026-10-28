@@ -179,14 +179,29 @@ export default function Navbar() {
       markNotificationAsRead(n.id);
     }
 
-    // Arahkan dosen langsung ke halaman detail pengajuan bimbingan mahasiswa yang bersangkutan
+    // Arahkan dosen langsung ke validasi bimbingan mahasiswa yang bersangkutan atau ke progres monitoring
     if (userRole === 'dosen') {
-      const isBimbingan = n.related_type === 'consultation' || n.related_type === 'bimbingan_status' || n.related_type === 'bimbingan_reminder' || !n.related_type;
+      const isBimbingan = n.related_type === 'bimbingan_masuk' || 
+                          n.related_type === 'consultation' || 
+                          n.related_type === 'bimbingan_status' || 
+                          n.related_type === 'bimbingan_reminder' || 
+                          (n.action_url && (n.action_url.includes('/dosen/bimbingan') || n.action_url.includes('/dosen/validasi')));
+
       if (isBimbingan) {
-        const studentNim = n.mhs_nim || n.recipient_nim || n.student_nim || '09010282428029';
-        router.visit(`/dosen/validasi?nim=${studentNim}`);
+        // Ambil NIM mahasiswa secara akurat dari properti notifikasi atau parse dari teks pesan
+        const studentNim = n.mhs_nim || 
+                           n.student_nim || 
+                           (n.recipient_role !== 'dosen' ? n.recipient_nim : null) || 
+                           (n.message ? n.message.match(/\((\d{8,})\)/)?.[1] : null);
+
+        if (studentNim) {
+          router.visit(`/dosen/validasi?nim=${studentNim}`);
+          return;
+        }
+        router.visit('/dosen/monitoring');
         return;
       }
+
       if (n.related_type === 'defense_schedule' || n.related_type === 'defense') {
         router.visit('/dosen/jadwal-sidang');
         return;
@@ -398,10 +413,20 @@ export default function Navbar() {
                                   <BookOpen className="w-3 h-3 text-indigo-600" />
                                   <span>Validasi Sesi Bimbingan</span>
                                 </span>
-                                <span className="text-[10px] font-semibold text-indigo-600 group-hover:underline flex items-center space-x-0.5">
-                                  <span>Buka halaman bimbingan</span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setShowNotif(false);
+                                    if (n.id && markNotificationAsRead) markNotificationAsRead(n.id);
+                                    router.visit('/dosen/monitoring');
+                                  }}
+                                  className="text-[10px] font-semibold text-indigo-600 hover:text-indigo-800 hover:underline flex items-center space-x-0.5 cursor-pointer"
+                                  title="Buka Progres Monitoring Mahasiswa Bimbingan"
+                                >
+                                  <span>Progres Monitoring</span>
                                   <ExternalLink className="w-3 h-3 ml-0.5" />
-                                </span>
+                                </button>
                               </div>
                             )}
 

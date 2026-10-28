@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { router } from '@inertiajs/react';
-import { getRecommendedRooms, checkBookingCollision, STAGE_LABELS } from '@backend/services/bookingService.js';
+import { getRecommendedRooms, checkBookingCollision, STAGE_LABELS } from '../../services/bookingService.js';
 import { Building2, CalendarDays, Clock, CheckCircle2, AlertTriangle, Send, Sparkles } from 'lucide-react';
 
 export default function AjukanRuangPage() {

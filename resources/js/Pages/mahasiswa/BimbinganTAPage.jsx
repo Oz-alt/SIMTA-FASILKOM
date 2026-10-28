@@ -100,9 +100,11 @@ export default function BimbinganTAPage() {
   // Cek apakah mahasiswa memiliki sesi bimbingan yang masih berstatus menunggu tanggapan
   const pendingConsultation = useMemo(() => {
     if (!isStudentRole) return null;
-    return studentConsultations.find(c => 
-      c.status === 'menunggu_tanggapan' || c.status === 'menunggu' || c.status === 'menunggu_validasi'
-    );
+    return studentConsultations.find(c => {
+      const isPendingStatus = c.status === 'menunggu_tanggapan' || c.status === 'menunggu' || c.status === 'menunggu_validasi';
+      const hasFeedback = Boolean(c.masukan_dosen && c.masukan_dosen.trim() && !c.masukan_dosen.includes('[Menunggu]'));
+      return isPendingStatus && !hasFeedback;
+    });
   }, [studentConsultations, isStudentRole]);
 
   const hasPendingConsultation = Boolean(pendingConsultation);

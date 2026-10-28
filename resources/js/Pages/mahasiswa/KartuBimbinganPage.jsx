@@ -166,7 +166,7 @@ export default function KartuBimbinganPage() {
     }
 
     if (jenis === 'Menunggu') return false;
-    if (data.status === 'menunggu_tanggapan' || data.status === 'menunggu') return false;
+    if ((data.status === 'menunggu_tanggapan' || data.status === 'menunggu') && (!data.masukan_dosen || data.masukan_dosen.includes('[Menunggu]'))) return false;
 
     // Jika telah disetujui, perlu_revisi, atau memiliki kategori respon aktif (Diterima, Minor, Mayor)
     if (data.status === 'disetujui' || data.status === 'perlu_revisi' || jenis === 'Diterima' || jenis === 'Minor' || jenis === 'Mayor') {

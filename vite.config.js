@@ -40,7 +40,7 @@ export default defineConfig({
     },
     resolve: {
         alias: {
-            '@backend': path.resolve(import.meta.dirname, '_old_backend')
+            '@': path.resolve(import.meta.dirname, 'resources/js')
         }
     }
 });

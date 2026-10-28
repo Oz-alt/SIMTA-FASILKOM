@@ -64,10 +64,10 @@ export default function ProfilePage() {
     }
   }, [isFirstLogin]);
 
-  // State untuk Pengelolaan Tautan WhatsApp Group Bimbingan (Dosen / Kaprodi)
-  const isDosenOrKaprodi = currentUser?.role === 'dosen' || currentUser?.role === 'kaprodi';
-  const [waLinkInput, setWaLinkInput] = useState(currentUser?.link_wa_group || '');
-  const [savedWaLink, setSavedWaLink] = useState(currentUser?.link_wa_group || '');
+  // State untuk Pengelolaan Tautan WhatsApp Group Bimbingan (Khusus Dosen Pembimbing)
+  const isDosen = currentUser?.role === 'dosen';
+  const [waLinkInput, setWaLinkInput] = useState(isDosen ? (currentUser?.link_wa_group || '') : '');
+  const [savedWaLink, setSavedWaLink] = useState(isDosen ? (currentUser?.link_wa_group || '') : '');
   const [isEditingWa, setIsEditingWa] = useState(false);
   const [isSavingWa, setIsSavingWa] = useState(false);
   const [waError, setWaError] = useState('');
@@ -76,9 +76,14 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (currentUser) {
-      const link = currentUser.link_wa_group || '';
-      setWaLinkInput(link);
-      setSavedWaLink(link);
+      if (currentUser.role === 'dosen') {
+        const link = currentUser.link_wa_group || '';
+        setWaLinkInput(link);
+        setSavedWaLink(link);
+      } else {
+        setWaLinkInput('');
+        setSavedWaLink('');
+      }
       setFormData({
         nama: currentUser.nama || '',
         no_hp: currentUser.no_hp && currentUser.no_hp !== '-' ? currentUser.no_hp : '',
@@ -86,7 +91,7 @@ export default function ProfilePage() {
         kelas: currentUser.kelas || 'MI 5A'
       });
     }
-  }, [currentUser?.id, currentUser?.link_wa_group, currentUser?.nip, currentUser?.nim]);
+  }, [currentUser?.id, currentUser?.link_wa_group, currentUser?.nip, currentUser?.nim, currentUser?.role, currentUser?.no_hp]);
 
   const roleLabels = {
     mahasiswa: { label: 'Mahasiswa', badge: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
@@ -189,12 +194,14 @@ export default function ProfilePage() {
       await updateUserProfile(payload);
       setIsSaving(false);
       setIsEditing(false);
-      setIsCompletedSuccess(true);
+      if (isMahasiswa) {
+        setIsCompletedSuccess(true);
+      }
       setNewPassword('');
       setConfirmPassword('');
-      setSuccessMsg('Profil dan data akun berhasil disimpan! Akun Anda kini aktif sepenuhnya.');
+      setSuccessMsg(isMahasiswa ? 'Profil dan data akun berhasil disimpan! Akun Anda kini aktif sepenuhnya.' : 'Profil berhasil diperbarui!');
 
-      if (isFirstLogin) {
+      if (isFirstLogin && isMahasiswa) {
         setTimeout(() => {
           router.visit('/dashboard');
         }, 2200);
@@ -364,7 +371,7 @@ export default function ProfilePage() {
     <div className="max-w-4xl mx-auto space-y-6">
 
       {/* First-Time Setup Required Banner for Mahasiswa */}
-      {(isPendingProfile || (isFirstLogin && !isCompletedSuccess)) && (
+      {isMahasiswa && (isPendingProfile || (isFirstLogin && !isCompletedSuccess)) && (
         <div className="p-5 rounded-2xl bg-amber-50 border-2 border-amber-300 text-amber-950 shadow-sm animate-in fade-in space-y-3">
           <div className="flex items-start space-x-3.5">
             <div className="p-2.5 rounded-xl bg-amber-500 text-white shrink-0 mt-0.5 shadow-xs">
@@ -388,7 +395,7 @@ export default function ProfilePage() {
       )}
 
       {/* Completion Success Celebration Banner */}
-      {isCompletedSuccess && (
+      {isMahasiswa && isCompletedSuccess && (
         <div className="p-5 rounded-2xl bg-emerald-50 border-2 border-emerald-300 text-emerald-950 shadow-sm animate-in fade-in flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-start space-x-3.5">
             <div className="p-2.5 rounded-xl bg-emerald-600 text-white shrink-0 mt-0.5 shadow-xs">
@@ -399,7 +406,10 @@ export default function ProfilePage() {
                 Selamat! Profil & Kata Sandi Berhasil Dikonfigurasi
               </span>
               <p className="text-xs text-emerald-800">
-                Akun mahasiswa Anda kini telah aktif sepenuhnya. Seluruh modul dan menu SIMTA siap digunakan.
+                {isMahasiswa
+                  ? 'Akun mahasiswa Anda kini telah aktif sepenuhnya. Seluruh modul dan menu SIMTA siap digunakan.'
+                  : 'Profil Anda telah berhasil disimpan. Seluruh modul dan menu SIMTA siap digunakan.'
+                }
               </p>
             </div>
           </div>
@@ -809,8 +819,8 @@ export default function ProfilePage() {
 
       </div>
 
-      {/* ── WhatsApp Group Link Management (Khusus Dosen Pembimbing & Kaprodi) ── */}
-      {isDosenOrKaprodi && (
+      {/* ── WhatsApp Group Link Management (Khusus Dosen Pembimbing) ── */}
+      {isDosen && (
         <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 shadow-xs space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
             <div className="space-y-1">

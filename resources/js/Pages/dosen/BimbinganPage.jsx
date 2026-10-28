@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
-import { usePage } from '@inertiajs/react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { usePage, router } from '@inertiajs/react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import StudentWhatsAppLink from '../../Components/common/StudentWhatsAppLink.jsx';
+import { sortConsultationsChronologically } from '../../lib/consultationUtils.js';
 
 export default function BimbinganPage() {
   const { currentUser, studentAdvisors, consultations, thesisTitles, reviewConsultation } = useAuth();
@@ -73,13 +74,18 @@ export default function BimbinganPage() {
     return params.get('nim');
   }, [url]);
 
+  // Jika dibuka langsung tanpa parameter NIM, arahkan ke Progres Monitoring
+  useEffect(() => {
+    if (!nimFromUrl) {
+      router.visit('/dosen/monitoring');
+    }
+  }, [nimFromUrl]);
+
   // Mahasiswa yang sedang dilihat log bimbingannya (HANYA mahasiswa yang diklik)
   const selectedNim = useMemo(() => {
     if (nimFromUrl) return nimFromUrl;
-    // Fallback jika dibuka langsung tanpa parameter ?nim=
-    const studentWithLogs = myStudents.find(s => consultations.some(c => String(c.mhs_nim) === String(s.student_nim)));
-    return studentWithLogs?.student_nim || myStudents[0]?.student_nim || '';
-  }, [nimFromUrl, myStudents, consultations]);
+    return '';
+  }, [nimFromUrl]);
 
   // Cari data lengkap mahasiswa yang sedang aktif dipilih
   const currentStudent = useMemo(() => {
@@ -103,9 +109,13 @@ export default function BimbinganPage() {
   }, [selectedNim, studentAdvisors, consultations, thesisTitles, myStudents]);
 
   // HANYA bimbingan mahasiswa yang diklik itu saja!
+  // Diurutkan kronologis (terlama di atas) supaya nomor "Pertemuan" mengikuti
+  // tanggal, bukan urutan baris yang dikembalikan database. Tanpa ini sesi
+  // terbaru tampil sebagai Pertemuan 1.
   const studentConsultations = useMemo(() => {
     if (!selectedNim) return [];
-    return consultations.filter(c => String(c.mhs_nim).trim() === String(selectedNim).trim());
+    const mine = consultations.filter(c => String(c.mhs_nim).trim() === String(selectedNim).trim());
+    return sortConsultationsChronologically(mine);
   }, [consultations, selectedNim]);
 
   // Syarat bimbingan: tervalidasi 12x untuk kelayakan diterima

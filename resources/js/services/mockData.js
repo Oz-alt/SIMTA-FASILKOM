@@ -3158,8 +3158,8 @@ export const MOCK_USERS = [
     "prodi": "D3 Manajemen Informatika",
     "department_id": "dept-mi-1",
     "pendidikan": "S3 (Doktor)",
-    "link_wa_group": "https://chat.whatsapp.com/BimbinganTA-DrAbdiansah",
-    "no_hp": "081373556677"
+    "link_wa_group": "https://chat.whatsapp.com/E8JElpcoGjPOAwz4cRg6nl",
+    "no_hp": "0895-3787-34847"
   },
   {
     "id": "user-dosen-anna",
@@ -14726,8 +14726,8 @@ export const MOCK_ADVISORS = [
     nip: '198410012009121005',
     nama: 'Dr. Abdiansah, S.Kom., M.Cs.',
     email: 'abdiansah@unsri.ac.id',
-    no_hp: '081373556677',
-    link_wa_group: 'https://chat.whatsapp.com/BimbinganTA-DrAbdiansah',
+    no_hp: '0895-3787-34847',
+    link_wa_group: 'https://chat.whatsapp.com/E8JElpcoGjPOAwz4cRg6nl',
     prodi: 'D3 Manajemen Informatika',
     jabatan_fungsional: 'Lektor Kepala / Kaprodi',
     keahlian: ['Kecerdasan Buatan', 'Pemrosesan Bahasa Alami'],

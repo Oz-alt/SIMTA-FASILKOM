@@ -34,13 +34,15 @@ export default function AkunMahasiswaAdminPage() {
     addMahasiswaAccount, 
     updateMahasiswaAccount, 
     deleteMahasiswaAccount, 
-    resetMahasiswaPassword 
+    resetMahasiswaPassword,
+    accountsVersion
   } = useAuth();
 
   // Search & Filter States
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [classFilter, setClassFilter] = useState('ALL');
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Modal States
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -88,7 +90,7 @@ export default function AkunMahasiswaAdminPage() {
   // Live Mahasiswa Accounts Dataset
   const mahasiswaList = useMemo(() => {
     return getAllMahasiswaAccounts();
-  }, [getAllMahasiswaAccounts]);
+  }, [getAllMahasiswaAccounts, accountsVersion, refreshTrigger]);
 
   // Unique Classes list for filter
   const availableClasses = useMemo(() => {
@@ -192,6 +194,7 @@ export default function AkunMahasiswaAdminPage() {
         ...studentForm,
         email: emailToUse
       });
+      setRefreshTrigger(v => v + 1);
       showToast(`Berhasil memperbarui data akun mahasiswa: ${studentForm.nama}`);
       setEditingStudent(null);
     } else {
@@ -200,6 +203,7 @@ export default function AkunMahasiswaAdminPage() {
         email: emailToUse,
         password: studentForm.password || studentForm.nim
       });
+      setRefreshTrigger(v => v + 1);
       showToast(`Berhasil mendaftarkan akun mahasiswa baru: ${studentForm.nama}`);
       setIsAddOpen(false);
     }
@@ -212,6 +216,7 @@ export default function AkunMahasiswaAdminPage() {
 
     const newPass = newPasswordInput.trim() || resettingStudent.nim;
     await resetMahasiswaPassword(resettingStudent.id || resettingStudent.nim, newPass);
+    setRefreshTrigger(v => v + 1);
     showToast(`Kata sandi untuk ${resettingStudent.nama} berhasil diatur ulang menjadi: "${newPass}"`);
     setResettingStudent(null);
   };
@@ -219,7 +224,8 @@ export default function AkunMahasiswaAdminPage() {
   // Handle Confirm Delete Student
   const handleConfirmDelete = async () => {
     if (!deletingStudent) return;
-    await deleteMahasiswaAccount(deletingStudent.id || deletingStudent.nim);
+    await deleteMahasiswaAccount(deletingStudent);
+    setRefreshTrigger(v => v + 1);
     showToast(`Akun mahasiswa ${deletingStudent.nama} berhasil dihapus`);
     setDeletingStudent(null);
   };

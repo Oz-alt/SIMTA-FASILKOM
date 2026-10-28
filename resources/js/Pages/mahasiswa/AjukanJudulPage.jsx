@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { router } from '@inertiajs/react';
 import SimilarityGauge from '../../Components/common/SimilarityGauge.jsx';
 import { checkClientMultiFieldSimilarity, checkClientSimilarity } from '../../lib/similarityEngine.js';
-import { preProcessTitle, getSimilarityThreshold } from '@backend/services/titleService.js';
+import { preProcessTitle, getSimilarityThreshold } from '../../services/titleService.js';
 import {
   FileText,
   Save,

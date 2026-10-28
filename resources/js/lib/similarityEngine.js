@@ -11,7 +11,7 @@ import {
   preProcessAbstract,
   extractKeyConcepts,
   getSimilarityThreshold
-} from '@backend/services/titleService.js';
+} from '../services/titleService.js';
 
 /**
  * Generates character trigrams set from a string.
