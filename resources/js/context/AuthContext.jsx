@@ -339,6 +339,26 @@ export function AuthProvider({ children }) {
     };
   };
 
+  // Normalize NIM: strip non-digits and leading zeros for consistent keying
+  const normalizeNim = (nim) => String(nim || '').replace(/\D/g, '').replace(/^0+/, '') || String(nim || '');
+
+  // Student credential helpers (stored in localStorage for offline support)
+  const STUDENT_CRED_KEY = 'simta_student_credentials';
+  const getStudentCredential = async (nim) => {
+    try {
+      const all = JSON.parse(localStorage.getItem(STUDENT_CRED_KEY) || '{}');
+      return all[normalizeNim(nim)] || null;
+    } catch { return null; }
+  };
+  const saveStudentCredential = async ({ nim, password, isProfileCompleted }) => {
+    try {
+      const all = JSON.parse(localStorage.getItem(STUDENT_CRED_KEY) || '{}');
+      all[normalizeNim(nim)] = { nim, password, isProfileCompleted: !!isProfileCompleted };
+      localStorage.setItem(STUDENT_CRED_KEY, JSON.stringify(all));
+      return { success: true };
+    } catch (e) { return { success: false, message: String(e) }; }
+  };
+
   // Helper to read all registered user accounts from localStorage
   const getRegisteredUsers = () => {
     try {
@@ -2819,6 +2839,15 @@ export function AuthProvider({ children }) {
   // Helper for simulating real email notification dispatch
   const sendEmailNotification = (toEmail, subject, content) => {
     console.info(`[SIMTA EMAIL GATEWAY] 📧 Notifikasi email otomatis berhasil dikirim ke: ${toEmail} | Subjek: "${subject}"`);
+  };
+
+  // Broadcast bimbingan submission across browser tabs for real-time updates
+  const broadcastBimbinganSubmission = (entry, notif) => {
+    try {
+      const channel = new BroadcastChannel('simta_bimbingan');
+      channel.postMessage({ type: 'BIMBINGAN_SUBMITTED', entry, notif });
+      channel.close();
+    } catch { /* BroadcastChannel not supported */ }
   };
 
   // Dosen Review / Rekomendasi (Validasi Akademik Awal dari Dospem, ACC Tetap Kaprodi)
