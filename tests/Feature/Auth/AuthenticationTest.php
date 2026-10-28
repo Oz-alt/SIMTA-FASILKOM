@@ -42,6 +42,37 @@ class AuthenticationTest extends TestCase
         $this->assertGuest();
     }
 
+    public function test_admin_can_only_authenticate_with_the_configured_initial_password(): void
+    {
+        $this->seed();
+
+        $this->post('/login', [
+            'email' => 'admin@unsri.ac.id',
+            'password' => 'admin123',
+        ]);
+
+        $this->assertGuest();
+
+        $response = $this->post('/login', [
+            'email' => 'admin@unsri.ac.id',
+            'password' => config('admin.initial_password'),
+        ]);
+
+        $this->assertAuthenticated();
+        $response->assertRedirect(route('dashboard', absolute: false));
+    }
+
+    public function test_seeding_does_not_reset_an_admin_changed_password(): void
+    {
+        $this->seed();
+        $admin = User::where('email', 'admin@unsri.ac.id')->firstOrFail();
+        $admin->update(['password' => 'admin-changed-password']);
+
+        $this->seed();
+
+        $this->assertTrue(password_verify('admin-changed-password', $admin->refresh()->password));
+    }
+
     public function test_users_can_logout(): void
     {
         $user = User::factory()->create();

@@ -16,11 +16,17 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        $adminInitialPassword = config('admin.initial_password');
+
+        if (! is_string($adminInitialPassword) || $adminInitialPassword === '') {
+            throw new \RuntimeException('ADMIN_INITIAL_PASSWORD must be configured before seeding.');
+        }
+
         User::firstOrCreate(
             ['email' => 'admin@unsri.ac.id'],
             [
                 'name' => 'Admin',
-                'password' => Hash::make('admin123'),
+                'password' => Hash::make($adminInitialPassword),
             ]
         );
 
