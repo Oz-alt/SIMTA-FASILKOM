@@ -541,6 +541,12 @@ export default function DashboardKaprodi() {
                   <Clock className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                   <span>Log konsultasi terverifikasi &amp; tersimpan di SIMTA</span>
                 </div>
+                {dashboardStats.statusAndMethodStats?.totalMenunggu > 0 && (
+                  <div className="flex items-center gap-1.5 text-[11px] text-amber-600 bg-amber-50 border border-amber-200 rounded-md px-2 py-1">
+                    <AlertCircle className="w-3 h-3 shrink-0" />
+                    <span><strong>{dashboardStats.statusAndMethodStats.totalMenunggu}</strong> sesi belum direspon (Menunggu)</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -832,7 +838,7 @@ export default function DashboardKaprodi() {
                   </h3>
                 </div>
                 <p className="text-[11px] text-slate-500 mt-0.5">
-                  Menunggu Validasi, Revisi Mayor, Revisi Minor
+                  Diterima, Revisi Minor, Revisi Mayor, Menunggu
                 </p>
               </div>
 
@@ -840,18 +846,28 @@ export default function DashboardKaprodi() {
                 <DonutChart
                   items={dashboardStats.statusAndMethodStats.statusDonutItems}
                   total={dashboardStats.statusAndMethodStats.totalStatusThree}
-                  totalLabel="Total Revisi"
+                  totalLabel="Total Sesi"
                   size={165}
                   strokeWidth={20}
                   innerRadius={55}
                 />
               </div>
 
-              <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
-                <span>Total Menunggu &amp; Revisi:</span>
-                <span className="font-mono font-bold text-slate-800">
-                  {dashboardStats.statusAndMethodStats.totalStatusThree.toLocaleString('id-ID')} Sesi
-                </span>
+              <div className="pt-2 border-t border-slate-100 space-y-1">
+                <div className="flex items-center justify-between text-[11px] text-slate-400">
+                  <span>Total Bimbingan (diluar Menunggu):</span>
+                  <span className="font-mono font-bold text-emerald-700">
+                    {dashboardStats.summary.totalBimbingan.toLocaleString('id-ID')} Sesi
+                  </span>
+                </div>
+                {dashboardStats.statusAndMethodStats?.totalMenunggu > 0 && (
+                  <div className="flex items-center justify-between text-[11px] text-amber-600">
+                    <span>Menunggu Tanggapan Dospem:</span>
+                    <span className="font-mono font-bold">
+                      {dashboardStats.statusAndMethodStats.totalMenunggu} Sesi
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 

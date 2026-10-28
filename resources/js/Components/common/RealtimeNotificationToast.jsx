@@ -9,7 +9,9 @@ import {
   Sparkles, 
   CheckCircle2, 
   Clock,
-  ShieldCheck
+  BookOpen,
+  CalendarDays,
+  MessageSquare
 } from 'lucide-react';
 
 export default function RealtimeNotificationToast() {
@@ -54,12 +56,35 @@ export default function RealtimeNotificationToast() {
   // Only show if there is an active realtime notification
   if (!latestRealtimeNotif) return null;
 
-  // Notification is primarily for Kaprodi / Admin
-  const isKaprodiOrAdmin = !currentUser || currentUser.role === 'kaprodi' || currentUser.role === 'admin';
-  if (!isKaprodiOrAdmin) return null;
-
   const notif = latestRealtimeNotif;
-  const targetUrl = notif.action_url || (notif.related_id ? `/kaprodi/titles/${notif.related_id}` : '/kaprodi/titles');
+  const userRole = currentUser?.role || 'mahasiswa';
+
+  // Check relevance to active user
+  const isDosen = userRole === 'dosen';
+  const isKaprodiOrAdmin = userRole === 'kaprodi' || userRole === 'admin';
+
+  if (!isDosen && !isKaprodiOrAdmin) return null;
+
+  // Filter out mismatched roles
+  if (isDosen && notif.recipient_role && notif.recipient_role !== 'dosen') return null;
+  if (isKaprodiOrAdmin && notif.recipient_role && notif.recipient_role !== 'kaprodi' && notif.recipient_role !== 'admin') return null;
+
+  // Determine notification type
+  const isBimbingan = notif.related_type === 'consultation' || notif.related_type === 'bimbingan_status';
+  const isDefense = notif.related_type === 'defense_schedule' || notif.related_type === 'defense';
+
+  // Target navigation URL
+  let targetUrl = notif.action_url;
+  if (!targetUrl) {
+    if (isBimbingan) {
+      const nim = notif.mhs_nim || notif.recipient_nim || notif.student_nim || '';
+      targetUrl = nim ? `/dosen/validasi?nim=${nim}` : '/dosen/validasi';
+    } else if (isDefense) {
+      targetUrl = isDosen ? '/dosen/jadwal-sidang' : '/kaprodi/defense-schedules';
+    } else {
+      targetUrl = notif.related_id ? `/kaprodi/titles/${notif.related_id}` : '/kaprodi/titles';
+    }
+  }
 
   const handleReviewNow = () => {
     if (notif.id) {
@@ -76,24 +101,50 @@ export default function RealtimeNotificationToast() {
     dismissRealtimeNotif();
   };
 
+  // Visual metadata
+  let bannerHeader = 'Real-Time Notifikasi Kaprodi';
+  let bannerSub = 'Judul TA Baru Disimpan';
+  let studentName = notif.student_name || notif.mhs_nama || 'Mahasiswa';
+  let studentNim = notif.student_nim || notif.mhs_nim || '';
+  let statusBadge = 'Masuk Tahap Tinjauan Rapat Prodi';
+  let actionButtonText = 'Tinjau Judul';
+  let IconComponent = GraduationCap;
+  let gradientColors = 'from-blue-600 to-indigo-700';
+
+  if (isBimbingan) {
+    bannerHeader = 'Real-Time Notifikasi Bimbingan Dosen';
+    bannerSub = 'Pengajuan Bimbingan Baru';
+    statusBadge = 'Menunggu Validasi Dosen Pembimbing';
+    actionButtonText = 'Validasi Bimbingan';
+    IconComponent = BookOpen;
+    gradientColors = 'from-amber-600 to-orange-700';
+  } else if (isDefense) {
+    bannerHeader = 'Real-Time Penugasan Sidang TA';
+    bannerSub = 'Penugasan Jadwal Sidang';
+    statusBadge = 'Ditetapkan oleh Kaprodi';
+    actionButtonText = 'Buka Jadwal Sidang';
+    IconComponent = CalendarDays;
+    gradientColors = 'from-indigo-600 to-violet-700';
+  }
+
   return (
     <aside
       aria-label="Notifikasi Real-Time"
-      className="fixed top-20 right-4 sm:right-6 z-50 max-w-md w-full animate-in fade-in slide-in-from-top-4 duration-300 pointer-events-auto"
+      className="fixed top-20 right-4 sm:right-6 z-50 max-w-md w-full animate-in fade-in slide-in-from-top-4 duration-300 pointer-events-auto shadow-2xl"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
-      <div className="relative rounded-3xl bg-white/95 backdrop-blur-xl border border-blue-200 shadow-[0_20px_50px_rgba(30,58,138,0.2)] overflow-hidden ring-4 ring-blue-500/10">
+      <div className="relative rounded-3xl bg-white/95 backdrop-blur-xl border border-slate-200 shadow-[0_20px_50px_rgba(30,58,138,0.2)] overflow-hidden ring-4 ring-indigo-500/10">
         
         {/* Top Header Pill Banner */}
-        <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 px-5 py-3 text-white flex items-center justify-between">
+        <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-950 px-5 py-3 text-white flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <span className="relative flex h-2.5 w-2.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
             </span>
             <span className="text-[11px] font-extrabold tracking-wider uppercase text-blue-200">
-              Real-Time Notifikasi Kaprodi
+              {bannerHeader}
             </span>
           </div>
 
@@ -115,30 +166,30 @@ export default function RealtimeNotificationToast() {
         {/* Content Body */}
         <div className="p-5 space-y-3.5">
           <div className="flex items-start space-x-3">
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center shrink-0 shadow-md shadow-blue-500/20">
-              <GraduationCap className="w-6 h-6" />
+            <div className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${gradientColors} text-white flex items-center justify-center shrink-0 shadow-md shadow-indigo-500/20`}>
+              <IconComponent className="w-6 h-6" />
             </div>
             
             <div className="min-w-0 flex-1">
               <div className="flex items-center space-x-1.5">
-                <span className="text-xs font-bold text-blue-700 uppercase tracking-wide">
-                  Judul TA Baru Disimpan
+                <span className="text-xs font-bold text-indigo-700 uppercase tracking-wide">
+                  {bannerSub}
                 </span>
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
               </div>
               <h4 className="text-sm font-extrabold text-slate-900 truncate">
-                {notif.student_name || 'Mahasiswa'}
+                {studentName}
               </h4>
               <p className="text-[11px] text-slate-500 font-mono">
-                {notif.student_nim ? `NIM: ${notif.student_nim}` : 'Mahasiswa FASILKOM UNSRI'}
+                {studentNim ? `NIM: ${studentNim}` : 'Mahasiswa FASILKOM UNSRI'}
               </p>
             </div>
           </div>
 
-          {/* Thesis Title Box */}
+          {/* Message / Title Box */}
           <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs text-slate-800 leading-relaxed font-medium">
-            <p className="italic text-slate-700 line-clamp-2">
-              "{notif.thesis_title || notif.message}"
+            <p className="italic text-slate-700 line-clamp-3">
+              "{notif.message || notif.thesis_title || notif.title}"
             </p>
           </div>
 
@@ -146,7 +197,7 @@ export default function RealtimeNotificationToast() {
           <div className="flex items-center justify-between text-[11px] text-slate-500 pt-0.5">
             <div className="flex items-center space-x-1 text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Masuk Tahap Tinjauan Rapat Prodi</span>
+              <span>{statusBadge}</span>
             </div>
           </div>
 
@@ -164,7 +215,7 @@ export default function RealtimeNotificationToast() {
               onClick={handleReviewNow}
               className="w-full px-3.5 py-2 text-xs font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-xl shadow-md shadow-blue-500/20 flex items-center justify-center space-x-1.5 transition-all cursor-pointer group"
             >
-              <span>Tinjau Judul</span>
+              <span>{actionButtonText}</span>
               <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
             </button>
           </div>

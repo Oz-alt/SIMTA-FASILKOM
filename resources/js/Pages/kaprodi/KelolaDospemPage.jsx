@@ -1,5 +1,4 @@
 import React, { useState, useMemo } from 'react';
-import { Link } from '@inertiajs/react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import {
   Users,
@@ -8,32 +7,18 @@ import {
   Upload,
   Download,
   Search,
-  Filter,
   CheckCircle2,
   AlertCircle,
-  Clock,
   Edit2,
   Trash2,
   X,
   Sparkles,
   Phone,
   Mail,
-  GraduationCap,
-  BookOpen,
-  ArrowRight,
-  ShieldCheck,
   FileSpreadsheet,
-  Check,
-  HelpCircle,
-  Hash,
-  Info,
-  ChevronDown,
-  ChevronUp,
-  Copy,
-  CalendarDays,
-  ClipboardList
+  HelpCircle
 } from 'lucide-react';
-import { getStudentSemester, AVAILABLE_SEMESTERS } from '../../lib/academicUtils.js';
+import { getStudentSemester } from '../../lib/academicUtils.js';
 
 export default function KelolaDospemPage() {
   const {
@@ -43,23 +28,16 @@ export default function KelolaDospemPage() {
     updateAdvisor,
     deleteAdvisor,
     bulkImportAdvisors,
-    assignStudentAdvisors,
-    bulkAssignStudentAdvisors,
     getAllRegisteredStudents,
     thesisTitles
   } = useAuth();
 
-  const [activeTab, setActiveTab] = useState('pendataan'); // 'pendataan' | 'pembagian'
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [semesterFilter, setSemesterFilter] = useState('Semua Semester');
-  const [submissionFilter, setSubmissionFilter] = useState('all');
 
   // Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingAdvisor, setEditingAdvisor] = useState(null);
   const [isCsvModalOpen, setIsCsvModalOpen] = useState(false);
-  const [isAssignCsvModalOpen, setIsAssignCsvModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
   // Form state untuk modal Tambah / Edit Dosen Pembimbing
@@ -79,10 +57,6 @@ export default function KelolaDospemPage() {
   const [csvText, setCsvText] = useState('');
   const [parsedCsvRows, setParsedCsvRows] = useState([]);
   const [csvFileName, setCsvFileName] = useState('');
-
-  // CSV Import State for Pembagian Dospem
-  const [assignCsvFileName, setAssignCsvFileName] = useState('');
-  const [assignParsedRows, setAssignParsedRows] = useState([]);
 
   // Combine student list with their assignment status and thesis title
   const registeredStudents = useMemo(() => {
@@ -278,239 +252,6 @@ export default function KelolaDospemPage() {
     setCsvFileName('');
   };
 
-  // Assign Student Advisors
-  const handleStudentAdvisorChange = (student, type, nipValue) => {
-    const newDospem1 = type === 'dospem1' ? nipValue : student.dospem1_nip;
-    const newDospem2 = type === 'dospem2' ? nipValue : student.dospem2_nip;
-
-    if (newDospem1 && newDospem2 && newDospem1 === newDospem2) {
-      alert('Dospem 1 dan Dospem 2 tidak boleh dosen yang sama!');
-      return;
-    }
-
-    assignStudentAdvisors(student.nim, newDospem1, newDospem2, student.nama, student.judul);
-    showToast(`Pembagian Dospem untuk ${student.nama} langsung diperbarui & aktif di portal mahasiswa.`);
-  };
-
-  // Download Rekap Pembagian Dospem ke Excel / CSV (Point 26)
-  const downloadAdvisorDistributionCsv = () => {
-    const today = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-    
-    // Header row with UTF-8 BOM so Excel opens it cleanly
-    const headers = [
-      'No',
-      'NIM',
-      'Nama Mahasiswa',
-      'Program Studi',
-      'Kelas',
-      'Semester',
-      'Judul Tugas Akhir',
-      'Pembimbing 1 (Nama)',
-      'Pembimbing 1 (NIP)',
-      'Pembimbing 2 (Nama)',
-      'Pembimbing 2 (NIP)',
-      'Status Pembagian',
-      'Status Pengajuan Judul',
-      'Tanggal Update'
-    ];
-
-    const escape = (str) => `"${String(str || '').replace(/"/g, '""').trim()}"`;
-
-    const rows = filteredStudents.map((std, idx) => {
-      const d1 = advisors.find(a => a.nip === std.dospem1_nip);
-      const d2 = advisors.find(a => a.nip === std.dospem2_nip);
-      const d1Nama = d1?.nama || (std.dospem1_nip ? `NIP. ${std.dospem1_nip}` : '-');
-      const d2Nama = d2?.nama || (std.dospem2_nip ? `NIP. ${std.dospem2_nip}` : '-');
-      const statusText = std.status_pembagian === 'lengkap' ? 'Lengkap (D1 & D2)' : std.status_pembagian === 'partial' ? 'Baru 1 Dospem' : 'Belum Ada Dospem';
-      const submissionText = std.hasSubmitted ? 'Sudah Mengajukan' : 'Belum Mengajukan';
-
-      return [
-        idx + 1,
-        `'${std.nim}`,
-        escape(std.nama),
-        escape(std.prodi || 'D3 Manajemen Informatika'),
-        escape(std.kelas || 'MI 5A'),
-        escape(std.semester || 'Semester 5'),
-        escape(std.judul || 'Belum mengajukan judul'),
-        escape(d1Nama),
-        d1?.nip ? `'${d1.nip}` : (std.dospem1_nip ? `'${std.dospem1_nip}` : '-'),
-        escape(d2Nama),
-        d2?.nip ? `'${d2.nip}` : (std.dospem2_nip ? `'${std.dospem2_nip}` : '-'),
-        escape(statusText),
-        escape(submissionText),
-        escape(today)
-      ].join(',');
-    });
-
-    const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\r\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `rekap_pembagian_dospem_d3_mi_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-
-    showToast(`File Rekap Pembagian Dospem (${filteredStudents.length} mahasiswa) berhasil di-download! Siap dibagikan ke grup.`);
-  };
-
-  // Salin Format Chat Pengumuman Grup (WhatsApp / Telegram) - Point 26 & 27
-  const copyGroupAnnouncementText = () => {
-    const today = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-    const assignedList = filteredStudents.filter(s => s.dospem1_nip || s.dospem2_nip);
-    
-    if (assignedList.length === 0) {
-      showToast('Belum ada mahasiswa yang memiliki dosen pembimbing pada tampilan saat ini.');
-      return;
-    }
-
-    let text = `📢 *PENGUMUMAN PEMBAGIAN DOSEN PEMBIMBING TUGAS AKHIR*\n`;
-    text += `Program Studi D3 Manajemen Informatika - FASILKOM UNSRI\n`;
-    text += `Tanggal: ${today}\n`;
-    text += `----------------------------------------------------\n\n`;
-
-    assignedList.forEach((std, idx) => {
-      const d1 = advisors.find(a => a.nip === std.dospem1_nip);
-      const d2 = advisors.find(a => a.nip === std.dospem2_nip);
-      const d1Nama = d1?.nama || (std.dospem1_nip ? `NIP. ${std.dospem1_nip}` : '-');
-      const d2Nama = d2?.nama || (std.dospem2_nip ? `NIP. ${std.dospem2_nip}` : '-');
-
-      text += `${idx + 1}. *${std.nama}* (${std.nim} • ${std.kelas})\n`;
-      if (std.judul) {
-        text += `   Judul: "${std.judul}"\n`;
-      }
-      text += `   • Pembimbing 1: ${d1Nama}\n`;
-      text += `   • Pembimbing 2: ${d2Nama}\n\n`;
-    });
-
-    text += `----------------------------------------------------\n`;
-    text += `Total Terbagi: ${assignedList.length} Mahasiswa\n`;
-    text += `Catatan: Mohon mahasiswa segera berkoordinasi dengan Dosen Pembimbing masing-masing untuk proses bimbingan minimal 2x dalam sebulan.\n\n`;
-    text += `Terima kasih.\n_Ketua Program Studi D3 Manajemen Informatika_`;
-
-    navigator.clipboard.writeText(text);
-    showToast(`Format chat pengumuman grup (${assignedList.length} mahasiswa) berhasil disalin ke clipboard! Siap di-paste ke grup WhatsApp/Telegram.`);
-  };
-
-  // Helper to extract clean numeric digits (Number) and handle Excel scientific notation
-  const extractNumericValue = (val) => {
-    if (!val) return '';
-    let str = String(val).trim().replace(/^"|"$/g, '');
-    // Handle Excel scientific notation if large number was formatted by Excel (e.g. 1.98001E+17)
-    if (/^[0-9]+(\.[0-9]+)?[eE]\+[0-9]+$/.test(str)) {
-      try {
-        str = BigInt(Math.round(Number(str))).toString();
-      } catch {}
-    }
-    return str.replace(/\D/g, '');
-  };
-
-  // Download CSV template for pembagian dospem (Kosongan)
-  const downloadAssignCsvTemplate = () => {
-    const header = 'NIM,Nama Mahasiswa,NIP Dospem 1,NIP Dospem 2\n';
-    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + header;
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', 'template_pembagian_dospem_kosong.csv');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  // Handle File Upload for Pembagian Dospem (Validasi NIM & NIP bertipe Number murni)
-  const handleAssignFileUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    setAssignCsvFileName(file.name);
-
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      const text = evt.target.result;
-      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-      if (lines.length > 0) {
-        const rows = [];
-        for (let i = 0; i < lines.length; i++) {
-          const rawLine = lines[i];
-          // Lewati komentar panduan
-          if (rawLine.startsWith('#')) continue;
-
-          const cols = rawLine.split(',').map(c => c.replace(/^"|"$/g, '').trim());
-          const rawNim = cols[0] || '';
-          const rawNama = cols[1] || '';
-          const rawD1 = cols[2] || '';
-          const rawD2 = cols[3] || '';
-
-          // Ekstraksi angka (Number) murni untuk NIM dan NIP
-          const cleanNim = extractNumericValue(rawNim);
-          const cleanD1Nip = extractNumericValue(rawD1);
-          const cleanD2Nip = extractNumericValue(rawD2);
-
-          // Jika baris adalah header (mengandung kata 'nim' atau tidak memiliki angka sama sekali), lewati
-          if (rawNim.toLowerCase().includes('nim') || !cleanNim) {
-            continue;
-          }
-
-          // Pencocokan data mahasiswa berdasarkan kesamaan angka NIM
-          const matchedStudent = registeredStudents.find(
-            s => extractNumericValue(s.nim) === cleanNim || String(s.nim).trim() === rawNim
-          );
-
-          // Pencocokan data dosen berdasarkan kesamaan angka NIP
-          const adv1 = advisors.find(
-            a => extractNumericValue(a.nip) === cleanD1Nip || String(a.nip).trim() === rawD1
-          );
-          const adv2 = advisors.find(
-            a => extractNumericValue(a.nip) === cleanD2Nip || String(a.nip).trim() === rawD2
-          );
-
-          const isDuplicate = adv1 && adv2 && adv1.nip === adv2.nip;
-
-          rows.push({
-            nim: cleanNim,
-            rawNim,
-            nama: rawNama || matchedStudent?.nama || 'Mahasiswa',
-            judul: matchedStudent?.judul || '',
-            dospem1_nip: adv1 ? adv1.nip : cleanD1Nip,
-            dospem1_nama: adv1 ? adv1.nama : (cleanD1Nip ? `NIP: ${cleanD1Nip} (Tidak Terdaftar)` : '-'),
-            dospem2_nip: adv2 ? adv2.nip : cleanD2Nip,
-            dospem2_nama: adv2 ? adv2.nama : (cleanD2Nip ? `NIP: ${cleanD2Nip} (Tidak Terdaftar)` : '-'),
-            hasStudentMatch: !!matchedStudent,
-            hasD1Match: !cleanD1Nip || !!adv1,
-            hasD2Match: !cleanD2Nip || !!adv2,
-            isDuplicate
-          });
-        }
-        setAssignParsedRows(rows);
-      }
-    };
-    reader.readAsText(file);
-  };
-
-  // Confirm Import Pembagian Dospem
-  const handleConfirmAssignCsvImport = () => {
-    if (assignParsedRows.length === 0) {
-      alert('Tidak ada baris data CSV / Excel yang valid untuk diterapkan.');
-      return;
-    }
-
-    const payload = assignParsedRows.map(row => ({
-      student_nim: row.nim,
-      student_nama: row.nama,
-      judul_ta: row.judul,
-      dospem1_nip: row.dospem1_nip,
-      dospem2_nip: row.dospem2_nip
-    }));
-
-    bulkAssignStudentAdvisors(payload);
-    showToast(`Berhasil menerapkan pembagian Dospem untuk ${payload.length} mahasiswa.`);
-    setIsAssignCsvModalOpen(false);
-    setAssignParsedRows([]);
-    setAssignCsvFileName('');
-  };
-
   // Filtered Advisors for Tab 1
   const filteredAdvisors = useMemo(() => {
     return advisors.filter(a => {
@@ -518,32 +259,6 @@ export default function KelolaDospemPage() {
       return matchText.includes(searchTerm.toLowerCase());
     });
   }, [advisors, searchTerm]);
-
-  // Filtered Students for Tab 2
-  const filteredStudents = useMemo(() => {
-    return registeredStudents.filter(std => {
-      const matchText = (std.nama + ' ' + std.nim + ' ' + std.judul + ' ' + std.kelas).toLowerCase();
-      const matchStatus =
-        statusFilter === 'all'
-          ? true
-          : statusFilter === 'lengkap'
-          ? std.status_pembagian === 'lengkap'
-          : statusFilter === 'partial'
-          ? std.status_pembagian === 'partial'
-          : std.status_pembagian === 'belum';
-
-      const matchSemester = semesterFilter === 'Semua Semester' || std.semester === semesterFilter;
-
-      const matchSubmission =
-        submissionFilter === 'all'
-          ? true
-          : submissionFilter === 'sudah'
-          ? std.hasSubmitted
-          : !std.hasSubmitted;
-
-      return matchText.includes(searchTerm.toLowerCase()) && matchStatus && matchSemester && matchSubmission;
-    });
-  }, [registeredStudents, searchTerm, statusFilter, semesterFilter, submissionFilter]);
 
   return (
     <div className="space-y-8 pb-16 font-sans">
@@ -564,10 +279,10 @@ export default function KelolaDospemPage() {
             <span>Portal Kaprodi FASILKOM UNSRI</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
-            Pendataan &amp; Pembagian Dosen Pembimbing TA
+            Pendataan Dosen Pembimbing TA
           </h1>
           <p className="text-xs sm:text-sm text-blue-100/90 leading-relaxed font-normal">
-            Kelola kuota &amp; kepakaran dosen pembimbing, serta distribusikan Dospem 1 dan Dospem 2 secara berimbang untuk mahasiswa Tugas Akhir.
+            Kelola data, kuota &amp; kepakaran dosen pembimbing Tugas Akhir program studi.
           </p>
         </div>
       </div>
@@ -619,102 +334,35 @@ export default function KelolaDospemPage() {
         </div>
       </div>
 
-      {/* Tab Navigation Controls */}
+      {/* Action Bar */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-slate-200 pb-4">
-        <div className="flex items-center space-x-2 bg-slate-100/80 p-1.5 rounded-2xl w-full sm:w-auto">
-          <button
-            type="button"
-            onClick={() => setActiveTab('pendataan')}
-            className={`flex-1 sm:flex-initial px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center space-x-2 cursor-pointer ${
-              activeTab === 'pendataan'
-                ? 'bg-white text-indigo-700 shadow-sm'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Users className="w-4 h-4" />
-            <span>Pendataan Dosen Pembimbing</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('pembagian')}
-            className={`flex-1 sm:flex-initial px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center space-x-2 cursor-pointer ${
-              activeTab === 'pembagian'
-                ? 'bg-white text-indigo-700 shadow-sm'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <UserCheck className="w-4 h-4" />
-            <span>Pembagian Dosen Pembimbing</span>
-            {stats.unassignedStudents > 0 && (
-              <span className="ml-1.5 px-2 py-0.5 text-[10px] rounded-full bg-amber-500 text-white font-extrabold">
-                {stats.unassignedStudents}
-              </span>
-            )}
-          </button>
+        <div className="flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-slate-100/80 text-xs sm:text-sm font-bold text-indigo-700 w-full sm:w-auto">
+          <Users className="w-4 h-4" />
+          <span>Pendataan Dosen Pembimbing</span>
         </div>
 
-        {/* Action Buttons for Tab 1 & Tab 2 */}
-        {activeTab === 'pendataan' ? (
-          <div className="flex items-center space-x-2 w-full sm:w-auto justify-end">
-            <button
-              type="button"
-              onClick={() => setIsCsvModalOpen(true)}
-              className="px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-bold transition-all flex items-center space-x-1.5 cursor-pointer"
-            >
-              <Upload className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Upload CSV / Excel</span>
-            </button>
+        <div className="flex items-center space-x-2 w-full sm:w-auto justify-end">
+          <button
+            type="button"
+            onClick={() => setIsCsvModalOpen(true)}
+            className="px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-bold transition-all flex items-center space-x-1.5 cursor-pointer"
+          >
+            <Upload className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Upload CSV / Excel</span>
+          </button>
 
-            <button
-              type="button"
-              onClick={handleAddClick}
-              className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-600/30 transition-all flex items-center space-x-1.5 cursor-pointer"
-            >
-              <UserPlus className="w-3.5 h-3.5" />
-              <span>Tambah Dosen</span>
-            </button>
-          </div>
-        ) : (
-          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
-            {/* Download Rekap CSV / Excel Button (Point 26) */}
-            <button
-              type="button"
-              onClick={downloadAdvisorDistributionCsv}
-              className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-600/20 transition-all flex items-center space-x-1.5 cursor-pointer"
-              title="Download data rekapitulasi pembagian dospem ke format CSV / Excel untuk dibagikan ke grup"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>Download Rekap (CSV/Excel)</span>
-            </button>
-
-            {/* Salin Format Chat Grup WhatsApp / Telegram (Point 26 & 27) */}
-            <button
-              type="button"
-              onClick={copyGroupAnnouncementText}
-              className="px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold transition-all flex items-center space-x-1.5 cursor-pointer shadow-xs"
-              title="Salin rekapitulasi pembagian dospem berformat pesan WhatsApp / Telegram untuk dibagikan ke grup kelas"
-            >
-              <Copy className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Salin Format Chat Grup</span>
-            </button>
-
-            {/* Upload Excel / CSV */}
-            <button
-              type="button"
-              onClick={() => setIsAssignCsvModalOpen(true)}
-              className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold shadow-sm transition-all flex items-center space-x-1.5 cursor-pointer"
-            >
-              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Upload CSV / Excel</span>
-            </button>
-          </div>
-        )}
+          <button
+            type="button"
+            onClick={handleAddClick}
+            className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-600/30 transition-all flex items-center space-x-1.5 cursor-pointer"
+          >
+            <UserPlus className="w-3.5 h-3.5" />
+            <span>Tambah Dosen</span>
+          </button>
+        </div>
       </div>
 
-      {/* TAB 1: PENDATAAN DOSEN PEMBIMBING */}
-      {activeTab === 'pendataan' && (
-        <div className="space-y-6">
+      <div className="space-y-6">
 
           {/* Search Bar */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
@@ -877,309 +525,7 @@ export default function KelolaDospemPage() {
             </table>
           </div>
 
-        </div>
-      )}
-
-      {/* TAB 2: PEMBAGIAN DOSPEM 1 & DOSPEM 2 */}
-      {activeTab === 'pembagian' && (
-        <div className="space-y-6">
-
-          {/* Banner Akses Peninjauan Pengajuan Terpisah */}
-          <div className="bg-gradient-to-r from-indigo-50 via-blue-50 to-slate-50 border border-indigo-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                <ClipboardList className="w-5 h-5" />
-              </div>
-              <div>
-                <h4 className="text-xs sm:text-sm font-bold text-slate-900">
-                  Sistem Peninjauan Status Pengajuan TA Mahasiswa
-                </h4>
-                <p className="text-[11px] text-slate-500">
-                  Pantau daftar terpisah mahasiswa yang sudah melakukan submit judul TA vs yang belum mengajukan per semester.
-                </p>
-              </div>
-            </div>
-            <Link
-              href="/kaprodi/submission-status"
-              className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all shadow-xs flex items-center space-x-1.5 shrink-0"
-            >
-              <span>Buka Peninjauan Terpisah</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-
-          {/* Search & Filter Header */}
-          <div className="flex flex-col md:flex-row items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
-            <div className="relative w-full md:w-72">
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Cari nama mahasiswa, NIM, atau judul..."
-                className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 text-xs sm:text-sm outline-none transition-all"
-              />
-              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
-              {/* Semester Filter */}
-              <div className="flex items-center space-x-1.5">
-                <GraduationCap className="w-4 h-4 text-indigo-600 shrink-0" />
-                <select
-                  value={semesterFilter}
-                  onChange={(e) => setSemesterFilter(e.target.value)}
-                  className="px-2.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 bg-white outline-none focus:border-indigo-600 cursor-pointer"
-                >
-                  {AVAILABLE_SEMESTERS.map(sem => (
-                    <option key={sem} value={sem}>{sem}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Status Pengajuan Filter */}
-              <select
-                value={submissionFilter}
-                onChange={(e) => setSubmissionFilter(e.target.value)}
-                className="px-2.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 bg-white outline-none focus:border-indigo-600 cursor-pointer"
-              >
-                <option value="all">Semua Pengajuan</option>
-                <option value="sudah">Sudah Submit Judul ({registeredStudents.filter(s => s.hasSubmitted).length})</option>
-                <option value="belum">Belum Submit ({registeredStudents.filter(s => !s.hasSubmitted).length})</option>
-              </select>
-
-              {/* Status Pembagian Dospem Filter */}
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-2.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 bg-white outline-none focus:border-indigo-600 cursor-pointer"
-              >
-                <option value="all">Semua Status Dospem</option>
-                <option value="belum">Belum Ada Dospem ({registeredStudents.filter(s => s.status_pembagian === 'belum').length})</option>
-                <option value="partial">Baru 1 Dospem ({registeredStudents.filter(s => s.status_pembagian === 'partial').length})</option>
-                <option value="lengkap">Lengkap (D1 &amp; D2) ({registeredStudents.filter(s => s.status_pembagian === 'lengkap').length})</option>
-              </select>
-
-              <button
-                type="button"
-                onClick={downloadAdvisorDistributionCsv}
-                className="px-3 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold transition-all flex items-center space-x-1.5 cursor-pointer shrink-0"
-                title="Download data pembagian dospem untuk dibagikan ke grup"
-              >
-                <Download className="w-3.5 h-3.5 text-indigo-600" />
-                <span>Download Rekap</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={copyGroupAnnouncementText}
-                className="px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold transition-all flex items-center space-x-1.5 cursor-pointer shrink-0"
-                title="Salin pesan rekap pembagian ke grup WhatsApp / Telegram"
-              >
-                <Copy className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Format Grup</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setIsAssignCsvModalOpen(true)}
-                className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-xs font-bold transition-all flex items-center space-x-1.5 cursor-pointer shrink-0"
-              >
-                <Upload className="w-3.5 h-3.5 text-slate-600" />
-                <span>Upload Excel</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Banner Informasi Praktis: Manual Assignment, Direct Update & Group Share (Points 24-27) */}
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50/70 border border-blue-200 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs shadow-2xs">
-            <div className="flex items-start space-x-3">
-              <span className="p-2 rounded-xl bg-blue-100 text-blue-700 shrink-0 mt-0.5">
-                <Info className="w-4 h-4" />
-              </span>
-              <div className="space-y-1">
-                <div className="font-bold text-blue-950">
-                  Pembagian Dosen Pembimbing Langsung Aktif &amp; Siap Dibagikan ke Grup
-                </div>
-                <p className="text-blue-800 leading-relaxed text-[11px]">
-                  Pembagian pembimbing dapat diatur langsung secara manual melalui dropdown di bawah atau upload massal. Setiap perubahan <strong>langsung otomatis diperbarui di akun mahasiswa</strong>. Untuk efisiensi, data dapat di-download ke CSV/Excel atau disalin formatnya untuk dibagikan ke grup WhatsApp/Telegram tanpa perlu mengirim email berulang.
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-2 shrink-0 self-end md:self-center">
-              <button
-                type="button"
-                onClick={downloadAdvisorDistributionCsv}
-                className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center space-x-1.5 shadow-xs cursor-pointer transition-all"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Download CSV</span>
-              </button>
-              <button
-                type="button"
-                onClick={copyGroupAnnouncementText}
-                className="px-3 py-1.5 rounded-xl bg-white hover:bg-blue-50 text-blue-700 border border-blue-300 font-bold text-xs flex items-center space-x-1.5 shadow-xs cursor-pointer transition-all"
-              >
-                <Copy className="w-3.5 h-3.5 text-blue-600" />
-                <span>Salin Chat Grup</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Student Assignment Table (Compact - No Horizontal Scroll) */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-            <table className="w-full text-left border-collapse table-auto">
-              <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-200 text-[10px] font-extrabold uppercase tracking-wider text-slate-600">
-                  <th className="py-2.5 px-3 w-1/4">Mahasiswa &amp; NIM</th>
-                  <th className="py-2.5 px-3 w-1/3">Judul Tugas Akhir</th>
-                  <th className="py-2.5 px-2.5 w-1/5">Dosen Pembimbing 1</th>
-                  <th className="py-2.5 px-2.5 w-1/5">Dosen Pembimbing 2</th>
-                  <th className="py-2.5 px-2 text-center w-24">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
-                {filteredStudents.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="py-8 text-center text-slate-400">
-                      Tidak ada data mahasiswa yang cocok dengan kriteria pencarian.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredStudents.map((std) => {
-                    const isSameAdvisor = std.dospem1_nip && std.dospem2_nip && std.dospem1_nip === std.dospem2_nip;
-
-                    return (
-                      <tr key={std.id} className="hover:bg-slate-50/70 transition-colors">
-                        
-                        {/* Student Info */}
-                        <td className="py-2.5 px-3 align-top">
-                          <div className="font-bold text-slate-900 leading-snug">{std.nama}</div>
-                          <div className="text-[10px] text-slate-500 font-mono">NIM. {std.nim}</div>
-                          <div className="text-[10px] text-indigo-600 font-semibold">{std.prodi} ({std.kelas})</div>
-                          <div className="mt-1 flex items-center space-x-1">
-                            <span className="px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-700 text-[9px] font-bold border border-indigo-200">
-                              {std.semester}
-                            </span>
-                            {std.hasSubmitted ? (
-                              <span className="px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 text-[9px] font-medium border border-emerald-200">
-                                Sudah Submit
-                              </span>
-                            ) : (
-                              <span className="px-1.5 py-0.2 rounded bg-amber-50 text-amber-700 text-[9px] font-medium border border-amber-200">
-                                Belum Submit
-                              </span>
-                            )}
-                          </div>
-                        </td>
-
-                        {/* Thesis Title */}
-                        <td className="py-2.5 px-3 align-top">
-                          {std.judul ? (
-                            <p className="text-[11px] text-slate-800 font-medium leading-relaxed italic line-clamp-2" title={std.judul}>
-                              "{std.judul}"
-                            </p>
-                          ) : (
-                            <span className="text-[11px] text-slate-400 italic">
-                              Belum mengajukan judul
-                            </span>
-                          )}
-                        </td>
-
-                        {/* Dospem 1 Select */}
-                        <td className="py-2.5 px-2.5 align-top">
-                          <div className="space-y-0.5">
-                            <select
-                              value={std.dospem1_nip || ''}
-                              onChange={(e) => handleStudentAdvisorChange(std, 'dospem1', e.target.value)}
-                              className="w-full px-2 py-1.5 rounded-lg border border-slate-300 focus:border-indigo-600 text-[11px] font-semibold text-slate-800 bg-white transition-all outline-none cursor-pointer"
-                            >
-                              <option value="">-- Pilih Dospem 1 --</option>
-                              {advisors.map(adv => {
-                                const count = studentAdvisors.filter(sa => sa.dospem1_nip === adv.nip).length;
-                                return (
-                                  <option key={adv.id} value={adv.nip}>
-                                    {adv.nama} ({count}/{adv.kuota_dospem1 || 8})
-                                  </option>
-                                );
-                              })}
-                            </select>
-                            {std.dospem1_nip && (
-                              <div className="text-[10px] text-indigo-600 font-semibold flex items-center space-x-1">
-                                <Check className="w-3 h-3" />
-                                <span>Terkonfirmasi D1</span>
-                              </div>
-                            )}
-                          </div>
-                        </td>
-
-                        {/* Dospem 2 Select */}
-                        <td className="py-2.5 px-2.5 align-top">
-                          <div className="space-y-0.5">
-                            <select
-                              value={std.dospem2_nip || ''}
-                              onChange={(e) => handleStudentAdvisorChange(std, 'dospem2', e.target.value)}
-                              className="w-full px-2 py-1.5 rounded-lg border border-slate-300 focus:border-indigo-600 text-[11px] font-semibold text-slate-800 bg-white transition-all outline-none cursor-pointer"
-                            >
-                              <option value="">-- Pilih Dospem 2 --</option>
-                              {advisors.map(adv => {
-                                const count = studentAdvisors.filter(sa => sa.dospem2_nip === adv.nip).length;
-                                return (
-                                  <option key={adv.id} value={adv.nip}>
-                                    {adv.nama} ({count}/{adv.kuota_dospem2 || 8})
-                                  </option>
-                                );
-                              })}
-                            </select>
-                            {std.dospem2_nip && (
-                              <div className="text-[10px] text-purple-600 font-semibold flex items-center space-x-1">
-                                <Check className="w-3 h-3" />
-                                <span>Terkonfirmasi D2</span>
-                              </div>
-                            )}
-                          </div>
-                        </td>
-
-                        {/* Status Badge */}
-                        <td className="py-2.5 px-2 align-top text-center">
-                          {isSameAdvisor ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-rose-500/10 text-rose-800 border border-rose-500/30 whitespace-nowrap shadow-2xs">
-                              <span className="h-1.5 w-1.5 rounded-full bg-rose-500"></span>
-                              <span>Dospem Sama</span>
-                            </span>
-                          ) : std.status_pembagian === 'lengkap' ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-gradient-to-r from-emerald-500/10 to-teal-500/10 text-emerald-800 border border-emerald-500/30 whitespace-nowrap shadow-2xs">
-                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                              <span>Lengkap</span>
-                            </span>
-                          ) : std.status_pembagian === 'partial' ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-gradient-to-r from-purple-500/10 to-indigo-500/10 text-purple-800 border border-purple-500/30 whitespace-nowrap shadow-2xs">
-                              <span className="h-1.5 w-1.5 rounded-full bg-purple-500"></span>
-                              <Clock className="w-3 h-3 text-purple-600" />
-                              <span>Baru 1</span>
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-gradient-to-r from-amber-500/10 to-orange-500/10 text-amber-900 border border-amber-500/30 whitespace-nowrap shadow-2xs">
-                              <span className="relative flex h-1.5 w-1.5 shrink-0">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-500"></span>
-                              </span>
-                              <AlertCircle className="w-3 h-3 text-amber-600" />
-                              <span>Belum Ada</span>
-                            </span>
-                          )}
-                        </td>
-
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-
-        </div>
-      )}
+      </div>
 
       {/* MODAL ADD / EDIT DOSEN */}
       {isAddModalOpen && (
@@ -1438,182 +784,6 @@ export default function KelolaDospemPage() {
                 className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold shadow-md shadow-emerald-600/30 transition-all cursor-pointer"
               >
                 Proses Import ({parsedCsvRows.length} Data)
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL UPLOAD EXCEL / CSV PEMBAGIAN DOSPEM */}
-      {isAssignCsvModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in">
-          <div className="bg-white rounded-3xl max-w-3xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-6 my-8">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-              <div className="flex items-center space-x-3">
-                <div className="p-2.5 rounded-2xl bg-emerald-50 text-emerald-600">
-                  <FileSpreadsheet className="w-6 h-6" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-slate-900">
-                    Upload Excel / CSV Pembagian Dospem
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    Alokasikan Dosen Pembimbing 1 dan 2 untuk banyak mahasiswa sekaligus via file spreadsheet.
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsAssignCsvModalOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              {/* Template Downloader */}
-              <div className="p-4 rounded-2xl bg-indigo-50/80 border border-indigo-200 flex flex-col sm:flex-row items-center justify-between gap-3">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 rounded-xl bg-indigo-100 text-indigo-700 shrink-0">
-                    <Download className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-indigo-900">
-                      Download File Template
-                    </div>
-                    <div className="text-[11px] text-indigo-700/80">
-                      Template kosongan siap diisi (kolom NIM, Nama, NIP Dospem 1, NIP Dospem 2)
-                    </div>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={downloadAssignCsvTemplate}
-                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all flex items-center space-x-1.5 shadow-xs shrink-0 cursor-pointer"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Download Template</span>
-                </button>
-              </div>
-
-              {/* Upload Zone */}
-              <div className="border-2 border-dashed border-slate-300 rounded-2xl p-6 text-center hover:border-emerald-500 transition-colors bg-slate-50/50">
-                <input
-                  type="file"
-                  id="assign-csv-upload"
-                  accept=".csv, .txt"
-                  onChange={handleAssignFileUpload}
-                  className="hidden"
-                />
-                <label htmlFor="assign-csv-upload" className="cursor-pointer block space-y-2">
-                  <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
-                    <Upload className="w-6 h-6" />
-                  </div>
-                  <div className="text-xs sm:text-sm font-bold text-slate-700">
-                    {assignCsvFileName ? assignCsvFileName : 'Klik atau drag & drop file CSV / Excel pembagian'}
-                  </div>
-                  <p className="text-[11px] text-slate-500">
-                    Pastikan kolom <span className="font-mono font-bold text-slate-700">NIM</span> dan <span className="font-mono font-bold text-slate-700">NIP</span> berformat angka (Number murni)
-                  </p>
-                </label>
-              </div>
-
-              {/* Preview Parsed Rows */}
-              {assignParsedRows.length > 0 && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs font-bold text-slate-700">
-                    <span>Pratinjau Data ({assignParsedRows.length} Mahasiswa)</span>
-                    <span className="text-[11px] text-emerald-600 font-semibold flex items-center space-x-1">
-                      <Check className="w-3.5 h-3.5" />
-                      <span>Data berhasil diparsing</span>
-                    </span>
-                  </div>
-                  <div className="max-h-56 overflow-y-auto rounded-xl border border-slate-200 text-xs">
-                    <table className="w-full text-left border-collapse">
-                      <thead className="bg-slate-100 text-[10px] uppercase font-bold text-slate-600 sticky top-0">
-                        <tr>
-                          <th className="p-2">NIM &amp; Nama (Number)</th>
-                          <th className="p-2">Dospem 1 (NIP Number)</th>
-                          <th className="p-2">Dospem 2 (NIP Number)</th>
-                          <th className="p-2 text-center">Status Validasi</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {assignParsedRows.map((r, idx) => (
-                          <tr key={idx} className="hover:bg-slate-50">
-                            <td className="p-2">
-                              <div className="font-bold text-slate-800">{r.nama}</div>
-                              <div className="text-[10px] text-indigo-700 font-mono font-bold flex items-center space-x-1">
-                                <Hash className="w-3 h-3 text-slate-400" />
-                                <span>{r.nim}</span>
-                              </div>
-                            </td>
-                            <td className="p-2">
-                              <div className="font-semibold text-slate-800">{r.dospem1_nama}</div>
-                              {r.dospem1_nip && (
-                                <div className="text-[10px] text-emerald-700 font-mono font-bold flex items-center space-x-1">
-                                  <Hash className="w-3 h-3 text-emerald-500" />
-                                  <span>{r.dospem1_nip}</span>
-                                </div>
-                              )}
-                            </td>
-                            <td className="p-2">
-                              <div className="font-semibold text-slate-800">{r.dospem2_nama}</div>
-                              {r.dospem2_nip && (
-                                <div className="text-[10px] text-purple-700 font-mono font-bold flex items-center space-x-1">
-                                  <Hash className="w-3 h-3 text-purple-500" />
-                                  <span>{r.dospem2_nip}</span>
-                                </div>
-                              )}
-                            </td>
-                            <td className="p-2 text-center">
-                              {r.isDuplicate ? (
-                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-700">
-                                  Dospem Sama
-                                </span>
-                              ) : !r.hasD1Match && r.dospem1_nip ? (
-                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-700">
-                                  NIP D1 Salah
-                                </span>
-                              ) : !r.hasD2Match && r.dospem2_nip ? (
-                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-700">
-                                  NIP D2 Salah
-                                </span>
-                              ) : !r.hasStudentMatch ? (
-                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700">
-                                  NIM Baru
-                                </span>
-                              ) : (
-                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700">
-                                  Valid (Number)
-                                </span>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="flex justify-end space-x-3 pt-4 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setIsAssignCsvModalOpen(false)}
-                className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-50 transition-colors cursor-pointer"
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                disabled={assignParsedRows.length === 0}
-                onClick={handleConfirmAssignCsvImport}
-                className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
-              >
-                Terapkan Pembagian ({assignParsedRows.length} Mahasiswa)
               </button>
             </div>
           </div>
