@@ -7367,6 +7367,74 @@ export const MOCK_NOTIFICATIONS = [
     email_to: '09010182428002@student.unsri.ac.id',
     email_sent_at: '2026-09-02T11:00:05Z',
     created_at: '2026-09-02T11:00:00Z'
+  },
+  {
+    id: 'notif-zaqilla-bimbingan-1',
+    recipient_role: 'dosen',
+    recipient_nip: '198410012009121005',
+    dosen_nama: 'Dr. Abdiansah, S.Kom., M.Cs.',
+    mhs_nim: '09010282428029',
+    mhs_nama: 'ZAQILLA SAHIL',
+    related_type: 'consultation',
+    action_url: '/dosen/validasi?nim=09010282428029',
+    title: 'Pengajuan Bimbingan Baru',
+    message: 'ZAQILLA SAHIL telah mengajukan bimbingan baru.',
+    is_read: false,
+    created_at: new Date(Date.now() - 5 * 60 * 1000).toISOString()
+  },
+  {
+    id: 'notif-zaqilla-bimbingan-dosen',
+    recipient_role: 'dosen',
+    mhs_nim: '09010282428029',
+    mhs_nama: 'ZAQILLA SAHIL',
+    related_type: 'consultation',
+    action_url: '/dosen/validasi?nim=09010282428029',
+    title: 'Pengajuan Bimbingan Baru',
+    message: 'ZAQILLA SAHIL telah mengajukan bimbingan baru.',
+    is_read: false,
+    created_at: new Date(Date.now() - 5 * 60 * 1000).toISOString()
+  },
+  {
+    id: 'notif-dosen-bimbingan-1',
+    recipient_role: 'dosen',
+    recipient_nip: '198803052019031010',
+    dosen_nama: 'Bayu Wijaya Putra, S.Kom., M.Kom.',
+    mhs_nim: '09010182428002',
+    mhs_nama: 'Aulia Azzahra',
+    related_type: 'consultation',
+    action_url: '/dosen/validasi?nim=09010182428002',
+    title: 'Pengajuan Bimbingan Baru',
+    message: 'Aulia Azzahra telah mengajukan bimbingan baru.',
+    is_read: false,
+    created_at: new Date(Date.now() - 25 * 60 * 1000).toISOString()
+  },
+  {
+    id: 'notif-dosen-sidang-1',
+    recipient_role: 'dosen',
+    recipient_nip: '198803052019031010',
+    dosen_nama: 'Bayu Wijaya Putra, S.Kom., M.Kom.',
+    related_type: 'defense_schedule',
+    mhs_nim: '09031182328001',
+    mhs_nama: 'Ahmad Rizky Pratama',
+    action_url: '/dosen/jadwal-sidang',
+    title: 'Penugasan Jadwal Sidang TA',
+    message: 'Kaprodi menugaskan Anda sebagai Anggota Penguji pada Sidang Akhir Ahmad Rizky Pratama (09031182328001) pada 25 Okt 2026 pukul 09:00 - 10:30 WIB di Ruang Sidang Utama DIPKOM.',
+    is_read: false,
+    created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
+  },
+  {
+    id: 'notif-dosen-bimbingan-2',
+    recipient_role: 'dosen',
+    recipient_nip: '198803052019031010',
+    dosen_nama: 'Bayu Wijaya Putra, S.Kom., M.Kom.',
+    mhs_nim: '09010282428041',
+    mhs_nama: 'EGIR EXTRA APENA',
+    related_type: 'consultation',
+    action_url: '/dosen/validasi?nim=09010282428041',
+    title: 'Pengajuan Bimbingan Baru',
+    message: 'EGIR EXTRA APENA telah mengajukan bimbingan baru.',
+    is_read: false,
+    created_at: new Date(Date.now() - 50 * 60 * 1000).toISOString()
   }
 ];
 
@@ -14560,6 +14628,23 @@ export const MOCK_CONSULTATIONS = [
     masukan_dosen: 'Teori lengkap. Siapkan rancangan tabel kriteria.',
     status: 'disetujui',
     created_at: '2026-10-04T15:30:00Z'
+  },
+  {
+    id: 'cons-pend-zaqilla-1',
+    mhs_nim: '09010282428029',
+    mhs_nama: 'ZAQILLA SAHIL',
+    pembimbing: 'Pembimbing 1',
+    dosen_nip: '198410012009121005',
+    dosen_nama: 'Dr. Abdiansah, S.Kom., M.Cs.',
+    metode: 'luring',
+    tanggal: '2026-10-28',
+    waktu: '11:15',
+    bab_topik: 'Bab 1 - Pendahuluan',
+    catatan_mahasiswa: 'Pengajuan draf bimbingan Bab 1 dan perumusan masalah penelitian.',
+    masukan_dosen: '',
+    status: 'menunggu_validasi',
+    jenis_revisi: 'Menunggu',
+    created_at: new Date(Date.now() - 5 * 60 * 1000).toISOString()
   },
   {
     id: 'cons-pend-1',

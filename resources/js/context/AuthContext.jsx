@@ -777,7 +777,17 @@ export function AuthProvider({ children }) {
       const saved = localStorage.getItem('simta_notifications');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Smart merge: tambahkan entri bawaan dosen jika belum ada di localStorage
+          const existingIds = new Set(parsed.map(n => String(n.id)));
+          const missingDefaults = (MOCK_NOTIFICATIONS || []).filter(n => !existingIds.has(String(n.id)));
+          if (missingDefaults.length > 0) {
+            const merged = [...missingDefaults, ...parsed];
+            try { localStorage.setItem('simta_notifications', JSON.stringify(merged)); } catch {}
+            return merged;
+          }
+          return parsed;
+        }
       }
     } catch {}
     return MOCK_NOTIFICATIONS;
@@ -894,15 +904,146 @@ export function AuthProvider({ children }) {
       try { localStorage.setItem('simta_defense_schedules', JSON.stringify(updated)); } catch {}
       return updated;
     });
+
+    // Otomatis buat notifikasi penugasan jadwal sidang untuk seluruh dewan penguji dosen
+    const examiners = [
+      { role: 'Ketua Penguji', nama: newSchedule.ketua_penguji_nama, nip: newSchedule.ketua_penguji_nip },
+      { role: 'Sekretaris (Dospem)', nama: newSchedule.sekretaris_nama, nip: newSchedule.sekretaris_nip },
+      { role: 'Anggota Penguji 1', nama: newSchedule.penguji1_nama, nip: newSchedule.penguji1_nip },
+      { role: 'Anggota Penguji 2', nama: newSchedule.penguji2_nama, nip: newSchedule.penguji2_nip }
+    ].filter(ex => Boolean(ex.nama || ex.nip));
+
+    const scheduleNotifs = examiners.map(ex => ({
+      id: `notif-${Date.now()}-sch-${Math.random().toString(36).slice(2, 7)}`,
+      recipient_role: 'dosen',
+      recipient_nip: String(ex.nip || '').trim(),
+      dosen_nama: ex.nama || '',
+      related_type: 'defense_schedule',
+      schedule_id: newSchedule.id,
+      mhs_nim: newSchedule.mhs_nim,
+      mhs_nama: newSchedule.mhs_nama,
+      action_url: '/dosen/jadwal-sidang',
+      title: 'Penugasan Jadwal Sidang TA',
+      message: `Kaprodi menugaskan Anda sebagai ${ex.role} untuk ${newSchedule.jenis_sidang || 'Sidang TA'} ${newSchedule.mhs_nama} (${newSchedule.mhs_nim}) pada ${newSchedule.tanggal} (${newSchedule.waktu_mulai || '09:00'} - ${newSchedule.waktu_selesai || '10:30'} WIB) di ${newSchedule.ruangan}.`,
+      is_read: false,
+      created_at: new Date().toISOString()
+    }));
+
+    if (scheduleNotifs.length > 0) {
+      setNotifications(prev => {
+        const next = [...scheduleNotifs, ...prev];
+        try { localStorage.setItem('simta_notifications', JSON.stringify(next)); } catch {}
+        return next;
+      });
+
+      broadcastRealtimeNotification('DEFENSE_SCHEDULE_CREATED', {
+        schedule: newSchedule,
+        notifs: scheduleNotifs
+      });
+
+      if (bimbinganBroadcastChannelRef.current) {
+        try {
+          bimbinganBroadcastChannelRef.current.postMessage({
+            type: 'DEFENSE_SCHEDULE_CREATED',
+            schedule: newSchedule,
+            notifs: scheduleNotifs
+          });
+        } catch {}
+      }
+
+      const activeUser = currentUserRef.current;
+      if (activeUser?.role === 'dosen') {
+        const activeNip = String(activeUser.nip || activeUser.nim || '').trim();
+        const activeNama = (activeUser.nama || '').toLowerCase().trim();
+        const matched = scheduleNotifs.find(n => 
+          (activeNip && n.recipient_nip === activeNip) ||
+          (activeNama && n.dosen_nama && n.dosen_nama.toLowerCase().includes(activeNama))
+        );
+        if (matched) {
+          setLatestRealtimeNotif(matched);
+          playNotificationSound();
+        }
+      }
+    }
+
     return newSchedule;
   };
 
   const updateDefenseSchedule = (id, fields) => {
+    let updatedSchedule = null;
     setDefenseSchedules(prev => {
-      const updated = prev.map(s => s.id === id ? { ...s, ...fields, updated_at: new Date().toISOString() } : s);
+      const updated = prev.map(s => {
+        if (s.id === id) {
+          updatedSchedule = { ...s, ...fields, updated_at: new Date().toISOString() };
+          return updatedSchedule;
+        }
+        return s;
+      });
       try { localStorage.setItem('simta_defense_schedules', JSON.stringify(updated)); } catch {}
       return updated;
     });
+
+    if (updatedSchedule) {
+      const examiners = [
+        { role: 'Ketua Penguji', nama: updatedSchedule.ketua_penguji_nama, nip: updatedSchedule.ketua_penguji_nip },
+        { role: 'Sekretaris (Dospem)', nama: updatedSchedule.sekretaris_nama, nip: updatedSchedule.sekretaris_nip },
+        { role: 'Anggota Penguji 1', nama: updatedSchedule.penguji1_nama, nip: updatedSchedule.penguji1_nip },
+        { role: 'Anggota Penguji 2', nama: updatedSchedule.penguji2_nama, nip: updatedSchedule.penguji2_nip }
+      ].filter(ex => Boolean(ex.nama || ex.nip));
+
+      const updateNotifs = examiners.map(ex => ({
+        id: `notif-${Date.now()}-sch-upd-${Math.random().toString(36).slice(2, 7)}`,
+        recipient_role: 'dosen',
+        recipient_nip: String(ex.nip || '').trim(),
+        dosen_nama: ex.nama || '',
+        related_type: 'defense_schedule',
+        schedule_id: updatedSchedule.id,
+        mhs_nim: updatedSchedule.mhs_nim,
+        mhs_nama: updatedSchedule.mhs_nama,
+        action_url: '/dosen/jadwal-sidang',
+        title: 'Pembaruan Jadwal Sidang TA',
+        message: `Jadwal ${updatedSchedule.jenis_sidang || 'Sidang TA'} ${updatedSchedule.mhs_nama} (${updatedSchedule.mhs_nim}) telah diperbarui oleh Kaprodi: ${updatedSchedule.tanggal} (${updatedSchedule.waktu_mulai || '09:00'} - ${updatedSchedule.waktu_selesai || '10:30'} WIB) di ${updatedSchedule.ruangan}.`,
+        is_read: false,
+        created_at: new Date().toISOString()
+      }));
+
+      if (updateNotifs.length > 0) {
+        setNotifications(prev => {
+          const next = [...updateNotifs, ...prev];
+          try { localStorage.setItem('simta_notifications', JSON.stringify(next)); } catch {}
+          return next;
+        });
+
+        broadcastRealtimeNotification('DEFENSE_SCHEDULE_UPDATED', {
+          schedule: updatedSchedule,
+          notifs: updateNotifs
+        });
+
+        if (bimbinganBroadcastChannelRef.current) {
+          try {
+            bimbinganBroadcastChannelRef.current.postMessage({
+              type: 'DEFENSE_SCHEDULE_UPDATED',
+              schedule: updatedSchedule,
+              notifs: updateNotifs
+            });
+          } catch {}
+        }
+
+        const activeUser = currentUserRef.current;
+        if (activeUser?.role === 'dosen') {
+          const activeNip = String(activeUser.nip || activeUser.nim || '').trim();
+          const activeNama = (activeUser.nama || '').toLowerCase().trim();
+          const matched = updateNotifs.find(n => 
+            (activeNip && n.recipient_nip === activeNip) ||
+            (activeNama && n.dosen_nama && n.dosen_nama.toLowerCase().includes(activeNama))
+          );
+          if (matched) {
+            setLatestRealtimeNotif(matched);
+            playNotificationSound();
+          }
+        }
+      }
+    }
   };
 
   const deleteDefenseSchedule = (id) => {
@@ -1900,8 +2041,108 @@ export function AuthProvider({ children }) {
             if (exists) return prev;
             return [notif, ...prev];
           });
-          setLatestRealtimeNotif(notif);
-          playNotificationSound();
+          const activeUser = currentUserRef.current;
+          if (!activeUser || activeUser.role === 'kaprodi' || activeUser.role === 'admin') {
+            setLatestRealtimeNotif(notif);
+            playNotificationSound();
+          }
+        }
+      } else if (envelope.type === 'CONSULTATION_SUBMITTED') {
+        const { consultation, notif } = envelope.payload || {};
+        if (consultation) {
+          setConsultations(prev => {
+            const exists = prev.some(c => String(c.id) === String(consultation.id));
+            if (exists) return prev;
+            return [parseConsultationItem(consultation), ...prev];
+          });
+        }
+        if (notif) {
+          setNotifications(prev => {
+            const exists = prev.some(n => n.id === notif.id);
+            if (exists) return prev;
+            return [notif, ...prev];
+          });
+          const activeUser = currentUserRef.current;
+          if (activeUser?.role === 'dosen') {
+            const activeNip = String(activeUser.nip || activeUser.nim || '').trim();
+            const activeNama = (activeUser.nama || '').toLowerCase().trim();
+            const notifNip = String(notif.recipient_nip || '').trim();
+            const notifNama = (notif.dosen_nama || '').toLowerCase().trim();
+            const isMatch = (!notifNip && !notifNama) || 
+                            (activeNip && notifNip && activeNip === notifNip) || 
+                            (activeNama && notifNama && (notifNama.includes(activeNama) || activeNama.includes(notifNama)));
+            if (isMatch) {
+              setLatestRealtimeNotif(notif);
+              playNotificationSound();
+            }
+          }
+        }
+      } else if (envelope.type === 'CONSULTATION_RESPONDED' || envelope.type === 'BIMBINGAN_STATUS_RESPONDED') {
+        const { consultation, notif } = envelope.payload || {};
+        if (consultation) {
+          setConsultations(prev => {
+            const updated = prev.map(c => {
+              if (String(c.id) === String(consultation.id)) {
+                return parseConsultationItem({ ...c, ...consultation });
+              }
+              return c;
+            });
+            try { localStorage.setItem('simta_consultations', JSON.stringify(updated)); } catch {}
+            return updated;
+          });
+        }
+        if (notif) {
+          setNotifications(prev => {
+            const exists = prev.some(n => n.id === notif.id);
+            if (exists) return prev;
+            return [notif, ...prev];
+          });
+          const activeUser = currentUserRef.current;
+          if (activeUser?.role === 'mahasiswa') {
+            const matchNim = !notif.recipient_nim || !activeUser.nim || String(notif.recipient_nim).trim() === String(activeUser.nim).trim();
+            if (matchNim) {
+              setLatestRealtimeNotif(notif);
+              playNotificationSound();
+            }
+          }
+        }
+      } else if (envelope.type === 'DEFENSE_SCHEDULE_CREATED' || envelope.type === 'DEFENSE_SCHEDULE_UPDATED') {
+        const { schedule, notifs } = envelope.payload || {};
+        if (schedule) {
+          setDefenseSchedules(prev => {
+            const idx = prev.findIndex(s => s.id === schedule.id);
+            if (idx >= 0) {
+              const updated = [...prev];
+              updated[idx] = schedule;
+              return updated;
+            }
+            return [schedule, ...prev];
+          });
+        }
+        if (Array.isArray(notifs) && notifs.length > 0) {
+          setNotifications(prev => {
+            const next = [...prev];
+            notifs.forEach(n => {
+              if (!next.some(x => x.id === n.id)) next.unshift(n);
+            });
+            return next;
+          });
+          const activeUser = currentUserRef.current;
+          if (activeUser?.role === 'dosen') {
+            const activeNip = String(activeUser.nip || activeUser.nim || '').trim();
+            const activeNama = (activeUser.nama || '').toLowerCase().trim();
+            const matched = notifs.find(n => {
+              const notifNip = String(n.recipient_nip || '').trim();
+              const notifNama = (n.dosen_nama || '').toLowerCase().trim();
+              return (!notifNip && !notifNama) || 
+                     (activeNip && notifNip && activeNip === notifNip) || 
+                     (activeNama && notifNama && (notifNama.includes(activeNama) || activeNama.includes(notifNama)));
+            });
+            if (matched) {
+              setLatestRealtimeNotif(matched);
+              playNotificationSound();
+            }
+          }
         }
       }
     });
@@ -1957,6 +2198,74 @@ export function AuthProvider({ children }) {
                 }
               }
             }
+          } else if (event.data?.type === 'CONSULTATION_SUBMITTED') {
+            const { consultation, notif } = event.data;
+            if (consultation) {
+              setConsultations(prev => {
+                const exists = prev.some(c => String(c.id) === String(consultation.id));
+                if (exists) return prev;
+                return [parseConsultationItem(consultation), ...prev];
+              });
+            }
+            if (notif) {
+              setNotifications(prev => {
+                const exists = prev.some(n => n.id === notif.id);
+                if (exists) return prev;
+                return [notif, ...prev];
+              });
+              const activeUser = currentUserRef.current;
+              if (activeUser?.role === 'dosen') {
+                const activeNip = String(activeUser.nip || activeUser.nim || '').trim();
+                const activeNama = (activeUser.nama || '').toLowerCase().trim();
+                const notifNip = String(notif.recipient_nip || '').trim();
+                const notifNama = (notif.dosen_nama || '').toLowerCase().trim();
+                const isMatch = (!notifNip && !notifNama) || 
+                                (activeNip && notifNip && activeNip === notifNip) || 
+                                (activeNama && notifNama && (notifNama.includes(activeNama) || activeNama.includes(notifNama)));
+                if (isMatch) {
+                  setLatestRealtimeNotif(notif);
+                  playNotificationSound();
+                }
+              }
+            }
+          } else if (event.data?.type === 'DEFENSE_SCHEDULE_CREATED' || event.data?.type === 'DEFENSE_SCHEDULE_UPDATED') {
+            const { schedule, notifs } = event.data;
+            if (schedule) {
+              setDefenseSchedules(prev => {
+                const idx = prev.findIndex(s => s.id === schedule.id);
+                if (idx >= 0) {
+                  const updated = [...prev];
+                  updated[idx] = schedule;
+                  return updated;
+                }
+                return [schedule, ...prev];
+              });
+            }
+            if (Array.isArray(notifs) && notifs.length > 0) {
+              setNotifications(prev => {
+                const next = [...prev];
+                notifs.forEach(n => {
+                  if (!next.some(x => x.id === n.id)) next.unshift(n);
+                });
+                return next;
+              });
+              const activeUser = currentUserRef.current;
+              if (activeUser?.role === 'dosen') {
+                const activeNip = String(activeUser.nip || activeUser.nim || '').trim();
+                const activeNama = (activeUser.nama || '').toLowerCase().trim();
+                const matched = notifs.find(n => {
+                  const notifNip = String(n.recipient_nip || '').trim();
+                  const notifNama = (n.dosen_nama || '').toLowerCase().trim();
+                  return (!notifNip && !notifNama) || 
+                         (activeNip && notifNip && activeNip === notifNip) || 
+                         (activeNama && notifNama && (notifNama.includes(activeNama) || activeNama.includes(notifNama)));
+                });
+                if (matched) {
+                  setLatestRealtimeNotif(matched);
+                  playNotificationSound();
+                }
+              }
+            }
           }
         };
 
@@ -1970,6 +2279,13 @@ export function AuthProvider({ children }) {
   }, []);
 
   const broadcastBimbinganResponse = (consultation, notif) => {
+    // 1. Multi-transport realtime notification bus (BroadcastChannel + LocalStorage + Supabase)
+    broadcastRealtimeNotification('CONSULTATION_RESPONDED', {
+      consultation,
+      notif
+    });
+
+    // 2. Dedicated bimbingan channel
     if (bimbinganBroadcastChannelRef.current) {
       try {
         bimbinganBroadcastChannelRef.current.postMessage({
@@ -3614,6 +3930,60 @@ export function AuthProvider({ children }) {
       return updated;
     });
 
+    // Buat notifikasi pengajuan bimbingan untuk Dosen Pembimbing
+    const targetDosenNip = String(newEntry.dosen_nip || '').trim();
+    const targetDosenNama = newEntry.dosen_nama || 'Dosen Pembimbing';
+    const notifDosen = {
+      id: `notif-${Date.now()}-cons-dosen-${Math.random().toString(36).slice(2, 7)}`,
+      recipient_role: 'dosen',
+      recipient_nip: targetDosenNip,
+      dosen_nama: targetDosenNama,
+      mhs_nim: newEntry.mhs_nim,
+      mhs_nama: newEntry.mhs_nama,
+      related_type: 'consultation',
+      consultation_id: newEntry.id,
+      action_url: `/dosen/validasi?nim=${newEntry.mhs_nim}`,
+      title: 'Pengajuan Bimbingan Baru',
+      message: `${newEntry.mhs_nama} telah mengajukan bimbingan baru.`,
+      is_read: false,
+      created_at: new Date().toISOString()
+    };
+
+    setNotifications(prev => {
+      const next = [notifDosen, ...prev];
+      try { localStorage.setItem('simta_notifications', JSON.stringify(next)); } catch {}
+      return next;
+    });
+
+    // Broadcast across multi-transport bus & cross-tab channel
+    broadcastRealtimeNotification('CONSULTATION_SUBMITTED', {
+      consultation: newEntry,
+      notif: notifDosen
+    });
+
+    if (bimbinganBroadcastChannelRef.current) {
+      try {
+        bimbinganBroadcastChannelRef.current.postMessage({
+          type: 'CONSULTATION_SUBMITTED',
+          consultation: newEntry,
+          notif: notifDosen
+        });
+      } catch {}
+    }
+
+    // Jika user yang aktif saat ini adalah dosen pembimbing tersebut
+    const activeUser = currentUserRef.current;
+    if (activeUser?.role === 'dosen') {
+      const activeNip = String(activeUser.nip || activeUser.nim || '').trim();
+      const activeNama = (activeUser.nama || '').toLowerCase().trim();
+      const matchNip = !targetDosenNip || !activeNip || targetDosenNip === activeNip;
+      const matchNama = !targetDosenNama || targetDosenNama.toLowerCase().includes(activeNama) || activeNama.includes(targetDosenNama.toLowerCase());
+      if (matchNip || matchNama) {
+        setLatestRealtimeNotif(notifDosen);
+        playNotificationSound();
+      }
+    }
+
     if (isSupabaseConfigured && supabase) {
       try {
         const fullPayload = {
@@ -4758,6 +5128,39 @@ export function AuthProvider({ children }) {
       dismissRealtimeNotif,
       markNotificationAsRead,
       triggerRealtimeTestNotif: () => {
+        const activeUser = currentUserRef.current;
+        if (activeUser?.role === 'dosen') {
+          // Simulasi notifikasi pengajuan bimbingan untuk Dosen
+          const testDosenNotif = {
+            id: `notif-test-${Date.now()}-dosen-cons`,
+            recipient_role: 'dosen',
+            recipient_nip: String(activeUser.nip || activeUser.nim || '198803052019031010').trim(),
+            dosen_nama: activeUser.nama || 'Bayu Wijaya Putra, S.Kom., M.Kom.',
+            mhs_nim: '09010182428002',
+            mhs_nama: 'Aulia Azzahra',
+            related_type: 'consultation',
+            action_url: '/dosen/validasi?nim=09010182428002',
+            title: 'Pengajuan Bimbingan Baru',
+            message: 'Aulia Azzahra (09010182428002) telah mengajukan bimbingan: "Bab 3 - Analisis dan Perancangan Sistem".',
+            is_read: false,
+            created_at: new Date().toISOString()
+          };
+          setNotifications(prev => [testDosenNotif, ...prev]);
+          setLatestRealtimeNotif(testDosenNotif);
+          playNotificationSound();
+          broadcastRealtimeNotification('CONSULTATION_SUBMITTED', {
+            consultation: {
+              id: `test-cons-${Date.now()}`,
+              mhs_nim: '09010182428002',
+              mhs_nama: 'Aulia Azzahra',
+              bab_topik: 'Bab 3 - Analisis dan Perancangan Sistem',
+              status: 'menunggu_tanggapan'
+            },
+            notif: testDosenNotif
+          });
+          return;
+        }
+
         const sample = thesisTitles[0] || {
           id: 'test-' + Date.now(),
           mhs_nama: 'Aulia Azzahra',
