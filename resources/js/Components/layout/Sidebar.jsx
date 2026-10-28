@@ -27,7 +27,8 @@ import {
   LayoutGrid,
   Bell,
   ClipboardList,
-  Lock
+  Lock,
+  FileStack
 } from 'lucide-react';
 
 export default function Sidebar() {
