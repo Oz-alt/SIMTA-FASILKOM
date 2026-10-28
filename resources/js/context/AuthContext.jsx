@@ -2475,9 +2475,6 @@ export function AuthProvider({ children }) {
       if (!isValidPassword(localFound)) {
         throw new Error('Kata sandi salah.');
       }
-      if (supabaseCredential !== true && !isValidPassword(localFound)) {
-        throw new Error('Kata sandi salah.');
-      }
 
       // Status verifikasi awal berasal dari Supabase; objek dari localStorage/mock
       // sering tidak membawanya, sehingga tanpa merge ini AppLayout akan memantulkan
@@ -4628,6 +4625,7 @@ export function AuthProvider({ children }) {
     setDbProfiles(prev => prev.filter(p => p.id !== cleanKey && p.nim !== cleanKey));
 
     if (isSupabaseConfigured && supabase) {
+      const nimKeys = Array.from(studentKeys).filter(k => /^\d{6,}$/.test(k));
       try {
         if (nimKeys.length > 0) {
           await supabase.from('student_advisors').delete().in('student_nim', nimKeys);
