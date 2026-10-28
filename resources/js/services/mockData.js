@@ -7343,32 +7343,7 @@ export const MOCK_BOOKINGS = [
   }
 ];
 
-export const MOCK_NOTIFICATIONS = [
-  {
-    id: 'notif-1',
-    profile_id: 'user-mhs-1',
-    related_type: 'thesis_title',
-    title: 'Judul TA Disetujui!',
-    message: 'Selamat! Judul TA Anda telah disetujui Kaprodi. Tombol Pengajuan Ruang Seminar Proposal kini sudah aktif.',
-    is_read: false,
-    is_email_sent: true,
-    email_to: '09010182428002@student.unsri.ac.id',
-    email_sent_at: '2026-08-16T14:30:05Z',
-    created_at: '2026-08-16T14:30:00Z'
-  },
-  {
-    id: 'notif-2',
-    profile_id: 'user-mhs-1',
-    related_type: 'booking',
-    title: 'Peminjaman Ruangan Disetujui',
-    message: 'Peminjaman Ruang Sidang Utama DIPKOM untuk Seminar Proposal pada 12 Sep 2026 (09:00 - 11:00) telah disetujui Admin Sarana.',
-    is_read: true,
-    is_email_sent: true,
-    email_to: '09010182428002@student.unsri.ac.id',
-    email_sent_at: '2026-09-02T11:00:05Z',
-    created_at: '2026-09-02T11:00:00Z'
-  }
-];
+export const MOCK_NOTIFICATIONS = [];
 
 export const MOCK_THESIS_ARCHIVES = [
   {

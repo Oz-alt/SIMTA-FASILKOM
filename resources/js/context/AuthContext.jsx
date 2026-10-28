@@ -26,6 +26,62 @@ import { calculateBimbinganReminder } from '../lib/bimbinganReminder.js';
 
 const AuthContext = createContext();
 
+// ── Penanda mahasiswa yang sudah dihapus ──
+// getAllMahasiswaAccounts menyusun ulang daftar dari tiga sumber (student_advisors,
+// MOCK_USERS, profiles). Tanpa penanda ini, mahasiswa yang berasal dari dataset
+// bawaan akan muncul kembali setiap kali daftar dibentuk ulang setelah dihapus.
+const DELETED_STUDENTS_KEY = 'simta_deleted_students';
+
+const getDeletedStudentKeys = () => {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(DELETED_STUDENTS_KEY) || '[]');
+    return new Set(Array.isArray(parsed) ? parsed.map(key => String(key).trim()).filter(Boolean) : []);
+  } catch {
+    return new Set();
+  }
+};
+
+const markStudentsDeleted = (keys) => {
+  try {
+    const existing = getDeletedStudentKeys();
+    keys.forEach(key => {
+      const clean = String(key ?? '').trim();
+      if (clean) {
+        existing.add(clean);
+      }
+    });
+    localStorage.setItem(DELETED_STUDENTS_KEY, JSON.stringify(Array.from(existing)));
+  } catch {}
+};
+
+const isStudentDeleted = (record) => {
+  if (!record) {
+    return false;
+  }
+  const deleted = getDeletedStudentKeys();
+  if (deleted.size === 0) {
+    return false;
+  }
+  return [record.id, record.nim, record.nip, record.student_nim, record.email]
+    .map(value => String(value ?? '').trim())
+    .filter(Boolean)
+    .some(value => deleted.has(value));
+};
+
+// Menambahkan kembali NIM yang pernah dihapus harus mengaktifkan lagi barisnya.
+const unmarkStudentsDeleted = (keys) => {
+  try {
+    const existing = getDeletedStudentKeys();
+    keys.forEach(key => {
+      const clean = String(key ?? '').trim();
+      if (clean) {
+        existing.delete(clean);
+      }
+    });
+    localStorage.setItem(DELETED_STUDENTS_KEY, JSON.stringify(Array.from(existing)));
+  } catch {}
+};
+
 // ── Migrasi sekali jalan: bersihkan nomor HP/WA sisa seed lama di cache browser ──
 // Nomor harus kosong secara default; hanya terisi bila pengguna mengisinya sendiri.
 const runLegacyPhoneMigration = () => {
@@ -65,6 +121,12 @@ const runLegacyPhoneMigration = () => {
 
 import { supabase, isSupabaseConfigured } from '../services/supabase.js';
 import { broadcastRealtimeNotification, subscribeToRealtimeNotifications } from '../services/realtimeNotificationBus.js';
+import {
+  getStudentCredential,
+  saveStudentCredential,
+  verifyStudentPassword,
+  normalizeNim
+} from '../services/studentCredentials.js';
 
 const generateRowId = () => {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -581,6 +643,44 @@ export function AuthProvider({ children }) {
   const updateUserProfile = async (updatedFields) => {
     if (!currentUser) return;
     const merged = { ...currentUser, ...updatedFields };
+
+    // ── Verifikasi awal mahasiswa: simpan kata sandi + status profil ke Supabase ──
+    // Tanpa langkah ini, hasil verifikasi hanya hidup di localStorage sehingga
+    // akun kembali ke kata sandi default NIM saat cache dibersihkan / ganti perangkat.
+    // Disimpan sebelum state diubah agar kegagalan tidak membuat UI seolah berhasil.
+    if (merged.role === 'mahasiswa') {
+      const studentNim = normalizeNim(merged.nim || merged.nip);
+      if (studentNim) {
+        const passwordToStore = typeof updatedFields.password === 'string' ? updatedFields.password.trim() : '';
+        const shouldMarkCompleted = updatedFields.is_profile_completed === true || merged.is_profile_completed === true;
+
+        if (passwordToStore || shouldMarkCompleted) {
+          const saved = await saveStudentCredential({
+            nim: studentNim,
+            password: passwordToStore || undefined,
+            isProfileCompleted: shouldMarkCompleted ? true : undefined
+          });
+
+          if (!saved.success) {
+            console.warn('Gagal menyimpan kredensial mahasiswa ke Supabase:', saved.message);
+            // Tabel belum ada: tetap izinkan alur lokal supaya pengguna tidak
+            // terhalang, tetapi beri tahu bahwa penyimpanan server belum aktif.
+            if (saved.tableMissing) {
+              console.warn(
+                'Tabel student_credentials belum dibuat. Jalankan add.sql ' +
+                'di Supabase SQL Editor agar kata sandi tersimpan permanen.'
+              );
+            } else {
+              throw new Error(
+                'Profil gagal disimpan ke server: ' +
+                `${saved.message}. Pastikan tabel student_credentials sudah dibuat (jalankan add.sql).`
+              );
+            }
+          }
+        }
+      }
+    }
+
     setCurrentUser(merged);
 
     // Sync advisor list if updating lecturer profile
@@ -765,10 +865,20 @@ export function AuthProvider({ children }) {
       const saved = localStorage.getItem('simta_notifications');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Bersihkan notifikasi dummy mock lama
+          return parsed.filter(n => 
+            n && 
+            n.id !== 'notif-1' && 
+            n.id !== 'notif-2' && 
+            !n.is_mock &&
+            n.title !== 'Judul TA Disetujui!' &&
+            n.title !== 'Peminjaman Ruangan Disetujui'
+          );
+        }
       }
     } catch {}
-    return MOCK_NOTIFICATIONS;
+    return [];
   });
   // Real-time Bimbingan Response Alert State for Mahasiswa
   const [activeRealtimeAlert, setActiveRealtimeAlert] = useState(null);
@@ -1407,6 +1517,57 @@ export function AuthProvider({ children }) {
     return deptObj;
   };
 
+  // ── Migrasi sekali jalan: naikkan verifikasi awal mahasiswa dari localStorage ──
+  // Akun yang sudah menyelesaikan verifikasi di perangkat ini sebelum tabel
+  // student_credentials ada tetap perlu tersimpan di Supabase.
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase) {
+      return;
+    }
+
+    const FLAG = 'simta_student_credentials_backfilled_v1';
+    try {
+      if (localStorage.getItem(FLAG)) {
+        return;
+      }
+    } catch {
+      return;
+    }
+
+    const run = async () => {
+      try {
+        const students = getRegisteredUsers().filter(
+          (u) => u && u.role === 'mahasiswa' && (u.is_profile_completed === true || u.password)
+        );
+
+        for (const student of students) {
+          const nim = normalizeNim(student.nim || student.nip);
+          if (!nim) {
+            continue;
+          }
+
+          // Lewati bila Supabase sudah punya kredensial untuk NIM ini.
+          const existing = await getStudentCredential(nim);
+          if (existing && (existing.hasPassword || existing.isProfileCompleted)) {
+            continue;
+          }
+
+          await saveStudentCredential({
+            nim,
+            password: student.password || undefined,
+            isProfileCompleted: student.is_profile_completed === true ? true : undefined
+          });
+        }
+
+        localStorage.setItem(FLAG, '1');
+      } catch (err) {
+        console.warn('Backfill kredensial mahasiswa dilewati:', err);
+      }
+    };
+
+    run();
+  }, []);
+
   // Restore Supabase Auth session on mount and preserve local active session on refresh
   useEffect(() => {
     // 1. Always ensure active user is populated from localStorage / registered users
@@ -2024,6 +2185,128 @@ export function AuthProvider({ children }) {
     }
   }, [currentUser, consultations]);
 
+  // ── Notifikasi Otomatis Koordinasi Pusat untuk Kaprodi ──
+  // Menghasilkan notifikasi real-time & kontekstual bagi Kaprodi:
+  // 1. Mahasiswa yang menyimpan / mengajukan judul TA baru (status: tinjauan/diajukan)
+  // 2. Mahasiswa yang belum bimbingan lama (> 14 hari / 2 minggu)
+  // 3. Mahasiswa yang telah menyelesaikan target 24x bimbingan (siap sidang)
+  useEffect(() => {
+    const isKaprodi = currentUser?.role === 'kaprodi' || currentUser?.role === 'admin';
+    if (!isKaprodi) return;
+
+    const newKaprodiAlerts = [];
+    const now = new Date();
+
+    // 1. Mahasiswa yang menyimpan / mengajukan judul TA baru
+    (thesisTitles || []).forEach(t => {
+      if (t.status === 'tinjauan' || t.status === 'diajukan') {
+        const notifId = `kaprodi-title-tinjauan-${t.id}`;
+        newKaprodiAlerts.push({
+          id: notifId,
+          profile_id: 'user-kaprodi-abdiansah',
+          recipient_role: 'kaprodi',
+          related_type: 'thesis_title',
+          related_id: t.id,
+          title: `Pengajuan Judul TA: ${t.mhs_nama || 'Mahasiswa'}`,
+          message: `Mahasiswa ${t.mhs_nama || 'Mahasiswa'} (${t.mhs_nim || ''}) telah menyimpan judul TA: "${t.judul}". Otomatis masuk tahap peninjauan rapat Prodi.`,
+          student_name: t.mhs_nama || 'Mahasiswa',
+          student_nim: t.mhs_nim || '',
+          thesis_title: t.judul,
+          action_url: `/kaprodi/titles/${t.id}`,
+          badge_label: 'Judul Baru',
+          is_read: false,
+          created_at: t.created_at || new Date().toISOString()
+        });
+      }
+    });
+
+    // 2. Deteksi mahasiswa yang belum bimbingan > 14 hari
+    // Kumpulkan sesi bimbingan per mahasiswa
+    const studentConsultationMap = new Map();
+    (consultations || []).forEach(c => {
+      const nim = String(c.mhs_nim || c.nim || '').trim();
+      if (!nim) return;
+      if (!studentConsultationMap.has(nim)) {
+        studentConsultationMap.set(nim, []);
+      }
+      studentConsultationMap.get(nim).push(c);
+    });
+
+    // Periksa mahasiswa dari thesisTitles yang statusnya aktif (tinjauan, disetujui, judul_fix)
+    (thesisTitles || []).forEach(t => {
+      const nim = String(t.mhs_nim || '').trim();
+      if (!nim) return;
+      if (t.status_kelulusan === 'lulus' || t.status === 'ditolak') return;
+
+      const sessions = studentConsultationMap.get(nim) || [];
+      const dospemNama = t.pembimbing_1_nama || t.pembimbing_1 || 'Dosen Pembimbing';
+
+      if (sessions.length > 0) {
+        // Cari tanggal bimbingan terakhir
+        const sorted = [...sessions].sort((a, b) => new Date(b.tanggal || b.created_at || 0) - new Date(a.tanggal || a.created_at || 0));
+        const latest = sorted[0];
+        const latestDate = new Date(latest.tanggal || latest.created_at || 0);
+        if (!isNaN(latestDate.getTime())) {
+          const diffDays = Math.max(0, Math.floor((now - latestDate) / (1000 * 60 * 60 * 24)));
+          if (diffDays >= 14) {
+            newKaprodiAlerts.push({
+              id: `kaprodi-inactive-${nim}`,
+              profile_id: 'user-kaprodi-abdiansah',
+              recipient_role: 'kaprodi',
+              related_type: 'kaprodi_bimbingan_inactivity_alert',
+              related_id: nim,
+              title: `Peringatan Bimbingan Pasif (>14 Hari)`,
+              message: `Mahasiswa ${t.mhs_nama || nim} (${nim}) belum melakukan bimbingan selama ${diffDays} hari (Dospem: ${dospemNama}). Klik untuk hubungi dospem di Monitoring.`,
+              student_nim: nim,
+              student_nama: t.mhs_nama || nim,
+              dospem_nama: dospemNama,
+              action_url: `/kaprodi/monitoring-mahasiswa?search=${nim}`,
+              badge_label: `>${diffDays} Hari Pasif`,
+              is_read: false,
+              created_at: latest.tanggal || new Date().toISOString()
+            });
+          }
+        }
+
+        // 3. Mahasiswa yang telah menyelesaikan >= 24 sesi bimbingan
+        if (sessions.length >= 24) {
+          newKaprodiAlerts.push({
+            id: `kaprodi-siap-sidang-${nim}`,
+            profile_id: 'user-kaprodi-abdiansah',
+            recipient_role: 'kaprodi',
+            related_type: 'kaprodi_siap_sidang_alert',
+            related_id: nim,
+            title: `Mahasiswa Siap Sidang (24x Sesi Selesai)`,
+            message: `Mahasiswa ${t.mhs_nama || nim} (${nim}) telah menyelesaikan ${sessions.length}x bimbingan lengkap. Siap diverifikasi untuk pendaftaran sidang.`,
+            student_nim: nim,
+            student_nama: t.mhs_nama || nim,
+            action_url: `/kaprodi/monitoring-mahasiswa?search=${nim}`,
+            badge_label: 'Siap Sidang',
+            is_read: false,
+            created_at: new Date().toISOString()
+          });
+        }
+      }
+    });
+
+    if (newKaprodiAlerts.length > 0) {
+      setNotifications(prev => {
+        let hasChanges = false;
+        const existingMap = new Map(prev.map(n => [n.id, n]));
+        const next = [...prev];
+
+        newKaprodiAlerts.forEach(alert => {
+          if (!existingMap.has(alert.id)) {
+            next.unshift(alert);
+            hasChanges = true;
+          }
+        });
+
+        return hasChanges ? next : prev;
+      });
+    }
+  }, [currentUser, thesisTitles, consultations]);
+
   // Authenticate user strictly:
   // - Kaprodi & Admin: dapat login menggunakan Username (atau NIP/Email)
   // - Dosen & Mahasiswa: wajib menggunakan NIP atau NIM (atau Email)
@@ -2066,6 +2349,29 @@ export function AuthProvider({ children }) {
       }
 
       return false;
+    };
+
+    /**
+     * Verifikasi kata sandi mahasiswa terhadap kredensial yang tersimpan di Supabase.
+     *
+     * Sumber kebenaran: tabel `student_credentials`. Bila barisnya ada, NIM tidak
+     * boleh lagi dipakai sebagai kata sandi (pengguna sudah menetapkan sandi sendiri).
+     * Bila belum ada baris, kembalikan `null` agar pemanggil memakai jalur lama.
+     *
+     * @param {object} user
+     * @returns {Promise<boolean | null>}
+     */
+    const checkSupabaseCredential = async (user) => {
+      if (!user || user.role !== 'mahasiswa') {
+        return null;
+      }
+
+      const nim = normalizeNim(user.nim || user.nip);
+      if (!nim) {
+        return null;
+      }
+
+      return verifyStudentPassword(nim, inputPass);
     };
 
     // 1. Akun Kaprodi (dapat login dengan username "koprodi" / "kaprodi" atau NIP/Email)
@@ -2204,16 +2510,32 @@ export function AuthProvider({ children }) {
     );
 
     if (localFound) {
-      if (!isValidPassword(localFound)) {
+      const supabaseCredential = await checkSupabaseCredential(localFound);
+      if (supabaseCredential === false) {
         throw new Error('Kata sandi salah.');
       }
-      setCurrentUser(localFound);
-      if (localFound.role === 'kaprodi') return '/kaprodi/dashboard';
-      if (localFound.role === 'admin_sarana') return '/admin/dashboard';
-      if (localFound.role === 'admin') return '/admin-simta/dashboard';
-      if (localFound.role === 'dosen') return '/dosen/dashboard';
-      if (localFound.role === 'mahasiswa') {
-        return !localFound.is_profile_completed ? '/profile?first_login=true' : '/dashboard';
+      if (supabaseCredential !== true && !isValidPassword(localFound)) {
+        throw new Error('Kata sandi salah.');
+      }
+
+      // Status verifikasi awal berasal dari Supabase; objek dari localStorage/mock
+      // sering tidak membawanya, sehingga tanpa merge ini AppLayout akan memantulkan
+      // mahasiswa ke halaman verifikasi berulang kali.
+      const localCredential = localFound.role === 'mahasiswa'
+        ? await getStudentCredential(normalizeNim(localFound.nim || localFound.nip))
+        : null;
+      const resolvedLocal = localCredential
+        ? { ...localFound, is_profile_completed: localCredential.isProfileCompleted }
+        : localFound;
+
+      setCurrentUser(resolvedLocal);
+      if (resolvedLocal.role === 'kaprodi') return '/kaprodi/dashboard';
+      if (resolvedLocal.role === 'admin_sarana') return '/admin/dashboard';
+      if (resolvedLocal.role === 'admin') return '/admin-simta/dashboard';
+      if (resolvedLocal.role === 'dosen') return '/dosen/dashboard';
+      if (resolvedLocal.role === 'mahasiswa') {
+        const profileDone = localCredential?.isProfileCompleted || localFound.is_profile_completed;
+        return !profileDone ? '/profile?first_login=true' : '/dashboard';
       }
       return '/dashboard';
     }
@@ -2289,17 +2611,32 @@ export function AuthProvider({ children }) {
     }
 
     if (foundUser) {
-      if (!isValidPassword(foundUser)) {
+      const supabaseCredential = await checkSupabaseCredential(foundUser);
+      if (supabaseCredential === false) {
+        throw new Error('Kata sandi salah.');
+      }
+      if (supabaseCredential !== true && !isValidPassword(foundUser)) {
         throw new Error('Kata sandi salah.');
       }
 
-      setCurrentUser(foundUser);
-      if (foundUser.role === 'kaprodi') return '/kaprodi/dashboard';
-      if (foundUser.role === 'admin_sarana') return '/admin/dashboard';
-      if (foundUser.role === 'admin') return '/admin-simta/dashboard';
-      if (foundUser.role === 'dosen') return '/dosen/dashboard';
-      if (foundUser.role === 'mahasiswa') {
-        return !foundUser.is_profile_completed ? '/profile?first_login=true' : '/dashboard';
+      // Samakan dengan jalur registry: status verifikasi diambil dari Supabase
+      // agar mahasiswa yang sudah menyelesaikan verifikasi tidak dipantulkan
+      // kembali ke halaman first_login.
+      const foundCredential = foundUser.role === 'mahasiswa'
+        ? await getStudentCredential(normalizeNim(foundUser.nim || foundUser.nip))
+        : null;
+      const resolvedUser = foundCredential
+        ? { ...foundUser, is_profile_completed: foundCredential.isProfileCompleted }
+        : foundUser;
+
+      setCurrentUser(resolvedUser);
+      if (resolvedUser.role === 'kaprodi') return '/kaprodi/dashboard';
+      if (resolvedUser.role === 'admin_sarana') return '/admin/dashboard';
+      if (resolvedUser.role === 'admin') return '/admin-simta/dashboard';
+      if (resolvedUser.role === 'dosen') return '/dosen/dashboard';
+      if (resolvedUser.role === 'mahasiswa') {
+        const profileDone = foundCredential?.isProfileCompleted || foundUser.is_profile_completed;
+        return !profileDone ? '/profile?first_login=true' : '/dashboard';
       }
       return '/dashboard';
     }
@@ -3849,7 +4186,7 @@ export function AuthProvider({ children }) {
       }
     });
 
-    return Array.from(accountMap.values());
+    return Array.from(accountMap.values()).filter(account => !isStudentDeleted(account));
   };
 
   // Get all Dosen accounts combining Supabase advisors, profiles, and mock dataset
@@ -3967,6 +4304,9 @@ export function AuthProvider({ children }) {
 
     saveRegisteredUser(newStudent);
 
+    // NIM yang didaftarkan ulang harus bisa tampil lagi walaupun sebelumnya dihapus.
+    unmarkStudentsDeleted([cleanNim, newStudent.id, newStudent.email]);
+
     // Update local state
     setDbProfiles(prev => [newStudent, ...prev]);
 
@@ -3976,6 +4316,18 @@ export function AuthProvider({ children }) {
         await supabase.from('profiles').upsert(supabasePayload, { onConflict: 'id' });
       } catch (e) {
         console.warn('Supabase profile upsert error:', e);
+      }
+    }
+
+    // Catat kata sandi awal akun baru di Supabase (default = NIM).
+    if (cleanNim) {
+      const saved = await saveStudentCredential({
+        nim: cleanNim,
+        password: newStudent.password,
+        isProfileCompleted: false
+      });
+      if (!saved.success) {
+        console.warn('Gagal menyimpan kredensial akun mahasiswa baru:', saved.message);
       }
     }
 
@@ -4023,18 +4375,95 @@ export function AuthProvider({ children }) {
 
   // Delete Mahasiswa Account (Admin SIMTA)
   const deleteMahasiswaAccount = async (idOrNim) => {
-    const cleanKey = String(idOrNim).trim();
+    const cleanKey = String(idOrNim ?? '').trim();
+    if (!cleanKey) {
+      return;
+    }
+
+    const registeredUsers = getRegisteredUsers();
+
+    // Satu mahasiswa bisa dikenali lewat id profil (`mhs-<nim>`, `user-mhs-<nim>`,
+    // UUID), NIM, email, atau NIM pada tabel pembimbing. Kumpulkan semua
+    // penandanya agar tidak ada sumber data yang menyisakan barisnya.
+    const studentKeys = new Set([cleanKey]);
+
+    // Id akun memakai awalan role. Lepas awalan itu untuk mendapatkan NIM.
+    const stripPrefix = cleanKey.replace(/^(?:user-)?(?:mhs-|mahasiswa-)/i, '').replace(/^(?:adv-|dosen-|kaprodi-)/i, '').trim();
+    if (stripPrefix && stripPrefix !== cleanKey) {
+      studentKeys.add(stripPrefix);
+    }
+
+    // NIM selalu deretan angka panjang; ambil bila id memuatnya.
+    const embeddedNim = cleanKey.match(/\d{8,}/);
+    if (embeddedNim) {
+      studentKeys.add(embeddedNim[0]);
+    }
+
+    const collectKeys = (record) => {
+      if (!record) {
+        return false;
+      }
+      const values = [record.id, record.nim, record.nip, record.student_nim, record.email]
+        .map(value => String(value ?? '').trim())
+        .filter(Boolean);
+      return values.some(value => studentKeys.has(value));
+    };
+
+    [...registeredUsers, ...dbProfiles, ...studentAdvisors]
+      .filter(collectKeys)
+      .forEach(record => {
+        [record.id, record.nim, record.nip, record.student_nim, record.email]
+          .map(value => String(value ?? '').trim())
+          .filter(Boolean)
+          .forEach(value => studentKeys.add(value));
+      });
+
+    const isSameStudent = (record) => {
+      if (!record) {
+        return false;
+      }
+      return [record.id, record.nim, record.nip, record.student_nim, record.email]
+        .some(value => studentKeys.has(String(value ?? '').trim()));
+    };
+
+    const updatedUsers = registeredUsers.filter(user => !isSameStudent(user));
     try {
-      const users = getRegisteredUsers();
-      const updated = users.filter(u => u.id !== cleanKey && u.nim !== cleanKey && u.email !== cleanKey);
-      localStorage.setItem('simta_registered_users', JSON.stringify(updated));
+      localStorage.setItem('simta_registered_users', JSON.stringify(updatedUsers));
     } catch (e) {}
 
-    setDbProfiles(prev => prev.filter(p => p.id !== cleanKey && p.nim !== cleanKey));
+    // Catat semua penanda sebagai terhapus permanen agar sumber data bawaan
+    // (MOCK_USERS / student_advisors) tidak memunculkan mahasiswa ini lagi.
+    markStudentsDeleted(studentKeys);
+
+    setDbProfiles(prev => prev.filter(profile => !isSameStudent(profile)));
+
+    // getAllMahasiswaAccounts juga menyusun daftar mahasiswa dari tabel
+    // student_advisors. Tanpa menghapus relasi di sini, mahasiswa yang dihapus
+    // akan muncul lagi begitu daftar dibentuk ulang.
+    setStudentAdvisors(prev => {
+      const remaining = prev.filter(item => !isSameStudent(item));
+      try {
+        localStorage.setItem('simta_student_advisors', JSON.stringify(remaining));
+      } catch (e) {}
+      return remaining;
+    });
 
     if (isSupabaseConfigured && supabase) {
+      const nimKeys = Array.from(studentKeys).filter(key => /^\d+$/.test(key));
+
       try {
-        await supabase.from('profiles').delete().or(`id.eq.${cleanKey},nim.eq.${cleanKey}`);
+        if (nimKeys.length > 0) {
+          await supabase.from('student_advisors').delete().in('student_nim', nimKeys);
+        }
+      } catch (err) {
+        console.warn('Supabase delete student advisor assignment error:', err);
+      }
+
+      try {
+        if (nimKeys.length > 0) {
+          await supabase.from('profiles').delete().in('nim', nimKeys);
+        }
+        await supabase.from('profiles').delete().eq('id', cleanKey);
       } catch (err) {
         console.warn('Supabase delete student error:', err);
       }
@@ -4057,6 +4486,15 @@ export function AuthProvider({ children }) {
         localStorage.setItem('simta_registered_users', JSON.stringify(users));
       }
     } catch (e) {}
+
+    // Simpan ke Supabase agar reset dari Admin berlaku di semua perangkat.
+    const targetNim = normalizeNim(idOrNim);
+    if (targetNim) {
+      const saved = await saveStudentCredential({ nim: targetNim, password: finalPass });
+      if (!saved.success) {
+        console.warn('Gagal menyimpan reset kata sandi mahasiswa ke Supabase:', saved.message);
+      }
+    }
 
     return true;
   };

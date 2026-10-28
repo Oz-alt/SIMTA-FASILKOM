@@ -14,7 +14,8 @@ import {
   ExternalLink,
   ArrowRight,
   Volume2,
-  VolumeX
+  VolumeX,
+  AlertTriangle
 } from 'lucide-react';
 
 import unsriLogo from '../../assets/photo/unsri logo.png';
@@ -35,9 +36,47 @@ export default function Navbar() {
 
   // Filter notifications relevant to the current active user
   const userNotifications = notifications.filter(n => {
-    if (!currentUser) return true;
-    if (currentUser.role === 'kaprodi' || currentUser.role === 'admin') return true;
+    if (!currentUser) return false;
+
+    // Bersihkan notifikasi mock dummy lama
+    if (n.id === 'notif-1' || n.id === 'notif-2' || n.is_mock) return false;
+    if (n.title === 'Judul TA Disetujui!' || n.title === 'Peminjaman Ruangan Disetujui') return false;
+
+    if (currentUser.role === 'kaprodi') {
+      // 1. Kaprodi akun pusat: JANGAN PERNAH izinkan notifikasi tanggapan bimbingan dosen-ke-mahasiswa
+      if (n.recipient_role === 'mahasiswa' || n.recipient_role === 'dosen') return false;
+      if (n.related_type === 'bimbingan_status' || n.related_type === 'consultation' || n.related_type === 'bimbingan_reminder') {
+        return false;
+      }
+      // 2. Hanya izinkan notifikasi koordinasi pusat Kaprodi:
+      // - Mahasiswa simpan/ajukan judul TA baru atau revisi
+      // - Peringatan bimbingan pasif (>14 hari / 2 minggu)
+      // - Mahasiswa siap sidang (24x bimbingan lengkap)
+      // - Similarity tinggi
+      // - Notifikasi umum dengan recipient_role === 'kaprodi' atau 'all'
+      return (
+        n.recipient_role === 'kaprodi' ||
+        n.recipient_role === 'all' ||
+        n.related_type === 'thesis_title' ||
+        n.related_type === 'thesis_title_revised' ||
+        n.related_type === 'kaprodi_bimbingan_inactivity_alert' ||
+        n.related_type === 'kaprodi_siap_sidang_alert' ||
+        n.related_type === 'similarity_warning' ||
+        n.related_type === 'kaprodi_monitoring'
+      );
+    }
+
+    if (currentUser.role === 'dosen') {
+      if (n.recipient_role === 'mahasiswa' || n.recipient_role === 'kaprodi') return false;
+      const cleanNip = String(currentUser.nip || currentUser.nim || '').trim();
+      if (n.recipient_nip && cleanNip) {
+        return String(n.recipient_nip).trim() === cleanNip;
+      }
+      return n.recipient_role === 'dosen' || !n.recipient_role;
+    }
+
     if (currentUser.role === 'mahasiswa') {
+      if (n.recipient_role && n.recipient_role !== 'mahasiswa' && n.recipient_role !== 'all') return false;
       if (n.recipient_nim && currentUser.nim) {
         return String(n.recipient_nim).trim() === String(currentUser.nim).trim();
       }
@@ -46,14 +85,13 @@ export default function Navbar() {
       }
       return !n.recipient_role || n.recipient_role === 'mahasiswa';
     }
-    if (currentUser.role === 'dosen') {
-      const cleanNip = String(currentUser.nip || currentUser.nim || '').trim();
-      if (n.recipient_nip && cleanNip) {
-        return String(n.recipient_nip).trim() === cleanNip;
-      }
-      return !n.recipient_role || n.recipient_role === 'dosen';
+
+    if (currentUser.role === 'admin') {
+      if (n.recipient_role === 'mahasiswa' || n.recipient_role === 'dosen') return false;
+      return true;
     }
-    return true;
+
+    return false;
   });
 
   const unreadCount = userNotifications.filter(n => !n.is_read).length;
@@ -199,32 +237,69 @@ export default function Navbar() {
                       <div className="p-6 text-center text-xs text-slate-400">Tidak ada notifikasi baru</div>
                     ) : (
                       userNotifications.map(n => {
-                        const isThesisNotif = n.related_type === 'thesis_title' || n.related_type === 'thesis_title_revised' || Boolean(n.action_url);
+                        const isThesisNotif = n.related_type === 'thesis_title' || n.related_type === 'thesis_title_revised';
+                        const isInactivityNotif = n.related_type === 'kaprodi_bimbingan_inactivity_alert';
+                        const isSiapSidangNotif = n.related_type === 'kaprodi_siap_sidang_alert';
+                        const isSimilarityNotif = n.related_type === 'similarity_warning';
                         const isBimbingan = n.related_type === 'bimbingan_status' || n.related_type === 'consultation';
                         const isApproved = n.status === 'disetujui' || n.jenis_revisi === 'Diterima';
                         const isMayor = n.jenis_revisi === 'Mayor';
                         const isDitolak = n.status === 'ditolak' || n.jenis_revisi === 'Ditolak';
 
+                        let borderClass = '';
+                        if (isInactivityNotif) borderClass = 'border-l-4 border-l-amber-500 bg-amber-50/20';
+                        else if (isSimilarityNotif) borderClass = 'border-l-4 border-l-rose-500 bg-rose-50/20';
+                        else if (isSiapSidangNotif) borderClass = 'border-l-4 border-l-emerald-500 bg-emerald-50/20';
+                        else if (isThesisNotif) borderClass = 'border-l-4 border-l-blue-500 bg-blue-50/20';
+                        else if (isBimbingan) {
+                          borderClass = isApproved ? 'border-l-3 border-l-emerald-500' : isMayor || isDitolak ? 'border-l-3 border-l-rose-500' : 'border-l-3 border-l-blue-500';
+                        }
+
                         return (
                           <div 
                             key={n.id} 
                             onClick={() => handleNotificationClick(n)}
-                            className={`p-3.5 hover:bg-slate-50 transition-colors cursor-pointer group ${
-                              isBimbingan
-                                ? (isApproved ? 'border-l-3 border-l-emerald-500' : isMayor || isDitolak ? 'border-l-3 border-l-rose-500' : 'border-l-3 border-l-blue-500')
-                                : ''
-                            } ${!n.is_read ? 'bg-indigo-50/30' : ''}`}
+                            className={`p-3.5 hover:bg-slate-50 transition-colors cursor-pointer group ${borderClass} ${!n.is_read ? 'bg-indigo-50/30' : ''}`}
                           >
                             <div className="flex items-start justify-between gap-2">
                               <div className="flex items-center space-x-1.5 flex-1 min-w-0">
+                                {isInactivityNotif && (
+                                  <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                )}
                                 {isThesisNotif && (
-                                  <span className="w-1.5 h-1.5 rounded-full bg-blue-600 shrink-0"></span>
+                                  <span className="w-2 h-2 rounded-full bg-blue-600 shrink-0"></span>
+                                )}
+                                {isSiapSidangNotif && (
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                )}
+                                {isSimilarityNotif && (
+                                  <span className="w-2 h-2 rounded-full bg-rose-600 shrink-0"></span>
                                 )}
                                 <p className="text-xs font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate">
                                   {n.title}
                                 </p>
                               </div>
                               <div className="flex items-center space-x-1 shrink-0 mt-0.5">
+                                {isInactivityNotif && (
+                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300">
+                                    {n.badge_label || '>14 Hari Pasif'}
+                                  </span>
+                                )}
+                                {isSiapSidangNotif && (
+                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-emerald-100 text-emerald-900 border border-emerald-300">
+                                    {n.badge_label || 'Siap Sidang'}
+                                  </span>
+                                )}
+                                {isSimilarityNotif && (
+                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-rose-100 text-rose-900 border border-rose-300">
+                                    {n.badge_label || 'Similarity'}
+                                  </span>
+                                )}
+                                {isThesisNotif && (
+                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-blue-100 text-blue-900 border border-blue-300">
+                                    {n.badge_label || 'Judul TA'}
+                                  </span>
+                                )}
                                 {isBimbingan && (
                                   <span className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold ${
                                     isApproved ? 'bg-emerald-100 text-emerald-800' :
@@ -252,8 +327,22 @@ export default function Navbar() {
                               </div>
                             )}
 
+                            {/* Kaprodi quick action button for Inactivity alert */}
+                            {(userRole === 'kaprodi' || userRole === 'admin') && isInactivityNotif && (
+                              <div className="mt-2 flex items-center justify-between pt-1">
+                                <span className="inline-flex items-center space-x-1 text-[10px] font-bold text-amber-900 bg-amber-100/90 px-2 py-0.5 rounded-md border border-amber-300">
+                                  <AlertTriangle className="w-3 h-3 text-amber-700" />
+                                  <span>Hubungi Dospem di Monitoring</span>
+                                </span>
+                                <span className="text-[10px] font-semibold text-amber-700 group-hover:underline flex items-center space-x-0.5">
+                                  <span>Buka Monitoring</span>
+                                  <ArrowRight className="w-3 h-3 ml-0.5" />
+                                </span>
+                              </div>
+                            )}
+
                             {/* Kaprodi quick action button for thesis title */}
-                            {(userRole === 'kaprodi' || userRole === 'admin') && isThesisNotif && (
+                            {(userRole === 'kaprodi' || userRole === 'admin') && (isThesisNotif || isSimilarityNotif) && (
                               <div className="mt-2 flex items-center justify-between pt-1">
                                 <span className="inline-flex items-center space-x-1 text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200/70">
                                   <Sparkles className="w-3 h-3 text-blue-600" />
@@ -262,6 +351,20 @@ export default function Navbar() {
                                 <span className="text-[10px] font-semibold text-blue-600 group-hover:underline flex items-center space-x-0.5">
                                   <span>Buka halaman tinjauan</span>
                                   <ExternalLink className="w-3 h-3 ml-0.5" />
+                                </span>
+                              </div>
+                            )}
+
+                            {/* Kaprodi quick action button for siap sidang */}
+                            {(userRole === 'kaprodi' || userRole === 'admin') && isSiapSidangNotif && (
+                              <div className="mt-2 flex items-center justify-between pt-1">
+                                <span className="inline-flex items-center space-x-1 text-[10px] font-bold text-emerald-800 bg-emerald-100/90 px-2 py-0.5 rounded-md border border-emerald-300">
+                                  <GraduationCap className="w-3 h-3 text-emerald-700" />
+                                  <span>Siap Verifikasi Sidang</span>
+                                </span>
+                                <span className="text-[10px] font-semibold text-emerald-700 group-hover:underline flex items-center space-x-0.5">
+                                  <span>Lihat Progres</span>
+                                  <ArrowRight className="w-3 h-3 ml-0.5" />
                                 </span>
                               </div>
                             )}
