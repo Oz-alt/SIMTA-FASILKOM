@@ -195,25 +195,25 @@ export default function KartuBimbinganPage() {
           return dateA.localeCompare(dateB);
         }
 
-        // 2. Secondary: Compare creation timestamp (created_at) for entries submitted on same day
+        // 2. Secondary: Compare waktu (HH:MM) for consultations on same day
+        const waktuA = a.waktu || '';
+        const waktuB = b.waktu || '';
+        if (waktuA !== waktuB) {
+          return waktuA.localeCompare(waktuB);
+        }
+
+        // 3. Tertiary: Compare creation timestamp (created_at)
         const createdA = a.created_at ? new Date(a.created_at).getTime() : 0;
         const createdB = b.created_at ? new Date(b.created_at).getTime() : 0;
         if (createdA !== 0 && createdB !== 0 && createdA !== createdB) {
           return createdA - createdB;
         }
 
-        // 3. Tertiary: Compare numeric ID timestamp (cons-1, cons-2, cons-174028...)
+        // 4. Quaternary: Compare numeric ID timestamp (cons-1, cons-2, cons-174028...)
         const numA = parseIdNum(a.id);
         const numB = parseIdNum(b.id);
         if (numA !== 0 && numB !== 0 && numA !== numB) {
           return numA - numB;
-        }
-
-        // 4. Quaternary: Compare waktu (HH:MM)
-        const waktuA = a.waktu || '';
-        const waktuB = b.waktu || '';
-        if (waktuA !== waktuB) {
-          return waktuA.localeCompare(waktuB);
         }
 
         return String(a.id).localeCompare(String(b.id));

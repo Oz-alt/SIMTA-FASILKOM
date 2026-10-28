@@ -237,11 +237,13 @@ export default function Navbar() {
                       <div className="p-6 text-center text-xs text-slate-400">Tidak ada notifikasi baru</div>
                     ) : (
                       userNotifications.map(n => {
-                        const isThesisNotif = n.related_type === 'thesis_title' || n.related_type === 'thesis_title_revised';
                         const isInactivityNotif = n.related_type === 'kaprodi_bimbingan_inactivity_alert';
                         const isSiapSidangNotif = n.related_type === 'kaprodi_siap_sidang_alert';
                         const isSimilarityNotif = n.related_type === 'similarity_warning';
-                        const isBimbingan = n.related_type === 'bimbingan_status' || n.related_type === 'consultation';
+                        const isBimbinganMasuk = n.related_type === 'bimbingan_masuk';
+                        const isBimbingan = n.related_type === 'bimbingan_status' || n.related_type === 'consultation' || isBimbinganMasuk;
+                        const isThesisNotif = (n.related_type === 'thesis_title' || n.related_type === 'thesis_title_revised' || Boolean(n.action_url))
+                          && !isInactivityNotif && !isSiapSidangNotif && !isSimilarityNotif && !isBimbingan;
                         const isApproved = n.status === 'disetujui' || n.jenis_revisi === 'Diterima';
                         const isMayor = n.jenis_revisi === 'Mayor';
                         const isDitolak = n.status === 'ditolak' || n.jenis_revisi === 'Ditolak';
@@ -252,7 +254,9 @@ export default function Navbar() {
                         else if (isSiapSidangNotif) borderClass = 'border-l-4 border-l-emerald-500 bg-emerald-50/20';
                         else if (isThesisNotif) borderClass = 'border-l-4 border-l-blue-500 bg-blue-50/20';
                         else if (isBimbingan) {
-                          borderClass = isApproved ? 'border-l-3 border-l-emerald-500' : isMayor || isDitolak ? 'border-l-3 border-l-rose-500' : 'border-l-3 border-l-blue-500';
+                          borderClass = isBimbinganMasuk
+                            ? 'border-l-3 border-l-indigo-600'
+                            : isApproved ? 'border-l-3 border-l-emerald-500' : isMayor || isDitolak ? 'border-l-3 border-l-rose-500' : 'border-l-3 border-l-blue-500';
                         }
 
                         return (
@@ -300,7 +304,11 @@ export default function Navbar() {
                                     {n.badge_label || 'Judul TA'}
                                   </span>
                                 )}
-                                {isBimbingan && (
+                                {isBimbinganMasuk ? (
+                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-indigo-100 text-indigo-800 border border-indigo-200">
+                                    {n.pembimbing ? `Pengajuan ${n.pembimbing}` : 'Bimbingan Baru'}
+                                  </span>
+                                ) : isBimbingan ? (
                                   <span className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold ${
                                     isApproved ? 'bg-emerald-100 text-emerald-800' :
                                     isMayor || isDitolak ? 'bg-rose-100 text-rose-800' :
@@ -308,7 +316,7 @@ export default function Navbar() {
                                   }`}>
                                     {isApproved ? 'ACC' : n.jenis_revisi ? `Revisi ${n.jenis_revisi}` : 'Respon Dospem'}
                                   </span>
-                                )}
+                                ) : null}
                                 {!n.is_read && (
                                   <span className="w-2 h-2 rounded-full bg-indigo-600 shrink-0"></span>
                                 )}
@@ -324,6 +332,20 @@ export default function Navbar() {
                               <div className="mt-2 flex items-center space-x-1 text-[10px] text-emerald-700 font-medium bg-emerald-50 border border-emerald-200/60 rounded px-1.5 py-0.5 w-fit">
                                 <Mail className="w-3 h-3 text-emerald-600 shrink-0" />
                                 <span>Salinan otomatis terkirim ke email ({n.email_to || currentUser?.email || '09010182428002@student.unsri.ac.id'})</span>
+                              </div>
+                            )}
+
+                            {/* Dosen quick action button for new bimbingan */}
+                            {isBimbinganMasuk && (
+                              <div className="mt-2 flex items-center justify-between pt-1">
+                                <span className="inline-flex items-center space-x-1 text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-200/70">
+                                  <BookOpen className="w-3 h-3 text-indigo-600" />
+                                  <span>Validasi Sesi Bimbingan</span>
+                                </span>
+                                <span className="text-[10px] font-semibold text-indigo-600 group-hover:underline flex items-center space-x-0.5">
+                                  <span>Buka halaman bimbingan</span>
+                                  <ExternalLink className="w-3 h-3 ml-0.5" />
+                                </span>
                               </div>
                             )}
 
@@ -375,7 +397,7 @@ export default function Navbar() {
                               </span>
                               {isBimbingan && (
                                 <span className="text-indigo-600 font-semibold flex items-center space-x-0.5 hover:underline">
-                                  <span>Lihat bimbingan</span>
+                                  <span>{isBimbinganMasuk ? 'Validasi sekarang' : 'Lihat bimbingan'}</span>
                                   <ArrowRight className="w-2.5 h-2.5" />
                                 </span>
                               )}

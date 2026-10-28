@@ -5,6 +5,7 @@ import ThesisStepper from '../../Components/common/ThesisStepper.jsx';
 import BimbinganReminderBanner from '../../Components/common/BimbinganReminderBanner.jsx';
 import BimbinganTimeline from '../../Components/common/BimbinganTimeline.jsx';
 import { calculateBimbinganReminder } from '../../lib/bimbinganReminder.js';
+import { MOCK_ADVISORS } from '../../services/mockData.js';
 import { 
   FileText, 
   CalendarDays, 
@@ -29,7 +30,7 @@ function WhatsAppIcon({ className = "w-3.5 h-3.5" }) {
 }
 
 export default function DashboardMahasiswa() {
-  const { currentUser, thesisTitles, thesisStages, bookings, getStudentAdvisors, consultations } = useAuth();
+  const { currentUser, thesisTitles, thesisStages, bookings, getStudentAdvisors, consultations, advisors } = useAuth();
 
   // Get current student's title dynamically
   const myTitle = thesisTitles.find(t => (currentUser?.id && t.profile_id === currentUser.id) || (currentUser?.nim && t.mhs_nim === currentUser.nim)) || null;
@@ -48,6 +49,42 @@ export default function DashboardMahasiswa() {
   const dospem2 = assigned?.dospem2;
   const dospem1Nama = dospem1?.nama || myTitle?.pembimbing_1 || 'Belum ditentukan Kaprodi';
   const dospem2Nama = dospem2?.nama || myTitle?.pembimbing_2 || 'Belum ditentukan Kaprodi';
+
+  // Helper untuk mendapatkan Nomor WhatsApp Dosen dari data akun/advisors
+  const getAdvisorPhone = (dospemObj, dospemNama) => {
+    if (dospemObj?.no_hp) return dospemObj.no_hp;
+    if (advisors && advisors.length > 0) {
+      const match = advisors.find(a => 
+        (dospemObj?.nip && a.nip === dospemObj.nip) || 
+        (dospemNama && a.nama === dospemNama) ||
+        (dospemNama && a.nama?.toLowerCase() === dospemNama.toLowerCase())
+      );
+      if (match?.no_hp) return match.no_hp;
+    }
+    const matchMock = MOCK_ADVISORS.find(m => 
+      (dospemObj?.nip && m.nip === dospemObj.nip) || 
+      (dospemNama && m.nama === dospemNama) ||
+      (dospemNama && (m.nama?.toLowerCase().includes(dospemNama.toLowerCase()) || dospemNama.toLowerCase().includes(m.nama?.toLowerCase())))
+    );
+    return matchMock?.no_hp || '';
+  };
+
+  const dospem1NoWa = getAdvisorPhone(dospem1, dospem1Nama);
+  const dospem2NoWa = getAdvisorPhone(dospem2, dospem2Nama);
+
+  // Link chat WhatsApp pribadi dosen (wa.me)
+  const getDirectWaLink = (phone, dosenName) => {
+    if (!phone) return null;
+    let clean = phone.replace(/[^0-9]/g, '');
+    if (clean.startsWith('0')) {
+      clean = '62' + clean.slice(1);
+    }
+    const greeting = encodeURIComponent(`Halo Bapak/Ibu ${dosenName}, saya ${currentUser?.nama || 'Mahasiswa'} ingin berkonsultasi mengenai bimbingan Tugas Akhir.`);
+    return `https://wa.me/${clean}?text=${greeting}`;
+  };
+
+  const directWaLink1 = getDirectWaLink(dospem1NoWa, dospem1Nama);
+  const directWaLink2 = getDirectWaLink(dospem2NoWa, dospem2Nama);
 
   // Resolusi Tautan Grup WhatsApp Bimbingan
   const getAdvisorWaGroupLink = (dospemObj, dospemNamaFallback, label) => {
@@ -93,7 +130,7 @@ export default function DashboardMahasiswa() {
             Kelola pengajuan judul Tugas Akhir dengan Similarity Check Engine serta ajukan ruang seminar &amp; sidang secara terpadu.
           </p>
 
-          {/* Integrated Duo Dospem Assigned by Kaprodi with WhatsApp Group Buttons */}
+          {/* Integrated Duo Dospem Assigned by Kaprodi with WhatsApp Phone & Group Buttons */}
           <div className="mt-4 pt-4 border-t border-white/10 grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-3xl text-xs">
             {/* Pembimbing 1 Card */}
             <div className="p-3 sm:p-3.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/15 flex items-center justify-between gap-3">
@@ -108,17 +145,34 @@ export default function DashboardMahasiswa() {
               </div>
 
               {dospem1Nama !== 'Belum ditentukan Kaprodi' && (
-                <a
-                  href={waLink1}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] shadow-sm hover:shadow-md transition-all shrink-0 cursor-pointer"
-                  title={`Gabung Grup WhatsApp Bimbingan ${dospem1Nama}`}
-                >
-                  <WhatsAppIcon className="w-3.5 h-3.5 text-white" />
-                  <span className="text-white">Grup WA</span>
-                  <ExternalLink className="w-3 h-3 text-white/90" />
-                </a>
+                <div className="flex flex-col items-end justify-center shrink-0 gap-1.5 min-w-[105px]">
+                  {dospem1NoWa ? (
+                    <a
+                      href={directWaLink1 || `https://wa.me/${dospem1NoWa.replace(/[^0-9]/g, '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center space-x-1 px-2 py-0.5 rounded-md bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/30 text-emerald-200 hover:text-white font-medium text-[11px] transition-all cursor-pointer group w-full"
+                      title={`Hubungi WhatsApp Pribadi: ${dospem1NoWa}`}
+                    >
+                      <WhatsAppIcon className="w-3 h-3 text-emerald-300 group-hover:scale-110 transition-transform shrink-0" />
+                      <span className="font-semibold tracking-wide font-mono text-[11px]">{dospem1NoWa}</span>
+                    </a>
+                  ) : (
+                    <span className="text-[10px] text-white/50 italic font-mono">-</span>
+                  )}
+
+                  <a
+                    href={waLink1}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center space-x-1.5 px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] shadow-sm hover:shadow-md transition-all w-full cursor-pointer"
+                    title={`Gabung Grup WhatsApp Bimbingan ${dospem1Nama}`}
+                  >
+                    <WhatsAppIcon className="w-3.5 h-3.5 text-white" />
+                    <span className="text-white">Grup WA</span>
+                    <ExternalLink className="w-3 h-3 text-white/90" />
+                  </a>
+                </div>
               )}
             </div>
 
@@ -135,17 +189,34 @@ export default function DashboardMahasiswa() {
               </div>
 
               {dospem2Nama !== 'Belum ditentukan Kaprodi' && (
-                <a
-                  href={waLink2}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] shadow-sm hover:shadow-md transition-all shrink-0 cursor-pointer"
-                  title={`Gabung Grup WhatsApp Bimbingan ${dospem2Nama}`}
-                >
-                  <WhatsAppIcon className="w-3.5 h-3.5 text-white" />
-                  <span className="text-white">Grup WA</span>
-                  <ExternalLink className="w-3 h-3 text-white/90" />
-                </a>
+                <div className="flex flex-col items-end justify-center shrink-0 gap-1.5 min-w-[105px]">
+                  {dospem2NoWa ? (
+                    <a
+                      href={directWaLink2 || `https://wa.me/${dospem2NoWa.replace(/[^0-9]/g, '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center space-x-1 px-2 py-0.5 rounded-md bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/30 text-emerald-200 hover:text-white font-medium text-[11px] transition-all cursor-pointer group w-full"
+                      title={`Hubungi WhatsApp Pribadi: ${dospem2NoWa}`}
+                    >
+                      <WhatsAppIcon className="w-3 h-3 text-emerald-300 group-hover:scale-110 transition-transform shrink-0" />
+                      <span className="font-semibold tracking-wide font-mono text-[11px]">{dospem2NoWa}</span>
+                    </a>
+                  ) : (
+                    <span className="text-[10px] text-white/50 italic font-mono">-</span>
+                  )}
+
+                  <a
+                    href={waLink2}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center space-x-1.5 px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] shadow-sm hover:shadow-md transition-all w-full cursor-pointer"
+                    title={`Gabung Grup WhatsApp Bimbingan ${dospem2Nama}`}
+                  >
+                    <WhatsAppIcon className="w-3.5 h-3.5 text-white" />
+                    <span className="text-white">Grup WA</span>
+                    <ExternalLink className="w-3 h-3 text-white/90" />
+                  </a>
+                </div>
               )}
             </div>
           </div>

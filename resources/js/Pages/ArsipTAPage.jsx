@@ -29,6 +29,18 @@ export default function ArsipTAPage() {
   const [selectedDosen, setSelectedDosen] = useState('ALL');
   const [selectedArchive, setSelectedArchive] = useState(null);
 
+  // Prevent background scrolling when detail modal is open
+  useEffect(() => {
+    if (selectedArchive) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [selectedArchive]);
+
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(12);
@@ -441,8 +453,8 @@ export default function ArsipTAPage() {
 
       {/* DETAIL MODAL POPUP */}
       {selectedArchive && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in">
-          <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200 p-6 sm:p-8 space-y-6">
+        <div data-lenis-prevent className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto overscroll-contain animate-in fade-in">
+          <div data-lenis-prevent className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto overscroll-contain my-auto shadow-2xl border border-slate-200 p-6 sm:p-8 space-y-6">
             
             {/* Modal Header */}
             <div className="flex items-start justify-between border-b border-slate-100 pb-4 gap-4">
@@ -503,7 +515,7 @@ export default function ArsipTAPage() {
                 <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">Abstrak Tugas Akhir</span>
               </div>
 
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 text-xs text-slate-700 leading-relaxed max-h-60 overflow-y-auto font-normal">
+              <div data-lenis-prevent className="p-4 rounded-xl bg-slate-50 border border-slate-100 text-xs text-slate-700 leading-relaxed max-h-60 overflow-y-auto overscroll-contain font-normal">
                 <p>{selectedArchive.abstrak || 'Abstrak tidak tersedia.'}</p>
               </div>
             </div>

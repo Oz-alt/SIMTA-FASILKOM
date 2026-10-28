@@ -27,7 +27,8 @@ import {
   LayoutGrid,
   Bell,
   ClipboardList,
-  Lock
+  Lock,
+  FileStack
 } from 'lucide-react';
 
 export default function Sidebar() {
@@ -216,8 +217,8 @@ export default function Sidebar() {
               label: 'Data Master',
               icon: Database,
               items: [
-                { to: '/admin-simta/master/mahasiswa', label: 'Data Master Mahasiswa', icon: GraduationCap },
-                { to: '/admin-simta/master/dosen', label: 'Data Master Dosen', icon: UserCheck }
+                { to: '/admin-simta/master/mahasiswa', label: 'Data Mahasiswa', icon: GraduationCap },
+                { to: '/admin-simta/master/dosen', label: 'Data Dosen', icon: UserCheck }
               ]
             },
             {

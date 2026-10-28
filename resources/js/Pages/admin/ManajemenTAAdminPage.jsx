@@ -802,13 +802,13 @@ export default function ManajemenTAAdminPage() {
       {/* MODAL 1: DETAIL LENGKAP TUGAS AKHIR */}
       {/* ============================================================== */}
       {viewingItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-100 relative space-y-5 animate-in zoom-in-95 max-h-[90vh] overflow-y-auto">
+        <div data-lenis-prevent className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in overflow-y-auto overscroll-contain">
+          <div data-lenis-prevent className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden my-auto p-6 shadow-2xl border border-slate-100 relative space-y-4 animate-in zoom-in-95 overscroll-contain">
             
-            {/* Modal Header */}
-            <div className="flex items-start justify-between border-b border-slate-100 pb-4">
+            {/* Modal Header (Fixed at top) */}
+            <div className="flex items-start justify-between border-b border-slate-100 pb-4 shrink-0">
               <div className="flex items-center space-x-3.5">
-                <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white font-extrabold text-lg flex items-center justify-center shadow-md shadow-indigo-600/30">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white font-extrabold text-lg flex items-center justify-center shadow-md shadow-indigo-600/30 shrink-0">
                   <BookOpen className="w-6 h-6" />
                 </div>
                 <div>
@@ -824,14 +824,14 @@ export default function ManajemenTAAdminPage() {
               <button
                 type="button"
                 onClick={() => setViewingItem(null)}
-                className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+                className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors shrink-0"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Detail Content Sections */}
-            <div className="space-y-4 text-xs">
+            {/* Scrollable Detail Content Sections */}
+            <div data-lenis-prevent className="flex-1 min-h-0 overflow-y-auto overscroll-contain pr-1 py-1 space-y-4 text-xs">
               
               {/* Judul Tugas Akhir */}
               <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 space-y-2">
@@ -948,8 +948,8 @@ export default function ManajemenTAAdminPage() {
 
             </div>
 
-            {/* Modal Actions */}
-            <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+            {/* Modal Actions (Fixed at bottom) */}
+            <div className="flex items-center justify-between pt-3 border-t border-slate-100 shrink-0">
               <button
                 type="button"
                 onClick={() => {
@@ -980,12 +980,13 @@ export default function ManajemenTAAdminPage() {
       {/* MODAL 2: KELOLA BERKAS ADMINISTRASI & CATATAN ADMIN */}
       {/* ============================================================== */}
       {managingAdminItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 relative space-y-4 animate-in zoom-in-95 max-h-[90vh] overflow-y-auto">
+        <div data-lenis-prevent className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in overflow-y-auto overscroll-contain">
+          <div data-lenis-prevent className="bg-white rounded-3xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden my-auto p-6 shadow-2xl border border-slate-100 relative space-y-4 animate-in zoom-in-95 overscroll-contain">
             
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            {/* Modal Header (Fixed at top) */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
               <div className="flex items-center space-x-2.5">
-                <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
                   <FileCheck2 className="w-5 h-5" />
                 </div>
                 <div>
@@ -996,101 +997,104 @@ export default function ManajemenTAAdminPage() {
               <button
                 type="button"
                 onClick={() => setManagingAdminItem(null)}
-                className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+                className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors shrink-0"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveManageAdmin} className="space-y-4 text-xs">
+            <form onSubmit={handleSaveManageAdmin} className="flex flex-col flex-1 min-h-0 overflow-hidden text-xs" data-lenis-prevent>
               
-              {/* Status Berkas Selector */}
-              <div>
-                <label className="block text-slate-700 font-bold mb-1.5">Status Kelengkapan Berkas:</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { id: 'lengkap', label: 'Lengkap', color: 'text-emerald-700 border-emerald-300 bg-emerald-50' },
-                    { id: 'menunggu', label: 'Menunggu', color: 'text-amber-700 border-amber-300 bg-amber-50' },
-                    { id: 'perlu_perbaikan', label: 'Perlu Revisi', color: 'text-rose-700 border-rose-300 bg-rose-50' }
-                  ].map(st => (
-                    <button
-                      key={st.id}
-                      type="button"
-                      onClick={() => setAdminForm({ ...adminForm, berkas_status: st.id })}
-                      className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all text-center cursor-pointer ${
-                        adminForm.berkas_status === st.id
-                          ? `${st.color} ring-2 ring-indigo-500/20 shadow-xs font-extrabold`
-                          : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                      }`}
-                    >
-                      {st.label}
-                    </button>
-                  ))}
+              {/* Dedicated Scrollable Form Body */}
+              <div data-lenis-prevent className="flex-1 min-h-0 overflow-y-auto overscroll-contain pr-1 py-1 space-y-4">
+                {/* Status Berkas Selector */}
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1.5">Status Kelengkapan Berkas:</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { id: 'lengkap', label: 'Lengkap', color: 'text-emerald-700 border-emerald-300 bg-emerald-50' },
+                      { id: 'menunggu', label: 'Menunggu', color: 'text-amber-700 border-amber-300 bg-amber-50' },
+                      { id: 'perlu_perbaikan', label: 'Perlu Revisi', color: 'text-rose-700 border-rose-300 bg-rose-50' }
+                    ].map(st => (
+                      <button
+                        key={st.id}
+                        type="button"
+                        onClick={() => setAdminForm({ ...adminForm, berkas_status: st.id })}
+                        className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all text-center cursor-pointer ${
+                          adminForm.berkas_status === st.id
+                            ? `${st.color} ring-2 ring-indigo-500/20 shadow-xs font-extrabold`
+                            : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        {st.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Checklist Persyaratan Berkas */}
+                <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100 space-y-2">
+                  <span className="block text-slate-700 font-bold text-[11px] uppercase tracking-wider">
+                    Checklist Dokumen Persyaratan
+                  </span>
+                  
+                  <div className="space-y-2">
+                    {[
+                      { key: 'form_pendaftaran', label: 'Formulir Pendaftaran Usulan Judul TA' },
+                      { key: 'krs_berjalan', label: 'Bukti KRS Semester Berjalan (Mencantumkan TA)' },
+                      { key: 'transkrip_nilai', label: 'Transkrip Nilai Akademik Sementara (Min. 100 SKS)' },
+                      { key: 'bebas_pustaka', label: 'Surat Keterangan Bebas Pustaka / Lab' }
+                    ].map(doc => (
+                      <label key={doc.key} className="flex items-center space-x-2 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(adminForm.checklist?.[doc.key])}
+                          onChange={(e) => setAdminForm({
+                            ...adminForm,
+                            checklist: {
+                              ...adminForm.checklist,
+                              [doc.key]: e.target.checked
+                            }
+                          })}
+                          className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4"
+                        />
+                        <span className="text-slate-700 font-medium">{doc.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Nomor SK Pembimbing */}
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1">
+                    Nomor SK Pembimbing / Disposisi (Opsional)
+                  </label>
+                  <input
+                    type="text"
+                    value={adminForm.nomor_sk}
+                    onChange={(e) => setAdminForm({ ...adminForm, nomor_sk: e.target.value })}
+                    placeholder="Contoh: 0142/UN9.1.8/AK.TA/2026"
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
+                  />
+                </div>
+
+                {/* Catatan Administrasi */}
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1">
+                    Catatan Administrasi Staf
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={adminForm.catatan_admin}
+                    onChange={(e) => setAdminForm({ ...adminForm, catatan_admin: e.target.value })}
+                    placeholder="Tuliskan catatan kelengkapan dokumen, kendala administrasi, atau tanggal penyerahan berkas fisik..."
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
+                  />
                 </div>
               </div>
 
-              {/* Checklist Persyaratan Berkas */}
-              <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100 space-y-2">
-                <span className="block text-slate-700 font-bold text-[11px] uppercase tracking-wider">
-                  Checklist Dokumen Persyaratan
-                </span>
-                
-                <div className="space-y-2">
-                  {[
-                    { key: 'form_pendaftaran', label: 'Formulir Pendaftaran Usulan Judul TA' },
-                    { key: 'krs_berjalan', label: 'Bukti KRS Semester Berjalan (Mencantumkan TA)' },
-                    { key: 'transkrip_nilai', label: 'Transkrip Nilai Akademik Sementara (Min. 100 SKS)' },
-                    { key: 'bebas_pustaka', label: 'Surat Keterangan Bebas Pustaka / Lab' }
-                  ].map(doc => (
-                    <label key={doc.key} className="flex items-center space-x-2 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={Boolean(adminForm.checklist?.[doc.key])}
-                        onChange={(e) => setAdminForm({
-                          ...adminForm,
-                          checklist: {
-                            ...adminForm.checklist,
-                            [doc.key]: e.target.checked
-                          }
-                        })}
-                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4"
-                      />
-                      <span className="text-slate-700 font-medium">{doc.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* Nomor SK Pembimbing */}
-              <div>
-                <label className="block text-slate-700 font-bold mb-1">
-                  Nomor SK Pembimbing / Disposisi (Opsional)
-                </label>
-                <input
-                  type="text"
-                  value={adminForm.nomor_sk}
-                  onChange={(e) => setAdminForm({ ...adminForm, nomor_sk: e.target.value })}
-                  placeholder="Contoh: 0142/UN9.1.8/AK.TA/2026"
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
-                />
-              </div>
-
-              {/* Catatan Administrasi */}
-              <div>
-                <label className="block text-slate-700 font-bold mb-1">
-                  Catatan Administrasi Staf
-                </label>
-                <textarea
-                  rows={3}
-                  value={adminForm.catatan_admin}
-                  onChange={(e) => setAdminForm({ ...adminForm, catatan_admin: e.target.value })}
-                  placeholder="Tuliskan catatan kelengkapan dokumen, kendala administrasi, atau tanggal penyerahan berkas fisik..."
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
-                />
-              </div>
-
-              {/* Buttons */}
-              <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-100">
+              {/* Buttons (Fixed at bottom) */}
+              <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-100 shrink-0">
                 <button
                   type="button"
                   onClick={() => setManagingAdminItem(null)}

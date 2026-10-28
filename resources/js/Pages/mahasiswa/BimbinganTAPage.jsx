@@ -47,7 +47,13 @@ export default function BimbinganTAPage() {
     if (!currentUser) return [];
 
     if (isStudentRole) {
-      return consultations.filter(c => String(c.mhs_nim).trim() === String(currentUser.nim || '').trim());
+      return consultations
+        .filter(c => String(c.mhs_nim).trim() === String(currentUser.nim || '').trim())
+        .sort((a, b) => {
+          const dateDiff = (b.tanggal || '').localeCompare(a.tanggal || '');
+          if (dateDiff !== 0) return dateDiff;
+          return (b.waktu || '').localeCompare(a.waktu || '');
+        });
     }
 
     // Dosen & Kaprodi: Only see consultations directed to THEM
@@ -84,6 +90,16 @@ export default function BimbinganTAPage() {
     reviewConsultation(consId, newStatus, notes);
     setFeedbackInput(prev => ({ ...prev, [consId]: '' }));
   };
+
+  // Cek apakah mahasiswa memiliki sesi bimbingan yang masih berstatus menunggu tanggapan
+  const pendingConsultation = useMemo(() => {
+    if (!isStudentRole) return null;
+    return studentConsultations.find(c => 
+      c.status === 'menunggu_tanggapan' || c.status === 'menunggu' || c.status === 'menunggu_validasi'
+    );
+  }, [studentConsultations, isStudentRole]);
+
+  const hasPendingConsultation = Boolean(pendingConsultation);
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 select-none">
@@ -212,20 +228,56 @@ export default function BimbinganTAPage() {
       {/* LOG & RIWAYAT BIMBINGAN SECTION */}
       <div className="space-y-4">
         
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <h2 className="text-sm font-bold text-slate-900">
             {isStudentRole ? 'Riwayat Pertemuan Konsultasi' : 'Daftar Pengajuan Bimbingan Mahasiswa'}
           </h2>
           {isStudentRole && (
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-2xs transition-all flex items-center space-x-1.5 cursor-pointer"
-            >
-              <PlusCircle className="w-3.5 h-3.5" />
-              <span>Tambah Catatan Bimbingan</span>
-            </button>
+            hasPendingConsultation ? (
+              <div className="flex items-center space-x-2">
+                <span className="hidden sm:inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-amber-50 text-amber-800 text-[11px] font-semibold border border-amber-200">
+                  <Clock className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
+                  <span>Sesi menunggu tanggapan dosen</span>
+                </span>
+                <button
+                  type="button"
+                  disabled
+                  title="Entry bimbingan dinonaktifkan sementara karena sesi bimbingan sebelumnya masih menunggu tanggapan dosen."
+                  className="px-3.5 py-1.5 rounded-lg bg-slate-100 text-slate-400 font-bold text-xs border border-slate-200 cursor-not-allowed flex items-center space-x-1.5 shadow-none select-none"
+                >
+                  <PlusCircle className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Tambah Catatan Bimbingan</span>
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-2xs transition-all flex items-center space-x-1.5 cursor-pointer"
+              >
+                <PlusCircle className="w-3.5 h-3.5" />
+                <span>Tambah Catatan Bimbingan</span>
+              </button>
+            )
           )}
         </div>
+
+        {/* Notifikasi jika ada sesi yang masih berstatus menunggu tanggapan */}
+        {isStudentRole && hasPendingConsultation && pendingConsultation && (
+          <div className="p-4 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50/40 border border-amber-200/90 text-amber-900 text-xs flex items-start space-x-3 shadow-xs animate-in fade-in">
+            <Clock className="w-4 h-4 text-amber-600 shrink-0 mt-0.5 animate-pulse" />
+            <div className="space-y-1 leading-relaxed">
+              <div className="font-bold text-amber-950 flex items-center space-x-2">
+                <span>Entry Bimbingan Selanjutnya Dinonaktifkan</span>
+                <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-amber-200/70 text-amber-900 border border-amber-300">
+                  Menunggu Tanggapan
+                </span>
+              </div>
+              <p className="text-amber-800 text-[11px]">
+                Sesi bimbingan tanggal <strong>{pendingConsultation.tanggal}</strong> ({pendingConsultation.pembimbing} - {pendingConsultation.dosen_nama}) masih menunggu respon atau validasi dosen. Tombol <em>Tambah Catatan Bimbingan</em> akan aktif kembali secara otomatis setelah dosen pembimbing memberikan tanggapan atau menyetujui sesi ini.
+              </p>
+            </div>
+          </div>
+        )}
 
         {studentConsultations.length === 0 ? (
           <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center space-y-3">

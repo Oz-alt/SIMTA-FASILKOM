@@ -891,8 +891,8 @@ export default function ManajemenRepositoryAdminPage() {
       {/* MODAL: DETAIL & METADATA REPOSITORI */}
       {/* ========================================================================= */}
       {showDetailModal && (
-        <div data-lenis-prevent className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
-          <div data-lenis-prevent className="bg-white rounded-3xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200 space-y-5 p-6 sm:p-8">
+        <div data-lenis-prevent className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in overflow-y-auto overscroll-contain">
+          <div data-lenis-prevent className="bg-white rounded-3xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200 space-y-5 p-6 sm:p-8 my-auto overscroll-contain">
             
             <div className="flex items-start justify-between border-b border-slate-100 pb-4">
               <div className="space-y-1">
@@ -939,7 +939,7 @@ export default function ManajemenRepositoryAdminPage() {
             {/* Abstrak Box */}
             <div className="space-y-1.5">
               <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">Abstrak Dokumen:</span>
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 text-xs text-slate-700 leading-relaxed max-h-48 overflow-y-auto font-serif">
+              <div data-lenis-prevent className="p-4 bg-slate-50 rounded-2xl border border-slate-200 text-xs text-slate-700 leading-relaxed max-h-48 overflow-y-auto overscroll-contain font-serif">
                 {showDetailModal.abstrak || <span className="text-slate-400 italic">Tidak ada abstrak tercatat pada metadata repositori ini.</span>}
               </div>
             </div>
@@ -1009,8 +1009,8 @@ export default function ManajemenRepositoryAdminPage() {
       {/* MODAL: IMPORT DATA JSON / CSV SCRAPER */}
       {/* ========================================================================= */}
       {showImportModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-200 space-y-5 p-6 sm:p-8">
+        <div data-lenis-prevent className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in overflow-y-auto overscroll-contain">
+          <div data-lenis-prevent className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200 space-y-5 p-6 sm:p-8 my-auto overscroll-contain">
             
             <div className="flex items-start justify-between border-b border-slate-100 pb-4">
               <div>
@@ -1094,8 +1094,8 @@ export default function ManajemenRepositoryAdminPage() {
       {/* MODAL: SCRAPER SIMULATOR & CONNECTOR HUB */}
       {/* ========================================================================= */}
       {showScraperModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-slate-900 text-white rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-800 space-y-5 p-6 sm:p-8">
+        <div data-lenis-prevent className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in overflow-y-auto overscroll-contain">
+          <div data-lenis-prevent className="bg-slate-900 text-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-800 space-y-5 p-6 sm:p-8 my-auto overscroll-contain">
             
             <div className="flex items-start justify-between border-b border-slate-800 pb-4">
               <div className="space-y-1">
@@ -1158,7 +1158,7 @@ export default function ManajemenRepositoryAdminPage() {
             )}
 
             {/* Terminal Console Logs */}
-            <div className="p-4 bg-black/80 rounded-2xl border border-slate-800 font-mono text-[11px] text-emerald-400 max-h-48 overflow-y-auto space-y-1">
+            <div data-lenis-prevent className="p-4 bg-black/80 rounded-2xl border border-slate-800 font-mono text-[11px] text-emerald-400 max-h-48 overflow-y-auto overscroll-contain space-y-1">
               {scraperLogs.length === 0 ? (
                 <div className="text-slate-500 italic">Siap menjalankan sinkronisasi. Klik tombol "Mulai Scraping" di bawah.</div>
               ) : (
@@ -1204,8 +1204,8 @@ export default function ManajemenRepositoryAdminPage() {
       {/* MODAL: KONFIRMASI HAPUS DOKUMEN */}
       {/* ========================================================================= */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-slate-200 p-6 space-y-4">
+        <div data-lenis-prevent className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in overflow-y-auto overscroll-contain">
+          <div data-lenis-prevent className="bg-white rounded-3xl max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200 p-6 space-y-4 my-auto overscroll-contain">
             <div className="flex items-center space-x-3 text-red-600">
               <div className="p-3 bg-red-50 rounded-2xl">
                 <Trash2 className="w-6 h-6" />
@@ -1281,8 +1281,8 @@ function FormRepositoryModal({ item, onClose, onSave }) {
   };
 
   return (
-    <div data-lenis-prevent className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in overflow-y-auto">
-      <div data-lenis-prevent className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-200 flex flex-col max-h-[90vh] overflow-hidden my-auto">
+    <div data-lenis-prevent className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in overflow-y-auto overscroll-contain">
+      <div data-lenis-prevent className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-200 flex flex-col max-h-[90vh] overflow-hidden my-auto overscroll-contain">
         
         {/* Header */}
         <div className="flex items-start justify-between border-b border-slate-100 p-6 pb-4 shrink-0 bg-white">
@@ -1299,7 +1299,7 @@ function FormRepositoryModal({ item, onClose, onSave }) {
 
         {/* Scrollable Form Body */}
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden min-h-0" data-lenis-prevent>
-          <div data-lenis-prevent className="overflow-y-auto p-6 space-y-4 text-xs flex-1">
+          <div data-lenis-prevent className="overflow-y-auto overscroll-contain p-6 space-y-4 text-xs flex-1">
             <div className="space-y-1">
               <label className="font-bold text-slate-700">Judul Tugas Akhir / Skripsi *</label>
               <textarea

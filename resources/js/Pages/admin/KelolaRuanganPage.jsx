@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { Building2, Plus, Wrench, CheckCircle2, XCircle } from 'lucide-react';
 
@@ -9,6 +9,18 @@ export default function KelolaRuanganPage() {
   const [code, setCode] = useState('');
   const [capacity, setCapacity] = useState(25);
   const [buildingId, setBuildingId] = useState(buildings[0]?.id || '');
+
+  // Lock background scroll when modal is open
+  useEffect(() => {
+    if (showModal) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [showModal]);
 
   const toggleRoomStatus = (roomId) => {
     setRooms(prev => prev.map(r => {
@@ -99,8 +111,8 @@ export default function KelolaRuanganPage() {
 
       {/* Add Room Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
-          <form onSubmit={handleAddRoom} className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+        <div data-lenis-prevent className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 z-50 overflow-y-auto overscroll-contain animate-in fade-in">
+          <form onSubmit={handleAddRoom} className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto overscroll-contain my-auto p-6 shadow-2xl space-y-4" data-lenis-prevent>
             <h3 className="text-base font-bold text-slate-900">Tambah Ruangan Sidang Baru</h3>
 
             <div>

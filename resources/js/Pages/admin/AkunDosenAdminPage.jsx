@@ -562,7 +562,7 @@ export default function AkunDosenAdminPage() {
       {(isAddOpen || editingDosen) && (
         <div 
           data-lenis-prevent
-          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-hidden"
+          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto overscroll-contain"
           onClick={(e) => {
             if (e.target === e.currentTarget) {
               setIsAddOpen(false);
@@ -572,7 +572,7 @@ export default function AkunDosenAdminPage() {
         >
           <div 
             data-lenis-prevent
-            className="bg-white rounded-3xl max-w-lg w-full shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh] sm:max-h-[85vh] overflow-hidden"
+            className="bg-white rounded-3xl max-w-lg w-full shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh] sm:max-h-[85vh] overflow-hidden my-auto overscroll-contain"
           >
             
             {/* Modal Header (Fixed at top of popup) */}
@@ -800,8 +800,8 @@ export default function AkunDosenAdminPage() {
 
       {/* ── MODAL: DETAIL AKUN DOSEN ─────────────────────────────────────── */}
       {viewingDosen && (
-        <div data-lenis-prevent className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-          <div data-lenis-prevent className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200 space-y-5 max-h-[90vh] overflow-y-auto my-auto">
+        <div data-lenis-prevent className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto overscroll-contain">
+          <div data-lenis-prevent className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200 space-y-5 max-h-[90vh] overflow-y-auto my-auto overscroll-contain">
             
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="font-extrabold text-base text-slate-900">Detail Akun Dosen</h3>
@@ -886,8 +886,8 @@ export default function AkunDosenAdminPage() {
 
       {/* ── MODAL: RESET PASSWORD DOSEN ──────────────────────────────────── */}
       {resettingDosen && (
-        <div data-lenis-prevent className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-          <div data-lenis-prevent className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200 space-y-4 max-h-[90vh] overflow-y-auto my-auto">
+        <div data-lenis-prevent className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto overscroll-contain">
+          <div data-lenis-prevent className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200 space-y-4 max-h-[90vh] overflow-y-auto my-auto overscroll-contain">
             
             <div className="flex items-center space-x-3 text-amber-600">
               <div className="w-10 h-10 rounded-2xl bg-amber-50 flex items-center justify-center shrink-0 font-bold">
@@ -958,8 +958,8 @@ export default function AkunDosenAdminPage() {
 
       {/* ── MODAL: KONFIRMASI HAPUS DOSEN ────────────────────────────────── */}
       {deletingDosen && (
-        <div data-lenis-prevent className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-          <div data-lenis-prevent className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200 space-y-4 max-h-[90vh] overflow-y-auto my-auto">
+        <div data-lenis-prevent className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto overscroll-contain">
+          <div data-lenis-prevent className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200 space-y-4 max-h-[90vh] overflow-y-auto my-auto overscroll-contain">
             
             <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
               <AlertTriangle className="w-6 h-6" />
