@@ -200,7 +200,8 @@ export default function Navbar() {
                     ) : (
                       userNotifications.map(n => {
                         const isThesisNotif = n.related_type === 'thesis_title' || n.related_type === 'thesis_title_revised' || Boolean(n.action_url);
-                        const isBimbingan = n.related_type === 'bimbingan_status' || n.related_type === 'consultation';
+                        const isBimbinganMasuk = n.related_type === 'bimbingan_masuk';
+                        const isBimbingan = n.related_type === 'bimbingan_status' || n.related_type === 'consultation' || isBimbinganMasuk;
                         const isApproved = n.status === 'disetujui' || n.jenis_revisi === 'Diterima';
                         const isMayor = n.jenis_revisi === 'Mayor';
                         const isDitolak = n.status === 'ditolak' || n.jenis_revisi === 'Ditolak';
@@ -211,7 +212,7 @@ export default function Navbar() {
                             onClick={() => handleNotificationClick(n)}
                             className={`p-3.5 hover:bg-slate-50 transition-colors cursor-pointer group ${
                               isBimbingan
-                                ? (isApproved ? 'border-l-3 border-l-emerald-500' : isMayor || isDitolak ? 'border-l-3 border-l-rose-500' : 'border-l-3 border-l-blue-500')
+                                ? (isBimbinganMasuk ? 'border-l-3 border-l-indigo-600' : isApproved ? 'border-l-3 border-l-emerald-500' : isMayor || isDitolak ? 'border-l-3 border-l-rose-500' : 'border-l-3 border-l-blue-500')
                                 : ''
                             } ${!n.is_read ? 'bg-indigo-50/30' : ''}`}
                           >
@@ -225,7 +226,11 @@ export default function Navbar() {
                                 </p>
                               </div>
                               <div className="flex items-center space-x-1 shrink-0 mt-0.5">
-                                {isBimbingan && (
+                                {isBimbinganMasuk ? (
+                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-indigo-100 text-indigo-800 border border-indigo-200">
+                                    {n.pembimbing ? `Pengajuan ${n.pembimbing}` : 'Bimbingan Baru'}
+                                  </span>
+                                ) : isBimbingan ? (
                                   <span className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold ${
                                     isApproved ? 'bg-emerald-100 text-emerald-800' :
                                     isMayor || isDitolak ? 'bg-rose-100 text-rose-800' :
@@ -233,7 +238,7 @@ export default function Navbar() {
                                   }`}>
                                     {isApproved ? 'ACC' : n.jenis_revisi ? `Revisi ${n.jenis_revisi}` : 'Respon Dospem'}
                                   </span>
-                                )}
+                                ) : null}
                                 {!n.is_read && (
                                   <span className="w-2 h-2 rounded-full bg-indigo-600 shrink-0"></span>
                                 )}
@@ -252,8 +257,22 @@ export default function Navbar() {
                               </div>
                             )}
 
+                            {/* Dosen quick action button for new bimbingan */}
+                            {isBimbinganMasuk && (
+                              <div className="mt-2 flex items-center justify-between pt-1">
+                                <span className="inline-flex items-center space-x-1 text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-200/70">
+                                  <BookOpen className="w-3 h-3 text-indigo-600" />
+                                  <span>Validasi Sesi Bimbingan</span>
+                                </span>
+                                <span className="text-[10px] font-semibold text-indigo-600 group-hover:underline flex items-center space-x-0.5">
+                                  <span>Buka halaman bimbingan</span>
+                                  <ExternalLink className="w-3 h-3 ml-0.5" />
+                                </span>
+                              </div>
+                            )}
+
                             {/* Kaprodi quick action button for thesis title */}
-                            {(userRole === 'kaprodi' || userRole === 'admin') && isThesisNotif && (
+                            {(userRole === 'kaprodi' || userRole === 'admin') && isThesisNotif && !isBimbinganMasuk && (
                               <div className="mt-2 flex items-center justify-between pt-1">
                                 <span className="inline-flex items-center space-x-1 text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200/70">
                                   <Sparkles className="w-3 h-3 text-blue-600" />
@@ -272,7 +291,7 @@ export default function Navbar() {
                               </span>
                               {isBimbingan && (
                                 <span className="text-indigo-600 font-semibold flex items-center space-x-0.5 hover:underline">
-                                  <span>Lihat bimbingan</span>
+                                  <span>{isBimbinganMasuk ? 'Validasi sekarang' : 'Lihat bimbingan'}</span>
                                   <ArrowRight className="w-2.5 h-2.5" />
                                 </span>
                               )}

@@ -1090,15 +1090,18 @@ export function AuthProvider({ children }) {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Merge pendidikan from MOCK_ADVISORS if missing (for old cached data)
+          // Merge no_hp, link_wa_group, and pendidikan from MOCK_ADVISORS if missing (for old cached data)
           return parsed.map(adv => {
-            if (adv.pendidikan) return adv;
-            const mock = MOCK_ADVISORS.find(m => m.nip === adv.nip);
-            if (mock?.pendidikan) return { ...adv, pendidikan: mock.pendidikan };
-            // Derive from name as fallback
-            const n = adv.nama || '';
-            const isDoktor = /\bDr\.\s/i.test(n) || /Ph\.D/i.test(n);
-            return { ...adv, pendidikan: isDoktor ? 'S3 (Doktor)' : 'S2 (Magister)' };
+            const mock = MOCK_ADVISORS.find(m => m.nip === adv.nip || m.id === adv.id || m.nama === adv.nama);
+            const pendidikan = adv.pendidikan || mock?.pendidikan || (/\bDr\.\s/i.test(adv.nama || '') || /Ph\.D/i.test(adv.nama || '') ? 'S3 (Doktor)' : 'S2 (Magister)');
+            const no_hp = adv.no_hp || mock?.no_hp || '';
+            const link_wa_group = adv.link_wa_group || mock?.link_wa_group || '';
+            return {
+              ...adv,
+              pendidikan,
+              no_hp,
+              link_wa_group
+            };
           });
         }
       }
@@ -1544,14 +1547,70 @@ export function AuthProvider({ children }) {
             { event: '*', schema: 'public', table: 'thesis_consultations' },
             (payload) => {
               if (payload.eventType === 'INSERT' && payload.new) {
+                const item = parseConsultationItem(payload.new);
                 setConsultations(prev => {
                   const exists = prev.some(c => String(c.id) === String(payload.new.id));
                   if (exists) return prev;
-                  const item = parseConsultationItem(payload.new);
                   const updated = [item, ...prev];
                   try { localStorage.setItem('simta_consultations', JSON.stringify(updated)); } catch {}
                   return updated;
                 });
+
+                // Notifikasi real-time untuk Dosen Pembimbing yang bersangkutan
+                const activeUser = currentUserRef.current;
+                if (activeUser?.role === 'dosen') {
+                  const cleanNip = String(activeUser.nip || activeUser.nim || '').trim();
+                  const matchNip = item.dosen_nip && cleanNip && String(item.dosen_nip).trim() === cleanNip;
+                  const matchName = item.dosen_nama && activeUser.nama && (
+                    activeUser.nama.toLowerCase().includes(item.dosen_nama.toLowerCase()) ||
+                    item.dosen_nama.toLowerCase().includes(activeUser.nama.toLowerCase())
+                  );
+                  if (matchNip || matchName) {
+                    const notifTitle = `Pengajuan Bimbingan Baru (${item.pembimbing || 'Pembimbing'})`;
+                    const notifMessage = `Mahasiswa ${item.mhs_nama} (${item.mhs_nim}) mengajukan bimbingan baru: "${item.bab_topik || 'Konsultasi TA'}" (${item.tanggal} pukul ${item.waktu || '10:00'} WIB).`;
+                    const notifItem = {
+                      id: `notif-entry-${Date.now()}-${item.id}`,
+                      profile_id: activeUser.id,
+                      recipient_role: 'dosen',
+                      recipient_nip: cleanNip,
+                      recipient_nama: activeUser.nama,
+                      related_type: 'bimbingan_masuk',
+                      consultation_id: item.id,
+                      status: 'menunggu_tanggapan',
+                      pembimbing: item.pembimbing || 'Pembimbing',
+                      dosen_nama: item.dosen_nama,
+                      dosen_nip: item.dosen_nip,
+                      mhs_nama: item.mhs_nama,
+                      mhs_nim: item.mhs_nim,
+                      bab_topik: item.bab_topik,
+                      action_url: '/dosen/bimbingan',
+                      title: notifTitle,
+                      message: notifMessage,
+                      is_read: false,
+                      is_email_sent: true,
+                      created_at: new Date().toISOString()
+                    };
+
+                    setNotifications(currNotifs => {
+                      if (currNotifs.some(n => n.consultation_id === item.id && n.related_type === 'bimbingan_masuk')) return currNotifs;
+                      const next = [notifItem, ...currNotifs];
+                      try { localStorage.setItem('simta_notifications', JSON.stringify(next)); } catch {}
+                      return next;
+                    });
+
+                    triggerRealtimeAlert({
+                      id: `alert-${Date.now()}`,
+                      title: notifTitle,
+                      message: notifMessage,
+                      mhs_nama: item.mhs_nama,
+                      mhs_nim: item.mhs_nim,
+                      pembimbing: item.pembimbing || 'Pembimbing',
+                      bab_topik: item.bab_topik || '',
+                      isDosenAlert: true,
+                      action_url: '/dosen/bimbingan'
+                    });
+                  }
+                }
               } else if (payload.eventType === 'UPDATE' && payload.new) {
                 let prevCons = null;
                 let parsedNew = null;
@@ -1958,6 +2017,61 @@ export function AuthProvider({ children }) {
               }
             }
           }
+
+          if (event.data?.type === 'BIMBINGAN_ENTRY_SUBMITTED') {
+            const { consultation, notif } = event.data;
+            if (consultation) {
+              setConsultations(prev => {
+                const exists = prev.some(c => String(c.id) === String(consultation.id));
+                if (exists) return prev;
+                return [parseConsultationItem(consultation), ...prev];
+              });
+            }
+
+            if (notif) {
+              setNotifications(prev => {
+                const exists = prev.some(n => String(n.id) === String(notif.id));
+                if (exists) return prev;
+                return [notif, ...prev];
+              });
+
+              // Trigger alert if active user in this tab is the target lecturer!
+              const current = currentUserRef.current;
+              if (current?.role === 'dosen') {
+                const cleanNip = String(current.nip || current.nim || '').trim();
+                const matchNip = notif.recipient_nip && cleanNip && String(notif.recipient_nip).trim() === cleanNip;
+                const matchName = notif.recipient_nama && current.nama && (
+                  current.nama.toLowerCase().includes(notif.recipient_nama.toLowerCase()) ||
+                  notif.recipient_nama.toLowerCase().includes(current.nama.toLowerCase())
+                );
+                if (matchNip || matchName) {
+                  triggerRealtimeAlert({
+                    id: `alert-${Date.now()}`,
+                    title: notif.title,
+                    message: notif.message,
+                    mhs_nama: notif.mhs_nama || consultation?.mhs_nama || 'Mahasiswa',
+                    mhs_nim: notif.mhs_nim || consultation?.mhs_nim || '',
+                    pembimbing: notif.pembimbing || consultation?.pembimbing || 'Pembimbing',
+                    bab_topik: notif.bab_topik || consultation?.bab_topik || '',
+                    isDosenAlert: true,
+                    action_url: '/dosen/bimbingan'
+                  });
+                }
+              } else if (current?.role === 'kaprodi' || current?.role === 'admin') {
+                triggerRealtimeAlert({
+                  id: `alert-${Date.now()}`,
+                  title: notif.title,
+                  message: notif.message,
+                  mhs_nama: notif.mhs_nama || consultation?.mhs_nama || 'Mahasiswa',
+                  mhs_nim: notif.mhs_nim || consultation?.mhs_nim || '',
+                  pembimbing: notif.pembimbing || consultation?.pembimbing || 'Pembimbing',
+                  bab_topik: notif.bab_topik || consultation?.bab_topik || '',
+                  isDosenAlert: true,
+                  action_url: '/kaprodi/rekap-bimbingan'
+                });
+              }
+            }
+          }
         };
 
         return () => {
@@ -1974,6 +2088,18 @@ export function AuthProvider({ children }) {
       try {
         bimbinganBroadcastChannelRef.current.postMessage({
           type: 'BIMBINGAN_STATUS_RESPONDED',
+          consultation,
+          notif
+        });
+      } catch {}
+    }
+  };
+
+  const broadcastBimbinganSubmission = (consultation, notif) => {
+    if (bimbinganBroadcastChannelRef.current) {
+      try {
+        bimbinganBroadcastChannelRef.current.postMessage({
+          type: 'BIMBINGAN_ENTRY_SUBMITTED',
           consultation,
           notif
         });
@@ -3590,13 +3716,55 @@ export function AuthProvider({ children }) {
 
   // Add new consultation / revision submission (Mahasiswa)
   const addConsultation = async (consData) => {
+    // 1. Resolve student data
+    const mhsNim = String(currentUser?.nim || consData.mhs_nim || '09010182428002').trim();
+    const mhsNama = currentUser?.nama || consData.mhs_nama || 'Aulia Azzahra';
+    const isPemb2 = String(consData.pembimbing || '').includes('2');
+    const pembTag = isPemb2 ? 'Pembimbing 2' : 'Pembimbing 1';
+    const pembimbingLabel = isPemb2 ? 'Dosen Pembimbing 2 (Pendamping)' : 'Dosen Pembimbing 1 (Utama)';
+
+    // 2. Resolve assigned target lecturer for this student
+    const assigned = (getStudentAdvisors && mhsNim) ? getStudentAdvisors(mhsNim) : null;
+    const targetAdvisor = isPemb2 ? assigned?.dospem2 : assigned?.dospem1;
+
+    let targetNip = consData.dosen_nip || targetAdvisor?.nip || '';
+    let targetNama = consData.dosen_nama || targetAdvisor?.nama || '';
+
+    if (!targetNip || !targetNama) {
+      const matchAdv = (advisors && advisors.find(a => 
+        (targetNama && a.nama === targetNama) || 
+        (targetNip && a.nip === targetNip)
+      )) || MOCK_ADVISORS.find(m => 
+        (targetNama && m.nama === targetNama) || 
+        (targetNip && m.nip === targetNip)
+      );
+      if (matchAdv) {
+        if (!targetNip) targetNip = matchAdv.nip;
+        if (!targetNama) targetNama = matchAdv.nama;
+      }
+    }
+
+    if (!targetNama) {
+      targetNama = isPemb2 ? 'M. Qurhanul Rizkie, Ph.D' : 'Dr. Abdiansah, S.Kom., M.Cs.';
+    }
+    if (!targetNip) {
+      targetNip = isPemb2 ? '198712032022031006' : '198410012009121005';
+    }
+
+    const advisorAccount = (advisors && advisors.find(a => a.nip === targetNip)) ||
+                          MOCK_USERS.find(u => u.nip === targetNip || u.nama === targetNama) ||
+                          MOCK_ADVISORS.find(m => m.nip === targetNip);
+
+    const targetEmail = advisorAccount?.email || `${targetNip}@unsri.ac.id`;
+    const targetProfileId = advisorAccount?.id || (targetNip ? `user-dosen-${targetNip}` : 'user-dosen');
+
     const newEntry = {
       id: generateUUID(),
-      mhs_nim: currentUser?.nim || '09010182428002',
-      mhs_nama: currentUser?.nama || 'Aulia Azzahra',
-      pembimbing: consData.pembimbing || 'Pembimbing 1',
-      dosen_nama: consData.dosen_nama || 'Dr. Abdiansah, S.Kom., M.Cs.',
-      dosen_nip: consData.dosen_nip || '',
+      mhs_nim: mhsNim,
+      mhs_nama: mhsNama,
+      pembimbing: pembTag,
+      dosen_nama: targetNama,
+      dosen_nip: targetNip,
       metode: consData.metode || 'luring',
       tanggal: consData.tanggal || new Date().toISOString().split('T')[0],
       waktu: consData.waktu || '10:00',
@@ -3613,6 +3781,47 @@ export function AuthProvider({ children }) {
       try { localStorage.setItem('simta_consultations', JSON.stringify(updated)); } catch {}
       return updated;
     });
+
+    // 3. Create real-time notification specifically for the relevant Dosen Pembimbing (Pembimbing 1 or 2)
+    const notifTitle = `Pengajuan Bimbingan Baru (${pembTag})`;
+    const notifMessage = `Mahasiswa ${mhsNama} (${mhsNim}) mengajukan sesi bimbingan baru ke ${pembimbingLabel}: "${consData.bab_topik || 'Konsultasi Tugas Akhir'}" pada tanggal ${newEntry.tanggal} pukul ${newEntry.waktu} WIB (${newEntry.metode === 'daring' ? 'Daring' : 'Luring'}). Silakan review dan berikan arahan/tanggapan bimbingan.`;
+
+    const notifDosen = {
+      id: `notif-entry-${Date.now()}-${newEntry.id}`,
+      profile_id: targetProfileId,
+      recipient_role: 'dosen',
+      recipient_nip: targetNip,
+      recipient_nama: targetNama,
+      related_type: 'bimbingan_masuk',
+      consultation_id: newEntry.id,
+      status: 'menunggu_tanggapan',
+      pembimbing: pembTag,
+      dosen_nama: targetNama,
+      dosen_nip: targetNip,
+      mhs_nama: mhsNama,
+      mhs_nim: mhsNim,
+      bab_topik: consData.bab_topik || '',
+      action_url: '/dosen/bimbingan',
+      title: notifTitle,
+      message: notifMessage,
+      is_read: false,
+      is_email_sent: true,
+      email_to: targetEmail,
+      email_sent_at: new Date().toISOString(),
+      created_at: new Date().toISOString()
+    };
+
+    setNotifications(prev => {
+      const next = [notifDosen, ...prev];
+      try { localStorage.setItem('simta_notifications', JSON.stringify(next)); } catch {}
+      return next;
+    });
+
+    // Send email notification to lecturer
+    sendEmailNotification(targetEmail, notifTitle, notifMessage);
+
+    // Broadcast in real-time across tabs and windows
+    broadcastBimbinganSubmission(newEntry, notifDosen);
 
     if (isSupabaseConfigured && supabase) {
       try {
