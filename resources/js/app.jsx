@@ -7,6 +7,7 @@ import { createRoot } from 'react-dom/client';
 import { AuthProvider } from './context/AuthContext.jsx';
 import SmoothScrollLenis from './Components/common/SmoothScrollLenis.jsx';
 import AppLayout from './Components/layout/AppLayout.jsx';
+import ErrorBoundary from './Components/common/ErrorBoundary.jsx';
 
 const appName = import.meta.env.VITE_APP_NAME || 'SIMONITA FASILKOM';
 
@@ -27,11 +28,13 @@ createInertiaApp({
         const root = createRoot(el);
 
         root.render(
-            <AuthProvider>
-                <SmoothScrollLenis>
-                    <App {...props} />
-                </SmoothScrollLenis>
-            </AuthProvider>
+            <ErrorBoundary>
+                <AuthProvider>
+                    <SmoothScrollLenis>
+                        <App {...props} />
+                    </SmoothScrollLenis>
+                </AuthProvider>
+            </ErrorBoundary>
         );
     },
     progress: {

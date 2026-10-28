@@ -33,14 +33,21 @@ export default function DashboardAdminSimta() {
 
   // Memoize account stats to ensure zero UI delay on renders
   const { totalMahasiswa, mahasiswaAktif, totalDosen, dosenAktif } = useMemo(() => {
-    const allMhs = getAllMahasiswaAccounts ? getAllMahasiswaAccounts() : [];
-    const allDsn = getAllDosenAccounts ? getAllDosenAccounts() : [];
-    return {
-      totalMahasiswa: allMhs.length,
-      mahasiswaAktif: allMhs.filter(m => m.status === 'aktif').length,
-      totalDosen: allDsn.length,
-      dosenAktif: allDsn.filter(d => d.status === 'aktif').length
-    };
+    try {
+      const allMhs = typeof getAllMahasiswaAccounts === 'function' ? getAllMahasiswaAccounts() : [];
+      const allDsn = typeof getAllDosenAccounts === 'function' ? getAllDosenAccounts() : [];
+      const safeMhs = Array.isArray(allMhs) ? allMhs : [];
+      const safeDsn = Array.isArray(allDsn) ? allDsn : [];
+      return {
+        totalMahasiswa: safeMhs.length,
+        mahasiswaAktif: safeMhs.filter(m => m && m.status === 'aktif').length,
+        totalDosen: safeDsn.length,
+        dosenAktif: safeDsn.filter(d => d && d.status === 'aktif').length
+      };
+    } catch (err) {
+      console.warn('DashboardAdminSimta account stats fallback:', err);
+      return { totalMahasiswa: 0, mahasiswaAktif: 0, totalDosen: 0, dosenAktif: 0 };
+    }
   }, [getAllMahasiswaAccounts, getAllDosenAccounts]);
 
   // Memoize Sarana & Ruang Sidang metrics
@@ -48,38 +55,47 @@ export default function DashboardAdminSimta() {
     const bList = Array.isArray(bookings) ? bookings : [];
     const rList = Array.isArray(rooms) ? rooms : [];
     return {
-      pendingBookings: bList.filter(b => b.status === 'menunggu_persetujuan'),
-      approvedBookings: bList.filter(b => b.status === 'disetujui'),
-      activeRooms: rList.filter(r => r.status === 'aktif')
+      pendingBookings: bList.filter(b => b && b.status === 'menunggu_persetujuan'),
+      approvedBookings: bList.filter(b => b && b.status === 'disetujui'),
+      activeRooms: rList.filter(r => r && r.status === 'aktif')
     };
   }, [bookings, rooms]);
 
-  const totalDokumen = adminDocuments.length;
-  const dokumenAktif = adminDocuments.filter(d => d.status === 'aktif').length;
-  const totalCms = adminCmsContents.length;
-  const cmsPublikasi = adminCmsContents.filter(c => c.status === 'publikasi').length;
-  const totalTemplate = adminTemplates.length;
-  const templateAktif = adminTemplates.filter(t => t.status === 'aktif').length;
-  const totalRepo = thesisArchives.length;
-  const repoPublish = thesisArchives.filter(a => (a.status || 'dipublikasikan') === 'dipublikasikan').length;
+  const docsList = Array.isArray(adminDocuments) ? adminDocuments : [];
+  const cmsList = Array.isArray(adminCmsContents) ? adminCmsContents : [];
+  const tplList = Array.isArray(adminTemplates) ? adminTemplates : [];
+  const repoList = Array.isArray(thesisArchives) ? thesisArchives : [];
+
+  const totalDokumen = docsList.length;
+  const dokumenAktif = docsList.filter(d => d && d.status === 'aktif').length;
+  const totalCms = cmsList.length;
+  const cmsPublikasi = cmsList.filter(c => c && c.status === 'publikasi').length;
+  const totalTemplate = tplList.length;
+  const templateAktif = tplList.filter(t => t && t.status === 'aktif').length;
+  const totalRepo = repoList.length;
+  const repoPublish = repoList.filter(a => a && (a.status || 'dipublikasikan') === 'dipublikasikan').length;
 
   // Memoize recent activities
   const recentActivity = useMemo(() => {
-    return [
-      ...adminDocuments.map(d => ({
-        id: d.id, label: d.nama, kategori: 'Dokumen', status: d.status,
-        tanggal: d.tanggal_upload, icon: FileStack, color: 'text-blue-600', bg: 'bg-blue-50'
-      })),
-      ...adminCmsContents.map(c => ({
-        id: c.id, label: c.judul, kategori: 'CMS', status: c.status,
-        tanggal: c.updated_at?.split('T')[0], icon: LayoutGrid, color: 'text-purple-600', bg: 'bg-purple-50'
-      })),
-      ...adminTemplates.map(t => ({
-        id: t.id, label: t.nama, kategori: 'Template', status: t.status,
-        tanggal: t.updated_at, icon: FileText, color: 'text-emerald-600', bg: 'bg-emerald-50'
-      }))
-    ].sort((a, b) => (b.tanggal || '').localeCompare(a.tanggal || '')).slice(0, 8);
-  }, [adminDocuments, adminCmsContents, adminTemplates]);
+    try {
+      return [
+        ...docsList.map(d => ({
+          id: d.id, label: d.nama, kategori: 'Dokumen', status: d.status,
+          tanggal: d.tanggal_upload, icon: FileStack, color: 'text-blue-600', bg: 'bg-blue-50'
+        })),
+        ...cmsList.map(c => ({
+          id: c.id, label: c.judul, kategori: 'CMS', status: c.status,
+          tanggal: c.updated_at ? String(c.updated_at).split('T')[0] : '', icon: LayoutGrid, color: 'text-purple-600', bg: 'bg-purple-50'
+        })),
+        ...tplList.map(t => ({
+          id: t.id, label: t.nama, kategori: 'Template', status: t.status,
+          tanggal: t.updated_at, icon: FileText, color: 'text-emerald-600', bg: 'bg-emerald-50'
+        }))
+      ].sort((a, b) => (b.tanggal || '').localeCompare(a.tanggal || '')).slice(0, 8);
+    } catch {
+      return [];
+    }
+  }, [docsList, cmsList, tplList]);
 
   const statusBadge = (status) => {
     if (status === 'aktif' || status === 'publikasi')
