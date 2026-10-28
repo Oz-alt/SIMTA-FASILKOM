@@ -948,6 +948,33 @@ export function AuthProvider({ children }) {
   const markNotificationAsRead = (notifId) => {
     setNotifications(prev => prev.map(n => String(n.id) === String(notifId) ? { ...n, is_read: true } : n));
   };
+
+  /**
+   * Menambahkan notifikasi ke state lokal sekaligus menyiarkannya ke perangkat
+   * lain. Tanpa siaran ini, notifikasi hanya muncul di tab tempat aksi dilakukan,
+   * sehingga mahasiswa tidak melihat apa pun sampai melakukan reload.
+   *
+   * @param {object|object[]} incoming satu notifikasi atau daftar notifikasi
+   */
+  const publishNotifications = (incoming) => {
+    const list = (Array.isArray(incoming) ? incoming : [incoming]).filter(Boolean);
+    if (list.length === 0) {
+      return;
+    }
+
+    setNotifications(prev => {
+      const existingIds = new Set(prev.map(n => String(n.id)));
+      const fresh = list.filter(n => !existingIds.has(String(n.id)));
+      if (fresh.length === 0) {
+        return prev;
+      }
+      const next = [...fresh, ...prev];
+      try { localStorage.setItem('simta_notifications', JSON.stringify(next)); } catch {}
+      return next;
+    });
+
+    broadcastRealtimeNotification('NOTIFICATION_CREATED', { notifications: list });
+  };
   const [bimbinganReminderLogs, setBimbinganReminderLogs] = useState(() => {
     try {
       const saved = localStorage.getItem('simta_bimbingan_reminders');
@@ -2098,6 +2125,42 @@ export function AuthProvider({ children }) {
   // Multi-transport Real-time Bus Listener (BroadcastChannel, Storage Events & Supabase WebSocket)
   useEffect(() => {
     const unsubscribe = subscribeToRealtimeNotifications((envelope) => {
+      if (envelope.type === 'NOTIFICATION_CREATED') {
+        const incoming = envelope.payload?.notifications || [];
+        if (incoming.length > 0) {
+          setNotifications(prev => {
+            const existingIds = new Set(prev.map(n => String(n.id)));
+            const fresh = incoming.filter(n => n && !existingIds.has(String(n.id)));
+            if (fresh.length === 0) {
+              return prev;
+            }
+            const next = [...fresh, ...prev];
+            try { localStorage.setItem('simta_notifications', JSON.stringify(next)); } catch {}
+            return next;
+          });
+
+          const activeUser = currentUserRef.current;
+          const relevant = incoming.find(n => {
+            if (!activeUser) return false;
+            if (n.recipient_role === 'all') return true;
+            if (n.recipient_role && n.recipient_role !== activeUser.role) return false;
+            const targetNim = String(n.recipient_nim || '').trim();
+            if (targetNim && String(activeUser.nim || '').trim() && targetNim !== String(activeUser.nim).trim()) return false;
+            const targetNip = String(n.recipient_nip || '').trim();
+            const myNip = String(activeUser.nip || activeUser.nim || '').trim();
+            if (targetNip && myNip && targetNip !== myNip) return false;
+            return true;
+          });
+
+          if (relevant) {
+            setLatestRealtimeNotif(relevant);
+            if (realtimeNotifEnabled) {
+              playNotificationSound();
+            }
+          }
+        }
+      }
+
       if (envelope.type === 'THESIS_TITLE_SUBMITTED' || envelope.type === 'THESIS_TITLE_REVISED') {
         const { title, notif } = envelope.payload || {};
         if (title) {
@@ -3023,7 +3086,7 @@ export function AuthProvider({ children }) {
     }
 
     if (newNotifs.length > 0) {
-      setNotifications(prev => [...newNotifs, ...prev]);
+      publishNotifications(newNotifs);
     }
 
     // Real-time broadcast to all active Kaprodi sessions across tabs and devices
@@ -3084,6 +3147,9 @@ export function AuthProvider({ children }) {
       const notifMhs = {
         id: `notif-${Date.now()}-mhs`,
         profile_id: affectedTitle.profile_id,
+        recipient_role: 'mahasiswa',
+        recipient_nim: affectedTitle.mhs_nim,
+        recipient_nama: affectedTitle.mhs_nama,
         related_type: 'thesis_title',
         title: notifTitle,
         message: notifMessage,
@@ -3093,7 +3159,7 @@ export function AuthProvider({ children }) {
         email_sent_at: new Date().toISOString(),
         created_at: new Date().toISOString()
       };
-      setNotifications(prev => [notifMhs, ...prev]);
+      publishNotifications(notifMhs);
       sendEmailNotification(studentEmail, notifTitle, notifMessage);
     }
   };
@@ -3138,6 +3204,9 @@ export function AuthProvider({ children }) {
       const notifMhs = {
         id: `notif-${Date.now()}-mhs-rev`,
         profile_id: affectedTitle.profile_id,
+        recipient_role: 'mahasiswa',
+        recipient_nim: affectedTitle.mhs_nim,
+        recipient_nama: affectedTitle.mhs_nama,
         related_type: 'thesis_title_revision',
         title: notifTitle,
         message: notifMessage,
@@ -3147,7 +3216,7 @@ export function AuthProvider({ children }) {
         email_sent_at: nowIso,
         created_at: nowIso
       };
-      setNotifications(prev => [notifMhs, ...prev]);
+      publishNotifications(notifMhs);
       sendEmailNotification(studentEmail, notifTitle, notifMessage);
     }
   };
@@ -3204,7 +3273,7 @@ export function AuthProvider({ children }) {
           is_read: false,
           created_at: nowIso
         };
-        setNotifications(prev => [notifKaprodi, ...prev]);
+        publishNotifications(notifKaprodi);
 
         broadcastRealtimeNotification('THESIS_TITLE_REVISED', {
           title: affectedTitle,
@@ -3241,7 +3310,7 @@ export function AuthProvider({ children }) {
           is_read: false,
           created_at: new Date().toISOString()
         };
-        setNotifications(prev => [notifKaprodi, ...prev]);
+        publishNotifications(notifKaprodi);
       }
     }
   };
@@ -3326,7 +3395,7 @@ export function AuthProvider({ children }) {
         id: `notif-${Date.now()}-fix`,
         profile_id: updatedTitle.profile_id,
         recipient_nim: updatedTitle.mhs_nim,
-        recipient_name: updatedTitle.mhs_nama,
+        recipient_nama: updatedTitle.mhs_nama,
         recipient_role: 'mahasiswa',
         related_type: 'thesis_title',
         title: notifTitle,
@@ -3337,7 +3406,7 @@ export function AuthProvider({ children }) {
         email_sent_at: nowIso,
         created_at: nowIso
       };
-      setNotifications(prev => [notif, ...prev]);
+      publishNotifications(notif);
       sendEmailNotification(studentEmail, notifTitle, notifMessage);
     }
   };
@@ -3478,6 +3547,9 @@ export function AuthProvider({ children }) {
       const notifMhs = {
         id: `notif-cadence-${Date.now()}-mhs`,
         profile_id: studentUser?.id || `user-${studentNim}`,
+        recipient_role: 'mahasiswa',
+        recipient_nim: studentNim,
+        recipient_nama: studentNama,
         related_type: 'bimbingan_cadence_reminder',
         title: subject,
         message: defaultMessage,
@@ -3487,7 +3559,7 @@ export function AuthProvider({ children }) {
         email_sent_at: nowIso,
         created_at: nowIso
       };
-      setNotifications(prev => [notifMhs, ...prev]);
+      publishNotifications(notifMhs);
     }
 
     if (target === 'dospem' || target === 'both') {
@@ -3496,6 +3568,9 @@ export function AuthProvider({ children }) {
           const notifDospem = {
             id: `notif-cadence-${Date.now()}-dospem-${prof.nip || prof.id}`,
             profile_id: prof.id,
+            recipient_role: 'dosen',
+            recipient_nip: prof.nip || '',
+            recipient_nama: prof.nama || '',
             related_type: 'bimbingan_cadence_reminder',
             title: subject,
             message: defaultMessage,
@@ -3505,7 +3580,7 @@ export function AuthProvider({ children }) {
             email_sent_at: nowIso,
             created_at: nowIso
           };
-          setNotifications(prev => [notifDospem, ...prev]);
+          publishNotifications(notifDospem);
         }
       });
     }
@@ -3620,7 +3695,7 @@ export function AuthProvider({ children }) {
         id: `notif-broadcast-${Date.now()}-${std.nim}`,
         profile_id: std.id || `user-${std.nim}`,
         recipient_nim: std.nim,
-        recipient_name: std.nama,
+        recipient_nama: std.nama,
         recipient_role: 'mahasiswa',
         related_type: 'submission_reminder_broadcast',
         title: subject,
@@ -3732,7 +3807,7 @@ export function AuthProvider({ children }) {
       id: `notif-mhs-${Date.now()}`,
       profile_id: target.profile_id,
       recipient_nim: target.mhs_nim,
-      recipient_name: target.mhs_nama,
+      recipient_nama: target.mhs_nama,
       recipient_role: 'mahasiswa',
       related_type: 'thesis_advisor_confirmed',
       title: 'Penetapan Dosen Pembimbing TA Aktif',
@@ -3740,7 +3815,7 @@ export function AuthProvider({ children }) {
       is_read: false,
       created_at: nowIso
     };
-    setNotifications(prev => [notifMhs, ...prev]);
+    publishNotifications(notifMhs);
   };
 
   // Konfirmasi Semua Dospem Sekaligus (Batch Confirm All)
@@ -3838,6 +3913,8 @@ export function AuthProvider({ children }) {
       const notif = {
         id: `notif-${Date.now()}-booking`,
         profile_id: targetBooking.profile_id || studentUser?.id || 'user-mhs-aulia',
+        recipient_role: 'mahasiswa',
+        recipient_nim: targetBooking.student_nim || studentUser?.nim || '',
         related_type: 'booking',
         title: notifTitle,
         message: notifMessage,
@@ -3847,7 +3924,7 @@ export function AuthProvider({ children }) {
         email_sent_at: new Date().toISOString(),
         created_at: new Date().toISOString()
       };
-      setNotifications(prev => [notif, ...prev]);
+      publishNotifications(notif);
       sendEmailNotification(studentEmail, notifTitle, notifMessage);
     }
   };

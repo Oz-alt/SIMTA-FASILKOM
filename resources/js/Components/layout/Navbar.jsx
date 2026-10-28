@@ -159,13 +159,9 @@ export default function Navbar() {
               >
                 <Bell className="w-5 h-5" />
                 {unreadCount > 0 && (
-                  <>
-                    <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full ring-2 ring-white animate-ping"></span>
-                    <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full ring-2 ring-white"></span>
-                    <span className="absolute -top-1 -right-1 px-1.5 py-0.5 rounded-full bg-rose-600 text-white font-black text-[9px] shadow-sm leading-none">
-                      {unreadCount}
-                    </span>
-                  </>
+                  <span className="absolute -top-1 -right-1 px-1.5 py-0.5 rounded-full bg-rose-600 text-white font-black text-[9px] shadow-sm leading-none">
+                    {unreadCount}
+                  </span>
                 )}
               </button>
 
@@ -317,9 +313,6 @@ export default function Navbar() {
                                     {isApproved ? 'ACC' : n.jenis_revisi ? `Revisi ${n.jenis_revisi}` : 'Respon Dospem'}
                                   </span>
                                 ) : null}
-                                {!n.is_read && (
-                                  <span className="w-2 h-2 rounded-full bg-indigo-600 shrink-0"></span>
-                                )}
                               </div>
                             </div>
 
