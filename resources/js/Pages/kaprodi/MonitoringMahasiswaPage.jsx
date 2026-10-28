@@ -223,9 +223,32 @@ export default function MonitoringMahasiswaPage() {
   const [selectedBimbinganFilter, setSelectedBimbinganFilter] = useState('all'); // 'all' | 'siap_sidang' | 'belum_bimbingan' | 'overdue_30' | 'belum_24x'
   const [selectedAngkatanFilter, setSelectedAngkatanFilter] = useState('2024'); // '2024' (default) | '2025' | '2023' | '2022' | 'all'
   const [selectedStatusMhsFilter, setSelectedStatusMhsFilter] = useState('aktif'); // Tambahan 3b: default 'aktif'
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const p = new URLSearchParams(window.location.search);
+        return p.get('search') || '';
+      } catch {}
+    }
+    return '';
+  });
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
+
+  // Sync search param if URL updates
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const p = new URLSearchParams(window.location.search);
+        const s = p.get('search');
+        if (s) {
+          setSearchQuery(s);
+          setSelectedAngkatanFilter('all'); // pastikan mahasiswa lintas angkatan langsung terlihat
+          setSelectedStatusMhsFilter('all');
+        }
+      } catch {}
+    }
+  }, []);
 
   // Sorting state (Tambahan 2f: Progres & Terakhir)
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' }); // key: 'progres' | 'terakhir' | null

@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { Link } from '@inertiajs/react';
+import StudentWhatsAppLink from '../../Components/common/StudentWhatsAppLink.jsx';
 import { 
   Users, 
   BookOpen, 
@@ -152,7 +153,12 @@ export default function DashboardDosen() {
 
       // Pending consultations for this student
       const pendingList = studentConsultations.filter(c => 
-        !c.status || c.status === 'menunggu_validasi' || c.status === 'menunggu_tanggapan' || c.status === 'pending'
+        !c.status || 
+        c.status === 'menunggu_validasi' || 
+        c.status === 'menunggu_tanggapan' || 
+        c.status === 'pending' || 
+        c.status === 'menunggu' || 
+        c.jenis_revisi === 'Menunggu'
       );
       const isPending = pendingList.length > 0;
 
@@ -225,6 +231,10 @@ export default function DashboardDosen() {
     return monitoredStudents.filter(s => s.isOverdue);
   }, [monitoredStudents]);
 
+  const overdue60List = useMemo(() => {
+    return monitoredStudents.filter(s => s.daysInactive > 60);
+  }, [monitoredStudents]);
+
   const pendingValidationsList = useMemo(() => {
     const list = [];
     monitoredStudents.forEach(s => {
@@ -252,39 +262,24 @@ export default function DashboardDosen() {
     return list;
   }, [monitoredStudents]);
 
-  // 6. Image 1: Donut Chart "Distribusi Status" Data
+  // 6. Donut Chart "Distribusi Status" Data: Inaktif > 60 Hari
   const statusDistributionData = useMemo(() => {
-    const menunggu = pendingValidationsList.length || 5;
-    const disetujui = myConsultations.filter(c => c.status === 'disetujui').length;
-    const revisi = myConsultations.filter(c => c.status === 'perlu_revisi' || c.status === 'revisi_minor' || c.status === 'revisi_mayor').length;
-    
-    // In user screenshot, 100% of the active validation attention slice is "Menunggu Validasi"
+    const count60 = overdue60List.length;
     const items = [
       {
-        id: 'menunggu_validasi',
-        label: 'Menunggu Validasi',
-        count: menunggu,
-        color: '#2563eb', // Vibrant blue matching the screenshot
+        id: 'lebih_60',
+        label: 'Lebih 60 Hari',
+        count: count60,
+        color: '#e11d48', // Rose 600
         percentage: 100
       }
     ];
 
-    if (disetujui > 0) {
-      // Keep secondary data available for interactive inspection if needed
-      items.push({
-        id: 'disetujui',
-        label: 'Disetujui',
-        count: disetujui,
-        color: '#10b981',
-        percentage: 0
-      });
-    }
-
     return {
       items,
-      totalCount: menunggu
+      totalCount: count60
     };
-  }, [pendingValidationsList, myConsultations]);
+  }, [overdue60List]);
 
   // 7. Filtered Table Data based on search and selected filter chip
   const filteredTableStudents = useMemo(() => {
@@ -298,7 +293,7 @@ export default function DashboardDosen() {
 
       // Filter Tab Match
       let matchFilter = true;
-      if (tableFilter === 'menunggu') matchFilter = s.isPending;
+      if (tableFilter === 'lebih_60') matchFilter = s.daysInactive > 60;
       else if (tableFilter === 'overdue') matchFilter = s.isOverdue;
       else if (tableFilter === 'belum_24') matchFilter = s.isUnder24;
       else if (tableFilter === 'siap_sidang') matchFilter = s.isReadyForDefense;
@@ -368,14 +363,14 @@ export default function DashboardDosen() {
       <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-900 rounded-2xl p-6 sm:p-8 text-white shadow-md relative overflow-hidden">
         <div className="absolute right-0 top-0 translate-x-12 -translate-y-12 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="relative z-10 space-y-2">
-          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-200 text-xs font-semibold backdrop-blur-sm border border-blue-400/20">
+          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-200 text-xs font-medium backdrop-blur-sm border border-blue-400/20">
             <ShieldCheck className="w-3.5 h-3.5 text-blue-300" />
             <span>Dashboard Dosen Pembimbing</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
             Selamat Datang, {currentUser?.nama || 'Dosen Pembimbing'}
           </h1>
-          <p className="text-sm text-blue-100/90 max-w-2xl leading-relaxed">
+          <p className="text-sm text-blue-100/90 max-w-2xl leading-relaxed font-normal">
             Pantau kepatuhan bimbingan mahasiswa, validasi draf Tugas Akhir, dan evaluasi kelayakan ujian secara terpadu.
           </p>
         </div>
@@ -387,97 +382,97 @@ export default function DashboardDosen() {
         {/* Total Mahasiswa */}
         <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-2xs space-y-2">
           <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-600">Mahasiswa Bimbingan</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Mahasiswa Bimbingan</span>
             <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
               <Users className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-3xl font-extrabold text-slate-900 font-mono">
-            {myStudents.length} <span className="text-xs font-medium text-slate-500">Mahasiswa</span>
+          <div className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+            {myStudents.length} <span className="text-xs font-normal text-slate-500">Mahasiswa</span>
           </div>
-          <p className="text-[11px] text-slate-500 font-medium">Aktif dibimbing semester ini</p>
+          <p className="text-xs text-slate-500 font-normal">Aktif dibimbing semester ini</p>
         </div>
 
         {/* Belum Mencapai 24x */}
-        <div 
-          onClick={() => setTableFilter('belum_24')}
-          className="bg-white border border-slate-200/90 hover:border-amber-400 rounded-2xl p-5 shadow-2xs space-y-2 cursor-pointer transition-all group"
+        <Link 
+          href="/dosen/monitoring"
+          className="bg-white border border-slate-200/90 hover:border-amber-400 rounded-2xl p-5 shadow-2xs space-y-2 cursor-pointer transition-all group block"
         >
           <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-600 group-hover:text-amber-700 transition-colors">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 group-hover:text-amber-700 transition-colors">
               Belum 24x Bimbingan
             </span>
             <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
               <AlertTriangle className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-3xl font-extrabold text-amber-600 font-mono">
-            {under24List.length} <span className="text-xs font-medium text-slate-500">Mahasiswa</span>
+          <div className="text-2xl sm:text-3xl font-bold text-amber-600 tracking-tight">
+            {under24List.length} <span className="text-xs font-normal text-slate-500">Mahasiswa</span>
           </div>
-          <p className="text-[11px] text-amber-700/90 font-medium">Belum memenuhi target kelulusan</p>
-        </div>
+          <p className="text-xs text-amber-700/80 font-normal">Belum memenuhi target kelulusan</p>
+        </Link>
 
         {/* Tanpa Bimbingan > 30 Hari */}
-        <div 
-          onClick={() => setTableFilter('overdue')}
-          className="bg-white border border-slate-200/90 hover:border-rose-400 rounded-2xl p-5 shadow-2xs space-y-2 cursor-pointer transition-all group"
+        <Link 
+          href="/dosen/monitoring"
+          className="bg-white border border-slate-200/90 hover:border-rose-400 rounded-2xl p-5 shadow-2xs space-y-2 cursor-pointer transition-all group block"
         >
           <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-600 group-hover:text-rose-700 transition-colors">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 group-hover:text-rose-700 transition-colors">
               Tanpa Bimbingan &gt; 30 Hari
             </span>
             <div className="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
               <Clock className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-3xl font-extrabold text-rose-600 font-mono">
-            {overdueList.length} <span className="text-xs font-medium text-slate-500">Mahasiswa</span>
+          <div className="text-2xl sm:text-3xl font-bold text-rose-600 tracking-tight">
+            {overdueList.length} <span className="text-xs font-normal text-slate-500">Mahasiswa</span>
           </div>
-          <p className="text-[11px] text-rose-700/90 font-medium">Perlu perhatian khusus &amp; reminder</p>
-        </div>
+          <p className="text-xs text-rose-700/80 font-normal">Perlu perhatian khusus &amp; reminder</p>
+        </Link>
 
-        {/* Menunggu Validasi */}
-        <div 
-          onClick={() => setTableFilter('menunggu')}
-          className="bg-white border border-slate-200/90 hover:border-blue-400 rounded-2xl p-5 shadow-2xs space-y-2 cursor-pointer transition-all group"
+        {/* Lebih 60 Hari */}
+        <Link 
+          href="/dosen/monitoring"
+          className="bg-white border border-slate-200/90 hover:border-rose-400 rounded-2xl p-5 shadow-2xs space-y-2 cursor-pointer transition-all group block"
         >
           <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-600 group-hover:text-blue-700 transition-colors">
-              Menunggu Validasi
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 group-hover:text-rose-700 transition-colors">
+              Lebih 60 Hari
             </span>
-            <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-              <MessageSquare className="w-4 h-4" />
+            <div className="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
+              <AlertTriangle className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-3xl font-extrabold text-blue-600 font-mono">
-            {pendingValidationsList.length} <span className="text-xs font-medium text-slate-500">Sesi Log</span>
+          <div className="text-2xl sm:text-3xl font-bold text-rose-600 tracking-tight">
+            {overdue60List.length} <span className="text-xs font-normal text-slate-500">Mahasiswa</span>
           </div>
-          <p className="text-[11px] text-blue-700/90 font-medium">Antrian verifikasi respon dosen</p>
-        </div>
+          <p className="text-xs text-rose-700/80 font-normal">Inaktif kritis &gt; 2 bulan</p>
+        </Link>
 
       </div>
 
       {/* ── 3. DISTRIBUSI STATUS & 3 KOLOM MONITORING (USER SCREENSHOT EXACT REPLICA) ── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
         
-        {/* ── KIRI: CARD DISTRIBUSI STATUS (IMAGE 1) ── */}
+        {/* ── KIRI: CARD DISTRIBUSI STATUS ── */}
         <div className="lg:col-span-4 bg-white border border-slate-200/90 rounded-2xl p-6 shadow-2xs flex flex-col justify-between">
           <div>
             {/* Header: Distribusi Status */}
-            <h3 className="text-sm font-bold text-slate-900 tracking-tight">
+            <h3 className="text-sm font-semibold text-slate-900 tracking-tight">
               Distribusi Status
             </h3>
 
-            {/* Legend: Menunggu Validasi (Matching Image 1) */}
+            {/* Legend: Lebih 60 Hari */}
             <div className="flex items-center justify-center mt-3 mb-2 space-x-2">
-              <span className="w-7 h-2 rounded-xs bg-[#2563eb]" />
+              <span className="w-6 h-2 rounded-xs bg-[#e11d48]" />
               <span className="text-xs text-slate-600 font-medium select-none">
-                Menunggu Validasi
+                Lebih 60 Hari
               </span>
             </div>
           </div>
 
-          {/* SVG Donut Chart (Matching Image 1 Exact Shape & Colors) */}
+          {/* SVG Donut Chart */}
           <div className="relative flex items-center justify-center py-6 my-auto">
             <svg
               viewBox="0 0 200 200"
@@ -493,23 +488,23 @@ export default function DashboardDosen() {
                 strokeWidth="32"
               />
 
-              {/* Main Donut Ring (Vibrant Blue #2563eb matching screenshot) */}
+              {/* Main Donut Ring (Rose #e11d48) */}
               <circle
                 cx="100"
                 cy="100"
                 r="64"
                 fill="transparent"
-                stroke="#2563eb"
+                stroke="#e11d48"
                 strokeWidth="32"
                 strokeDasharray={`${2 * Math.PI * 64 - 2} 2`}
                 strokeDashoffset="0"
                 strokeLinecap="round"
                 className="transition-all duration-500 cursor-pointer hover:brightness-105"
-                onMouseEnter={() => setHoveredDonutSlice('menunggu')}
+                onMouseEnter={() => setHoveredDonutSlice('lebih_60')}
                 onMouseLeave={() => setHoveredDonutSlice(null)}
               />
 
-              {/* Subtle 12 o'clock slit line separator matching Image 1 */}
+              {/* Subtle 12 o'clock slit line separator */}
               <line
                 x1="100"
                 y1="20"
@@ -523,22 +518,22 @@ export default function DashboardDosen() {
 
             {/* Center Donut Info Indicator */}
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
-              <span className="text-2xl sm:text-3xl font-black text-slate-900 font-mono leading-none">
-                {statusDistributionData.totalCount}
+              <span className="text-3xl font-bold text-slate-900 tracking-tight leading-none">
+                {overdue60List.length}
               </span>
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-1">
-                Sesi Menunggu
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider mt-1">
+                Mahasiswa
               </span>
-              <span className="text-[10px] font-extrabold text-blue-600 mt-0.5">
-                100% Antrian
+              <span className="text-xs font-semibold text-rose-600 mt-0.5">
+                &gt; 60 Hari
               </span>
             </div>
           </div>
 
           {/* Bottom Card Summary */}
           <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-            <span>Total Log Tertunda</span>
-            <span className="font-bold text-slate-900 font-mono">{statusDistributionData.totalCount} Catatan</span>
+            <span>Inaktif &gt; 60 Hari</span>
+            <span className="font-semibold text-slate-900">{overdue60List.length} Mahasiswa</span>
           </div>
         </div>
 
@@ -548,11 +543,11 @@ export default function DashboardDosen() {
             
             {/* ── Kolom 1: Belum mencapai 24 bimbingan (16) ── */}
             <div className="space-y-3.5 pr-0 md:pr-4">
-              <h4 className="text-xs font-bold text-slate-900 tracking-tight">
+              <h4 className="text-xs font-semibold text-slate-900 tracking-tight">
                 Belum mencapai 24 bimbingan ({under24List.length})
               </h4>
 
-              <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1 text-[11px] scrollbar-thin">
+              <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1 text-xs scrollbar-thin">
                 {under24List.map(student => {
                   const progressPct = Math.min(100, Math.round((student.totalConsultations / 24) * 100));
                   return (
@@ -561,9 +556,15 @@ export default function DashboardDosen() {
                       className="flex items-center justify-between gap-2 py-0.5 hover:bg-slate-50 rounded-md px-1 transition-colors"
                       title={`${student.student_nama} (${student.totalConsultations}/24 bimbingan)`}
                     >
-                      <span className="font-medium text-slate-800 uppercase truncate max-w-[145px]">
+                      <StudentWhatsAppLink
+                        student={student}
+                        nim={student.student_nim}
+                        nama={student.student_nama}
+                        className="font-medium text-slate-700 text-xs uppercase truncate max-w-[145px] hover:text-emerald-700"
+                        showIcon={false}
+                      >
                         {student.student_nama}
-                      </span>
+                      </StudentWhatsAppLink>
                       {/* Pill Progress Bar (Gray track with amber fill indicator matching Image 2) */}
                       <div className="w-14 sm:w-16 h-2 bg-slate-200 rounded-full overflow-hidden shrink-0 flex items-center">
                         <div 
@@ -579,11 +580,11 @@ export default function DashboardDosen() {
 
             {/* ── Kolom 2: Tanpa bimbingan > 30 hari (12) ── */}
             <div className="space-y-3.5 pt-4 md:pt-0 md:px-4">
-              <h4 className="text-xs font-bold text-slate-900 tracking-tight">
+              <h4 className="text-xs font-semibold text-slate-900 tracking-tight">
                 Tanpa bimbingan &gt; 30 hari ({overdueList.length})
               </h4>
 
-              <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1 text-[11px] scrollbar-thin">
+              <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1 text-xs scrollbar-thin">
                 {overdueList.map(student => {
                   // For Melva Olifia it shows 34 hari; for other inactive students with no recent logs it formats properly
                   const daysDisplay = student.student_nama.includes('MELVA OLIFIA') || student.daysInactive < 900
@@ -596,10 +597,16 @@ export default function DashboardDosen() {
                       className="flex items-center justify-between gap-2 py-0.5 hover:bg-slate-50 rounded-md px-1 transition-colors"
                       title={`${student.student_nama} - ${daysDisplay} tanpa bimbingan`}
                     >
-                      <span className="font-medium text-slate-800 uppercase truncate max-w-[145px]">
+                      <StudentWhatsAppLink
+                        student={student}
+                        nim={student.student_nim}
+                        nama={student.student_nama}
+                        className="font-medium text-slate-700 text-xs uppercase truncate max-w-[145px] hover:text-emerald-700"
+                        showIcon={false}
+                      >
                         {student.student_nama}
-                      </span>
-                      <span className="text-slate-500 font-medium shrink-0 text-right">
+                      </StudentWhatsAppLink>
+                      <span className="text-slate-500 font-normal text-xs shrink-0 text-right">
                         {daysDisplay}
                       </span>
                     </div>
@@ -608,37 +615,56 @@ export default function DashboardDosen() {
               </div>
             </div>
 
-            {/* ── Kolom 3: Menunggu validasi (5) + Tombol Buka Rekap & Validasi ── */}
+            {/* ── Kolom 3: Lebih 60 hari ({overdue60List.length}) ── */}
             <div className="space-y-3.5 pt-4 md:pt-0 md:pl-4 flex flex-col justify-between">
               <div className="space-y-3.5">
-                <h4 className="text-xs font-bold text-slate-900 tracking-tight">
-                  Menunggu validasi ({pendingValidationsList.length})
+                <h4 className="text-xs font-semibold text-slate-900 tracking-tight">
+                  Lebih 60 hari ({overdue60List.length})
                 </h4>
 
-                <div className="space-y-2.5 max-h-[320px] overflow-y-auto pr-1 text-[11px] scrollbar-thin">
-                  {pendingValidationsList.map((item, idx) => (
-                    <div 
-                      key={item.id || idx}
-                      className="py-1 border-b border-slate-100 last:border-b-0 space-y-0.5"
-                    >
-                      <div className="font-bold text-slate-900 uppercase leading-snug">
-                        {item.studentNama}
-                      </div>
-                      <div className="text-[10px] text-slate-500 flex items-center space-x-1">
-                        <span>· {item.dateFormatted}</span>
-                      </div>
+                <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1 text-xs scrollbar-thin">
+                  {overdue60List.length === 0 ? (
+                    <div className="text-center py-6 text-slate-400 text-xs">
+                      Tidak ada mahasiswa &gt; 60 hari
                     </div>
-                  ))}
+                  ) : (
+                    overdue60List.map(student => {
+                      const daysDisplay = student.daysInactive < 900
+                        ? `${student.daysInactive} hari`
+                        : '> 60 hari';
+
+                      return (
+                        <div 
+                          key={student.student_nim}
+                          className="flex items-center justify-between gap-2 py-0.5 hover:bg-slate-50 rounded-md px-1 transition-colors"
+                          title={`${student.student_nama} - ${daysDisplay} tanpa bimbingan`}
+                        >
+                          <StudentWhatsAppLink
+                            student={student}
+                            nim={student.student_nim}
+                            nama={student.student_nama}
+                            className="font-medium text-slate-700 text-xs uppercase truncate max-w-[145px] hover:text-emerald-700"
+                            showIcon={false}
+                          >
+                            {student.student_nama}
+                          </StudentWhatsAppLink>
+                          <span className="text-rose-600 font-medium text-xs shrink-0 text-right">
+                            {daysDisplay}
+                          </span>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
               </div>
 
-              {/* Blue Action Button matching Image 2 */}
+              {/* Action Button */}
               <div className="pt-3">
                 <Link
-                  href="/dosen/validasi"
-                  className="w-full inline-flex items-center justify-center py-2 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
+                  href="/dosen/monitoring"
+                  className="w-full inline-flex items-center justify-center py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs shadow-xs transition-colors cursor-pointer"
                 >
-                  <span>Buka Rekap &amp; Validasi</span>
+                  <span>Buka Progres Monitoring</span>
                 </Link>
               </div>
             </div>
@@ -655,15 +681,15 @@ export default function DashboardDosen() {
         <div className="lg:col-span-7 bg-white border border-slate-200/90 rounded-2xl p-6 shadow-2xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
             <div>
-              <h3 className="text-sm font-bold text-slate-900 flex items-center space-x-2">
+              <h3 className="text-sm font-semibold text-slate-900 flex items-center space-x-2 tracking-tight">
                 <BarChart3 className="w-4 h-4 text-blue-600" />
                 <span>Aktivitas Bimbingan per Bulan</span>
               </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-500 mt-0.5 leading-relaxed font-normal">
                 Frekuensi konsultasi mahasiswa bimbingan Anda selama 6 bulan terakhir.
               </p>
             </div>
-            <span className="text-[11px] font-bold text-blue-800 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200 self-start sm:self-auto">
+            <span className="text-xs font-semibold text-blue-800 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200 self-start sm:self-auto">
               Total {myConsultations.length} Sesi
             </span>
           </div>
@@ -676,7 +702,7 @@ export default function DashboardDosen() {
                 return (
                   <div key={m.key} className="flex-1 flex flex-col items-center justify-end group cursor-default">
                     {/* Tooltip Count */}
-                    <div className="opacity-0 group-hover:opacity-100 transition-opacity mb-1 px-2 py-0.5 rounded bg-slate-900 text-white text-[10px] font-extrabold shadow-md pointer-events-none text-center">
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity mb-1 px-2 py-0.5 rounded bg-slate-900 text-white text-[11px] font-semibold shadow-md pointer-events-none text-center">
                       {m.count} Sesi
                     </div>
 
@@ -687,12 +713,12 @@ export default function DashboardDosen() {
                         style={{ height: `${heightPercent}%` }}
                       >
                         {m.count > 0 && (
-                          <span className="text-[10px] font-bold text-white">{m.count}</span>
+                          <span className="text-[11px] font-medium text-white">{m.count}</span>
                         )}
                       </div>
                     </div>
 
-                    <span className="text-xs font-bold text-slate-600 mt-2 group-hover:text-blue-600 transition-colors">
+                    <span className="text-xs font-medium text-slate-600 mt-2 group-hover:text-blue-600 transition-colors">
                       {m.label}
                     </span>
                   </div>
@@ -701,10 +727,10 @@ export default function DashboardDosen() {
             </div>
             <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
               <span className="flex items-center space-x-1.5">
-                <span className="w-2.5 h-2.5 rounded bg-blue-600" />
+                <span className="w-2 h-2 rounded bg-blue-600" />
                 <span>Konsultasi Terlaksana</span>
               </span>
-              <span className="text-[11px] text-slate-400">Sinkronisasi Real-Time</span>
+              <span className="text-xs text-slate-400 font-normal">Sinkronisasi Real-Time</span>
             </div>
           </div>
         </div>
@@ -713,15 +739,15 @@ export default function DashboardDosen() {
         <div className="lg:col-span-5 bg-white border border-slate-200/90 rounded-2xl p-6 shadow-2xs space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div>
-              <h3 className="text-sm font-bold text-slate-900 flex items-center space-x-2">
+              <h3 className="text-sm font-semibold text-slate-900 flex items-center space-x-2 tracking-tight">
                 <TrendingUp className="w-4 h-4 text-emerald-600" />
                 <span>Tren Aktivitas Bimbingan</span>
               </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-500 mt-0.5 leading-relaxed font-normal">
                 Pergerakan grafik konsultasi tugas akhir.
               </p>
             </div>
-            <div className="flex items-center space-x-1 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+            <div className="flex items-center space-x-1 text-xs font-medium text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
               <ArrowUpRight className="w-3.5 h-3.5 text-emerald-600" />
               <span>Aktif</span>
             </div>
@@ -794,239 +820,6 @@ export default function DashboardDosen() {
             </svg>
           </div>
         </div>
-
-      </div>
-
-      {/* ── 5. COMPREHENSIVE DATA TABLE (USER REQUEST: "SERTA TABEL JUGA") ── */}
-      <div className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-2xs space-y-5">
-        
-        {/* Table Header & Controls */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4">
-          <div>
-            <h3 className="text-base font-extrabold text-slate-900 flex items-center space-x-2">
-              <BookOpen className="w-5 h-5 text-blue-600" />
-              <span>Daftar Mahasiswa Bimbingan &amp; Monitoring Kepatuhan</span>
-            </h3>
-            <p className="text-xs text-slate-500 mt-1">
-              Rekapitulasi lengkap status bimbingan, pemenuhan syarat 24x bimbingan, dan evaluasi kelayakan ujian Tugas Akhir.
-            </p>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Link
-              href="/dosen/rekap"
-              className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors"
-            >
-              <Printer className="w-3.5 h-3.5" />
-              <span>Cetak Rekap</span>
-            </Link>
-            <Link
-              href="/dosen/validasi"
-              className="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition-colors shadow-2xs"
-            >
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Validasi Bimbingan</span>
-            </Link>
-          </div>
-        </div>
-
-        {/* Search & Filter Chips Bar */}
-        <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
-          
-          {/* Search Input */}
-          <div className="relative w-full sm:w-80">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Cari mahasiswa, NIM, atau judul..."
-              value={tableSearch}
-              onChange={(e) => setTableSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-            />
-          </div>
-
-          {/* Filter Chips */}
-          <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto">
-            <button
-              onClick={() => setTableFilter('all')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                tableFilter === 'all'
-                  ? 'bg-slate-900 text-white shadow-2xs'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-            >
-              Semua ({monitoredStudents.length})
-            </button>
-            <button
-              onClick={() => setTableFilter('menunggu')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                tableFilter === 'menunggu'
-                  ? 'bg-blue-600 text-white shadow-2xs'
-                  : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200'
-              }`}
-            >
-              Menunggu Validasi ({pendingValidationsList.length})
-            </button>
-            <button
-              onClick={() => setTableFilter('overdue')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                tableFilter === 'overdue'
-                  ? 'bg-rose-600 text-white shadow-2xs'
-                  : 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200'
-              }`}
-            >
-              &gt; 30 Hari ({overdueList.length})
-            </button>
-            <button
-              onClick={() => setTableFilter('belum_24')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                tableFilter === 'belum_24'
-                  ? 'bg-amber-600 text-white shadow-2xs'
-                  : 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200'
-              }`}
-            >
-              Belum 24x ({under24List.length})
-            </button>
-            <button
-              onClick={() => setTableFilter('siap_sidang')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                tableFilter === 'siap_sidang'
-                  ? 'bg-emerald-600 text-white shadow-2xs'
-                  : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
-              }`}
-            >
-              Siap Sidang ({monitoredStudents.filter(s => s.isReadyForDefense).length})
-            </button>
-          </div>
-
-        </div>
-
-        {/* Table Content */}
-        {filteredTableStudents.length === 0 ? (
-          <div className="text-center py-12 border border-dashed border-slate-200 rounded-xl space-y-2">
-            <Users className="w-8 h-8 text-slate-300 mx-auto" />
-            <div className="text-xs font-bold text-slate-700">Tidak ada mahasiswa yang sesuai filter</div>
-            <p className="text-[11px] text-slate-400">Silakan ubah filter pencarian atau kata kunci Anda.</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto border border-slate-200/80 rounded-xl">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 font-bold text-slate-600 uppercase text-[10px] tracking-wider">
-                  <th className="py-3 px-3.5">Mahasiswa</th>
-                  <th className="py-3 px-3.5">Judul Tugas Akhir</th>
-                  <th className="py-3 px-3.5">Progres Bimbingan</th>
-                  <th className="py-3 px-3.5">Bimbingan Terakhir</th>
-                  <th className="py-3 px-3.5">Status Validasi</th>
-                  <th className="py-3 px-3.5">Tahapan TA</th>
-                  <th className="py-3 px-3.5 text-right">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredTableStudents.map(student => {
-                  const progressPct = Math.min(100, Math.round((student.totalConsultations / 24) * 100));
-
-                  return (
-                    <tr key={student.student_nim} className="hover:bg-slate-50/70 transition-colors">
-                      
-                      {/* Mahasiswa */}
-                      <td className="py-3 px-3.5">
-                        <div className="font-bold text-slate-900">{student.student_nama}</div>
-                        <div className="text-[10px] text-slate-500 font-mono flex items-center space-x-1.5 mt-0.5">
-                          <span>{student.student_nim}</span>
-                          <span className="text-slate-300">•</span>
-                          <span className="text-blue-600 font-sans font-semibold">
-                            {String(student.dospem1_nip) === String(userNip) ? 'Pembimbing 1' : 'Pembimbing 2'}
-                          </span>
-                        </div>
-                      </td>
-
-                      {/* Judul TA */}
-                      <td className="py-3 px-3.5 max-w-[260px]">
-                        <p className="text-slate-800 font-medium truncate" title={student.thesisTitle}>
-                          {student.thesisTitle}
-                        </p>
-                      </td>
-
-                      {/* Progres Bimbingan */}
-                      <td className="py-3 px-3.5">
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between text-[11px] font-bold">
-                            <span className="font-mono text-slate-800">{student.totalConsultations} / 24 Sesi</span>
-                            <span className={student.isReadyForDefense ? 'text-emerald-700' : 'text-amber-700'}>
-                              {progressPct}%
-                            </span>
-                          </div>
-                          <div className="w-28 h-2 bg-slate-200 rounded-full overflow-hidden flex items-center">
-                            <div 
-                              className={`h-full rounded-full transition-all duration-500 ${
-                                student.isReadyForDefense ? 'bg-emerald-500' : 'bg-amber-400'
-                              }`}
-                              style={{ width: `${progressPct > 0 ? Math.max(progressPct, 10) : 0}%` }}
-                            />
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Bimbingan Terakhir */}
-                      <td className="py-3 px-3.5">
-                        <div className="space-y-0.5">
-                          <div className="font-medium text-slate-900 font-mono">
-                            {student.lastDateFormatted}
-                          </div>
-                          {student.isOverdue ? (
-                            <span className="inline-flex items-center space-x-1 text-[10px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
-                              <Clock className="w-3 h-3 text-rose-600" />
-                              <span>{student.daysInactive < 900 ? `${student.daysInactive} hari` : '> 30 hari'}</span>
-                            </span>
-                          ) : (
-                            <span className="text-[10px] text-slate-500">
-                              {student.lastDate ? `${student.daysInactive} hari lalu` : 'Belum bimbingan'}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-
-                      {/* Status Validasi */}
-                      <td className="py-3 px-3.5">
-                        {student.isPending ? (
-                          <span className="inline-flex items-center space-x-1 bg-blue-50 text-blue-700 font-bold px-2.5 py-1 rounded-full border border-blue-200 text-[10px]">
-                            <MessageSquare className="w-3 h-3 text-blue-600" />
-                            <span>{student.pendingCount} Menunggu</span>
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center space-x-1 bg-emerald-50 text-emerald-700 font-bold px-2.5 py-1 rounded-full border border-emerald-200 text-[10px]">
-                            <Check className="w-3 h-3 text-emerald-600" />
-                            <span>Tervalidasi</span>
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Tahapan TA */}
-                      <td className="py-3 px-3.5">
-                        <span className="inline-flex items-center space-x-1 bg-slate-100 text-slate-700 font-semibold px-2.5 py-1 rounded-full text-[10px]">
-                          {student.currentStage}
-                        </span>
-                      </td>
-
-                      {/* Aksi */}
-                      <td className="py-3 px-3.5 text-right space-x-1.5 whitespace-nowrap">
-                        <Link
-                          href={`/dosen/validasi?nim=${student.student_nim}`}
-                          className="inline-flex items-center space-x-1 text-blue-700 hover:text-blue-800 font-bold bg-blue-50 hover:bg-blue-100 px-2.5 py-1.5 rounded-lg transition-colors text-[11px]"
-                        >
-                          <MessageSquare className="w-3 h-3 text-blue-600" />
-                          <span>Buka Log</span>
-                        </Link>
-                      </td>
-
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
 
       </div>
 

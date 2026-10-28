@@ -14,15 +14,11 @@ import {
   Info
 } from 'lucide-react';
 
-function getNextDateString(dateStr) {
-  if (!dateStr) return '';
-  const [year, month, day] = dateStr.split('-').map(Number);
-  const d = new Date(year, month - 1, day);
-  d.setDate(d.getDate() + 1);
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
+function timeToMinutes(t) {
+  if (!t) return 0;
+  const clean = String(t).replace('.', ':').trim();
+  const [h, m] = clean.split(':').map(Number);
+  return (h || 0) * 60 + (m || 0);
 }
 
 function formatIndoDate(dateStr) {
@@ -45,26 +41,34 @@ export default function ModalEditBimbingan({ isOpen, onClose, consultation, onSa
 
   const studentNim = String(consultation?.mhs_nim || '').trim();
 
-  // Cari tanggal bimbingan sebelumnya untuk mahasiswa ini
-  const precedingBimbinganDate = useMemo(() => {
-    if (!consultation || !studentNim) return null;
-
-    // Filter konsultasi mahasiswa selain yang sedang diedit
-    const studentCons = (consultations || [])
+  // Filter konsultasi mahasiswa selain yang sedang diedit
+  const otherConsultations = useMemo(() => {
+    if (!consultation || !studentNim) return [];
+    return (consultations || [])
       .filter(c => String(c.mhs_nim || '').trim() === studentNim && c.id !== consultation.id && c.status !== 'ditolak')
-      .sort((a, b) => (a.tanggal || '').localeCompare(b.tanggal || ''));
-
-    // Cari sesi yang tanggalnya lebih awal dari sesi yang diedit
-    const earlier = studentCons.filter(c => c.tanggal && c.tanggal < (consultation.tanggal || '9999-99-99'));
-    if (earlier.length > 0) {
-      return earlier[earlier.length - 1].tanggal;
-    }
-    return null;
+      .sort((a, b) => {
+        const dateDiff = (a.tanggal || '').localeCompare(b.tanggal || '');
+        if (dateDiff !== 0) return dateDiff;
+        return timeToMinutes(a.waktu) - timeToMinutes(b.waktu);
+      });
   }, [consultations, consultation, studentNim]);
 
-  const minAllowedDate = useMemo(() => {
-    return precedingBimbinganDate ? getNextDateString(precedingBimbinganDate) : '';
-  }, [precedingBimbinganDate]);
+  // Cari sesi yang tanggal/waktunya lebih awal dari sesi yang sedang diedit
+  const lastPrecedingSession = useMemo(() => {
+    if (!consultation || otherConsultations.length === 0) return null;
+    const earlier = otherConsultations.filter(c => {
+      if (!consultation.tanggal) return false;
+      if (c.tanggal < consultation.tanggal) return true;
+      if (c.tanggal === consultation.tanggal) {
+        return timeToMinutes(c.waktu) < timeToMinutes(consultation.waktu);
+      }
+      return false;
+    });
+    return earlier.length > 0 ? earlier[earlier.length - 1] : null;
+  }, [otherConsultations, consultation]);
+
+  const precedingBimbinganDate = lastPrecedingSession?.tanggal || null;
+  const minAllowedDate = precedingBimbinganDate || '';
 
   const [formData, setFormData] = useState({
     pembimbing: 'Pembimbing 1',
@@ -79,6 +83,40 @@ export default function ModalEditBimbingan({ isOpen, onClose, consultation, onSa
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Validasi tanggal & waktu bimbingan
+  const validateDateTime = (tanggal, waktu) => {
+    if (!tanggal) {
+      return 'Tanggal bimbingan wajib diisi.';
+    }
+
+    if (precedingBimbinganDate && tanggal < precedingBimbinganDate) {
+      return `Tanggal bimbingan tidak boleh lebih awal dari tanggal bimbingan sebelumnya (${formatIndoDate(precedingBimbinganDate)}).`;
+    }
+
+    const otherOnDate = otherConsultations.filter(c => c.tanggal === tanggal);
+    if (otherOnDate.length > 0) {
+      const firstSession = otherOnDate[0];
+      const lastSession = otherOnDate[otherOnDate.length - 1];
+      const selectedMinutes = timeToMinutes(waktu);
+      const firstMinutes = timeToMinutes(firstSession.waktu);
+      const lastMinutes = timeToMinutes(lastSession.waktu);
+
+      if (!waktu) {
+        return 'Waktu bimbingan wajib diisi.';
+      }
+
+      if (selectedMinutes <= firstMinutes) {
+        return `Untuk tanggal yang sama (${formatIndoDate(tanggal)}), jam bimbingan harus lebih besar dari bimbingan pertama (${firstSession.waktu}).`;
+      }
+
+      if (otherOnDate.length > 1 && selectedMinutes <= lastMinutes) {
+        return `Untuk tanggal yang sama (${formatIndoDate(tanggal)}), jam bimbingan harus lebih besar dari bimbingan sebelumnya (${lastSession.waktu}).`;
+      }
+    }
+
+    return '';
+  };
 
   useEffect(() => {
     if (consultation) {
@@ -112,12 +150,14 @@ export default function ModalEditBimbingan({ isOpen, onClose, consultation, onSa
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    if (name === 'tanggal' && precedingBimbinganDate && value && value <= precedingBimbinganDate) {
-      setErrorMsg(`Tanggal bimbingan harus lebih besar dari tanggal bimbingan sebelumnya (${formatIndoDate(precedingBimbinganDate)}). Minimal tanggal yang diizinkan adalah ${formatIndoDate(minAllowedDate)}.`);
-    } else {
-      setErrorMsg('');
-    }
+    setFormData(prev => {
+      const next = { ...prev, [name]: value };
+      if (name === 'tanggal' || name === 'waktu') {
+        const err = validateDateTime(next.tanggal, next.waktu);
+        setErrorMsg(err);
+      }
+      return next;
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -128,8 +168,9 @@ export default function ModalEditBimbingan({ isOpen, onClose, consultation, onSa
       return;
     }
 
-    if (precedingBimbinganDate && formData.tanggal <= precedingBimbinganDate) {
-      setErrorMsg(`Tanggal bimbingan harus lebih besar dari tanggal bimbingan sebelumnya (${formatIndoDate(precedingBimbinganDate)}). Minimal tanggal yang diizinkan adalah ${formatIndoDate(minAllowedDate)}.`);
+    const dateTimeError = validateDateTime(formData.tanggal, formData.waktu);
+    if (dateTimeError) {
+      setErrorMsg(dateTimeError);
       return;
     }
 
@@ -228,7 +269,7 @@ export default function ModalEditBimbingan({ isOpen, onClose, consultation, onSa
                   onChange={handleChange}
                   min={minAllowedDate || undefined}
                   className={`w-full px-3 py-2 rounded-xl border font-semibold text-slate-900 bg-white ${
-                    precedingBimbinganDate && formData.tanggal && formData.tanggal <= precedingBimbinganDate
+                    precedingBimbinganDate && formData.tanggal && formData.tanggal < precedingBimbinganDate
                       ? 'border-rose-400 ring-2 ring-rose-200'
                       : 'border-slate-300'
                   }`}
@@ -245,7 +286,10 @@ export default function ModalEditBimbingan({ isOpen, onClose, consultation, onSa
                 <div className="flex items-start space-x-1.5 text-[11px] text-slate-500 pt-0.5">
                   <Info className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
                   <span>
-                    Bimbingan sebelumnya: <strong className="text-slate-700">{formatIndoDate(precedingBimbinganDate)}</strong> (minimal <strong className="text-amber-700">{formatIndoDate(minAllowedDate)}</strong>).
+                    Bimbingan sebelumnya: <strong className="text-slate-700">{formatIndoDate(precedingBimbinganDate)}</strong>
+                    {lastPrecedingSession?.waktu && (
+                      <> (jam <strong className="text-slate-700">{lastPrecedingSession.waktu}</strong>)</>
+                    )}. Tanggal boleh sama dengan jam lebih besar.
                   </span>
                 </div>
               )}

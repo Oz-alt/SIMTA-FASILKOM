@@ -12,23 +12,23 @@ import {
   BarChart3, 
   ListOrdered, 
   Clock, 
-  FileCheck, 
-  BookOpen, 
-  GraduationCap, 
-  Database, 
-  Globe, 
-  Settings, 
-  User, 
-  UserCheck, 
-  Users, 
-  LogOut, 
-  ChevronDown, 
-  Printer, 
-  Layers, 
-  LayoutGrid, 
-  Bell, 
-  ClipboardList, 
-  Lock 
+  FileCheck,
+  BookOpen,
+  GraduationCap,
+  Database,
+  Globe,
+  Settings,
+  User,
+  UserCheck,
+  Users,
+  LogOut,
+  ChevronDown,
+  Printer,
+  Layers,
+  LayoutGrid,
+  Bell,
+  ClipboardList,
+  Lock
 } from 'lucide-react';
 
 export default function Sidebar() {
@@ -164,9 +164,8 @@ export default function Sidebar() {
               label: 'Menu Bimbingan',
               icon: FileCheck,
               items: [
-                { to: '/dosen/mahasiswa', label: 'Mahasiswa Bimbingan', icon: Users },
+                { to: '/dosen/mahasiswa', label: 'Progres Monitoring', icon: Users },
                 { to: '/dosen/validasi-judul', label: 'Validasi Usulan Judul', icon: BookOpen },
-                { to: '/dosen/monitoring', label: 'Monitoring Mahasiswa', icon: BarChart3 },
                 { to: '/dosen/rekap', label: 'Rekap Bimbingan', icon: FileText }
               ]
             },
@@ -258,6 +257,7 @@ export default function Sidebar() {
     const targetPath = targetTo.split('?')[0].replace(/\/+$/, '') || '/';
 
     if (currentPath === targetPath) return true;
+    if (targetPath === '/dosen/mahasiswa' && currentPath === '/dosen/monitoring') return true;
 
     // For nested subpaths (e.g. /booking/apply/proposal matching /booking/apply):
     // Only match prefix if no other item in the sidebar has an exact match or a longer prefix match.

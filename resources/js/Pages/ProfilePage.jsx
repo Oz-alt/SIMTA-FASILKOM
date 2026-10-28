@@ -186,7 +186,6 @@ export default function ProfilePage() {
       }
 
       await updateUserProfile(payload);
-
       setIsSaving(false);
       setIsEditing(false);
       setIsCompletedSuccess(true);

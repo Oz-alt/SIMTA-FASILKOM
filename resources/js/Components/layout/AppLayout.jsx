@@ -7,6 +7,7 @@ import Sidebar from './Sidebar.jsx';
 import Footer from './Footer.jsx';
 import RealtimeNotificationToast from '../common/RealtimeNotificationToast.jsx';
 import RealtimeBimbinganAlert from '../common/RealtimeBimbinganAlert.jsx';
+import { WhatsAppNotificationToast } from '../common/StudentWhatsAppLink.jsx';
 
 export default function AppLayout({ children }) {
   const { url } = usePage();
@@ -101,6 +102,7 @@ export default function AppLayout({ children }) {
         </main>
       </div>
       <RealtimeNotificationToast />
+      <WhatsAppNotificationToast />
     </div>
   );
 }

@@ -2,6 +2,63 @@ import { supabase, isSupabaseConfigured } from './supabase.js';
 
 const BROADCAST_CHANNEL_NAME = 'simta_realtime_notifications_bus';
 const STORAGE_EVENT_KEY = 'simta_realtime_event_trigger';
+// Nama channel Supabase harus dipakai bersama oleh pengirim dan penerima.
+// Sebelumnya pengirim memakai 'simta-realtime-broadcast' sedangkan penerima
+// membuat nama unik per-tab, sehingga siaran lintas perangkat tidak pernah sampai.
+const SUPABASE_BROADCAST_CHANNEL = 'simta-realtime-broadcast';
+
+/**
+ * Satu channel dipakai bersama untuk kirim dan terima.
+ *
+ * Kenapa singleton: `supabase.channel(nama)` mengembalikan channel yang sudah ada
+ * untuk topik yang sama. Kalau pengirim membuat lalu menghapusnya
+ * (`removeChannel`), penghapusan itu ikut membuang channel pendengar di tab yang
+ * sama, sehingga notifikasi hanya sampai sekali lalu diam. Menyimpan satu channel
+ * perangkat membuat kirim dan terima tetap aman.
+ */
+let sharedChannelReady = null;
+let envelopeHandler = null;
+
+const deliverEnvelope = (envelope) => {
+  if (envelopeHandler) {
+    envelopeHandler(envelope);
+  }
+};
+
+/**
+ * Ambil channel bersama Supabase, buat sekali bila belum ada.
+ * @returns {Promise<object|null>} channel yang sudah SUBSCRIBED (atau null)
+ */
+const getSharedChannel = async () => {
+  if (!isSupabaseConfigured || !supabase) {
+    return null;
+  }
+
+  if (sharedChannelReady) {
+    return sharedChannelReady;
+  }
+
+  const channel = supabase.channel(SUPABASE_BROADCAST_CHANNEL);
+
+  channel.on('broadcast', { event: '*' }, (message) => {
+    // message.payload adalah envelope utuh ({ id, type, payload, timestamp }).
+    const envelope = message?.payload;
+    if (envelope?.id && envelope?.type) {
+      deliverEnvelope(envelope);
+    }
+  });
+
+  sharedChannelReady = new Promise((resolve) => {
+    channel.subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        resolve(channel);
+      }
+    });
+    setTimeout(() => resolve(channel), 5000);
+  });
+
+  return sharedChannelReady;
+};
 
 /**
  * Broadcast an event to all open tabs and devices (BroadcastChannel + LocalStorage + Supabase)
@@ -35,27 +92,16 @@ export function broadcastRealtimeNotification(eventType, payload) {
   }
 
   // 3. Supabase Realtime Channel Broadcast (Cross-device / WebSocket sync)
-  if (isSupabaseConfigured && supabase) {
-    try {
-      const ch = supabase.channel('simta-realtime-broadcast');
-      ch.subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          ch.send({
-            type: 'broadcast',
-            event: eventType,
-            payload: envelope
-          }).then(() => {
-            // Unsubscribe channel after sending to avoid lingering leak
-            setTimeout(() => {
-              try { supabase.removeChannel(ch); } catch {}
-            }, 3000);
-          }).catch(() => {});
-        }
-      });
-    } catch (err) {
+  getSharedChannel()
+    .then((channel) => {
+      if (!channel) {
+        return null;
+      }
+      return channel.send({ type: 'broadcast', event: eventType, payload: envelope });
+    })
+    .catch((err) => {
       console.debug('Supabase broadcast send note:', err);
-    }
-  }
+    });
 }
 
 /**
@@ -82,6 +128,9 @@ export function subscribeToRealtimeNotifications(onReceive) {
 
     onReceive(envelope);
   };
+
+  // Semua transport memakai satu jalur dedup.
+  envelopeHandler = handleEnvelope;
 
   // 1. BroadcastChannel listener
   if ('BroadcastChannel' in window) {
@@ -114,28 +163,15 @@ export function subscribeToRealtimeNotifications(onReceive) {
   window.addEventListener('storage', handleStorage);
   cleanups.push(() => window.removeEventListener('storage', handleStorage));
 
-  // 3. Supabase Realtime channel broadcast listener
-  if (isSupabaseConfigured && supabase) {
-    try {
-      const ch = supabase.channel(`simta-incoming-notif-${Date.now()}`)
-        .on('broadcast', { event: '*' }, (message) => {
-          if (message && message.payload) {
-            handleEnvelope(message.payload);
-          }
-        })
-        .subscribe();
-
-      cleanups.push(() => {
-        try {
-          supabase.removeChannel(ch);
-        } catch {}
-      });
-    } catch (err) {
-      console.debug('Supabase broadcast subscribe note:', err);
-    }
-  }
+  // 3. Supabase Realtime channel (lintas perangkat)
+  getSharedChannel();
 
   return () => {
+    // Lepas handler agar listener lama tidak menumpuk. Channel bersama TIDAK
+    // dihapus: pengirim di tab ini masih memakainya untuk broadcast.
+    if (envelopeHandler === handleEnvelope) {
+      envelopeHandler = null;
+    }
     cleanups.forEach(fn => {
       try { fn(); } catch {}
     });

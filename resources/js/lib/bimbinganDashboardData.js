@@ -45,19 +45,48 @@ const monthKeyOf = (value) => {
   return `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}`;
 };
 
-/** Status konsultasi Supabase → 4 kategori dasbor. */
+/** Status konsultasi Supabase → 4 kategori dasbor: Revisi Mayor, Revisi Minor, Menunggu, Diterima. */
 export const normalizeConsultationStatus = (consultation) => {
-  const raw = String(consultation?.status || '').toLowerCase();
-  const jenis = String(consultation?.jenis_revisi || '').toLowerCase();
+  const raw = String(consultation?.status || '').toLowerCase().trim();
+  const jenis = String(consultation?.jenis_revisi || '').toLowerCase().trim();
 
-  if (raw === 'disetujui') return 'disetujui';
-  if (raw === 'ditolak') return 'revisi_mayor';
-  if (raw === 'revisi_mayor') return 'revisi_mayor';
-  if (raw === 'revisi_minor') return 'revisi_minor';
+  // Status Menunggu: belum ditanggapi/divalidasi dospem
+  if (
+    raw === 'menunggu' ||
+    raw === 'menunggu_validasi' ||
+    raw === 'menunggu_tanggapan' ||
+    raw === 'pending' ||
+    jenis === 'menunggu' ||
+    (!raw && !jenis)
+  ) {
+    return 'menunggu';
+  }
+
+  // Status Diterima: disetujui / diterima / ACC
+  if (raw === 'disetujui' || raw === 'diterima' || raw === 'acc' || jenis === 'diterima' || jenis === 'acc') {
+    return 'disetujui';
+  }
+
+  // Status Revisi Mayor:
+  if (raw === 'revisi_mayor' || raw === 'mayor' || jenis === 'mayor' || raw === 'ditolak' || jenis === 'ditolak') {
+    return 'revisi_mayor';
+  }
+
+  // Status Revisi Minor:
+  if (raw === 'revisi_minor' || raw === 'minor' || jenis === 'minor') {
+    return 'revisi_minor';
+  }
+
   if (raw === 'perlu_revisi' || raw === 'revisi') {
     return jenis === 'mayor' ? 'revisi_mayor' : 'revisi_minor';
   }
-  return 'menunggu_validasi';
+
+  return 'menunggu';
+};
+
+/** Mengecek apakah sesi bimbingan sah dihitung (Kecuali status Menunggu) */
+export const isConsultationCounted = (consultation) => {
+  return normalizeConsultationStatus(consultation) !== 'menunggu';
 };
 
 /** Metode bimbingan; kosong berarti belum dicatat (bukan asumsi Luring). */
@@ -128,6 +157,9 @@ export function calculateBimbinganDashboardStats(advisors = [], studentAdvisors 
   const safeConsultations = Array.isArray(liveConsultations) ? liveConsultations : [];
   const safeTitles = Array.isArray(thesisTitles) ? thesisTitles : [];
 
+  // Peta NIM → identitas mahasiswa (harus diinisialisasi sebelum digunakan)
+  const studentInfo = buildStudentInfoMap(safeTitles, Array.isArray(registeredUsers) ? registeredUsers : []);
+
   // 1. Jumlah dosen & mahasiswa (langsung dari tabel)
   const totalDosen = safeAdvisors.length;
   const totalMahasiswa = safeStudents.length;
@@ -143,19 +175,25 @@ export function calculateBimbinganDashboardStats(advisors = [], studentAdvisors 
     _monthKey: monthKeyOf(c.tanggal || c.created_at)
   }));
 
-  const totalBimbingan = allConsultations.length;
+  // Sesuai aturan: Status bimbingan adalah Revisi Mayor, Revisi Minor, Menunggu, Diterima.
+  // Khusus Total Bimbingan terhitung dari status KECUALI MENUNGGU (status Menunggu tidak dihitung).
+  const validConsultations = allConsultations.filter(c => c._statusNorm !== 'menunggu');
+  const pendingConsultations = allConsultations.filter(c => c._statusNorm === 'menunggu');
 
-  // Rata-rata bimbingan per mahasiswa
+  const totalBimbingan = validConsultations.length;
+  const totalMenunggu = pendingConsultations.length;
+
+  // Rata-rata bimbingan per mahasiswa (hanya dari bimbingan sah / tervalidasi)
   const rataRataPerMahasiswa = totalMahasiswa > 0 ? (totalBimbingan / totalMahasiswa).toFixed(1) : '0.0';
 
-  // Count consultations per student for requirement: "persentase mahasiswa yang sudah memenuhi ≥24 bimbingan"
+  // Count consultations per student for requirement: "persentase mahasiswa yang sudah memenuhi ≥24 bimbingan" (hanya sesi sah)
   const studentConsultationCounts = new Map();
   safeStudents.forEach(sa => {
     const nim = String(sa.student_nim || '').trim();
     if (nim) studentConsultationCounts.set(nim, 0);
   });
 
-  allConsultations.forEach(c => {
+  validConsultations.forEach(c => {
     const nim = String(c.mhs_nim || '').trim();
     if (!nim) return;
     studentConsultationCounts.set(nim, (studentConsultationCounts.get(nim) || 0) + 1);
@@ -169,16 +207,48 @@ export function calculateBimbinganDashboardStats(advisors = [], studentAdvisors 
   const persenMemenuhiTarget24 = totalMahasiswa > 0 ? Math.round((memenuhiTarget24Count / totalMahasiswa) * 100) : 0;
   const belumMemenuhiCount = Math.max(0, totalMahasiswa - memenuhiTarget24Count);
 
-  // 4. Status Mahasiswa (dari status_kelulusan / status_sidang pada data TA)
-  const studentInfo = buildStudentInfoMap(safeTitles, registeredUsers);
+  // 4. Status Mahasiswa Real-Time (Aktif, Lulus, Tidak Aktif, Belum Mengajukan Judul)
   const statusByNim = new Map();
   safeTitles.forEach(t => {
     const nim = String(t.mhs_nim || '').trim();
     if (!nim) return;
     statusByNim.set(nim, {
+      has_title: Boolean(t.judul && t.judul.trim()),
       status_kelulusan: String(t.status_kelulusan || '').toLowerCase(),
-      status_sidang: String(t.status_sidang || '').toLowerCase()
+      status_sidang: String(t.status_sidang || '').toLowerCase(),
+      status_title: String(t.status || '').toLowerCase()
     });
+  });
+
+  // Sinkronisasi data mahasiswa yang sudah memiliki judul di student_advisors
+  safeStudents.forEach(sa => {
+    const nim = String(sa.student_nim || '').trim();
+    if (!nim) return;
+    const existing = statusByNim.get(nim);
+    const hasJudul = Boolean(sa.judul_ta && sa.judul_ta.trim() && sa.judul_ta !== '-' && sa.judul_ta !== 'Belum ada');
+    if (!existing && hasJudul) {
+      statusByNim.set(nim, {
+        has_title: true,
+        status_kelulusan: 'aktif_proses',
+        status_sidang: 'bimbingan'
+      });
+    }
+  });
+
+  // Mahasiswa yang sudah memiliki log bimbingan otomatis aktif berproses TA
+  safeConsultations.forEach(c => {
+    const nim = String(c.mhs_nim || '').trim();
+    if (!nim) return;
+    const existing = statusByNim.get(nim);
+    if (!existing) {
+      statusByNim.set(nim, {
+        has_title: true,
+        status_kelulusan: 'aktif_proses',
+        status_sidang: 'bimbingan'
+      });
+    } else {
+      existing.has_title = true;
+    }
   });
 
   let mhsAktifCount = 0;
@@ -195,19 +265,21 @@ export function calculateBimbinganDashboardStats(advisors = [], studentAdvisors 
 
   const countStatusFor = (nim) => {
     const info = statusByNim.get(nim);
-    if (!info) {
-      mhsBelumMengajukanCount++;
-      return;
+    if (info) {
+      if (info.status_kelulusan === 'lulus' || info.status_sidang === 'selesai') {
+        mhsLulusCount++;
+        return;
+      }
+      if (['tidak_aktif', 'drop_out', 'do', 'non_aktif', 'cuti'].includes(info.status_kelulusan)) {
+        mhsTidakAktifCount++;
+        return;
+      }
+      if (info.has_title) {
+        mhsAktifCount++;
+        return;
+      }
     }
-    if (info.status_kelulusan === 'lulus' || info.status_sidang === 'selesai') {
-      mhsLulusCount++;
-      return;
-    }
-    if (['tidak_aktif', 'drop_out', 'do', 'non_aktif'].includes(info.status_kelulusan)) {
-      mhsTidakAktifCount++;
-      return;
-    }
-    mhsAktifCount++;
+    mhsBelumMengajukanCount++;
   };
 
   nimSet.forEach(countStatusFor);
@@ -313,12 +385,15 @@ export function calculateBimbinganDashboardStats(advisors = [], studentAdvisors 
   };
 
   // 6. Chart Bimbingan per Bulan
+  // Aturan: Total hanya menghitung sesi yang sudah direspon dospem (bukan Menunggu)
   const monthlyChartData = months.map(mObj => {
     const logs = (monthlyLogs[mObj.key] || []).map(l => ({
       ...l,
       _statusNorm: normalizeConsultationStatus(l),
       _metodeNorm: normalizeConsultationMetode(l)
     }));
+    const validLogs = logs.filter(l => l._statusNorm !== 'menunggu');
+    const pendingLogs = logs.filter(l => l._statusNorm === 'menunggu');
 
     return {
       key: mObj.key,
@@ -326,12 +401,15 @@ export function calculateBimbinganDashboardStats(advisors = [], studentAdvisors 
       short: mObj.short,
       year: mObj.year,
       labelMMYYYY: mObj.labelMMYYYY,
-      total: logs.length,
-      daringCount: logs.filter(l => l._metodeNorm === 'Daring').length,
-      luringCount: logs.filter(l => l._metodeNorm === 'Luring').length,
-      belumDicatatCount: logs.filter(l => l._metodeNorm === 'Belum Dicatat').length,
-      uniqueStudentsCount: new Set(logs.map(l => String(l.mhs_nim || ''))).size,
-      uniqueLecturersCount: new Set(logs.map(l => String(l.dosen_nip || l.dosen_nama || ''))).size,
+      // total hanya sesi tervalidasi (bukan menunggu)
+      total: validLogs.length,
+      totalSemua: logs.length,
+      totalMenunggu: pendingLogs.length,
+      daringCount: validLogs.filter(l => l._metodeNorm === 'Daring').length,
+      luringCount: validLogs.filter(l => l._metodeNorm === 'Luring').length,
+      belumDicatatCount: validLogs.filter(l => l._metodeNorm === 'Belum Dicatat').length,
+      uniqueStudentsCount: new Set(validLogs.map(l => String(l.mhs_nim || ''))).size,
+      uniqueLecturersCount: new Set(validLogs.map(l => String(l.dosen_nip || l.dosen_nama || ''))).size,
       consultations: logs
     };
   });
@@ -339,38 +417,49 @@ export function calculateBimbinganDashboardStats(advisors = [], studentAdvisors 
   const maxMonthlyTotal = monthlyChartData.reduce((max, m) => Math.max(max, m.total), 0);
 
   // 7. Chart Status & Jenis Bimbingan
+  // Status di SIMTA: Diterima, Revisi Mayor, Revisi Minor, Menunggu
+  // Menunggu = belum direspon dospem → TIDAK masuk Total Bimbingan
   const statusCounts = {
-    menunggu_validasi: allConsultations.filter(c => c._statusNorm === 'menunggu_validasi').length,
+    menunggu: allConsultations.filter(c => c._statusNorm === 'menunggu').length,
     revisi_mayor: allConsultations.filter(c => c._statusNorm === 'revisi_mayor').length,
     revisi_minor: allConsultations.filter(c => c._statusNorm === 'revisi_minor').length,
     disetujui: allConsultations.filter(c => c._statusNorm === 'disetujui').length,
   };
 
-  const totalStatusThree = statusCounts.menunggu_validasi + statusCounts.revisi_mayor + statusCounts.revisi_minor;
+  const totalSemuaKonsultasi = allConsultations.length; // termasuk menunggu, untuk donut semua status
+  const totalStatusThree = totalSemuaKonsultasi; // compat alias dipakai di donut total
   const statusDonutItems = [
     {
-      id: 'menunggu_validasi',
-      label: 'Menunggu Validasi',
-      count: statusCounts.menunggu_validasi,
-      color: '#f59e0b', // Amber
-      percentage: totalStatusThree > 0 ? ((statusCounts.menunggu_validasi / totalStatusThree) * 100).toFixed(1) : '0',
-      totalPercentage: totalBimbingan > 0 ? ((statusCounts.menunggu_validasi / totalBimbingan) * 100).toFixed(1) : '0'
-    },
-    {
-      id: 'revisi_mayor',
-      label: 'Revisi Mayor',
-      count: statusCounts.revisi_mayor,
-      color: '#f43f5e', // Rose/Red
-      percentage: totalStatusThree > 0 ? ((statusCounts.revisi_mayor / totalStatusThree) * 100).toFixed(1) : '0',
-      totalPercentage: totalBimbingan > 0 ? ((statusCounts.revisi_mayor / totalBimbingan) * 100).toFixed(1) : '0'
+      id: 'disetujui',
+      label: 'Diterima',
+      count: statusCounts.disetujui,
+      color: '#10b981', // Emerald
+      percentage: totalSemuaKonsultasi > 0 ? ((statusCounts.disetujui / totalSemuaKonsultasi) * 100).toFixed(1) : '0',
+      totalPercentage: totalBimbingan > 0 ? ((statusCounts.disetujui / totalBimbingan) * 100).toFixed(1) : '0'
     },
     {
       id: 'revisi_minor',
       label: 'Revisi Minor',
       count: statusCounts.revisi_minor,
       color: '#6366f1', // Indigo
-      percentage: totalStatusThree > 0 ? ((statusCounts.revisi_minor / totalStatusThree) * 100).toFixed(1) : '0',
+      percentage: totalSemuaKonsultasi > 0 ? ((statusCounts.revisi_minor / totalSemuaKonsultasi) * 100).toFixed(1) : '0',
       totalPercentage: totalBimbingan > 0 ? ((statusCounts.revisi_minor / totalBimbingan) * 100).toFixed(1) : '0'
+    },
+    {
+      id: 'revisi_mayor',
+      label: 'Revisi Mayor',
+      count: statusCounts.revisi_mayor,
+      color: '#f43f5e', // Rose/Red
+      percentage: totalSemuaKonsultasi > 0 ? ((statusCounts.revisi_mayor / totalSemuaKonsultasi) * 100).toFixed(1) : '0',
+      totalPercentage: totalBimbingan > 0 ? ((statusCounts.revisi_mayor / totalBimbingan) * 100).toFixed(1) : '0'
+    },
+    {
+      id: 'menunggu',
+      label: 'Menunggu',
+      count: statusCounts.menunggu,
+      color: '#f59e0b', // Amber
+      percentage: totalSemuaKonsultasi > 0 ? ((statusCounts.menunggu / totalSemuaKonsultasi) * 100).toFixed(1) : '0',
+      totalPercentage: '0' // Menunggu tidak termasuk Total Bimbingan
     }
   ];
 
@@ -407,14 +496,15 @@ export function calculateBimbinganDashboardStats(advisors = [], studentAdvisors 
 
   const statusAndMethodStats = {
     status: {
-      menunggu_validasi: {
-        label: 'Menunggu Validasi',
-        count: statusCounts.menunggu_validasi,
-        percentage: totalBimbingan > 0 ? ((statusCounts.menunggu_validasi / totalBimbingan) * 100).toFixed(1) : 0,
+      menunggu: {
+        label: 'Menunggu',
+        count: statusCounts.menunggu,
+        percentage: totalSemuaKonsultasi > 0 ? ((statusCounts.menunggu / totalSemuaKonsultasi) * 100).toFixed(1) : 0,
         color: '#f59e0b', // Amber
         bgClass: 'bg-amber-500',
         textClass: 'text-amber-700',
-        badgeClass: 'bg-amber-50 text-amber-800 border-amber-200'
+        badgeClass: 'bg-amber-50 text-amber-800 border-amber-200',
+        note: 'Belum direspon dospem — tidak masuk Total Bimbingan'
       },
       revisi_mayor: {
         label: 'Revisi Mayor',
@@ -435,7 +525,7 @@ export function calculateBimbinganDashboardStats(advisors = [], studentAdvisors 
         badgeClass: 'bg-indigo-50 text-indigo-800 border-indigo-200'
       },
       disetujui: {
-        label: 'Disetujui / Selesai',
+        label: 'Diterima',
         count: statusCounts.disetujui,
         percentage: totalBimbingan > 0 ? ((statusCounts.disetujui / totalBimbingan) * 100).toFixed(1) : 0,
         color: '#10b981', // Emerald
@@ -465,14 +555,17 @@ export function calculateBimbinganDashboardStats(advisors = [], studentAdvisors 
       }
     },
     statusDonutItems,
-    totalStatusThree,
+    totalStatusThree,       // alias: total semua konsultasi (termasuk menunggu)
+    totalSemuaKonsultasi,
+    totalMenunggu,
     jenisDonutItems,
     totalMetode
   };
 
   // 8. Peringkat Keaktifan Dosen (Tabel Dosen, Jumlah Bimbingan, Jumlah Mahasiswa, Rasio)
+  // Aturan: hanya sesi tervalidasi (bukan Menunggu) yang dihitung untuk rasio dosen
   const advisorRankings = safeAdvisors.map(adv => {
-    const dospemConsultations = allConsultations.filter(
+    const dospemConsultations = validConsultations.filter(
       c => c.dosen_nip === adv.nip || (!c.dosen_nip && c.dosen_nama === adv.nama)
     );
     const totalBimbinganDosen = dospemConsultations.length;
@@ -523,8 +616,9 @@ export function calculateBimbinganDashboardStats(advisors = [], studentAdvisors 
   });
 
   // 9. Top 10 mahasiswa paling aktif pada bulan berjalan (riil, tanpa angka karangan)
+  // Hanya sesi tervalidasi (bukan Menunggu) yang masuk hitungan bulan ini
   const currentMonthKey = monthKeyOf(new Date().toISOString());
-  const currentMonthLogs = allConsultations.filter(c => c._monthKey === currentMonthKey);
+  const currentMonthLogs = validConsultations.filter(c => c._monthKey === currentMonthKey);
 
   const currentMonthCounts = new Map();
   currentMonthLogs.forEach(log => {
