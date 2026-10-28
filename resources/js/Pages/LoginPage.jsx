@@ -25,8 +25,6 @@ export default function LoginPage({ status }) {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isSuccessLoading, setIsSuccessLoading] = useState(false);
-  const [loadingText, setLoadingText] = useState('Memverifikasi Akses Akun...');
   const [errorMessage, setErrorMessage] = useState('');
 
   const formPanelRef = useRef(null);
@@ -86,23 +84,9 @@ export default function LoginPage({ status }) {
 
     try {
       const redirectPath = await login(identifier, password);
-      
-      // Trigger realistic production skeleton loading transition
-      setIsSuccessLoading(true);
-      setLoadingText('Memverifikasi Hak Akses UNSRI...');
-
-      setTimeout(() => {
-        setLoadingText('Menyiapkan Modul & Data Dashboard...');
-      }, 500);
-
-      setTimeout(() => {
-        setIsLoading(false);
-        navigate(redirectPath);
-      }, 1100);
-
+      navigate(redirectPath);
     } catch (err) {
       setIsLoading(false);
-      setIsSuccessLoading(false);
       setErrorMessage(err.message || 'Gagal masuk. Periksa kembali kredensial Anda.');
     }
   };
@@ -333,49 +317,6 @@ export default function LoginPage({ status }) {
         </div>
 
       </div>
-
-      {/* Fullscreen Premium Skeleton Loading Overlay on Successful Login */}
-      {isSuccessLoading && (
-        <div className="fixed inset-0 z-50 bg-slate-900/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-white animate-in fade-in duration-300">
-          <div className="max-w-md w-full bg-white/10 border border-white/20 rounded-3xl p-8 backdrop-blur-xl shadow-2xl flex flex-col items-center text-center space-y-6">
-            
-            {/* Animated Pulsing Logo */}
-            <div className="relative">
-              <div className="absolute inset-0 rounded-full bg-blue-500/30 blur-xl animate-pulse"></div>
-              <img src={unsriLogo} alt="Logo UNSRI" className="h-16 w-auto relative z-10 animate-bounce" />
-            </div>
-
-            <div className="space-y-1.5">
-              <h3 className="text-lg font-bold text-white tracking-wide">Autentikasi Berhasil!</h3>
-              <p className="text-xs text-blue-200 font-medium animate-pulse">{loadingText}</p>
-            </div>
-
-            {/* Skeleton Loading Card Preview */}
-            <div className="w-full bg-slate-800/70 rounded-2xl p-4 border border-white/15 space-y-3 text-left shadow-inner">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-xl bg-white/20 animate-pulse shrink-0"></div>
-                <div className="space-y-1.5 flex-1">
-                  <div className="h-3 w-3/4 bg-white/20 rounded-md animate-pulse"></div>
-                  <div className="h-2.5 w-1/2 bg-white/15 rounded-md animate-pulse"></div>
-                </div>
-              </div>
-              <div className="h-14 w-full bg-white/10 rounded-xl animate-pulse"></div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="h-12 bg-white/10 rounded-xl animate-pulse"></div>
-                <div className="h-12 bg-white/10 rounded-xl animate-pulse"></div>
-              </div>
-            </div>
-
-            {/* Spinner Progress */}
-            <div className="flex items-center space-x-2 text-xs text-blue-300 font-semibold pt-1">
-              <Loader2 className="w-4 h-4 animate-spin text-blue-400" />
-              <span>Menyiapkan Halaman Dashboard Portal...</span>
-            </div>
-
-          </div>
-        </div>
-      )}
-
     </div>
   );
 }

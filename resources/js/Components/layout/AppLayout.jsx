@@ -13,6 +13,29 @@ export default function AppLayout({ children }) {
   const { currentUser } = useAuth();
 
   useEffect(() => {
+    // 1. Guard Admin Routes: only users with role 'admin' can access /admin and /admin-simta
+    const isAdminRoute = url.startsWith('/admin-simta') || url.startsWith('/admin');
+    if (isAdminRoute) {
+      if (!currentUser) {
+        router.visit('/login');
+        return;
+      }
+      if (currentUser.role !== 'admin') {
+        if (currentUser.role === 'mahasiswa') router.visit('/dashboard');
+        else if (currentUser.role === 'dosen') router.visit('/dosen/dashboard');
+        else if (currentUser.role === 'kaprodi') router.visit('/kaprodi/dashboard');
+        else router.visit('/login');
+        return;
+      }
+    }
+
+    // 2. Prevent Admin from straying into student/dosen/kaprodi workspaces
+    if (currentUser?.role === 'admin' && (url === '/dashboard' || url.startsWith('/kaprodi') || url.startsWith('/dosen'))) {
+      router.visit('/admin-simta/dashboard');
+      return;
+    }
+
+    // 3. Role isolation between Dosen and Kaprodi
     if (currentUser?.role === 'dosen' && url.startsWith('/kaprodi')) {
       router.visit('/dosen/dashboard');
     } else if (currentUser?.role === 'kaprodi' && url.startsWith('/dosen')) {

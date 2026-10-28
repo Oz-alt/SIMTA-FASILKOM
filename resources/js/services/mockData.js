@@ -3139,15 +3139,6 @@ export const MOCK_USERS = [
     "department_id": "dept-mi-1"
   },
   {
-    "id": "user-admin-sarana",
-    "nim": "198509152010121004",
-    "nip": "198509152010121004",
-    "nama": "Budi Santoso, S.Kom. (Admin Ruang)",
-    "role": "admin_sarana",
-    "email": "sarana.fasilkom@unsri.ac.id",
-    "department_id": "dept-mi-1"
-  },
-  {
     "id": "user-dosen-abdiansah",
     "nim": "198410012009121005",
     "nip": "198410012009121005",

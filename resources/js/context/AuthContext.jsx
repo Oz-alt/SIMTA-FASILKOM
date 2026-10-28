@@ -289,25 +289,13 @@ export function AuthProvider({ children }) {
       };
     }
 
-    if (user.role === 'admin_sarana') {
-      if (!cleanNama || cleanNama === 'Mahasiswa UNSRI' || cleanNama === 'Pengguna SIMTA' || cleanNama === 'Aulia Azzahra' || /^\d+$/.test(cleanNama)) {
-        cleanNama = 'Budi Santoso, S.Kom. (Admin Ruang)';
-      }
-      return {
-        ...user,
-        nama: cleanNama,
-        role: 'admin_sarana',
-        kelas: 'Admin Sarana'
-      };
-    }
-
-    if (user.role === 'admin') {
+    if (user.role === 'admin_sarana' || user.role === 'admin') {
       if (!cleanNama || cleanNama === 'Mahasiswa UNSRI' || cleanNama === 'Pengguna SIMTA' || cleanNama === 'Aulia Azzahra' || /^\d+$/.test(cleanNama)) {
         cleanNama = 'Rina Agustina, S.Kom. (Admin SIMTA)';
       }
       return {
         ...user,
-        username: user.username || 'Admin',
+        username: user.username || 'admin',
         nama: cleanNama,
         role: 'admin',
         kelas: 'Admin SIMTA'
@@ -350,10 +338,12 @@ export function AuthProvider({ children }) {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Filter out old Hendra Kaprodi account completely
+          // Filter out old Hendra Kaprodi account and admin_sarana completely
           const cleaned = parsed.filter(u => 
             u && 
             u.id !== 'user-kaprodi-hendra' && 
+            u.id !== 'user-admin-sarana' &&
+            u.role !== 'admin_sarana' &&
             !String(u.nama || '').includes('Hendra Kusuma') && 
             String(u.nip || '') !== '197805122005011002' &&
             String(u.email || '') !== 'kaprodi.mi@unsri.ac.id'
@@ -402,10 +392,6 @@ export function AuthProvider({ children }) {
           const adminSimtaIdx = cleaned.findIndex(u => u.role === 'admin' || u.id === 'user-admin-simta');
           if (adminSimtaIdx >= 0) {
             cleaned[adminSimtaIdx] = { ...cleaned[adminSimtaIdx], username: cleaned[adminSimtaIdx].username || 'admin' };
-          }
-          const adminSaranaIdx = cleaned.findIndex(u => u.role === 'admin_sarana' || u.id === 'user-admin-sarana');
-          if (adminSaranaIdx >= 0) {
-            cleaned[adminSaranaIdx] = { ...cleaned[adminSaranaIdx], username: cleaned[adminSaranaIdx].username || 'admin_sarana' };
           }
 
           const sanitizedList = cleaned.map(u => sanitizeProfile(u)).filter(Boolean);
@@ -473,20 +459,9 @@ export function AuthProvider({ children }) {
         nim: '198503152010122001',
         nip: '198503152010122001',
         email: 'admin.simta@unsri.ac.id',
-        password: '198503152010122001',
+        password: 'admin123',
         role: 'admin',
         kelas: 'Admin SIMTA'
-      },
-      {
-        id: 'user-admin-sarana',
-        username: 'admin_sarana',
-        nama: 'Budi Santoso, S.Kom. (Admin Ruang)',
-        nim: '198204102008121003',
-        nip: '198204102008121003',
-        email: 'admin.sarana@unsri.ac.id',
-        password: '198204102008121003',
-        role: 'admin_sarana',
-        kelas: 'Admin Sarana'
       },
       {
         id: 'user-mhs-aulia',
@@ -513,8 +488,7 @@ export function AuthProvider({ children }) {
     // Determine which role is required for this route
     let requiredRole = null;
     if (path.startsWith('/kaprodi')) requiredRole = 'kaprodi';
-    else if (path.startsWith('/admin-simta')) requiredRole = 'admin';
-    else if (path.startsWith('/admin-sarana') || path === '/admin/dashboard' || path.startsWith('/admin/')) requiredRole = 'admin_sarana';
+    else if (path.startsWith('/admin-simta') || path.startsWith('/admin')) requiredRole = 'admin';
     else if (path.startsWith('/dosen')) requiredRole = 'dosen';
     // mahasiswa & root routes: any role is fine
 
@@ -2127,14 +2101,15 @@ export function AuthProvider({ children }) {
       return '/kaprodi/dashboard';
     }
 
-    // 2. Akun Admin SIMTA (username: "Admin", password awal: "admin123" dengan verifikasi SHA-256 hash)
+    // 2. Akun Admin Utama SIMONITA / SIMTA
     if (
       termLower === 'admin' ||
       termLower === 'admin-simta' ||
       termLower === 'admin_simta' ||
       termLower === 'adminsimta' ||
       term === '198503152010122001' ||
-      termLower === 'admin.simta@unsri.ac.id'
+      termLower === 'admin.simta@unsri.ac.id' ||
+      termLower === 'admin@unsri.ac.id'
     ) {
       const passHash = await sha256(inputPass);
       const expectedAdminHash = '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9'; // SHA-256 for admin123
@@ -2142,7 +2117,7 @@ export function AuthProvider({ children }) {
       const registered = getRegisteredUsers();
       const adminAcc = registered.find(u => u.role === 'admin') || {
         id: 'user-admin-simta',
-        username: 'Admin',
+        username: 'admin',
         nama: 'Rina Agustina, S.Kom. (Admin SIMTA)',
         nip: '198503152010122001',
         nim: '198503152010122001',
@@ -2152,11 +2127,11 @@ export function AuthProvider({ children }) {
       };
 
       const isPasswordValid = (
-        passHash === expectedAdminHash ||
-        (adminAcc.password_hash && passHash === adminAcc.password_hash) ||
         inputPass === 'admin123' ||
+        inputPass === 'admin' ||
         inputPass === '198503152010122001' ||
-        inputPass.toLowerCase() === 'admin' // preserve compatibility
+        passHash === expectedAdminHash ||
+        (adminAcc.password_hash && passHash === adminAcc.password_hash)
       );
 
       if (!isPasswordValid) {
@@ -2165,7 +2140,7 @@ export function AuthProvider({ children }) {
 
       const activeAdminUser = {
         ...adminAcc,
-        username: 'Admin',
+        username: 'admin',
         password_hash: expectedAdminHash
       };
       delete activeAdminUser.password;
@@ -2173,36 +2148,12 @@ export function AuthProvider({ children }) {
       return '/admin-simta/dashboard';
     }
 
-    // 3. Akun Admin Sarana (dapat login dengan username "admin_sarana", "adminsarana" atau NIP/Email)
-    if (
-      termLower === 'admin_sarana' ||
-      termLower === 'adminsarana' ||
-      term === '198204102008121003' ||
-      termLower === 'admin.sarana@unsri.ac.id'
-    ) {
-      if (inputPass !== '198204102008121003' && inputPass !== 'admin') {
-        throw new Error('Kata sandi salah.');
-      }
-      const adminSaranaUser = {
-        id: 'user-admin-sarana',
-        username: 'admin_sarana',
-        nama: 'Budi Santoso, S.Kom. (Admin Ruang)',
-        nip: '198204102008121003',
-        nim: '198204102008121003',
-        email: 'admin.sarana@unsri.ac.id',
-        role: 'admin_sarana',
-        kelas: 'Admin Sarana'
-      };
-      setCurrentUser(adminSaranaUser);
-      return '/admin/dashboard';
-    }
-
-    // 4. ATURAN USERNAME: Username HANYA berlaku untuk akun Kaprodi dan Admin.
+    // 3. ATURAN USERNAME: Username HANYA berlaku untuk akun Kaprodi dan Admin.
     // Dosen dan Mahasiswa WAJIB menggunakan NIP atau NIM (atau Email).
     if (isUsername) {
       const registered = getRegisteredUsers();
       const customAdmin = registered.find(u => 
-        (u.role === 'admin' || u.role === 'admin_sarana' || u.role === 'kaprodi') &&
+        (u.role === 'admin' || u.role === 'kaprodi') &&
         u.username && String(u.username).toLowerCase() === termLower
       );
 
@@ -2212,7 +2163,6 @@ export function AuthProvider({ children }) {
         }
         setCurrentUser(customAdmin);
         if (customAdmin.role === 'kaprodi') return '/kaprodi/dashboard';
-        if (customAdmin.role === 'admin_sarana') return '/admin/dashboard';
         return '/admin-simta/dashboard';
       }
 
@@ -2261,8 +2211,7 @@ export function AuthProvider({ children }) {
       }
       setCurrentUser(localFound);
       if (localFound.role === 'kaprodi') return '/kaprodi/dashboard';
-      if (localFound.role === 'admin_sarana') return '/admin/dashboard';
-      if (localFound.role === 'admin') return '/admin-simta/dashboard';
+      if (localFound.role === 'admin' || localFound.role === 'admin_sarana') return '/admin-simta/dashboard';
       if (localFound.role === 'dosen') return '/dosen/dashboard';
       if (localFound.role === 'mahasiswa') {
         return !localFound.is_profile_completed ? '/profile?first_login=true' : '/dashboard';
@@ -2302,8 +2251,7 @@ export function AuthProvider({ children }) {
           setCurrentUser(activeProfile);
 
           if (activeProfile.role === 'kaprodi') return '/kaprodi/dashboard';
-          if (activeProfile.role === 'admin_sarana') return '/admin/dashboard';
-          if (activeProfile.role === 'admin') return '/admin-simta/dashboard';
+          if (activeProfile.role === 'admin' || activeProfile.role === 'admin_sarana') return '/admin-simta/dashboard';
           if (activeProfile.role === 'dosen') return '/dosen/dashboard';
           if (activeProfile.role === 'mahasiswa') {
             return !activeProfile.is_profile_completed ? '/profile?first_login=true' : '/dashboard';
@@ -2347,8 +2295,7 @@ export function AuthProvider({ children }) {
 
       setCurrentUser(foundUser);
       if (foundUser.role === 'kaprodi') return '/kaprodi/dashboard';
-      if (foundUser.role === 'admin_sarana') return '/admin/dashboard';
-      if (foundUser.role === 'admin') return '/admin-simta/dashboard';
+      if (foundUser.role === 'admin' || foundUser.role === 'admin_sarana') return '/admin-simta/dashboard';
       if (foundUser.role === 'dosen') return '/dosen/dashboard';
       if (foundUser.role === 'mahasiswa') {
         return !foundUser.is_profile_completed ? '/profile?first_login=true' : '/dashboard';
@@ -3807,10 +3754,25 @@ export function AuthProvider({ children }) {
   // Real database profiles from Supabase
   const [dbProfiles, setDbProfiles] = useState([]);
 
+  // In-memory caches for heavy account aggregation to ensure ultra-fast dashboard loads
+  const mhsAccountsCacheRef = useRef(null);
+  const dosenAccountsCacheRef = useRef(null);
+
+  useEffect(() => {
+    mhsAccountsCacheRef.current = null;
+  }, [studentAdvisors, dbProfiles]);
+
+  useEffect(() => {
+    dosenAccountsCacheRef.current = null;
+  }, [advisors, dbProfiles]);
+
   // ── MANAJEMEN AKUN (ADMIN SIMTA) ──────────────────────────────────────────
   
   // Get all Mahasiswa accounts combining Supabase profiles, student_advisors, and local registry
   const getAllMahasiswaAccounts = () => {
+    if (mhsAccountsCacheRef.current) {
+      return mhsAccountsCacheRef.current;
+    }
     const localReg = getRegisteredUsers().filter(u => u.role === 'mahasiswa');
     const mockMhs = MOCK_USERS.filter(u => u.role === 'mahasiswa');
     const remoteProfiles = dbProfiles.filter(p => p.role === 'mahasiswa');
@@ -3901,11 +3863,16 @@ export function AuthProvider({ children }) {
       }
     });
 
-    return Array.from(accountMap.values());
+    const result = Array.from(accountMap.values());
+    mhsAccountsCacheRef.current = result;
+    return result;
   };
 
   // Get all Dosen accounts combining Supabase advisors, profiles, and mock dataset
   const getAllDosenAccounts = () => {
+    if (dosenAccountsCacheRef.current) {
+      return dosenAccountsCacheRef.current;
+    }
     const mockDosen = MOCK_USERS.filter(u => u.role === 'dosen' || u.role === 'kaprodi');
     const remoteDosenProfiles = dbProfiles.filter(p => p.role === 'dosen' || p.role === 'kaprodi');
     const accountMap = new Map();
@@ -3981,7 +3948,7 @@ export function AuthProvider({ children }) {
       }
     });
 
-    return Array.from(accountMap.values()).filter(d => {
+    const result = Array.from(accountMap.values()).filter(d => {
       const nip = String(d.nip || d.nim || '');
       const nama = String(d.nama || '').toLowerCase();
       const id = String(d.id || '');
@@ -3996,6 +3963,8 @@ export function AuthProvider({ children }) {
         !nama.includes('ahmad dahlan')
       );
     });
+    dosenAccountsCacheRef.current = result;
+    return result;
   };
 
   // Add Mahasiswa Account (Admin SIMTA)

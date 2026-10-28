@@ -35,8 +35,26 @@ export default function Navbar() {
 
   // Filter notifications relevant to the current active user
   const userNotifications = notifications.filter(n => {
-    if (!currentUser) return true;
-    if (currentUser.role === 'kaprodi' || currentUser.role === 'admin') return true;
+    if (!currentUser) return false;
+    if (currentUser.role === 'admin') {
+      // Admin only sees notifications specifically targeted to the admin
+      return (
+        n.recipient_role === 'admin' ||
+        n.target_role === 'admin' ||
+        String(n.profile_id) === String(currentUser.id) ||
+        String(n.recipient_id) === String(currentUser.id)
+      );
+    }
+    if (currentUser.role === 'kaprodi') {
+      return (
+        n.recipient_role === 'kaprodi' ||
+        n.target_role === 'kaprodi' ||
+        String(n.profile_id) === String(currentUser.id) ||
+        n.related_type === 'thesis_title' ||
+        n.related_type === 'thesis_title_revised' ||
+        n.related_type === 'thesis_title_cancelled'
+      );
+    }
     if (currentUser.role === 'mahasiswa') {
       if (n.recipient_nim && currentUser.nim) {
         return String(n.recipient_nim).trim() === String(currentUser.nim).trim();
@@ -53,7 +71,7 @@ export default function Navbar() {
       }
       return !n.recipient_role || n.recipient_role === 'dosen';
     }
-    return true;
+    return false;
   });
 
   const unreadCount = userNotifications.filter(n => !n.is_read).length;
@@ -62,7 +80,6 @@ export default function Navbar() {
     mahasiswa: { label: 'Mahasiswa', color: 'bg-emerald-100 text-emerald-800 border-emerald-300', icon: GraduationCap },
     kaprodi: { label: 'Kaprodi', color: 'bg-blue-100 text-blue-800 border-blue-300', icon: BookOpen },
     dosen: { label: 'Dosen Pembimbing', color: 'bg-teal-100 text-teal-800 border-teal-300', icon: BookOpen },
-    admin_sarana: { label: 'Admin Sarana', color: 'bg-purple-100 text-purple-800 border-purple-300', icon: Building2 },
     admin: { label: 'Admin SIMONITA', color: 'bg-rose-100 text-rose-800 border-rose-300', icon: Building2 }
   };
 

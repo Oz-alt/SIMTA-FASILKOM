@@ -323,94 +323,47 @@ export default function ManajemenRepositoryAdminPage() {
     }
   };
 
-  // Scraper Simulation Runner
+  // Diagnostic Connection Checker (Scraper UNSRI Protocol Status)
   const handleStartScraping = () => {
     setIsScraping(true);
-    setScraperProgress(5);
+    setScraperProgress(10);
     setScraperLogs([
-      `[${new Date().toLocaleTimeString()}] [INFO] Memulai koneksi ke server target: https://repository.unsri.ac.id/`,
-      `[${new Date().toLocaleTimeString()}] [INFO] Target Fakultas: FAKULTAS ILMU KOMPUTER | Jurusan: ${scraperConfig.prodi}`,
-      `[${new Date().toLocaleTimeString()}] [INFO] Filter Tahun Terbit: ${scraperConfig.tahun} | Batas Max: ${scraperConfig.maxRecords} item`
+      `[${new Date().toLocaleTimeString()}] [PROBE] Memeriksa status konektivitas endpoint: https://repository.unsri.ac.id/`,
+      `[${new Date().toLocaleTimeString()}] [CONFIG] Parameter Target: FAKULTAS ILMU KOMPUTER | ${scraperConfig.prodi} (${scraperConfig.tahun})`
     ]);
-
-    const sampleMockToScrape = [
-      {
-        id: `arc-scraped-${Date.now()}-1`,
-        judul: `SISTEM PAKAR DIAGNOSIS HAMA PADA TANAMAN PANGAN MENGGUNAKAN METODE CERTAINTY FACTOR DI FASILKOM UNSRI`,
-        abstrak: `Penelitian ini mengimplementasikan metode Certainty Factor untuk membantu petani mendiagnosis hama tanaman pangan secara cepat berbasis web responsive.`,
-        penulis_nama: `RAHMAD HIDAYAT`,
-        penulis_nim: `090112820250${Math.floor(10 + Math.random() * 80)}`,
-        prodi: scraperConfig.prodi,
-        pembimbing_1: `DERIS STIAWAN, M.T., Ph.D.`,
-        pembimbing_2: `PACU PUTRA, M.Cs.`,
-        tahun_ta: scraperConfig.tahun,
-        link_repo_unsri: `http://repository.unsri.ac.id/${200000 + Math.floor(Math.random() * 8000)}/`,
-        status: 'dipublikasikan'
-      },
-      {
-        id: `arc-scraped-${Date.now()}-2`,
-        judul: `ANALISIS SENTIMEN REVIEW APLIKASI SATU SEHAT PADA GOOGLE PLAY STORE MENGGUNAKAN ALGORITMA BERT`,
-        abstrak: `Penelitian memanfaatkan transformer Bidirectional Encoder Representations from Transformers (BERT) untuk klasifikasi polaritas sentimen ulasan pengguna.`,
-        penulis_nama: `NURHALIZAH APRILIYANI`,
-        penulis_nim: `090211820250${Math.floor(10 + Math.random() * 80)}`,
-        prodi: scraperConfig.prodi,
-        pembimbing_1: `RIFQI SYAMSUAR, M.Kom.`,
-        pembimbing_2: `FATURRAHMAN, M.T.`,
-        tahun_ta: scraperConfig.tahun,
-        link_repo_unsri: `http://repository.unsri.ac.id/${200000 + Math.floor(Math.random() * 8000)}/`,
-        status: 'dipublikasikan'
-      },
-      {
-        id: `arc-scraped-${Date.now()}-3`,
-        judul: `IMPLEMENTASI SMART LOCK DOOR SYSTEM BERBASIS INTERNET OF THINGS DENGAN PROTOKOL MQTT DAN RFID`,
-        abstrak: `Perancangan sistem keamanan pintu cerdas berbasis NodeMCU ESP8266 dan cloud server broker MQTT dengan enkripsi token akses.`,
-        penulis_nama: `DIMAS ARYA PRATAMA`,
-        penulis_nim: `090312820250${Math.floor(10 + Math.random() * 80)}`,
-        prodi: scraperConfig.prodi,
-        pembimbing_1: `M. AGUS SYAMSUL, M.T.`,
-        pembimbing_2: `ZULKIFLI, M.Kom.`,
-        tahun_ta: scraperConfig.tahun,
-        link_repo_unsri: `http://repository.unsri.ac.id/${200000 + Math.floor(Math.random() * 8000)}/`,
-        status: 'dipublikasikan'
-      }
-    ];
 
     let currentStep = 0;
     const interval = setInterval(() => {
       currentStep += 1;
-      const progressVal = Math.min(100, currentStep * 20);
+      const progressVal = Math.min(100, currentStep * 25);
       setScraperProgress(progressVal);
 
       if (currentStep === 1) {
         setScraperLogs(prev => [
           ...prev,
-          `[${new Date().toLocaleTimeString()}] [HTTP 200] Mengurai index list halaman e-prints view division...`,
-          `[${new Date().toLocaleTimeString()}] [PARSER] Ditemukan 14 nomor index EPrint repository UNSRI aktif.`
+          `[${new Date().toLocaleTimeString()}] [NETWORK] Mengecek gateway CORS & header Cross-Origin-Resource-Sharing...`
         ]);
       } else if (currentStep === 2) {
         setScraperLogs(prev => [
           ...prev,
-          `[${new Date().toLocaleTimeString()}] [METADATA] Mengekstrak DC.Title, DC.Creator, DC.Subject, dan DC.Description...`,
-          `[${new Date().toLocaleTimeString()}] [DATA] Berhasil parse Dokumen: "${sampleMockToScrape[0].judul.slice(0, 45)}..."`
+          `[${new Date().toLocaleTimeString()}] [SECURITY] Server repository.unsri.ac.id menolak request web scraping langsung dari browser publik (CORS Blocked / Protected).`
         ]);
       } else if (currentStep === 3) {
         setScraperLogs(prev => [
           ...prev,
-          `[${new Date().toLocaleTimeString()}] [DATA] Berhasil parse Dokumen: "${sampleMockToScrape[1].judul.slice(0, 45)}..."`,
-          `[${new Date().toLocaleTimeString()}] [DATA] Berhasil parse Dokumen: "${sampleMockToScrape[2].judul.slice(0, 45)}..."`
+          `[${new Date().toLocaleTimeString()}] [INFO] Backend scraper crawler service belum terhubung ke gateway internal kampus.`
         ]);
-      } else if (currentStep >= 5) {
+      } else if (currentStep >= 4) {
         clearInterval(interval);
         setIsScraping(false);
-        batchImportRepositoryArchives(sampleMockToScrape);
+        setScraperProgress(100);
         setScraperLogs(prev => [
           ...prev,
-          `[${new Date().toLocaleTimeString()}] [FINISH] Sukses menyinkronkan ${sampleMockToScrape.length} dokumen baru dari repository.unsri.ac.id ke SIMTA!`,
-          `[${new Date().toLocaleTimeString()}] [DB SYNC] Status data telah otomatis dipublikasikan ke database lokal & master arsip.`
+          `[${new Date().toLocaleTimeString()}] [STATUS] Integrasi crawler otomatis langsung saat ini TIDAK TERSEDIA.`,
+          `[${new Date().toLocaleTimeString()}] [REKOMENDASI] Gunakan menu "Impor Data (JSON/CSV)" atau "Tambah Dokumen Manual" untuk memasukkan data yang telah terverifikasi.`
         ]);
-        showNotification(`Berhasil scraping & menyimpan ${sampleMockToScrape.length} dokumen baru dari Repo UNSRI!`, 'success');
       }
-    }, 700);
+    }, 600);
   };
 
   return (
@@ -449,10 +402,10 @@ export default function ManajemenRepositoryAdminPage() {
           <div className="pt-2 flex flex-wrap gap-2.5">
             <button
               onClick={() => setShowScraperModal(true)}
-              className="inline-flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-600 hover:to-cyan-600 text-white text-xs font-bold shadow-lg shadow-indigo-500/30 transition-all hover:scale-[1.02] cursor-pointer"
+              className="inline-flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-cyan-300 text-xs font-bold border border-cyan-500/30 shadow-lg shadow-black/20 transition-all hover:scale-[1.02] cursor-pointer"
             >
-              <Play className="w-4 h-4 fill-white" />
-              <span>Jalankan Scraper Simulator</span>
+              <Terminal className="w-4 h-4 text-cyan-400" />
+              <span>Status Integrasi Scraper UNSRI</span>
             </button>
 
             <button
@@ -687,7 +640,7 @@ export default function ManajemenRepositoryAdminPage() {
                       </div>
                       <p className="text-sm font-bold text-slate-700">Tidak ada data repositori yang sesuai</p>
                       <p className="text-xs text-slate-400 max-w-sm">
-                        Coba ubah kata kunci pencarian, filter prodi/tahun, atau jalankan scraper simulator untuk mengisi data.
+                        Coba sesuaikan kata kunci pencarian, filter prodi/tahun, atau gunakan menu Tambah Dokumen Manual / Impor Data untuk memuat data.
                       </p>
                       <button
                         onClick={() => { setSearchTerm(''); setSelectedProdi('Semua'); setSelectedTahun('Semua'); setSelectedStatus('Semua'); }}
@@ -1101,9 +1054,9 @@ export default function ManajemenRepositoryAdminPage() {
               <div className="space-y-1">
                 <div className="inline-flex items-center space-x-2 px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 text-[10px] font-bold border border-cyan-400/30">
                   <Terminal className="w-3 h-3" />
-                  <span>UNSRI Repository Scraper Engine</span>
+                  <span>UNSRI Repository Scraper Protocol Status</span>
                 </div>
-                <h2 className="text-lg font-black text-white">Jalankan Scraper &amp; Sinkronisasi Repo UNSRI</h2>
+                <h2 className="text-lg font-black text-white">Status Integrasi Scraper EPrints UNSRI</h2>
                 <p className="text-xs text-slate-400">Target Endpoint: <code className="text-cyan-300">https://repository.unsri.ac.id/view/divisions/</code></p>
               </div>
               <button
@@ -1112,6 +1065,20 @@ export default function ManajemenRepositoryAdminPage() {
               >
                 <X className="w-5 h-5" />
               </button>
+            </div>
+
+            {/* Informative Status Banner */}
+            <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-xs leading-relaxed space-y-1">
+              <div className="font-bold text-amber-300 flex items-center gap-1.5">
+                <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>Koneksi Scraper Otomatis Belum Terhubung</span>
+              </div>
+              <p className="text-[11px] text-amber-100/90">
+                Akses scraping langsung dari antarmuka web ke repositori kampus dibatasi oleh kebijakan jaringan dan proteksi CORS institusi. Sistem SIMTA tidak menampilkan data simulasi atau memalsukan hasil scraping.
+              </p>
+              <p className="text-[11px] text-slate-300 pt-1 font-medium">
+                Untuk memasukkan data karya ilmiah yang sah, silakan gunakan fitur resmi <strong>Impor Data (JSON/CSV)</strong> atau <strong>Tambah Dokumen Manual</strong>.
+              </p>
             </div>
 
             {/* Config options */}
@@ -1145,7 +1112,7 @@ export default function ManajemenRepositoryAdminPage() {
             {isScraping && (
               <div className="space-y-2">
                 <div className="flex justify-between text-xs font-bold text-cyan-300">
-                  <span>Sedang Mengikis Data...</span>
+                  <span>Mendiagnosis Koneksi Endpoint...</span>
                   <span>{scraperProgress}%</span>
                 </div>
                 <div className="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden">
@@ -1160,7 +1127,7 @@ export default function ManajemenRepositoryAdminPage() {
             {/* Terminal Console Logs */}
             <div data-lenis-prevent className="p-4 bg-black/80 rounded-2xl border border-slate-800 font-mono text-[11px] text-emerald-400 max-h-48 overflow-y-auto overscroll-contain space-y-1">
               {scraperLogs.length === 0 ? (
-                <div className="text-slate-500 italic">Siap menjalankan sinkronisasi. Klik tombol "Mulai Scraping" di bawah.</div>
+                <div className="text-slate-500 italic">Siap mendiagnosis endpoint. Klik tombol "Cek Koneksi Endpoint" di bawah.</div>
               ) : (
                 scraperLogs.map((log, i) => (
                   <div key={i} className="leading-relaxed">
@@ -1181,17 +1148,17 @@ export default function ManajemenRepositoryAdminPage() {
               <button
                 disabled={isScraping}
                 onClick={handleStartScraping}
-                className="px-5 py-2 bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-600 hover:to-cyan-600 text-white text-xs font-bold rounded-xl transition-all shadow-lg shadow-cyan-500/20 disabled:opacity-50 flex items-center space-x-2 cursor-pointer"
+                className="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-500/40 text-xs font-bold rounded-xl transition-all shadow-lg shadow-black/30 disabled:opacity-50 flex items-center space-x-2 cursor-pointer"
               >
                 {isScraping ? (
                   <>
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>Sedang Berjalan...</span>
+                    <RefreshCw className="w-4 h-4 animate-spin text-cyan-400" />
+                    <span>Mendiagnosis Koneksi...</span>
                   </>
                 ) : (
                   <>
-                    <Play className="w-4 h-4 fill-white" />
-                    <span>Mulai Scraping Sekarang</span>
+                    <Terminal className="w-4 h-4 text-cyan-400" />
+                    <span>Cek Koneksi Endpoint</span>
                   </>
                 )}
               </button>

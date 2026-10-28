@@ -205,7 +205,7 @@ export default function AkunDosenAdminPage() {
 
     const newPass = newPasswordInput.trim() || resettingDosen.nip;
     await resetDosenPassword(resettingDosen.id || resettingDosen.nip, newPass);
-    showToast(`Kata sandi untuk ${resettingDosen.nama} berhasil diatur ulang menjadi: "${newPass}"`);
+    showToast(`Kata sandi untuk ${resettingDosen.nama} berhasil diatur ulang.`);
     setResettingDosen(null);
   };
 
@@ -763,7 +763,7 @@ export default function AkunDosenAdminPage() {
                   <div className="space-y-1 pt-1">
                     <label className="font-bold text-slate-700">Kata Sandi Awal (Opsional)</label>
                     <input
-                      type="text"
+                      type="password"
                       value={dosenForm.password}
                       onChange={(e) => setDosenForm({ ...dosenForm, password: e.target.value })}
                       placeholder="Default: Sesuai NIP jika dikosongkan"
