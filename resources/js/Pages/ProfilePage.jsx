@@ -97,7 +97,6 @@ export default function ProfilePage() {
     mahasiswa: { label: 'Mahasiswa', badge: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
     dosen: { label: 'Dosen Pembimbing', badge: 'bg-indigo-100 text-indigo-800 border-indigo-200' },
     kaprodi: { label: 'Dosen / Kaprodi', badge: 'bg-blue-100 text-blue-800 border-blue-200' },
-    admin_sarana: { label: 'Admin Sarana & Prasarana', badge: 'bg-purple-100 text-purple-800 border-purple-200' },
     admin: { label: 'Admin SIMONITA', badge: 'bg-amber-100 text-amber-800 border-amber-200' }
   };
 

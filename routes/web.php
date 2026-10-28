@@ -154,11 +154,11 @@ Route::get('/kaprodi/analytics', function () {
 });
 
 // ============================================================
-// ADMIN SARANA ROUTES
+// ADMIN SARANA & RUANGAN ROUTES (Dikelola oleh Admin Utama)
 // ============================================================
 
 Route::get('/admin/dashboard', function () {
-    return Inertia::render('admin/DashboardAdmin');
+    return redirect('/admin-simta/dashboard');
 });
 
 Route::get('/admin/bookings', function () {

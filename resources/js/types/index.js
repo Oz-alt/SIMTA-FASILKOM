@@ -5,7 +5,7 @@
 export const ROLES = {
   MAHASISWA: 'mahasiswa',
   KAPRODI: 'kaprodi',
-  ADMIN_SARANA: 'admin_sarana',
+  ADMIN: 'admin',
   DOSEN: 'dosen'
 };
 

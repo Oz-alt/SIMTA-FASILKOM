@@ -778,7 +778,7 @@ export default function AkunMahasiswaAdminPage() {
                   <div className="space-y-1 pt-1">
                     <label className="font-bold text-slate-700">Kata Sandi Awal (Opsional)</label>
                     <input
-                      type="text"
+                      type="password"
                       value={studentForm.password}
                       onChange={(e) => setStudentForm({ ...studentForm, password: e.target.value })}
                       placeholder="Default: Sesuai NIM jika dikosongkan"

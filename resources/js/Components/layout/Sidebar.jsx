@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { 
   LayoutDashboard, 
   FileText, 
+  FileStack,
   CheckSquare, 
   CalendarDays, 
   Building2, 
@@ -27,8 +28,7 @@ import {
   LayoutGrid,
   Bell,
   ClipboardList,
-  Lock,
-  FileStack
+  Lock
 } from 'lucide-react';
 
 export default function Sidebar() {
@@ -155,33 +155,6 @@ export default function Sidebar() {
           ]
         };
 
-      case 'admin_sarana':
-        return {
-          dashboard: { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-          groups: [
-            {
-              id: 'ruangan',
-              label: 'Ruangan',
-              icon: Building2,
-              items: [
-                { to: '/admin/bookings', label: 'Persetujuan Ruangan', icon: CheckSquare },
-                { to: '/admin/rooms', label: 'Kelola Ruang & Gedung', icon: Building2 },
-                { to: '/admin/priorities', label: 'Prioritas Ruangan', icon: ListOrdered },
-                { to: '/schedule', label: 'Master Schedule Grid', icon: CalendarDays }
-              ]
-            },
-            {
-              id: 'database',
-              label: 'Database',
-              icon: Database,
-              items: [
-                { to: '/thesis/archive', label: 'Arsip Tugas Akhir', icon: BookOpen },
-                { to: '/admin/repository/publish', label: 'Publikasi Repositori Global', icon: Globe }
-              ]
-            }
-          ]
-        };
-
       case 'dosen':
         return {
           dashboard: { to: '/dosen/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -211,6 +184,17 @@ export default function Sidebar() {
         return {
           dashboard: { to: '/admin-simta/dashboard', label: 'Dashboard', icon: LayoutDashboard },
           groups: [
+            {
+              id: 'ruangan',
+              label: 'Ruangan & Sarana',
+              icon: Building2,
+              items: [
+                { to: '/admin/bookings', label: 'Persetujuan Ruangan', icon: CheckSquare },
+                { to: '/admin/rooms', label: 'Kelola Ruang & Gedung', icon: Building2 },
+                { to: '/admin/priorities', label: 'Prioritas Ruangan', icon: ListOrdered },
+                { to: '/schedule', label: 'Jadwal Ruang Sidang', icon: CalendarDays }
+              ]
+            },
             {
               id: 'data_master',
               label: 'Data Master',
@@ -253,7 +237,8 @@ export default function Sidebar() {
               icon: Database,
               items: [
                 { to: '/admin-simta/repository', label: 'Manajemen Repositori', icon: Database },
-                { to: '/thesis/archive', label: 'Arsip Tugas Akhir', icon: BookOpen }
+                { to: '/thesis/archive', label: 'Arsip Tugas Akhir', icon: BookOpen },
+                { to: '/admin/repository/publish', label: 'Publikasi Repositori Global', icon: Globe }
               ]
             }
           ]

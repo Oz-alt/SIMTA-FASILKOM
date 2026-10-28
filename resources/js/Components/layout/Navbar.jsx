@@ -93,23 +93,29 @@ export default function Navbar() {
     if (n.id === 'notif-1' || n.id === 'notif-2' || n.is_mock) return false;
     if (n.title === 'Judul TA Disetujui!' || n.title === 'Peminjaman Ruangan Disetujui') return false;
 
+    if (currentUser.role === 'admin') {
+      // Admin only sees notifications specifically targeted to the admin
+      return (
+        n.recipient_role === 'admin' ||
+        n.target_role === 'admin' ||
+        String(n.profile_id) === String(currentUser.id) ||
+        String(n.recipient_id) === String(currentUser.id)
+      );
+    }
+
     if (currentUser.role === 'kaprodi') {
       // 1. Kaprodi akun pusat: JANGAN PERNAH izinkan notifikasi tanggapan bimbingan dosen-ke-mahasiswa
       if (n.recipient_role === 'mahasiswa' || n.recipient_role === 'dosen') return false;
       if (n.related_type === 'bimbingan_status' || n.related_type === 'consultation' || n.related_type === 'bimbingan_reminder') {
         return false;
       }
-      // 2. Hanya izinkan notifikasi koordinasi pusat Kaprodi:
-      // - Mahasiswa simpan/ajukan judul TA baru atau revisi
-      // - Peringatan bimbingan pasif (>14 hari / 2 minggu)
-      // - Mahasiswa siap sidang (24x bimbingan lengkap)
-      // - Similarity tinggi
-      // - Notifikasi umum dengan recipient_role === 'kaprodi' atau 'all'
+      // 2. Hanya izinkan notifikasi koordinasi pusat Kaprodi
       return (
         n.recipient_role === 'kaprodi' ||
         n.recipient_role === 'all' ||
         n.related_type === 'thesis_title' ||
         n.related_type === 'thesis_title_revised' ||
+        n.related_type === 'thesis_title_cancelled' ||
         n.related_type === 'kaprodi_bimbingan_inactivity_alert' ||
         n.related_type === 'kaprodi_siap_sidang_alert' ||
         n.related_type === 'similarity_warning' ||
@@ -126,11 +132,6 @@ export default function Navbar() {
         return true;
       }
       return !n.recipient_role || n.recipient_role === 'mahasiswa';
-    }
-
-    if (currentUser.role === 'admin') {
-      if (n.recipient_role === 'mahasiswa' || n.recipient_role === 'dosen') return false;
-      return true;
     }
 
     if (currentUser.role === 'dosen') {
@@ -165,7 +166,6 @@ export default function Navbar() {
     mahasiswa: { label: 'Mahasiswa', color: 'bg-emerald-100 text-emerald-800 border-emerald-300', icon: GraduationCap },
     kaprodi: { label: 'Kaprodi', color: 'bg-blue-100 text-blue-800 border-blue-300', icon: BookOpen },
     dosen: { label: 'Dosen Pembimbing', color: 'bg-teal-100 text-teal-800 border-teal-300', icon: BookOpen },
-    admin_sarana: { label: 'Admin Sarana', color: 'bg-purple-100 text-purple-800 border-purple-300', icon: Building2 },
     admin: { label: 'Admin SIMONITA', color: 'bg-rose-100 text-rose-800 border-rose-300', icon: Building2 }
   };
 
