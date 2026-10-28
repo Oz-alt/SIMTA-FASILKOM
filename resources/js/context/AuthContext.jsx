@@ -2332,15 +2332,7 @@ export function AuthProvider({ children }) {
       if (inputPass !== 'Koprodi123') {
         throw new Error('Kata sandi salah.');
       }
-<<<<<<< HEAD
-=======
-      let savedWa = 'https://chat.whatsapp.com/BimbinganTA-DrAbdiansah';
-      try {
-        const advs = JSON.parse(localStorage.getItem('simta_advisors') || '[]');
-        const matchedAdv = advs.find(a => String(a.nip) === '198410012009121005');
-        if (matchedAdv?.link_wa_group) savedWa = matchedAdv.link_wa_group;
-      } catch { }
->>>>>>> 5957777707fe7207d9232491ee1ec7f31ea65d85
+
 
       const kaprodiUser = {
         id: 'user-kaprodi-abdiansah',
@@ -2437,12 +2429,8 @@ export function AuthProvider({ children }) {
         const advs = JSON.parse(localStorage.getItem('simta_advisors') || '[]');
         const matchedAdv = advs.find(a => String(a.nip) === '198410012009121005');
         if (matchedAdv?.link_wa_group) savedWa = matchedAdv.link_wa_group;
-<<<<<<< HEAD
         if (matchedAdv?.no_hp) savedPhone = matchedAdv.no_hp;
       } catch {}
-=======
-      } catch { }
->>>>>>> 5957777707fe7207d9232491ee1ec7f31ea65d85
 
       try {
         const regUsers = JSON.parse(localStorage.getItem('simta_registered_users') || '[]');
@@ -3865,7 +3853,6 @@ export function AuthProvider({ children }) {
       return updated;
     });
 
-<<<<<<< HEAD
     // 3. Create real-time notification specifically for the relevant Dosen Pembimbing (Pembimbing 1 or 2)
     const notifTitle = `Pengajuan Bimbingan Baru (${pembTag})`;
     const notifMessage = `Mahasiswa ${mhsNama} (${mhsNim}) mengajukan sesi bimbingan baru ke ${pembimbingLabel}: "${consData.bab_topik || 'Konsultasi Tugas Akhir'}" pada tanggal ${newEntry.tanggal} pukul ${newEntry.waktu} WIB (${newEntry.metode === 'daring' ? 'Daring' : 'Luring'}). Silakan review dan berikan arahan/tanggapan bimbingan.`;
@@ -3907,8 +3894,6 @@ export function AuthProvider({ children }) {
     // Broadcast in real-time across tabs and windows
     broadcastBimbinganSubmission(newEntry, notifDosen);
 
-=======
->>>>>>> 5957777707fe7207d9232491ee1ec7f31ea65d85
     if (isSupabaseConfigured && supabase) {
       try {
         const fullPayload = {
@@ -4370,7 +4355,6 @@ export function AuthProvider({ children }) {
       }
     }
 
-<<<<<<< HEAD
     // Catat kata sandi awal akun baru di Supabase (default = NIM).
     if (cleanNim) {
       const saved = await saveStudentCredential({
@@ -4384,8 +4368,6 @@ export function AuthProvider({ children }) {
     }
 
     setAccountsVersion(v => v + 1);
-=======
->>>>>>> 5957777707fe7207d9232491ee1ec7f31ea65d85
     return newStudent;
   };
 
@@ -4566,7 +4548,6 @@ export function AuthProvider({ children }) {
   };
 
   // Delete Mahasiswa Account (Admin SIMTA)
-<<<<<<< HEAD
   const deleteMahasiswaAccount = async (idOrNimOrStudent) => {
     let cleanKey = '';
     const studentKeys = new Set();
@@ -4633,10 +4614,6 @@ export function AuthProvider({ children }) {
     };
 
     const updatedUsers = registeredUsers.filter(user => !isSameStudent(user));
-=======
-  const deleteMahasiswaAccount = async (idOrNim) => {
-    const cleanKey = String(idOrNim).trim();
->>>>>>> 5957777707fe7207d9232491ee1ec7f31ea65d85
     try {
       const users = getRegisteredUsers();
       const updated = users.filter(u => u.id !== cleanKey && u.nim !== cleanKey && u.email !== cleanKey);
@@ -4652,7 +4629,6 @@ export function AuthProvider({ children }) {
 
     if (isSupabaseConfigured && supabase) {
       try {
-<<<<<<< HEAD
         if (nimKeys.length > 0) {
           await supabase.from('student_advisors').delete().in('student_nim', nimKeys);
         }
@@ -4667,9 +4643,6 @@ export function AuthProvider({ children }) {
         if (cleanKey) {
           await supabase.from('profiles').delete().eq('id', cleanKey);
         }
-=======
-        await supabase.from('profiles').delete().or(`id.eq.${cleanKey},nim.eq.${cleanKey}`);
->>>>>>> 5957777707fe7207d9232491ee1ec7f31ea65d85
       } catch (err) {
         console.warn('Supabase delete student error:', err);
       }
