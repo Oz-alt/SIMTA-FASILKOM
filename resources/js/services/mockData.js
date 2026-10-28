@@ -14554,6 +14554,23 @@ export const MOCK_CONSULTATIONS = [
     created_at: '2026-10-04T15:30:00Z'
   },
   {
+    id: 'cons-pend-zaqilla-1',
+    mhs_nim: '09010282428029',
+    mhs_nama: 'ZAQILLA SAHIL',
+    pembimbing: 'Pembimbing 1',
+    dosen_nip: '198410012009121005',
+    dosen_nama: 'Dr. Abdiansah, S.Kom., M.Cs.',
+    metode: 'luring',
+    tanggal: '2026-10-28',
+    waktu: '11:15',
+    bab_topik: 'Bab 1 - Pendahuluan',
+    catatan_mahasiswa: 'Pengajuan draf bimbingan Bab 1 dan perumusan masalah penelitian.',
+    masukan_dosen: '',
+    status: 'menunggu_validasi',
+    jenis_revisi: 'Menunggu',
+    created_at: new Date(Date.now() - 5 * 60 * 1000).toISOString()
+  },
+  {
     id: 'cons-pend-1',
     mhs_nim: '09010182428003',
     mhs_nama: 'AKHMAD LATIEF SRI BINTANG PAMUNGKAS',

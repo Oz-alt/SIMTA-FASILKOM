@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { 
@@ -6,19 +6,64 @@ import {
   Bell, 
   User, 
   ChevronDown, 
-  CheckCircle2, 
   BookOpen, 
+  CheckCircle2,
   Building2,
   Mail,
   Sparkles,
   ExternalLink,
   ArrowRight,
-  Volume2,
-  VolumeX,
   AlertTriangle
 } from 'lucide-react';
 
 import unsriLogo from '../../assets/photo/unsri logo.png';
+
+/**
+ * Format waktu relatif yang diperbarui secara otomatis:
+ * Contoh: "5 detik yang lalu", "5 menit yang lalu", "2 jam yang lalu", 
+ * "3 hari yang lalu", "2 minggu yang lalu", "1 bulan yang lalu", "1 tahun yang lalu"
+ */
+export function formatRelativeTime(dateInput, now = new Date()) {
+  if (!dateInput) return '';
+  const date = new Date(dateInput);
+  if (isNaN(date.getTime())) return '';
+
+  const diffInMs = now.getTime() - date.getTime();
+  const diffInSeconds = Math.max(0, Math.floor(diffInMs / 1000));
+
+  if (diffInSeconds < 60) {
+    if (diffInSeconds < 10) return 'baru saja';
+    return `${diffInSeconds} detik yang lalu`;
+  }
+
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  if (diffInMinutes < 60) {
+    return `${diffInMinutes} menit yang lalu`;
+  }
+
+  const diffInHours = Math.floor(diffInSeconds / 60);
+  if (diffInHours < 24) {
+    return `${diffInHours} jam yang lalu`;
+  }
+
+  const diffInDays = Math.floor(diffInHours / 24);
+  if (diffInDays < 7) {
+    return `${diffInDays} hari yang lalu`;
+  }
+
+  const diffInWeeks = Math.floor(diffInDays / 7);
+  if (diffInWeeks < 4) {
+    return `${diffInWeeks} minggu yang lalu`;
+  }
+
+  const diffInMonths = Math.floor(diffInDays / 30);
+  if (diffInMonths < 12) {
+    return `${diffInMonths} bulan yang lalu`;
+  }
+
+  const diffInYears = Math.floor(diffInDays / 365);
+  return `${diffInYears} tahun yang lalu`;
+}
 
 export default function Navbar() {
   const { 
@@ -26,13 +71,19 @@ export default function Navbar() {
     switchRole, 
     notifications, 
     markAllNotificationsAsRead, 
-    markNotificationAsRead,
-    soundEnabled,
-    setSoundEnabled,
-    realtimeNotifEnabled
+    markNotificationAsRead 
   } = useAuth();
   const [showNotif, setShowNotif] = useState(false);
   const [showRoleMenu, setShowRoleMenu] = useState(false);
+  const [currentTime, setCurrentTime] = useState(() => new Date());
+
+  // Interval pembaruan waktu otomatis tanpa memuat ulang halaman
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 5000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Filter notifications relevant to the current active user
   const userNotifications = notifications.filter(n => {
@@ -66,15 +117,6 @@ export default function Navbar() {
       );
     }
 
-    if (currentUser.role === 'dosen') {
-      if (n.recipient_role === 'mahasiswa' || n.recipient_role === 'kaprodi') return false;
-      const cleanNip = String(currentUser.nip || currentUser.nim || '').trim();
-      if (n.recipient_nip && cleanNip) {
-        return String(n.recipient_nip).trim() === cleanNip;
-      }
-      return n.recipient_role === 'dosen' || !n.recipient_role;
-    }
-
     if (currentUser.role === 'mahasiswa') {
       if (n.recipient_role && n.recipient_role !== 'mahasiswa' && n.recipient_role !== 'all') return false;
       if (n.recipient_nim && currentUser.nim) {
@@ -89,6 +131,29 @@ export default function Navbar() {
     if (currentUser.role === 'admin') {
       if (n.recipient_role === 'mahasiswa' || n.recipient_role === 'dosen') return false;
       return true;
+    }
+
+    if (currentUser.role === 'dosen') {
+      if (n.recipient_role === 'mahasiswa' || n.recipient_role === 'kaprodi') return false;
+      const cleanNip = String(currentUser.nip || currentUser.nim || '').trim();
+      const cleanNama = (currentUser.nama || '').toLowerCase().replace(/dr\.|ir\.|prof\.|s\.kom\.|m\.cs\.|m\.t\.|m\.kom\.|ph\.d\.|st\.|s\.t\./gi, '').trim();
+
+      // 1. Cocokkan NIP jika ada
+      if (n.recipient_nip && cleanNip && String(n.recipient_nip).trim() === cleanNip) {
+        return true;
+      }
+      // 2. Cocokkan Nama Dosen jika ada
+      if (n.dosen_nama && cleanNama) {
+        const cleanNotifNama = n.dosen_nama.toLowerCase().replace(/dr\.|ir\.|prof\.|s\.kom\.|m\.cs\.|m\.t\.|m\.kom\.|ph\.d\.|st\.|s\.t\./gi, '').trim();
+        if (cleanNotifNama.includes(cleanNama) || cleanNama.includes(cleanNotifNama)) {
+          return true;
+        }
+      }
+      // 3. Notifikasi jadwal sidang atau bimbingan umum bertarget dosen
+      if (n.recipient_role === 'dosen') {
+        return !n.recipient_nip || (cleanNip && String(n.recipient_nip).trim() === cleanNip);
+      }
+      return false;
     }
 
     return false;
@@ -113,15 +178,55 @@ export default function Navbar() {
     if (n.id && markNotificationAsRead) {
       markNotificationAsRead(n.id);
     }
-    const targetUrl = n.action_url || (n.related_id && (n.related_type === 'thesis_title' || n.related_type === 'thesis_title_revised')
-      ? `/kaprodi/titles/${n.related_id}`
-      : null);
-    if (targetUrl) {
-      router.visit(targetUrl);
-    } else if (n.related_type === 'bimbingan_status' || n.related_type === 'consultation' || n.related_type === 'bimbingan_reminder') {
+
+    // Arahkan dosen langsung ke halaman detail pengajuan bimbingan mahasiswa yang bersangkutan
+    if (userRole === 'dosen') {
+      const isBimbingan = n.related_type === 'consultation' || n.related_type === 'bimbingan_status' || n.related_type === 'bimbingan_reminder' || !n.related_type;
+      if (isBimbingan) {
+        const studentNim = n.mhs_nim || n.recipient_nim || n.student_nim || '09010282428029';
+        router.visit(`/dosen/validasi?nim=${studentNim}`);
+        return;
+      }
+      if (n.related_type === 'defense_schedule' || n.related_type === 'defense') {
+        router.visit('/dosen/jadwal-sidang');
+        return;
+      }
+    }
+
+    // 1. Prioritaskan action_url langsung jika ada
+    if (n.action_url) {
+      router.visit(n.action_url);
+      return;
+    }
+
+    // 2. Notifikasi jadwal sidang
+    if (n.related_type === 'defense_schedule' || n.related_type === 'defense') {
+      if (userRole === 'dosen') {
+        router.visit('/dosen/jadwal-sidang');
+      } else if (userRole === 'kaprodi' || userRole === 'admin') {
+        router.visit('/kaprodi/defense-schedules');
+      } else {
+        router.visit('/dosen/jadwal-sidang');
+      }
+      return;
+    }
+
+    // 3. Notifikasi bimbingan / konsultasi
+    if (n.related_type === 'consultation' || n.related_type === 'bimbingan_status' || n.related_type === 'bimbingan_reminder') {
       router.visit('/thesis/consultations');
-    } else if (n.related_type === 'booking') {
+      return;
+    }
+
+    // 4. Judul TA
+    if (n.related_id && (n.related_type === 'thesis_title' || n.related_type === 'thesis_title_revised')) {
+      router.visit(`/kaprodi/titles/${n.related_id}`);
+      return;
+    }
+
+    // 5. Booking
+    if (n.related_type === 'booking') {
       router.visit('/booking/status');
+      return;
     }
   };
 
@@ -159,7 +264,7 @@ export default function Navbar() {
               >
                 <Bell className="w-5 h-5" />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 px-1.5 py-0.5 rounded-full bg-rose-600 text-white font-black text-[9px] shadow-sm leading-none">
+                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-600 text-white font-bold text-[10px] shadow-sm leading-none flex items-center justify-center pointer-events-none">
                     {unreadCount}
                   </span>
                 )}
@@ -172,7 +277,7 @@ export default function Navbar() {
                       <span className="font-bold text-sm text-slate-800">Notifikasi</span>
                       {unreadCount > 0 && (
                         <span className="ml-2 px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-600 font-bold text-[10px] border border-indigo-200">
-                          {unreadCount} baru
+                          {unreadCount} belum dibaca
                         </span>
                       )}
                     </div>
@@ -185,48 +290,6 @@ export default function Navbar() {
                       </button>
                     )}
                   </div>
-
-                  {/* Realtime Status Indicator Banner */}
-                  <div className="px-4 py-2 bg-emerald-50/90 border-b border-emerald-100 flex items-center justify-between text-[11px] text-emerald-950">
-                    <div className="flex items-center space-x-1.5 font-bold">
-                      <span className="relative flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                        <span className={`relative inline-flex rounded-full h-2 w-2 ${realtimeNotifEnabled ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
-                      </span>
-                      <span className="text-emerald-800">Real-time Notifikasi: {realtimeNotifEnabled ? 'ON' : 'OFF'}</span>
-                    </div>
-                    <button 
-                      onClick={() => setSoundEnabled && setSoundEnabled(!soundEnabled)}
-                      className="hover:underline flex items-center space-x-1 font-semibold text-emerald-700 cursor-pointer"
-                      title="Nyalakan/matikan suara chime"
-                    >
-                      {soundEnabled ? (
-                        <>
-                          <Volume2 className="w-3.5 h-3.5" />
-                          <span>Audio ON</span>
-                        </>
-                      ) : (
-                        <>
-                          <VolumeX className="w-3.5 h-3.5 text-slate-400" />
-                          <span className="text-slate-500">Mute</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-
-                  {/* Email Sync Status Banner for Mahasiswa */}
-                  {userRole === 'mahasiswa' && (
-                    <div className="px-4 py-1.5 bg-indigo-50/90 border-b border-indigo-100 flex items-center justify-between text-[11px] text-indigo-950">
-                      <div className="flex items-center space-x-1.5 font-medium truncate mr-2">
-                        <Mail className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-                        <span className="truncate">Email Terintegrasi: <strong className="font-semibold text-indigo-700">{currentUser?.email || '09010182428002@student.unsri.ac.id'}</strong></span>
-                      </div>
-                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-800 shrink-0">
-                        <CheckCircle2 className="w-3 h-3 mr-1 text-emerald-600" />
-                        Auto-Email
-                      </span>
-                    </div>
-                  )}
 
                   <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
                     {userNotifications.length === 0 ? (
@@ -395,6 +458,9 @@ export default function Navbar() {
                                 </span>
                               )}
                             </div>
+                            <p className="text-xs text-slate-400 mt-1 font-normal select-none">
+                              {formatRelativeTime(n.created_at, currentTime)}
+                            </p>
                           </div>
                         );
                       })
@@ -419,8 +485,8 @@ export default function Navbar() {
                   )}
                 </div>
                 <div className="hidden md:block text-left">
-                  <div className="text-xs font-bold text-slate-900 leading-tight">{currentUser.nama}</div>
-                  <div className="text-[10px] text-slate-500">{currentUser.nim || currentUser.email}</div>
+                  <div className="text-xs font-semibold text-slate-900 leading-tight">{currentUser.nama}</div>
+                  <div className="text-xs font-mono text-slate-400 font-medium">{currentUser.nim || currentUser.email}</div>
                 </div>
               </div>
             ) : (

@@ -250,7 +250,7 @@ Route::get('/dosen/validasi', function () {
 });
 
 Route::get('/dosen/monitoring', function () {
-    return Inertia::render('dosen/MonitoringMahasiswaPage');
+    return Inertia::render('dosen/MahasiswaBimbinganPage');
 });
 
 Route::get('/dosen/rekap', function () {
