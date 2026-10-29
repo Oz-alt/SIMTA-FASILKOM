@@ -657,27 +657,33 @@ export function AuthProvider({ children }) {
 
     if (isSupabaseConfigured && supabase) {
       try {
-        const { password, is_profile_completed, ...safeFields } = updatedFields;
-        if (currentUser.id && Object.keys(safeFields).length > 0) {
-          const { link_wa_group: _pWa, ...pCore } = safeFields;
-          if (Object.keys(pCore).length > 0) {
-            const { error } = await supabase
-              .from('profiles')
-              .update(pCore)
-              .or(`id.eq.${currentUser.id},nip.eq.${userNip || currentUser.id},nim.eq.${userNip || currentUser.id}`);
-            if (error) {
-              console.warn('Supabase profile update warning:', error.message);
-            }
-          }
-          if (_pWa) {
-            try {
-              await supabase
-                .from('profiles')
-                .update({ link_wa_group: _pWa })
-                .or(`id.eq.${currentUser.id},nip.eq.${userNip || currentUser.id},nim.eq.${userNip || currentUser.id}`);
-            } catch {}
+        const { password, is_profile_completed, keilmuan, jabatan_fungsional, ...safeFields } = updatedFields;
+
+        // Build profiles payload: jabatan_fungsional maps to kelas column
+        const profilePayload = { ...safeFields };
+        if (jabatan_fungsional !== undefined) profilePayload.kelas = jabatan_fungsional;
+        // Remove fields not in profiles table
+        delete profilePayload.keilmuan;
+        const { link_wa_group: _pWa, ...pCore } = profilePayload;
+
+        if (currentUser.id && Object.keys(pCore).length > 0) {
+          const { error } = await supabase
+            .from('profiles')
+            .update(pCore)
+            .or(`id.eq.${currentUser.id},nip.eq.${userNip || currentUser.id},nim.eq.${userNip || currentUser.id}`);
+          if (error) {
+            console.warn('Supabase profile update warning:', error.message);
           }
         }
+        if (_pWa && currentUser.id) {
+          try {
+            await supabase
+              .from('profiles')
+              .update({ link_wa_group: _pWa })
+              .or(`id.eq.${currentUser.id},nip.eq.${userNip || currentUser.id},nim.eq.${userNip || currentUser.id}`);
+          } catch {}
+        }
+
         if (password) {
           try {
             await supabase.auth.updateUser({ password });
@@ -685,8 +691,18 @@ export function AuthProvider({ children }) {
             console.warn('Supabase auth password update warning:', passErr);
           }
         }
+
         if (userNip && merged.role === 'dosen') {
-          const { link_wa_group: advWa, ...advCore } = safeFields;
+          // Build advisors payload — keilmuan maps to keahlian (array), jabatan_fungsional not stored here
+          const { link_wa_group: advWa, jabatan_fungsional: _jf, keilmuan: _k, ...advBase } = updatedFields;
+          const advCore = { ...advBase };
+          // Remove profile-only fields
+          delete advCore.password; delete advCore.is_profile_completed;
+          // Map keilmuan to keahlian array
+          if (_k !== undefined) {
+            advCore.keahlian = _k ? _k.split(',').map(s => s.trim()).filter(Boolean) : [];
+          }
+
           if (Object.keys(advCore).length > 0) {
             const { error: advError } = await supabase
               .from('advisors')
@@ -713,6 +729,7 @@ export function AuthProvider({ children }) {
       }
     }
   };
+
 
   // Reactive state databases
   // Data judul TA: sumber utama adalah tabel Supabase `thesis_titles`.
@@ -2566,12 +2583,18 @@ export function AuthProvider({ children }) {
           if (resolvedLocal.role === 'dosen' && userNip) {
             const { data: advData } = await supabase
               .from('advisors')
-              .select('no_hp, link_wa_group, nama, email')
+              .select('no_hp, link_wa_group, nama, email, keahlian, jabatan_fungsional')
               .eq('nip', userNip)
               .maybeSingle();
             if (advData) {
               if (advData.no_hp) resolvedLocal.no_hp = advData.no_hp;
               if (advData.link_wa_group) resolvedLocal.link_wa_group = advData.link_wa_group;
+              if (advData.keahlian) {
+                resolvedLocal.keahlian = advData.keahlian;
+                resolvedLocal.keilmuan = Array.isArray(advData.keahlian)
+                  ? advData.keahlian.join(', ')
+                  : advData.keahlian;
+              }
             }
           }
           // Cek di tabel profiles untuk semua role
@@ -2585,6 +2608,10 @@ export function AuthProvider({ children }) {
             if (profData) {
               if (profData.no_hp) resolvedLocal.no_hp = profData.no_hp;
               if (profData.link_wa_group) resolvedLocal.link_wa_group = profData.link_wa_group;
+              if (profData.kelas && resolvedLocal.role !== 'mahasiswa') {
+                resolvedLocal.jabatan_fungsional = profData.kelas;
+                resolvedLocal.kelas = profData.kelas;
+              }
               if (profData.is_profile_completed !== undefined) resolvedLocal.is_profile_completed = profData.is_profile_completed;
             }
           }

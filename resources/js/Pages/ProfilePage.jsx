@@ -51,11 +51,25 @@ export default function ProfilePage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isCompletedSuccess, setIsCompletedSuccess] = useState(false);
 
+  const JABATAN_FUNGSIONAL_OPTIONS = [
+    'Asisten Ahli',
+    'Lektor',
+    'Lektor Kepala',
+    'Profesor',
+    'Dosen Pembimbing',
+    'Dosen / Kaprodi',
+    'Admin SIMTA',
+    'Admin Sarana',
+    'Tenaga Pengajar'
+  ];
+
   const [formData, setFormData] = useState({
     nama: currentUser?.nama || '',
     no_hp: currentUser?.no_hp && currentUser?.no_hp !== '-' ? currentUser.no_hp : '',
     prodi: currentUser?.prodi || 'D3 Manajemen Informatika',
-    kelas: currentUser?.kelas || 'MI 5A'
+    kelas: currentUser?.kelas || (currentUser?.role === 'mahasiswa' ? 'MI 5A' : 'Dosen Pembimbing'),
+    jabatan_fungsional: currentUser?.jabatan_fungsional || currentUser?.kelas || '',
+    keilmuan: currentUser?.keilmuan || (currentUser?.keahlian ? (Array.isArray(currentUser.keahlian) ? currentUser.keahlian.join(', ') : currentUser.keahlian) : '')
   });
 
   useEffect(() => {
@@ -88,7 +102,9 @@ export default function ProfilePage() {
         nama: currentUser.nama || '',
         no_hp: currentUser.no_hp && currentUser.no_hp !== '-' ? currentUser.no_hp : '',
         prodi: currentUser.prodi || 'D3 Manajemen Informatika',
-        kelas: currentUser.kelas || 'MI 5A'
+        kelas: currentUser.kelas || (currentUser.role === 'mahasiswa' ? 'MI 5A' : 'Dosen Pembimbing'),
+        jabatan_fungsional: currentUser.jabatan_fungsional || currentUser.kelas || '',
+        keilmuan: currentUser.keilmuan || (currentUser.keahlian ? (Array.isArray(currentUser.keahlian) ? currentUser.keahlian.join(', ') : currentUser.keahlian) : '')
       });
     }
   }, [currentUser?.id, currentUser?.link_wa_group, currentUser?.nip, currentUser?.nim, currentUser?.role, currentUser?.no_hp]);
@@ -112,7 +128,9 @@ export default function ProfilePage() {
       nama: currentUser?.nama || '',
       no_hp: currentUser?.no_hp && currentUser?.no_hp !== '-' ? currentUser.no_hp : '',
       prodi: currentUser?.prodi || 'D3 Manajemen Informatika',
-      kelas: currentUser?.kelas || 'MI 5A'
+      kelas: currentUser?.kelas || (currentUser?.role === 'mahasiswa' ? 'MI 5A' : 'Dosen Pembimbing'),
+      jabatan_fungsional: currentUser?.jabatan_fungsional || currentUser?.kelas || '',
+      keilmuan: currentUser?.keilmuan || (currentUser?.keahlian ? (Array.isArray(currentUser.keahlian) ? currentUser.keahlian.join(', ') : currentUser.keahlian) : '')
     });
     setIsEditing(true);
     setSuccessMsg('');
@@ -180,7 +198,9 @@ export default function ProfilePage() {
         nama: formData.nama.trim(),
         no_hp: formData.no_hp.trim(),
         prodi: formData.prodi,
-        kelas: formData.kelas.trim()
+        kelas: isMahasiswa ? formData.kelas.trim() : (formData.jabatan_fungsional || formData.kelas || '').trim(),
+        jabatan_fungsional: isMahasiswa ? '' : (formData.jabatan_fungsional || '').trim(),
+        keilmuan: isDosen ? (formData.keilmuan || '').trim() : undefined
       };
 
       if (isMahasiswa) {
@@ -648,30 +668,76 @@ export default function ProfilePage() {
               )}
             </div>
 
-            {/* 6. Kelas / Jabatan Akademik */}
+            {/* 6. Kelas Mahasiswa / Jabatan Fungsional */}
             <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 space-y-1.5">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                {currentUser?.role === 'mahasiswa' ? 'Kelas Mahasiswa' : 'Jabatan / Peran Akademik'}
+                {isMahasiswa ? 'Kelas Mahasiswa' : 'Jabatan Fungsional'}
               </span>
               {isEditing ? (
-                <div className="relative">
-                  <input
-                    type="text"
-                    name="kelas"
-                    value={formData.kelas}
-                    onChange={handleChange}
-                    className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 text-xs font-semibold text-slate-900 bg-white transition-all outline-none"
-                    placeholder={currentUser?.role === 'mahasiswa' ? 'Contoh: MI 5A, TI 3B' : 'Contoh: Dosen Pembimbing'}
-                  />
-                  <GraduationCap className="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                </div>
+                isMahasiswa ? (
+                  <div className="relative">
+                    <input
+                      type="text"
+                      name="kelas"
+                      value={formData.kelas}
+                      onChange={handleChange}
+                      className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 text-xs font-semibold text-slate-900 bg-white transition-all outline-none"
+                      placeholder="Contoh: MI 5A, TI 3B"
+                    />
+                    <GraduationCap className="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <select
+                      name="jabatan_fungsional"
+                      value={formData.jabatan_fungsional}
+                      onChange={handleChange}
+                      className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 text-xs font-semibold text-slate-900 bg-white transition-all outline-none appearance-none"
+                    >
+                      <option value="">-- Pilih Jabatan Fungsional --</option>
+                      {JABATAN_FUNGSIONAL_OPTIONS.map(opt => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                    <GraduationCap className="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                  </div>
+                )
               ) : (
                 <div className="flex items-center space-x-2 text-slate-900 font-semibold pt-0.5">
                   <GraduationCap className="w-4 h-4 text-slate-400" />
-                  <span>{currentUser?.kelas || (currentUser?.role === 'mahasiswa' ? 'MI 5A' : 'Dosen Pembimbing')}</span>
+                  <span>
+                    {isMahasiswa
+                      ? (currentUser?.kelas || 'MI 5A')
+                      : (currentUser?.jabatan_fungsional || currentUser?.kelas || 'Dosen Pembimbing')}
+                  </span>
                 </div>
               )}
             </div>
+
+            {/* 6b. Keilmuan — khusus Dosen */}
+            {isDosen && (
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 space-y-1.5">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Bidang Keilmuan</span>
+                {isEditing ? (
+                  <div className="relative">
+                    <input
+                      type="text"
+                      name="keilmuan"
+                      value={formData.keilmuan}
+                      onChange={handleChange}
+                      className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 text-xs font-semibold text-slate-900 bg-white transition-all outline-none"
+                      placeholder="Contoh: Rekayasa Perangkat Lunak, Sistem Informasi"
+                    />
+                    <GraduationCap className="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-2 text-slate-900 font-semibold pt-0.5">
+                    <GraduationCap className="w-4 h-4 text-slate-400" />
+                    <span>{currentUser?.keilmuan || (currentUser?.keahlian ? (Array.isArray(currentUser.keahlian) ? currentUser.keahlian.join(', ') : currentUser.keahlian) : '—')}</span>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* 7. Pengaturan Keamanan Kata Sandi Baru (Mahasiswa) */}
             {isMahasiswa && (
