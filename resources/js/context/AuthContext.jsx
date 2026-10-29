@@ -2502,20 +2502,54 @@ export function AuthProvider({ children }) {
       const localCredential = localFound.role === 'mahasiswa'
         ? await getStudentCredential(normalizeNim(localFound.nim || localFound.nip))
         : null;
-      const resolvedLocal = localCredential
+      let resolvedLocal = localCredential
         ? { ...localFound, is_profile_completed: localCredential.isProfileCompleted }
-        : localFound;
+        : { ...localFound };
+
+      // Ambil data terbaru dari Supabase (no_hp, link_wa_group, dll) agar tidak reset saat login ulang
+      if (isSupabaseConfigured && supabase) {
+        try {
+          const userNip = resolvedLocal.nip || resolvedLocal.nim;
+          // Cek di tabel advisors untuk dosen
+          if (resolvedLocal.role === 'dosen' && userNip) {
+            const { data: advData } = await supabase
+              .from('advisors')
+              .select('no_hp, link_wa_group, nama, email')
+              .eq('nip', userNip)
+              .maybeSingle();
+            if (advData) {
+              if (advData.no_hp) resolvedLocal.no_hp = advData.no_hp;
+              if (advData.link_wa_group) resolvedLocal.link_wa_group = advData.link_wa_group;
+            }
+          }
+          // Cek di tabel profiles untuk semua role
+          const profileQuery = userNip
+            ? supabase.from('profiles').select('no_hp, link_wa_group, nama, email, is_profile_completed').or(`nip.eq.${userNip},nim.eq.${userNip}`)
+            : resolvedLocal.id
+              ? supabase.from('profiles').select('no_hp, link_wa_group, nama, email, is_profile_completed').eq('id', resolvedLocal.id)
+              : null;
+          if (profileQuery) {
+            const { data: profData } = await profileQuery.maybeSingle();
+            if (profData) {
+              if (profData.no_hp) resolvedLocal.no_hp = profData.no_hp;
+              if (profData.link_wa_group) resolvedLocal.link_wa_group = profData.link_wa_group;
+              if (profData.is_profile_completed !== undefined) resolvedLocal.is_profile_completed = profData.is_profile_completed;
+            }
+          }
+        } catch { /* Supabase tidak tersedia, lanjut dengan data lokal */ }
+      }
 
       setCurrentUser(resolvedLocal);
       if (resolvedLocal.role === 'kaprodi') return '/kaprodi/dashboard';
       if (resolvedLocal.role === 'admin' || resolvedLocal.role === 'admin_sarana') return '/admin-simta/dashboard';
       if (resolvedLocal.role === 'dosen') return '/dosen/dashboard';
       if (resolvedLocal.role === 'mahasiswa') {
-        const profileDone = localCredential?.isProfileCompleted || localFound.is_profile_completed;
+        const profileDone = localCredential?.isProfileCompleted || resolvedLocal.is_profile_completed;
         return !profileDone ? '/profile?first_login=true' : '/dashboard';
       }
       return '/dashboard';
     }
+
 
     // 7. Try Real Supabase Auth if configured & password provided
     if (isSupabaseConfigured && supabase && password) {
