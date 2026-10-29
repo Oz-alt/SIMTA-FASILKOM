@@ -420,11 +420,21 @@ export function AuthProvider({ children }) {
           // Ensure Admin accounts have their usernames and updated password set
           const adminSimtaIdx = cleaned.findIndex(u => u.role === 'admin' || u.id === 'user-admin-simta');
           if (adminSimtaIdx >= 0) {
+            const currentAdmin = cleaned[adminSimtaIdx];
+            const isLegacy = !currentAdmin.password ||
+                             currentAdmin.password === 'admin123' ||
+                             currentAdmin.password === 'admin' ||
+                             currentAdmin.password === '198503152010122001' ||
+                             currentAdmin.password_hash === '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9';
+
             cleaned[adminSimtaIdx] = {
-              ...cleaned[adminSimtaIdx],
+              ...currentAdmin,
               username: 'admin',
-              password: 'SIMN!Manage_2026#',
-              password_hash: '1db6767d23d6b98f776a481ae61eb37947016a72bb258c9d779ddd1bc3001973'
+              // If user set a new custom password, keep it; otherwise set default SIMN!Manage_2026#
+              password: isLegacy ? 'SIMN!Manage_2026#' : currentAdmin.password,
+              password_hash: isLegacy
+                ? '1db6767d23d6b98f776a481ae61eb37947016a72bb258c9d779ddd1bc3001973'
+                : (currentAdmin.password_hash || currentAdmin.password)
             };
           }
 
@@ -590,8 +600,34 @@ export function AuthProvider({ children }) {
   // Update active user profile fields and sync locally & with Supabase
   const updateUserProfile = async (updatedFields) => {
     if (!currentUser) return;
-    const merged = { ...currentUser, ...updatedFields };
+    const toUpdate = { ...updatedFields };
+    if (toUpdate.password) {
+      try {
+        toUpdate.password_hash = await sha256(toUpdate.password);
+      } catch (err) {
+        console.warn('Failed to compute sha256 for password update:', err);
+      }
+    }
+    const merged = { ...currentUser, ...toUpdate };
     setCurrentUser(merged);
+
+    // Sync admin password directly in registered users list if updating admin profile
+    if (merged.role === 'admin' && toUpdate.password) {
+      try {
+        const users = getRegisteredUsers();
+        const aIdx = users.findIndex(u => u.role === 'admin' || u.id === 'user-admin-simta');
+        if (aIdx >= 0) {
+          users[aIdx] = {
+            ...users[aIdx],
+            password: toUpdate.password,
+            password_hash: toUpdate.password_hash || await sha256(toUpdate.password)
+          };
+          localStorage.setItem('simta_registered_users', JSON.stringify(users));
+        }
+      } catch (e) {
+        console.warn('Failed to update admin registered user password:', e);
+      }
+    }
 
     // Sync advisor list if updating lecturer profile (hanya untuk akun Dosen Pembimbing)
     const userNip = merged.nip || merged.nim;
@@ -2394,12 +2430,24 @@ export function AuthProvider({ children }) {
         kelas: 'Admin SIMTA'
       };
 
-      const isPasswordValid = (
-        inputPass === 'SIMN!Manage_2026#' ||
-        inputPass === 'admin123' ||
-        passHash === expectedAdminHash ||
-        (adminAcc.password_hash && passHash === adminAcc.password_hash)
+      // Check if admin has customized their password via the web profile
+      const hasCustomPassword = Boolean(
+        adminAcc.password &&
+        adminAcc.password !== 'SIMN!Manage_2026#' &&
+        adminAcc.password !== 'admin123' &&
+        adminAcc.password !== 'admin' &&
+        adminAcc.password !== '198503152010122001'
       );
+
+      let isPasswordValid = false;
+      if (hasCustomPassword) {
+        // If changed manually via web, only accept the new custom password or its hash
+        isPasswordValid = (inputPass === adminAcc.password) ||
+                          (Boolean(adminAcc.password_hash) && passHash === adminAcc.password_hash);
+      } else {
+        // Default strictly SIMN!Manage_2026# (or its exact hash) - NO admin123 or other fallback
+        isPasswordValid = (inputPass === 'SIMN!Manage_2026#' || passHash === expectedAdminHash);
+      }
 
       if (!isPasswordValid) {
         throw new Error('Kata sandi yang Anda masukkan salah. Silakan periksa kembali kata sandi Anda.');
@@ -2408,9 +2456,13 @@ export function AuthProvider({ children }) {
       const activeAdminUser = {
         ...adminAcc,
         username: 'admin',
-        password_hash: expectedAdminHash
+        password_hash: hasCustomPassword ? (adminAcc.password_hash || passHash) : expectedAdminHash
       };
-      delete activeAdminUser.password;
+      if (hasCustomPassword) {
+        activeAdminUser.password = adminAcc.password;
+      } else {
+        activeAdminUser.password = 'SIMN!Manage_2026#';
+      }
       setCurrentUser(activeAdminUser);
       return '/admin-simta/dashboard';
     }
@@ -4188,99 +4240,110 @@ export function AuthProvider({ children }) {
     if (mhsAccountsCacheRef.current) {
       return mhsAccountsCacheRef.current;
     }
-    const localReg = getRegisteredUsers().filter(u => u.role === 'mahasiswa');
-    const mockMhs = MOCK_USERS.filter(u => u.role === 'mahasiswa');
-    const remoteProfiles = dbProfiles.filter(p => p.role === 'mahasiswa');
+    try {
+      const localReg = getRegisteredUsers().filter(u => u && u.role === 'mahasiswa');
+      const mockMhs = MOCK_USERS.filter(u => u && u.role === 'mahasiswa');
+      const remoteProfiles = Array.isArray(dbProfiles) ? dbProfiles.filter(p => p && p.role === 'mahasiswa') : [];
 
-    const accountMap = new Map();
+      const accountMap = new Map();
 
-    // 1. Seed from Supabase student_advisors (223 official student records)
-    studentAdvisors.forEach(sa => {
-      const nim = String(sa.student_nim || '').trim();
-      if (nim) {
-        accountMap.set(nim, {
-          id: `mhs-${nim}`,
-          nim: nim,
-          nip: nim,
-          nama: sa.student_nama || 'Mahasiswa SIMTA',
-          email: `${nim}@student.unsri.ac.id`,
-          no_hp: sa.no_hp || '-',
-          prodi: sa.prodi || 'D3 Manajemen Informatika',
-          kelas: sa.kelas || 'MI 5A',
-          role: 'mahasiswa',
-          status: sa.status || 'aktif',
-          judul_ta: sa.judul_ta || '',
-          created_at: sa.created_at || '2026-09-01T08:00:00.000Z'
+      // 1. Seed from Supabase student_advisors (223 official student records)
+      if (Array.isArray(studentAdvisors)) {
+        studentAdvisors.forEach(sa => {
+          if (!sa) return;
+          const nim = String(sa.student_nim || '').trim();
+          if (nim) {
+            accountMap.set(nim, {
+              id: `mhs-${nim}`,
+              nim: nim,
+              nip: nim,
+              nama: sa.student_nama || 'Mahasiswa SIMTA',
+              email: `${nim}@student.unsri.ac.id`,
+              no_hp: sa.no_hp || '-',
+              prodi: sa.prodi || 'D3 Manajemen Informatika',
+              kelas: sa.kelas || 'MI 5A',
+              role: 'mahasiswa',
+              status: sa.status || 'aktif',
+              judul_ta: sa.judul_ta || '',
+              created_at: sa.created_at || '2026-09-01T08:00:00.000Z'
+            });
+          }
         });
       }
-    });
 
-    // 2. Merge mock mahasiswa
-    mockMhs.forEach(u => {
-      const nim = String(u.nim || '').trim();
-      if (nim) {
-        const existing = accountMap.get(nim);
-        accountMap.set(nim, {
-          id: u.id || existing?.id || `mhs-${nim}`,
-          nim: nim,
-          nip: nim,
-          nama: u.nama || existing?.nama || 'Mahasiswa',
-          email: u.email || existing?.email || `${nim}@student.unsri.ac.id`,
-          no_hp: u.no_hp || existing?.no_hp || '-',
-          prodi: u.prodi || existing?.prodi || 'D3 Manajemen Informatika',
-          kelas: u.kelas || existing?.kelas || 'MI 5A',
-          role: 'mahasiswa',
-          status: u.status || existing?.status || 'aktif',
-          created_at: u.created_at || existing?.created_at || '2026-09-01T08:00:00.000Z'
-        });
-      }
-    });
+      // 2. Merge mock mahasiswa
+      mockMhs.forEach(u => {
+        if (!u) return;
+        const nim = String(u.nim || '').trim();
+        if (nim) {
+          const existing = accountMap.get(nim);
+          accountMap.set(nim, {
+            id: u.id || existing?.id || `mhs-${nim}`,
+            nim: nim,
+            nip: nim,
+            nama: u.nama || existing?.nama || 'Mahasiswa',
+            email: u.email || existing?.email || `${nim}@student.unsri.ac.id`,
+            no_hp: u.no_hp || existing?.no_hp || '-',
+            prodi: u.prodi || existing?.prodi || 'D3 Manajemen Informatika',
+            kelas: u.kelas || existing?.kelas || 'MI 5A',
+            role: 'mahasiswa',
+            status: u.status || existing?.status || 'aktif',
+            created_at: u.created_at || existing?.created_at || '2026-09-01T08:00:00.000Z'
+          });
+        }
+      });
 
-    // 3. Merge Supabase profiles
-    remoteProfiles.forEach(p => {
-      const nim = String(p.nim || p.nip || '').trim();
-      if (nim) {
-        const existing = accountMap.get(nim);
-        accountMap.set(nim, {
-          id: p.id || existing?.id || `mhs-${nim}`,
-          nim: nim,
-          nip: nim,
-          nama: p.nama || existing?.nama || 'Mahasiswa',
-          email: p.email || existing?.email || `${nim}@student.unsri.ac.id`,
-          no_hp: p.no_hp || existing?.no_hp || '-',
-          prodi: p.prodi || existing?.prodi || 'D3 Manajemen Informatika',
-          kelas: p.kelas || existing?.kelas || 'MI 5A',
-          role: 'mahasiswa',
-          status: p.status || existing?.status || 'aktif',
-          created_at: p.created_at || existing?.created_at || new Date().toISOString()
-        });
-      }
-    });
+      // 3. Merge Supabase profiles
+      remoteProfiles.forEach(p => {
+        if (!p) return;
+        const nim = String(p.nim || p.nip || '').trim();
+        if (nim) {
+          const existing = accountMap.get(nim);
+          accountMap.set(nim, {
+            id: p.id || existing?.id || `mhs-${nim}`,
+            nim: nim,
+            nip: nim,
+            nama: p.nama || existing?.nama || 'Mahasiswa',
+            email: p.email || existing?.email || `${nim}@student.unsri.ac.id`,
+            no_hp: p.no_hp || existing?.no_hp || '-',
+            prodi: p.prodi || existing?.prodi || 'D3 Manajemen Informatika',
+            kelas: p.kelas || existing?.kelas || 'MI 5A',
+            role: 'mahasiswa',
+            status: p.status || existing?.status || 'aktif',
+            created_at: p.created_at || existing?.created_at || new Date().toISOString()
+          });
+        }
+      });
 
-    // 4. Merge local storage registered users
-    localReg.forEach(u => {
-      const nim = String(u.nim || u.nip || '').trim();
-      if (nim) {
-        const existing = accountMap.get(nim);
-        accountMap.set(nim, {
-          id: u.id || existing?.id || `mhs-${nim}`,
-          nim: nim,
-          nip: nim,
-          nama: u.nama || existing?.nama || 'Mahasiswa',
-          email: u.email || existing?.email || `${nim}@student.unsri.ac.id`,
-          no_hp: u.no_hp || existing?.no_hp || '-',
-          prodi: u.prodi || existing?.prodi || 'D3 Manajemen Informatika',
-          kelas: u.kelas || existing?.kelas || 'MI 5A',
-          role: 'mahasiswa',
-          status: u.status || existing?.status || 'aktif',
-          created_at: u.created_at || existing?.created_at || new Date().toISOString()
-        });
-      }
-    });
+      // 4. Merge local storage registered users
+      localReg.forEach(u => {
+        if (!u) return;
+        const nim = String(u.nim || u.nip || '').trim();
+        if (nim) {
+          const existing = accountMap.get(nim);
+          accountMap.set(nim, {
+            id: u.id || existing?.id || `mhs-${nim}`,
+            nim: nim,
+            nip: nim,
+            nama: u.nama || existing?.nama || 'Mahasiswa',
+            email: u.email || existing?.email || `${nim}@student.unsri.ac.id`,
+            no_hp: u.no_hp || existing?.no_hp || '-',
+            prodi: u.prodi || existing?.prodi || 'D3 Manajemen Informatika',
+            kelas: u.kelas || existing?.kelas || 'MI 5A',
+            role: 'mahasiswa',
+            status: u.status || existing?.status || 'aktif',
+            created_at: u.created_at || existing?.created_at || new Date().toISOString()
+          });
+        }
+      });
 
-    const result = Array.from(accountMap.values()).filter(account => !isStudentDeleted(account));
-    mhsAccountsCacheRef.current = result;
-    return result;
+      const result = Array.from(accountMap.values()).filter(account => !isStudentDeleted(account));
+      mhsAccountsCacheRef.current = result;
+      return result;
+    } catch (err) {
+      console.warn('getAllMahasiswaAccounts fallback:', err);
+      return [];
+    }
   };
 
   // Get all Dosen accounts combining Supabase advisors, profiles, and mock dataset
@@ -4288,98 +4351,109 @@ export function AuthProvider({ children }) {
     if (dosenAccountsCacheRef.current) {
       return dosenAccountsCacheRef.current;
     }
-    const mockDosen = MOCK_USERS.filter(u => u.role === 'dosen' || u.role === 'kaprodi');
-    const remoteDosenProfiles = dbProfiles.filter(p => p.role === 'dosen' || p.role === 'kaprodi');
-    const accountMap = new Map();
+    try {
+      const mockDosen = MOCK_USERS.filter(u => u && (u.role === 'dosen' || u.role === 'kaprodi'));
+      const remoteDosenProfiles = Array.isArray(dbProfiles) ? dbProfiles.filter(p => p && (p.role === 'dosen' || p.role === 'kaprodi')) : [];
+      const accountMap = new Map();
 
-    // 1. Seed from Supabase advisors (12 active lecturers in DB)
-    advisors.forEach(adv => {
-      const nip = String(adv.nip || '').trim();
-      if (nip) {
-        accountMap.set(nip, {
-          id: adv.id || `adv-${nip}`,
-          nip: nip,
-          nim: nip,
-          nama: adv.nama || 'Dosen Pembimbing',
-          email: adv.email || `${nip}@unsri.ac.id`,
-          no_hp: adv.no_hp || '-',
-          prodi: adv.prodi || 'D3 Manajemen Informatika',
-          jabatan_fungsional: adv.jabatan_fungsional || 'Asisten Ahli',
-          keahlian: Array.isArray(adv.keahlian) ? adv.keahlian : (adv.keahlian || '').split(',').map(s => s.trim()).filter(Boolean),
-          kuota_dospem1: Number(adv.kuota_dospem1) || 8,
-          kuota_dospem2: Number(adv.kuota_dospem2) || 8,
-          role: nip === '198410012009121005' ? 'kaprodi' : 'dosen',
-          status: adv.status || 'aktif',
-          created_at: adv.created_at || '2026-09-01T08:00:00.000Z'
+      // 1. Seed from Supabase advisors (12 active lecturers in DB)
+      if (Array.isArray(advisors)) {
+        advisors.forEach(adv => {
+          if (!adv) return;
+          const nip = String(adv.nip || '').trim();
+          if (nip) {
+            accountMap.set(nip, {
+              id: adv.id || `adv-${nip}`,
+              nip: nip,
+              nim: nip,
+              nama: adv.nama || 'Dosen Pembimbing',
+              email: adv.email || `${nip}@unsri.ac.id`,
+              no_hp: adv.no_hp || '-',
+              prodi: adv.prodi || 'D3 Manajemen Informatika',
+              jabatan_fungsional: adv.jabatan_fungsional || 'Asisten Ahli',
+              keahlian: Array.isArray(adv.keahlian) ? adv.keahlian : (adv.keahlian || '').split(',').map(s => s.trim()).filter(Boolean),
+              kuota_dospem1: Number(adv.kuota_dospem1) || 8,
+              kuota_dospem2: Number(adv.kuota_dospem2) || 8,
+              role: nip === '198410012009121005' ? 'kaprodi' : 'dosen',
+              status: adv.status || 'aktif',
+              created_at: adv.created_at || '2026-09-01T08:00:00.000Z'
+            });
+          }
         });
       }
-    });
 
-    // 2. Merge mock lecturers
-    mockDosen.forEach(u => {
-      const nip = String(u.nip || u.nim || '').trim();
-      if (nip) {
-        const existing = accountMap.get(nip);
-        accountMap.set(nip, {
-          id: u.id || existing?.id || `adv-${nip}`,
-          nip: nip,
-          nim: nip,
-          nama: u.nama || existing?.nama || 'Dosen',
-          email: u.email || existing?.email || `${nip}@unsri.ac.id`,
-          no_hp: u.no_hp || existing?.no_hp || '-',
-          prodi: u.prodi || existing?.prodi || 'D3 Manajemen Informatika',
-          jabatan_fungsional: u.jabatan_fungsional || existing?.jabatan_fungsional || 'Asisten Ahli',
-          keahlian: existing?.keahlian || ['Sistem Informasi', 'Rekayasa Perangkat Lunak'],
-          kuota_dospem1: existing?.kuota_dospem1 || 8,
-          kuota_dospem2: existing?.kuota_dospem2 || 8,
-          role: u.role || existing?.role || 'dosen',
-          status: u.status || existing?.status || 'aktif',
-          created_at: u.created_at || existing?.created_at || '2026-09-01T08:00:00.000Z'
-        });
-      }
-    });
+      // 2. Merge mock lecturers
+      mockDosen.forEach(u => {
+        if (!u) return;
+        const nip = String(u.nip || u.nim || '').trim();
+        if (nip) {
+          const existing = accountMap.get(nip);
+          accountMap.set(nip, {
+            id: u.id || existing?.id || `adv-${nip}`,
+            nip: nip,
+            nim: nip,
+            nama: u.nama || existing?.nama || 'Dosen',
+            email: u.email || existing?.email || `${nip}@unsri.ac.id`,
+            no_hp: u.no_hp || existing?.no_hp || '-',
+            prodi: u.prodi || existing?.prodi || 'D3 Manajemen Informatika',
+            jabatan_fungsional: u.jabatan_fungsional || existing?.jabatan_fungsional || 'Asisten Ahli',
+            keahlian: existing?.keahlian || ['Sistem Informasi', 'Rekayasa Perangkat Lunak'],
+            kuota_dospem1: existing?.kuota_dospem1 || 8,
+            kuota_dospem2: existing?.kuota_dospem2 || 8,
+            role: u.role || existing?.role || 'dosen',
+            status: u.status || existing?.status || 'aktif',
+            created_at: u.created_at || existing?.created_at || '2026-09-01T08:00:00.000Z'
+          });
+        }
+      });
 
-    // 3. Merge Supabase profiles with role dosen / kaprodi
-    remoteDosenProfiles.forEach(p => {
-      const nip = String(p.nip || p.nim || '').trim();
-      if (nip) {
-        const existing = accountMap.get(nip);
-        accountMap.set(nip, {
-          id: p.id || existing?.id || `adv-${nip}`,
-          nip: nip,
-          nim: nip,
-          nama: p.nama || existing?.nama || 'Dosen',
-          email: p.email || existing?.email || `${nip}@unsri.ac.id`,
-          no_hp: p.no_hp || existing?.no_hp || '-',
-          prodi: p.prodi || existing?.prodi || 'D3 Manajemen Informatika',
-          jabatan_fungsional: p.jabatan_fungsional || existing?.jabatan_fungsional || 'Asisten Ahli',
-          keahlian: existing?.keahlian || ['Sistem Informasi'],
-          kuota_dospem1: existing?.kuota_dospem1 || 8,
-          kuota_dospem2: existing?.kuota_dospem2 || 8,
-          role: p.role || existing?.role || 'dosen',
-          status: p.status || existing?.status || 'aktif',
-          created_at: p.created_at || existing?.created_at || new Date().toISOString()
-        });
-      }
-    });
+      // 3. Merge Supabase profiles with role dosen / kaprodi
+      remoteDosenProfiles.forEach(p => {
+        if (!p) return;
+        const nip = String(p.nip || p.nim || '').trim();
+        if (nip) {
+          const existing = accountMap.get(nip);
+          accountMap.set(nip, {
+            id: p.id || existing?.id || `adv-${nip}`,
+            nip: nip,
+            nim: nip,
+            nama: p.nama || existing?.nama || 'Dosen',
+            email: p.email || existing?.email || `${nip}@unsri.ac.id`,
+            no_hp: p.no_hp || existing?.no_hp || '-',
+            prodi: p.prodi || existing?.prodi || 'D3 Manajemen Informatika',
+            jabatan_fungsional: p.jabatan_fungsional || existing?.jabatan_fungsional || 'Asisten Ahli',
+            keahlian: existing?.keahlian || ['Sistem Informasi'],
+            kuota_dospem1: existing?.kuota_dospem1 || 8,
+            kuota_dospem2: existing?.kuota_dospem2 || 8,
+            role: p.role || existing?.role || 'dosen',
+            status: p.status || existing?.status || 'aktif',
+            created_at: p.created_at || existing?.created_at || new Date().toISOString()
+          });
+        }
+      });
 
-    const result = Array.from(accountMap.values()).filter(d => {
-      const nip = String(d.nip || d.nim || '');
-      const nama = String(d.nama || '').toLowerCase();
-      const id = String(d.id || '');
-      return (
-        id !== 'user-kaprodi-hendra' &&
-        id !== '5ccb09e6-7a1e-4ada-8b08-5df0d406bd40' &&
-        nip !== '197805122005011002' &&
-        !nama.includes('hendra kusuma') &&
-        !nama.includes('indra') &&
-        !nama.includes('budi dosen') &&
-        !nama.includes('ahmad zaki') &&
-        !nama.includes('ahmad dahlan')
-      );
-    });
-    dosenAccountsCacheRef.current = result;
-    return result;
+      const result = Array.from(accountMap.values()).filter(d => {
+        if (!d) return false;
+        const nip = String(d.nip || d.nim || '');
+        const nama = String(d.nama || '').toLowerCase();
+        const id = String(d.id || '');
+        return (
+          id !== 'user-kaprodi-hendra' &&
+          id !== '5ccb09e6-7a1e-4ada-8b08-5df0d406bd40' &&
+          nip !== '197805122005011002' &&
+          !nama.includes('hendra kusuma') &&
+          !nama.includes('indra') &&
+          !nama.includes('budi dosen') &&
+          !nama.includes('ahmad zaki') &&
+          !nama.includes('ahmad dahlan')
+        );
+      });
+      dosenAccountsCacheRef.current = result;
+      return result;
+    } catch (err) {
+      console.warn('getAllDosenAccounts fallback:', err);
+      return [];
+    }
   };
 
   // Add Mahasiswa Account (Admin SIMTA)
