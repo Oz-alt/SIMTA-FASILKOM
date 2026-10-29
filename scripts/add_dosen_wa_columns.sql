@@ -8,15 +8,18 @@
 --   3. Klik tombol "Run" (atau tekan Ctrl + Enter)
 -- ============================================================
 
--- 1. Tambahkan kolom link_wa_group ke tabel advisors dan profiles jika belum ada
+-- 1. Tambahkan kolom link_wa_group & jabatan_fungsional ke tabel advisors dan profiles jika belum ada
 ALTER TABLE public.advisors ADD COLUMN IF NOT EXISTS link_wa_group TEXT DEFAULT '';
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS link_wa_group TEXT DEFAULT '';
+ALTER TABLE public.advisors ADD COLUMN IF NOT EXISTS jabatan_fungsional TEXT DEFAULT 'Tenaga Pengajar';
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS jabatan_fungsional TEXT DEFAULT 'Tenaga Pengajar';
 
 -- 2. Update langsung data Dosen Dr. Abdiansah di tabel advisors dan profiles
 UPDATE public.advisors 
 SET 
   no_hp = '0895-3787-34847',
   link_wa_group = 'https://chat.whatsapp.com/E8JElpcoGjPOAwz4cRg6nl',
+  jabatan_fungsional = 'Lektor Kepala',
   updated_at = NOW()
 WHERE nip = '198410012009121005';
 
@@ -24,6 +27,8 @@ UPDATE public.profiles
 SET 
   no_hp = '0895-3787-34847',
   link_wa_group = 'https://chat.whatsapp.com/E8JElpcoGjPOAwz4cRg6nl',
+  kelas = 'Lektor Kepala',
+  jabatan_fungsional = 'Lektor Kepala',
   updated_at = NOW()
 WHERE nip = '198410012009121005' OR nim = '198410012009121005';
 

@@ -682,31 +682,53 @@ export function AuthProvider({ children }) {
       try {
         const { password, is_profile_completed, keilmuan, jabatan_fungsional, ...safeFields } = updatedFields;
 
-        // Build profiles payload: jabatan_fungsional maps to kelas column
-        const profilePayload = { ...safeFields };
-        if (jabatan_fungsional !== undefined) profilePayload.kelas = jabatan_fungsional;
-        // Remove fields not in profiles table
-        delete profilePayload.keilmuan;
-        const { link_wa_group: _pWa, ...pCore } = profilePayload;
+        // 1. Sinkronisasi ke tabel profiles
+        const isUuid = currentUser.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(currentUser.id);
+        const profilePayload = {};
+        if (safeFields.nama !== undefined) profilePayload.nama = safeFields.nama;
+        if (safeFields.no_hp !== undefined) profilePayload.no_hp = safeFields.no_hp;
+        if (safeFields.prodi !== undefined) profilePayload.prodi = safeFields.prodi;
+        if (safeFields.link_wa_group !== undefined) profilePayload.link_wa_group = safeFields.link_wa_group;
+        if (jabatan_fungsional !== undefined) {
+          profilePayload.kelas = jabatan_fungsional;
+        } else if (safeFields.kelas !== undefined) {
+          profilePayload.kelas = safeFields.kelas;
+        }
 
-        if (currentUser.id && Object.keys(pCore).length > 0) {
-          const { error } = await supabase
-            .from('profiles')
-            .update(pCore)
-            .or(`id.eq.${currentUser.id},nip.eq.${userNip || currentUser.id},nim.eq.${userNip || currentUser.id}`);
-          if (error) {
-            console.warn('Supabase profile update warning:', error.message);
+        if (Object.keys(profilePayload).length > 0) {
+          let profQuery = null;
+          if (isUuid) {
+            profQuery = supabase.from('profiles').update(profilePayload).eq('id', currentUser.id);
+          } else if (userNip) {
+            profQuery = supabase.from('profiles').update(profilePayload).or(`nip.eq.${userNip},nim.eq.${userNip}`);
+          } else if (currentUser.email) {
+            profQuery = supabase.from('profiles').update(profilePayload).eq('email', currentUser.email);
+          }
+
+          if (profQuery) {
+            const { error: profErr } = await profQuery;
+            if (profErr) {
+              console.warn('Supabase profile update warning:', profErr.message);
+            }
+          }
+
+          // Coba simpan jabatan_fungsional jika kolomnya sudah ditambahkan di profiles
+          if (jabatan_fungsional !== undefined) {
+            try {
+              let jfQuery = null;
+              if (isUuid) {
+                jfQuery = supabase.from('profiles').update({ jabatan_fungsional }).eq('id', currentUser.id);
+              } else if (userNip) {
+                jfQuery = supabase.from('profiles').update({ jabatan_fungsional }).or(`nip.eq.${userNip},nim.eq.${userNip}`);
+              } else if (currentUser.email) {
+                jfQuery = supabase.from('profiles').update({ jabatan_fungsional }).eq('email', currentUser.email);
+              }
+              if (jfQuery) await jfQuery;
+            } catch {}
           }
         }
-        if (_pWa && currentUser.id) {
-          try {
-            await supabase
-              .from('profiles')
-              .update({ link_wa_group: _pWa })
-              .or(`id.eq.${currentUser.id},nip.eq.${userNip || currentUser.id},nim.eq.${userNip || currentUser.id}`);
-          } catch {}
-        }
 
+        // 2. Sinkronisasi kata sandi jika ada
         if (password) {
           try {
             await supabase.auth.updateUser({ password });
@@ -715,15 +737,16 @@ export function AuthProvider({ children }) {
           }
         }
 
-        if (userNip && merged.role === 'dosen') {
-          // Build advisors payload — keilmuan maps to keahlian (array), jabatan_fungsional not stored here
-          const { link_wa_group: advWa, jabatan_fungsional: _jf, keilmuan: _k, ...advBase } = updatedFields;
-          const advCore = { ...advBase };
-          // Remove profile-only fields
-          delete advCore.password; delete advCore.is_profile_completed;
-          // Map keilmuan to keahlian array
-          if (_k !== undefined) {
-            advCore.keahlian = _k ? _k.split(',').map(s => s.trim()).filter(Boolean) : [];
+        // 3. Sinkronisasi ke tabel advisors (khusus Dosen & Kaprodi yang memiliki NIP)
+        if (userNip && (merged.role === 'dosen' || merged.role === 'kaprodi')) {
+          const advCore = {};
+          if (updatedFields.nama !== undefined) advCore.nama = updatedFields.nama;
+          if (updatedFields.no_hp !== undefined) advCore.no_hp = updatedFields.no_hp;
+          if (updatedFields.link_wa_group !== undefined) advCore.link_wa_group = updatedFields.link_wa_group;
+          if (updatedFields.email !== undefined) advCore.email = updatedFields.email;
+          if (updatedFields.prodi !== undefined) advCore.prodi = updatedFields.prodi;
+          if (keilmuan !== undefined) {
+            advCore.keahlian = keilmuan ? keilmuan.split(',').map(s => s.trim()).filter(Boolean) : [];
           }
 
           if (Object.keys(advCore).length > 0) {
@@ -735,15 +758,14 @@ export function AuthProvider({ children }) {
               console.warn('Supabase advisor core update warning:', advError.message);
             }
           }
-          if (advWa) {
+
+          // Coba simpan jabatan_fungsional jika kolomnya sudah ditambahkan di advisors
+          if (jabatan_fungsional !== undefined) {
             try {
-              const { error: advWaError } = await supabase
+              await supabase
                 .from('advisors')
-                .update({ link_wa_group: advWa })
+                .update({ jabatan_fungsional })
                 .eq('nip', userNip);
-              if (advWaError) {
-                console.warn('Supabase advisor link_wa_group warning:', advWaError.message);
-              }
             } catch {}
           }
         }
@@ -2379,6 +2401,77 @@ export function AuthProvider({ children }) {
     return Math.abs(hash).toString(16);
   };
 
+  // Enrich user with latest Supabase data (advisors + profiles) across all roles
+  const enrichUserFromSupabase = async (user) => {
+    if (!isSupabaseConfigured || !supabase || !user) return user;
+    try {
+      const enriched = { ...user };
+      const userNip = enriched.nip || enriched.nim;
+
+      // 1. Cek tabel advisors jika dosen / kaprodi
+      if ((enriched.role === 'dosen' || enriched.role === 'kaprodi') && userNip) {
+        const { data: advData } = await supabase
+          .from('advisors')
+          .select('no_hp, link_wa_group, nama, email, keahlian')
+          .eq('nip', userNip)
+          .maybeSingle();
+        if (advData) {
+          if (advData.no_hp) enriched.no_hp = advData.no_hp;
+          if (advData.link_wa_group) enriched.link_wa_group = advData.link_wa_group;
+          if (advData.keahlian) {
+            enriched.keahlian = advData.keahlian;
+            enriched.keilmuan = Array.isArray(advData.keahlian)
+              ? advData.keahlian.join(', ')
+              : advData.keahlian;
+          }
+        }
+
+        // Cek juga jika kolom jabatan_fungsional ada di advisors
+        try {
+          const { data: advJf } = await supabase
+            .from('advisors')
+            .select('jabatan_fungsional')
+            .eq('nip', userNip)
+            .maybeSingle();
+          if (advJf && advJf.jabatan_fungsional) {
+            enriched.jabatan_fungsional = advJf.jabatan_fungsional;
+            enriched.kelas = advJf.jabatan_fungsional;
+          }
+        } catch {}
+      }
+
+      // 2. Cek tabel profiles untuk semua role
+      const isUuid = enriched.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(enriched.id);
+      let profileQuery = null;
+      if (isUuid) {
+        profileQuery = supabase.from('profiles').select('no_hp, link_wa_group, nama, email, kelas').eq('id', enriched.id);
+      } else if (userNip) {
+        profileQuery = supabase.from('profiles').select('no_hp, link_wa_group, nama, email, kelas').or(`nip.eq.${userNip},nim.eq.${userNip}`);
+      } else if (enriched.email) {
+        profileQuery = supabase.from('profiles').select('no_hp, link_wa_group, nama, email, kelas').eq('email', enriched.email);
+      }
+
+      if (profileQuery) {
+        const { data: profData } = await profileQuery.maybeSingle();
+        if (profData) {
+          if (profData.no_hp) enriched.no_hp = profData.no_hp;
+          if (profData.link_wa_group) enriched.link_wa_group = profData.link_wa_group;
+          if (profData.kelas) {
+            enriched.kelas = profData.kelas;
+            if (enriched.role !== 'mahasiswa') {
+              enriched.jabatan_fungsional = profData.kelas;
+            }
+          }
+        }
+      }
+
+      return enriched;
+    } catch (e) {
+      console.warn('Failed to enrich user from Supabase:', e);
+      return user;
+    }
+  };
+
   // Authenticate user strictly:
   // - Kaprodi & Admin: dapat login menggunakan Username (atau NIP/Email)
   // - Dosen & Mahasiswa: wajib menggunakan NIP atau NIM (atau Email)
@@ -2520,8 +2613,9 @@ export function AuthProvider({ children }) {
         if (!isValidPassword(customAdmin)) {
           throw new Error('Kata sandi salah.');
         }
-        setCurrentUser(customAdmin);
-        if (customAdmin.role === 'kaprodi') return '/kaprodi/dashboard';
+        const enrichedAdmin = await enrichUserFromSupabase(customAdmin);
+        setCurrentUser(enrichedAdmin);
+        if (enrichedAdmin.role === 'kaprodi') return '/kaprodi/dashboard';
         return '/admin-simta/dashboard';
       }
 
@@ -2551,26 +2645,20 @@ export function AuthProvider({ children }) {
         if (regFound?.link_wa_group) savedWa = regFound.link_wa_group;
       } catch {}
 
-      if (isSupabaseConfigured && supabase) {
-        try {
-          const { data: advData } = await supabase.from('advisors').select('*').eq('nip', '198410012009121005').maybeSingle();
-          if (advData?.no_hp) savedPhone = advData.no_hp;
-          if (advData?.link_wa_group) savedWa = advData.link_wa_group;
-        } catch {}
-      }
-
-      const dosenUser = {
+      let dosenUser = {
         id: 'user-dosen-abdiansah',
         nama: 'Dr. Abdiansah, S.Kom., M.Cs.',
         nip: '198410012009121005',
         nim: '198410012009121005',
         email: 'abdiansah@unsri.ac.id',
         role: 'dosen',
-        kelas: 'Dosen Pembimbing',
+        kelas: 'Lektor Kepala',
+        jabatan_fungsional: 'Lektor Kepala',
         prodi: 'D3 Manajemen Informatika',
         no_hp: savedPhone,
         link_wa_group: savedWa
       };
+      dosenUser = await enrichUserFromSupabase(dosenUser);
       setCurrentUser(dosenUser);
       return '/dosen/dashboard';
     }
@@ -2598,49 +2686,8 @@ export function AuthProvider({ children }) {
         ? { ...localFound, is_profile_completed: localCredential.isProfileCompleted }
         : { ...localFound };
 
-      // Ambil data terbaru dari Supabase (no_hp, link_wa_group, dll) agar tidak reset saat login ulang
-      if (isSupabaseConfigured && supabase) {
-        try {
-          const userNip = resolvedLocal.nip || resolvedLocal.nim;
-          // Cek di tabel advisors untuk dosen / kaprodi
-          if ((resolvedLocal.role === 'dosen' || resolvedLocal.role === 'kaprodi') && userNip) {
-            const { data: advData } = await supabase
-              .from('advisors')
-              .select('no_hp, link_wa_group, nama, email, keahlian')
-              .eq('nip', userNip)
-              .maybeSingle();
-            if (advData) {
-              if (advData.no_hp) resolvedLocal.no_hp = advData.no_hp;
-              if (advData.link_wa_group) resolvedLocal.link_wa_group = advData.link_wa_group;
-              if (advData.keahlian) {
-                resolvedLocal.keahlian = advData.keahlian;
-                resolvedLocal.keilmuan = Array.isArray(advData.keahlian)
-                  ? advData.keahlian.join(', ')
-                  : advData.keahlian;
-              }
-            }
-          }
-          // Cek di tabel profiles untuk semua role
-          const profileQuery = userNip
-            ? supabase.from('profiles').select('no_hp, link_wa_group, nama, email, kelas').or(`nip.eq.${userNip},nim.eq.${userNip}`)
-            : resolvedLocal.id
-              ? supabase.from('profiles').select('no_hp, link_wa_group, nama, email, kelas').eq('id', resolvedLocal.id)
-              : null;
-          if (profileQuery) {
-            const { data: profData } = await profileQuery.maybeSingle();
-            if (profData) {
-              if (profData.no_hp) resolvedLocal.no_hp = profData.no_hp;
-              if (profData.link_wa_group) resolvedLocal.link_wa_group = profData.link_wa_group;
-              if (profData.kelas) {
-                resolvedLocal.kelas = profData.kelas;
-                if (resolvedLocal.role !== 'mahasiswa') {
-                  resolvedLocal.jabatan_fungsional = profData.kelas;
-                }
-              }
-            }
-          }
-        } catch { /* Supabase tidak tersedia, lanjut dengan data lokal */ }
-      }
+      // Ambil data terbaru dari Supabase (no_hp, link_wa_group, kelas/jabatan_fungsional, keahlian)
+      resolvedLocal = await enrichUserFromSupabase(resolvedLocal);
 
       setCurrentUser(resolvedLocal);
       if (resolvedLocal.role === 'kaprodi') return '/kaprodi/dashboard';
@@ -2673,7 +2720,7 @@ export function AuthProvider({ children }) {
         if (!authError && authData.user) {
           const { data: profile } = await supabase.from('profiles').select('*').eq('id', authData.user.id).single();
           const matchedReg = registered.find(r => r.email === authData.user.email || r.id === authData.user.id) || registered[0];
-          const activeProfile = profile || {
+          let activeProfile = profile || {
             id: authData.user.id,
             nama: authData.user.user_metadata?.nama || authData.user.user_metadata?.full_name || matchedReg?.nama || 'AULIA AZZAHRA',
             email: authData.user.email,
@@ -2683,6 +2730,7 @@ export function AuthProvider({ children }) {
             kelas: authData.user.user_metadata?.kelas || matchedReg?.kelas || 'MI 2024'
           };
 
+          activeProfile = await enrichUserFromSupabase(activeProfile);
           setCurrentUser(activeProfile);
 
           if (activeProfile.role === 'kaprodi') return '/kaprodi/dashboard';
@@ -2738,7 +2786,8 @@ export function AuthProvider({ children }) {
         ? { ...foundUser, is_profile_completed: foundCredential.isProfileCompleted }
         : foundUser;
 
-      setCurrentUser(resolvedUser);
+      const finalResolved = await enrichUserFromSupabase(resolvedUser);
+      setCurrentUser(finalResolved);
       if (resolvedUser.role === 'kaprodi') return '/kaprodi/dashboard';
       if (resolvedUser.role === 'admin' || resolvedUser.role === 'admin_sarana') return '/admin-simta/dashboard';
       if (resolvedUser.role === 'dosen') return '/dosen/dashboard';

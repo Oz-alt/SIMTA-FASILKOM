@@ -53,15 +53,11 @@ export default function ProfilePage() {
   const [isCustomJabatan, setIsCustomJabatan] = useState(false);
 
   const JABATAN_FUNGSIONAL_OPTIONS = [
-    'Asisten Ahli',
-    'Lektor',
     'Lektor Kepala',
-    'Profesor',
+    'Lektor',
+    'Asisten Ahli',
     'Tenaga Pengajar',
-    'Dosen Pembimbing',
-    'Dosen / Kaprodi',
-    'Admin SIMTA',
-    'Admin Sarana'
+    'Staff'
   ];
 
   const [formData, setFormData] = useState({
