@@ -50,17 +50,18 @@ export default function ProfilePage() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isCompletedSuccess, setIsCompletedSuccess] = useState(false);
+  const [isCustomJabatan, setIsCustomJabatan] = useState(false);
 
   const JABATAN_FUNGSIONAL_OPTIONS = [
     'Asisten Ahli',
     'Lektor',
     'Lektor Kepala',
     'Profesor',
+    'Tenaga Pengajar',
     'Dosen Pembimbing',
     'Dosen / Kaprodi',
     'Admin SIMTA',
-    'Admin Sarana',
-    'Tenaga Pengajar'
+    'Admin Sarana'
   ];
 
   const [formData, setFormData] = useState({
@@ -124,12 +125,14 @@ export default function ProfilePage() {
   };
 
   const handleStartEdit = () => {
+    const currentJf = currentUser?.jabatan_fungsional || currentUser?.kelas || '';
+    setIsCustomJabatan(Boolean(currentJf && !JABATAN_FUNGSIONAL_OPTIONS.includes(currentJf)));
     setFormData({
       nama: currentUser?.nama || '',
       no_hp: currentUser?.no_hp && currentUser?.no_hp !== '-' ? currentUser.no_hp : '',
       prodi: currentUser?.prodi || 'D3 Manajemen Informatika',
       kelas: currentUser?.kelas || (currentUser?.role === 'mahasiswa' ? 'MI 5A' : 'Dosen Pembimbing'),
-      jabatan_fungsional: currentUser?.jabatan_fungsional || currentUser?.kelas || '',
+      jabatan_fungsional: currentJf,
       keilmuan: currentUser?.keilmuan || (currentUser?.keahlian ? (Array.isArray(currentUser.keahlian) ? currentUser.keahlian.join(', ') : currentUser.keahlian) : '')
     });
     setIsEditing(true);
@@ -143,6 +146,7 @@ export default function ProfilePage() {
       return;
     }
     setIsEditing(false);
+    setIsCustomJabatan(false);
     setErrorMsg('');
   };
 
@@ -687,19 +691,60 @@ export default function ProfilePage() {
                     <GraduationCap className="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
                   </div>
                 ) : (
-                  <div className="relative">
-                    <select
-                      name="jabatan_fungsional"
-                      value={formData.jabatan_fungsional}
-                      onChange={handleChange}
-                      className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 text-xs font-semibold text-slate-900 bg-white transition-all outline-none appearance-none"
-                    >
-                      <option value="">-- Pilih Jabatan Fungsional --</option>
-                      {JABATAN_FUNGSIONAL_OPTIONS.map(opt => (
-                        <option key={opt} value={opt}>{opt}</option>
-                      ))}
-                    </select>
-                    <GraduationCap className="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                  <div className="space-y-2">
+                    <div className="relative">
+                      <select
+                        name="jabatan_fungsional_select"
+                        value={isCustomJabatan ? '__custom__' : (formData.jabatan_fungsional || '')}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === '__custom__') {
+                            setIsCustomJabatan(true);
+                          } else {
+                            setIsCustomJabatan(false);
+                            setFormData(prev => ({
+                              ...prev,
+                              jabatan_fungsional: val,
+                              kelas: val
+                            }));
+                          }
+                        }}
+                        className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 text-xs font-semibold text-slate-900 bg-white transition-all outline-none"
+                      >
+                        <option value="">-- Pilih Jabatan Fungsional --</option>
+                        {JABATAN_FUNGSIONAL_OPTIONS.map(opt => (
+                          <option key={opt} value={opt}>{opt}</option>
+                        ))}
+                        {formData.jabatan_fungsional && !JABATAN_FUNGSIONAL_OPTIONS.includes(formData.jabatan_fungsional) && (
+                          <option value={formData.jabatan_fungsional}>{formData.jabatan_fungsional}</option>
+                        )}
+                        <option value="__custom__">⚙️ -- Ketik Manual (Backdoor) --</option>
+                      </select>
+                      <GraduationCap className="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                    </div>
+
+                    {isCustomJabatan && (
+                      <div className="space-y-1">
+                        <input
+                          type="text"
+                          name="jabatan_fungsional"
+                          value={formData.jabatan_fungsional}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setFormData(prev => ({
+                              ...prev,
+                              jabatan_fungsional: val,
+                              kelas: val
+                            }));
+                          }}
+                          placeholder="Ketik jabatan fungsional kustom..."
+                          className="w-full px-3 py-2 rounded-lg border border-amber-300 bg-amber-50/60 text-xs font-semibold text-slate-900 focus:border-amber-500 focus:ring-2 focus:ring-amber-100 transition-all outline-none"
+                        />
+                        <p className="text-[10px] text-amber-700 italic">
+                          Mode Backdoor aktif: Kaprodi / Admin / Dosen dapat menetapkan jabatan fungsional secara manual jika ada salah konfigurasi.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )
               ) : (

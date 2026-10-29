@@ -235,8 +235,9 @@ export function AuthProvider({ children }) {
         email: user.email || 'koprodi@unsri.ac.id',
         nip: '198410012009121005',
         nim: '198410012009121005',
-        kelas: 'Dosen / Kaprodi',
-        prodi: 'D3 Manajemen Informatika',
+        kelas: user.kelas || 'Dosen / Kaprodi',
+        jabatan_fungsional: user.jabatan_fungsional || user.kelas || 'Dosen / Kaprodi',
+        prodi: user.prodi || 'D3 Manajemen Informatika',
         no_hp: userPhone || user.no_hp || '0895-3787-34847'
       };
     }
@@ -247,12 +248,14 @@ export function AuthProvider({ children }) {
       if (isAbdiansah) {
         let waLink = user.link_wa_group;
         let userPhone = user.no_hp;
-        if (!waLink || !userPhone) {
+        let keahlianList = user.keahlian;
+        if (!waLink || !userPhone || !keahlianList) {
           try {
             const advs = JSON.parse(localStorage.getItem('simta_advisors') || '[]');
             const matched = advs.find(a => String(a.nip) === '198410012009121005');
             if (!waLink) waLink = matched?.link_wa_group || 'https://chat.whatsapp.com/E8JElpcoGjPOAwz4cRg6nl';
             if (!userPhone) userPhone = matched?.no_hp || '0895-3787-34847';
+            if (!keahlianList && matched?.keahlian) keahlianList = matched.keahlian;
           } catch {
             if (!waLink) waLink = 'https://chat.whatsapp.com/E8JElpcoGjPOAwz4cRg6nl';
             if (!userPhone) userPhone = '0895-3787-34847';
@@ -266,8 +269,11 @@ export function AuthProvider({ children }) {
           email: 'abdiansah@unsri.ac.id',
           nip: '198410012009121005',
           nim: '198410012009121005',
-          kelas: 'Dosen Pembimbing',
-          prodi: 'D3 Manajemen Informatika',
+          kelas: user.kelas || 'Dosen Pembimbing',
+          jabatan_fungsional: user.jabatan_fungsional || user.kelas || 'Dosen Pembimbing',
+          keilmuan: user.keilmuan || (Array.isArray(keahlianList) ? keahlianList.join(', ') : (keahlianList || 'Kecerdasan Buatan, Sistem Informasi')),
+          keahlian: keahlianList || ['Kecerdasan Buatan', 'Sistem Informasi'],
+          prodi: user.prodi || 'D3 Manajemen Informatika',
           no_hp: userPhone || user.no_hp || '0895-3787-34847',
           link_wa_group: waLink || 'https://chat.whatsapp.com/E8JElpcoGjPOAwz4cRg6nl'
         };
@@ -276,12 +282,14 @@ export function AuthProvider({ children }) {
       const uNip = user.nip || user.nim;
       let waLink = user.link_wa_group;
       let userPhone = user.no_hp;
-      if (uNip && (!waLink || !userPhone)) {
+      let keahlianList = user.keahlian;
+      if (uNip && (!waLink || !userPhone || !keahlianList)) {
         try {
           const advs = JSON.parse(localStorage.getItem('simta_advisors') || '[]');
           const matched = advs.find(a => String(a.nip) === String(uNip));
           if (!waLink) waLink = matched?.link_wa_group || '';
           if (!userPhone) userPhone = matched?.no_hp || '';
+          if (!keahlianList && matched?.keahlian) keahlianList = matched.keahlian;
         } catch {}
       }
       return {
@@ -291,7 +299,10 @@ export function AuthProvider({ children }) {
         email: user.email || `${uNip}@unsri.ac.id`,
         nip: uNip,
         nim: uNip,
-        kelas: 'Dosen Pembimbing',
+        kelas: user.kelas || 'Dosen Pembimbing',
+        jabatan_fungsional: user.jabatan_fungsional || user.kelas || 'Dosen Pembimbing',
+        keilmuan: user.keilmuan || (Array.isArray(keahlianList) ? keahlianList.join(', ') : (keahlianList || '')),
+        keahlian: keahlianList || (user.keilmuan ? user.keilmuan.split(',').map(s => s.trim()).filter(Boolean) : []),
         no_hp: userPhone || user.no_hp || '',
         link_wa_group: waLink !== undefined ? waLink : ''
       };
@@ -306,7 +317,8 @@ export function AuthProvider({ children }) {
         username: user.username || 'admin',
         nama: cleanNama,
         role: 'admin',
-        kelas: 'Admin SIMTA'
+        kelas: user.kelas || 'Admin SIMTA',
+        jabatan_fungsional: user.jabatan_fungsional || user.kelas || 'Admin SIMTA'
       };
     }
 
@@ -631,11 +643,22 @@ export function AuthProvider({ children }) {
 
     // Sync advisor list if updating lecturer profile (hanya untuk akun Dosen Pembimbing)
     const userNip = merged.nip || merged.nim;
-    if (userNip && merged.role === 'dosen') {
+    if (userNip && (merged.role === 'dosen' || merged.role === 'kaprodi')) {
       setAdvisors(prev => {
         const updated = prev.map(adv => {
           if (String(adv.nip).trim() === String(userNip).trim()) {
-            return { ...adv, ...updatedFields };
+            const advUpdated = { ...adv, ...updatedFields };
+            if (updatedFields.keilmuan !== undefined) {
+              advUpdated.keahlian = updatedFields.keilmuan
+                ? updatedFields.keilmuan.split(',').map(s => s.trim()).filter(Boolean)
+                : [];
+              advUpdated.keilmuan = updatedFields.keilmuan;
+            }
+            if (updatedFields.jabatan_fungsional !== undefined) {
+              advUpdated.jabatan_fungsional = updatedFields.jabatan_fungsional;
+              advUpdated.kelas = updatedFields.jabatan_fungsional;
+            }
+            return advUpdated;
           }
           return adv;
         });
@@ -2579,11 +2602,11 @@ export function AuthProvider({ children }) {
       if (isSupabaseConfigured && supabase) {
         try {
           const userNip = resolvedLocal.nip || resolvedLocal.nim;
-          // Cek di tabel advisors untuk dosen
-          if (resolvedLocal.role === 'dosen' && userNip) {
+          // Cek di tabel advisors untuk dosen / kaprodi
+          if ((resolvedLocal.role === 'dosen' || resolvedLocal.role === 'kaprodi') && userNip) {
             const { data: advData } = await supabase
               .from('advisors')
-              .select('no_hp, link_wa_group, nama, email, keahlian, jabatan_fungsional')
+              .select('no_hp, link_wa_group, nama, email, keahlian')
               .eq('nip', userNip)
               .maybeSingle();
             if (advData) {
@@ -2599,20 +2622,21 @@ export function AuthProvider({ children }) {
           }
           // Cek di tabel profiles untuk semua role
           const profileQuery = userNip
-            ? supabase.from('profiles').select('no_hp, link_wa_group, nama, email, is_profile_completed').or(`nip.eq.${userNip},nim.eq.${userNip}`)
+            ? supabase.from('profiles').select('no_hp, link_wa_group, nama, email, kelas').or(`nip.eq.${userNip},nim.eq.${userNip}`)
             : resolvedLocal.id
-              ? supabase.from('profiles').select('no_hp, link_wa_group, nama, email, is_profile_completed').eq('id', resolvedLocal.id)
+              ? supabase.from('profiles').select('no_hp, link_wa_group, nama, email, kelas').eq('id', resolvedLocal.id)
               : null;
           if (profileQuery) {
             const { data: profData } = await profileQuery.maybeSingle();
             if (profData) {
               if (profData.no_hp) resolvedLocal.no_hp = profData.no_hp;
               if (profData.link_wa_group) resolvedLocal.link_wa_group = profData.link_wa_group;
-              if (profData.kelas && resolvedLocal.role !== 'mahasiswa') {
-                resolvedLocal.jabatan_fungsional = profData.kelas;
+              if (profData.kelas) {
                 resolvedLocal.kelas = profData.kelas;
+                if (resolvedLocal.role !== 'mahasiswa') {
+                  resolvedLocal.jabatan_fungsional = profData.kelas;
+                }
               }
-              if (profData.is_profile_completed !== undefined) resolvedLocal.is_profile_completed = profData.is_profile_completed;
             }
           }
         } catch { /* Supabase tidak tersedia, lanjut dengan data lokal */ }
