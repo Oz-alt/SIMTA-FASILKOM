@@ -249,18 +249,22 @@ export function AuthProvider({ children }) {
         let waLink = user.link_wa_group;
         let userPhone = user.no_hp;
         let keahlianList = user.keahlian;
-        if (!waLink || !userPhone || !keahlianList) {
-          try {
-            const advs = JSON.parse(localStorage.getItem('simta_advisors') || '[]');
-            const matched = advs.find(a => String(a.nip) === '198410012009121005');
-            if (!waLink) waLink = matched?.link_wa_group || 'https://chat.whatsapp.com/E8JElpcoGjPOAwz4cRg6nl';
-            if (!userPhone) userPhone = matched?.no_hp || '0895-3787-34847';
-            if (!keahlianList && matched?.keahlian) keahlianList = matched.keahlian;
-          } catch {
-            if (!waLink) waLink = 'https://chat.whatsapp.com/E8JElpcoGjPOAwz4cRg6nl';
-            if (!userPhone) userPhone = '0895-3787-34847';
+        let jfVal = (user.jabatan_fungsional && user.jabatan_fungsional !== 'Dosen Pembimbing') ? user.jabatan_fungsional : null;
+        try {
+          const advs = JSON.parse(localStorage.getItem('simta_advisors') || '[]');
+          const matched = advs.find(a => String(a.nip) === '198410012009121005');
+          if (!waLink) waLink = matched?.link_wa_group || 'https://chat.whatsapp.com/E8JElpcoGjPOAwz4cRg6nl';
+          if (!userPhone) userPhone = matched?.no_hp || '0895-3787-34847';
+          if (!keahlianList && matched?.keahlian) keahlianList = matched.keahlian;
+          if (!jfVal && matched?.jabatan_fungsional && matched.jabatan_fungsional !== 'Dosen Pembimbing') {
+            jfVal = matched.jabatan_fungsional;
           }
+        } catch {
+          if (!waLink) waLink = 'https://chat.whatsapp.com/E8JElpcoGjPOAwz4cRg6nl';
+          if (!userPhone) userPhone = '0895-3787-34847';
         }
+        if (!jfVal) jfVal = 'Lektor Kepala';
+
         return {
           ...user,
           id: 'user-dosen-abdiansah',
@@ -269,10 +273,10 @@ export function AuthProvider({ children }) {
           email: 'abdiansah@unsri.ac.id',
           nip: '198410012009121005',
           nim: '198410012009121005',
-          kelas: user.kelas || 'Dosen Pembimbing',
-          jabatan_fungsional: user.jabatan_fungsional || user.kelas || 'Dosen Pembimbing',
-          keilmuan: user.keilmuan || (Array.isArray(keahlianList) ? keahlianList.join(', ') : (keahlianList || 'Kecerdasan Buatan, Sistem Informasi')),
-          keahlian: keahlianList || ['Kecerdasan Buatan', 'Sistem Informasi'],
+          kelas: jfVal,
+          jabatan_fungsional: jfVal,
+          keilmuan: user.keilmuan || (Array.isArray(keahlianList) ? keahlianList.join(', ') : (keahlianList || 'Kecerdasan Buatan, Pemrosesan Bahasa Alami')),
+          keahlian: keahlianList || ['Kecerdasan Buatan', 'Pemrosesan Bahasa Alami'],
           prodi: user.prodi || 'D3 Manajemen Informatika',
           no_hp: userPhone || user.no_hp || '0895-3787-34847',
           link_wa_group: waLink || 'https://chat.whatsapp.com/E8JElpcoGjPOAwz4cRg6nl'
@@ -283,24 +287,42 @@ export function AuthProvider({ children }) {
       let waLink = user.link_wa_group;
       let userPhone = user.no_hp;
       let keahlianList = user.keahlian;
-      if (uNip && (!waLink || !userPhone || !keahlianList)) {
+      let jfVal = (user.jabatan_fungsional && user.jabatan_fungsional !== 'Dosen Pembimbing') ? user.jabatan_fungsional : null;
+      let matched = null;
+      if (uNip) {
         try {
           const advs = JSON.parse(localStorage.getItem('simta_advisors') || '[]');
-          const matched = advs.find(a => String(a.nip) === String(uNip));
+          matched = advs.find(a => String(a.nip) === String(uNip));
           if (!waLink) waLink = matched?.link_wa_group || '';
           if (!userPhone) userPhone = matched?.no_hp || '';
           if (!keahlianList && matched?.keahlian) keahlianList = matched.keahlian;
+          if (!jfVal && matched?.jabatan_fungsional && matched.jabatan_fungsional !== 'Dosen Pembimbing') {
+            jfVal = matched.jabatan_fungsional;
+          }
         } catch {}
       }
+      if (!jfVal) {
+        const mockMatch = MOCK_ADVISORS.find(m => String(m.nip) === String(uNip));
+        if (mockMatch?.jabatan_fungsional && mockMatch.jabatan_fungsional !== 'Dosen Pembimbing') {
+          jfVal = mockMatch.jabatan_fungsional;
+        }
+      }
+      if (!jfVal && user.kelas && user.kelas !== 'Dosen Pembimbing') {
+        jfVal = user.kelas;
+      }
+      if (!jfVal) {
+        jfVal = 'Asisten Ahli';
+      }
+
       return {
         ...user,
-        nama: cleanNama || 'Dosen Pembimbing',
+        nama: cleanNama || matched?.nama || 'Dosen Pembimbing',
         role: 'dosen',
-        email: user.email || `${uNip}@unsri.ac.id`,
+        email: user.email || matched?.email || `${uNip}@unsri.ac.id`,
         nip: uNip,
         nim: uNip,
-        kelas: user.kelas || 'Dosen Pembimbing',
-        jabatan_fungsional: user.jabatan_fungsional || user.kelas || 'Dosen Pembimbing',
+        kelas: jfVal,
+        jabatan_fungsional: jfVal,
         keilmuan: user.keilmuan || (Array.isArray(keahlianList) ? keahlianList.join(', ') : (keahlianList || '')),
         keahlian: keahlianList || (user.keilmuan ? user.keilmuan.split(',').map(s => s.trim()).filter(Boolean) : []),
         no_hp: userPhone || user.no_hp || '',
@@ -417,7 +439,8 @@ export function AuthProvider({ children }) {
             email: 'abdiansah@unsri.ac.id',
             password: '198410012009121005',
             role: 'dosen',
-            kelas: 'Dosen Pembimbing',
+            kelas: 'Lektor Kepala',
+            jabatan_fungsional: 'Lektor Kepala',
             prodi: 'D3 Manajemen Informatika'
           };
           if (dosenAbdiansahIdx >= 0) {
@@ -506,7 +529,8 @@ export function AuthProvider({ children }) {
         email: 'abdiansah@unsri.ac.id',
         password: '198410012009121005',
         role: 'dosen',
-        kelas: 'Dosen Pembimbing',
+        kelas: 'Lektor Kepala',
+        jabatan_fungsional: 'Lektor Kepala',
         prodi: 'D3 Manajemen Informatika'
       },
       {
@@ -1221,15 +1245,23 @@ export function AuthProvider({ children }) {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Merge pendidikan from MOCK_ADVISORS if missing (for old cached data)
+          // Merge pendidikan & jabatan_fungsional from MOCK_ADVISORS if missing (for old cached data)
           return parsed.map(adv => {
-            if (adv.pendidikan) return adv;
-            const mock = MOCK_ADVISORS.find(m => m.nip === adv.nip);
-            if (mock?.pendidikan) return { ...adv, pendidikan: mock.pendidikan };
-            // Derive from name as fallback
-            const n = adv.nama || '';
-            const isDoktor = /\bDr\.\s/i.test(n) || /Ph\.D/i.test(n);
-            return { ...adv, pendidikan: isDoktor ? 'S3 (Doktor)' : 'S2 (Magister)' };
+            let res = { ...adv };
+            if (!res.pendidikan) {
+              const mock = MOCK_ADVISORS.find(m => m.nip === adv.nip);
+              if (mock?.pendidikan) res.pendidikan = mock.pendidikan;
+              else {
+                const n = adv.nama || '';
+                const isDoktor = /\bDr\.\s/i.test(n) || /Ph\.D/i.test(n);
+                res.pendidikan = isDoktor ? 'S3 (Doktor)' : 'S2 (Magister)';
+              }
+            }
+            if (!res.jabatan_fungsional || res.jabatan_fungsional === 'Dosen Pembimbing') {
+              const mock = MOCK_ADVISORS.find(m => m.nip === adv.nip);
+              res.jabatan_fungsional = mock?.jabatan_fungsional || 'Asisten Ahli';
+            }
+            return res;
           });
         }
       }
@@ -1255,7 +1287,7 @@ export function AuthProvider({ children }) {
   });
 
   // Helper actions for Dosen Pembimbing management
-  const addAdvisor = (advisorData) => {
+  const addAdvisor = async (advisorData) => {
     const newAdvisor = {
       id: `adv-${Date.now()}`,
       nip: (advisorData.nip || '').trim(),
@@ -1276,15 +1308,156 @@ export function AuthProvider({ children }) {
       try { localStorage.setItem('simta_advisors', JSON.stringify(updated)); } catch { }
       return updated;
     });
+
+    // Auto-sync ke daftar akun terdaftar (simta_registered_users)
+    try {
+      const regSaved = localStorage.getItem('simta_registered_users');
+      let regUsers = regSaved ? JSON.parse(regSaved) : [];
+      if (!Array.isArray(regUsers)) regUsers = [];
+      const userObj = {
+        id: `user-dosen-${newAdvisor.nip || Date.now()}`,
+        name: newAdvisor.nama,
+        nama: newAdvisor.nama,
+        nip: newAdvisor.nip,
+        nim: newAdvisor.nip,
+        email: newAdvisor.email || `${newAdvisor.nip}@unsri.ac.id`,
+        password: newAdvisor.nip,
+        role: 'dosen',
+        prodi: newAdvisor.prodi,
+        kelas: newAdvisor.jabatan_fungsional,
+        jabatan_fungsional: newAdvisor.jabatan_fungsional,
+        keilmuan: Array.isArray(newAdvisor.keahlian) ? newAdvisor.keahlian.join(', ') : (newAdvisor.keahlian || ''),
+        keahlian: newAdvisor.keahlian,
+        no_hp: newAdvisor.no_hp
+      };
+      const exIdx = regUsers.findIndex(u => (newAdvisor.nip && u.nip === newAdvisor.nip) || (newAdvisor.email && u.email === newAdvisor.email));
+      if (exIdx >= 0) {
+        regUsers[exIdx] = { ...regUsers[exIdx], ...userObj };
+      } else {
+        regUsers.push(userObj);
+      }
+      localStorage.setItem('simta_registered_users', JSON.stringify(regUsers));
+    } catch { }
+
+    // Sinkronisasi ke Supabase di background
+    try {
+      if (isSupabaseConfigured && supabase && newAdvisor.nip) {
+        await supabase.from('advisors').upsert([{
+          nip: newAdvisor.nip,
+          nama: newAdvisor.nama,
+          email: newAdvisor.email,
+          no_hp: newAdvisor.no_hp,
+          prodi: newAdvisor.prodi,
+          keahlian: newAdvisor.keahlian,
+          kuota_dospem1: newAdvisor.kuota_dospem1,
+          kuota_dospem2: newAdvisor.kuota_dospem2,
+          status: newAdvisor.status
+        }], { onConflict: 'nip' });
+      }
+    } catch (err) {
+      console.warn('Sync new advisor to Supabase failed:', err);
+    }
+
     return newAdvisor;
   };
 
-  const updateAdvisor = (advisorId, updatedFields) => {
+  const updateAdvisor = async (advisorId, updatedFields) => {
+    let targetAdv = null;
     setAdvisors(prev => {
-      const updated = prev.map(a => a.id === advisorId ? { ...a, ...updatedFields } : a);
+      const updated = prev.map(a => {
+        if (a.id === advisorId) {
+          targetAdv = { ...a, ...updatedFields };
+          return targetAdv;
+        }
+        return a;
+      });
       try { localStorage.setItem('simta_advisors', JSON.stringify(updated)); } catch { }
       return updated;
     });
+
+    if (!targetAdv) return;
+
+    // Sinkronisasi jabatan fungsional & data master ke simta_registered_users
+    try {
+      const regSaved = localStorage.getItem('simta_registered_users');
+      if (regSaved) {
+        const regUsers = JSON.parse(regSaved);
+        if (Array.isArray(regUsers)) {
+          const updatedReg = regUsers.map(u => {
+            const matchNip = targetAdv.nip && (String(u.nip || u.nim || '').trim() === String(targetAdv.nip).trim());
+            const matchEmail = targetAdv.email && (String(u.email || '').trim().toLowerCase() === String(targetAdv.email).trim().toLowerCase());
+            if (matchNip || matchEmail) {
+              return {
+                ...u,
+                nama: targetAdv.nama || u.nama,
+                email: targetAdv.email || u.email,
+                no_hp: targetAdv.no_hp !== undefined ? targetAdv.no_hp : u.no_hp,
+                prodi: targetAdv.prodi || u.prodi,
+                kelas: targetAdv.jabatan_fungsional || u.kelas,
+                jabatan_fungsional: targetAdv.jabatan_fungsional || u.jabatan_fungsional,
+                keilmuan: Array.isArray(targetAdv.keahlian) ? targetAdv.keahlian.join(', ') : (targetAdv.keahlian || u.keilmuan),
+                keahlian: targetAdv.keahlian || u.keahlian
+              };
+            }
+            return u;
+          });
+          localStorage.setItem('simta_registered_users', JSON.stringify(updatedReg));
+        }
+      }
+    } catch { }
+
+    // Jika user yang sedang login adalah dosen ini, update currentUser state & session secara langsung
+    if (currentUser) {
+      const matchNip = targetAdv.nip && (String(currentUser.nip || currentUser.nim || '').trim() === String(targetAdv.nip).trim());
+      const matchEmail = targetAdv.email && (String(currentUser.email || '').trim().toLowerCase() === String(targetAdv.email).trim().toLowerCase());
+      if (matchNip || matchEmail) {
+        setCurrentUserState(prev => {
+          const updated = {
+            ...prev,
+            nama: targetAdv.nama || prev.nama,
+            email: targetAdv.email || prev.email,
+            no_hp: targetAdv.no_hp !== undefined ? targetAdv.no_hp : prev.no_hp,
+            prodi: targetAdv.prodi || prev.prodi,
+            kelas: targetAdv.jabatan_fungsional || prev.kelas,
+            jabatan_fungsional: targetAdv.jabatan_fungsional || prev.jabatan_fungsional,
+            keilmuan: Array.isArray(targetAdv.keahlian) ? targetAdv.keahlian.join(', ') : (targetAdv.keahlian || prev.keilmuan),
+            keahlian: targetAdv.keahlian || prev.keahlian
+          };
+          try { localStorage.setItem('simta_active_user', JSON.stringify(updated)); } catch { }
+          return updated;
+        });
+      }
+    }
+
+    // Sinkronisasi ke Supabase di background
+    try {
+      if (isSupabaseConfigured && supabase) {
+        if (targetAdv.nip) {
+          const advisorPayload = {
+            nama: targetAdv.nama,
+            email: targetAdv.email,
+            no_hp: targetAdv.no_hp,
+            prodi: targetAdv.prodi,
+            keahlian: Array.isArray(targetAdv.keahlian) ? targetAdv.keahlian : (targetAdv.keahlian ? [targetAdv.keahlian] : []),
+            kuota_dospem1: targetAdv.kuota_dospem1,
+            kuota_dospem2: targetAdv.kuota_dospem2,
+            status: targetAdv.status
+          };
+          await supabase.from('advisors').update(advisorPayload).eq('nip', targetAdv.nip);
+
+          const profilePayload = {
+            nama: targetAdv.nama,
+            email: targetAdv.email,
+            no_hp: targetAdv.no_hp,
+            prodi: targetAdv.prodi,
+            kelas: targetAdv.jabatan_fungsional || 'Asisten Ahli'
+          };
+          await supabase.from('profiles').update(profilePayload).or(`nip.eq.${targetAdv.nip},nim.eq.${targetAdv.nip}`);
+        }
+      }
+    } catch (err) {
+      console.warn('Sync advisor update to Supabase failed:', err);
+    }
   };
 
   const deleteAdvisor = (advisorId) => {
@@ -2433,11 +2606,30 @@ export function AuthProvider({ children }) {
             .select('jabatan_fungsional')
             .eq('nip', userNip)
             .maybeSingle();
-          if (advJf && advJf.jabatan_fungsional) {
+          if (advJf && advJf.jabatan_fungsional && advJf.jabatan_fungsional !== 'Dosen Pembimbing') {
             enriched.jabatan_fungsional = advJf.jabatan_fungsional;
             enriched.kelas = advJf.jabatan_fungsional;
           }
         } catch {}
+
+        // Fallback ke simta_advisors (Data Master Kaprodi) dan MOCK_ADVISORS
+        if (!enriched.jabatan_fungsional || enriched.jabatan_fungsional === 'Dosen Pembimbing') {
+          try {
+            const localAdvs = JSON.parse(localStorage.getItem('simta_advisors') || '[]');
+            const matchedAdv = localAdvs.find(a => String(a.nip) === String(userNip));
+            if (matchedAdv?.jabatan_fungsional && matchedAdv.jabatan_fungsional !== 'Dosen Pembimbing') {
+              enriched.jabatan_fungsional = matchedAdv.jabatan_fungsional;
+              enriched.kelas = matchedAdv.jabatan_fungsional;
+            }
+          } catch {}
+        }
+        if (!enriched.jabatan_fungsional || enriched.jabatan_fungsional === 'Dosen Pembimbing') {
+          const mockAdv = MOCK_ADVISORS.find(m => String(m.nip) === String(userNip));
+          if (mockAdv?.jabatan_fungsional) {
+            enriched.jabatan_fungsional = mockAdv.jabatan_fungsional;
+            enriched.kelas = mockAdv.jabatan_fungsional;
+          }
+        }
       }
 
       // 2. Cek tabel profiles untuk semua role
@@ -2456,7 +2648,7 @@ export function AuthProvider({ children }) {
         if (profData) {
           if (profData.no_hp) enriched.no_hp = profData.no_hp;
           if (profData.link_wa_group) enriched.link_wa_group = profData.link_wa_group;
-          if (profData.kelas) {
+          if (profData.kelas && profData.kelas !== 'Dosen Pembimbing') {
             enriched.kelas = profData.kelas;
             if (enriched.role !== 'mahasiswa') {
               enriched.jabatan_fungsional = profData.kelas;
@@ -2766,7 +2958,13 @@ export function AuthProvider({ children }) {
           email: advMatch.email,
           password: advMatch.nip,
           role: 'dosen',
-          prodi: advMatch.prodi || 'D3 Manajemen Informatika'
+          prodi: advMatch.prodi || 'D3 Manajemen Informatika',
+          kelas: advMatch.jabatan_fungsional || 'Asisten Ahli',
+          jabatan_fungsional: advMatch.jabatan_fungsional || 'Asisten Ahli',
+          keilmuan: Array.isArray(advMatch.keahlian) ? advMatch.keahlian.join(', ') : (advMatch.keahlian || ''),
+          keahlian: advMatch.keahlian,
+          no_hp: advMatch.no_hp || '',
+          link_wa_group: advMatch.link_wa_group || ''
         };
       }
     }

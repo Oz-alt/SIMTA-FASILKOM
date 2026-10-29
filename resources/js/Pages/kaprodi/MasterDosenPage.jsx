@@ -573,11 +573,11 @@ export default function MasterDosenPage() {
                   onChange={(e) => setDosenForm({ ...dosenForm, jabatan_fungsional: e.target.value })}
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500 font-bold text-slate-800"
                 >
-                  <option value="Tenaga Pengajar">Tenaga Pengajar</option>
-                  <option value="Asisten Ahli">Asisten Ahli</option>
-                  <option value="Lektor">Lektor</option>
                   <option value="Lektor Kepala">Lektor Kepala</option>
-                  <option value="Guru Besar">Guru Besar / Profesor</option>
+                  <option value="Lektor">Lektor</option>
+                  <option value="Asisten Ahli">Asisten Ahli</option>
+                  <option value="Tenaga Pengajar">Tenaga Pengajar</option>
+                  <option value="Staff">Staff</option>
                 </select>
               </div>
 

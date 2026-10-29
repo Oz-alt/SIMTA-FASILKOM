@@ -31,7 +31,7 @@ import {
 import { supabase, isSupabaseConfigured } from '../services/supabase.js';
 
 export default function ProfilePage() {
-  const { currentUser, updateUserProfile, departments } = useAuth();
+  const { currentUser, updateUserProfile, departments, advisors } = useAuth();
   const { url } = usePage();
 
   const isMahasiswa = currentUser?.role === 'mahasiswa';
@@ -50,7 +50,6 @@ export default function ProfilePage() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isCompletedSuccess, setIsCompletedSuccess] = useState(false);
-  const [isCustomJabatan, setIsCustomJabatan] = useState(false);
 
   const JABATAN_FUNGSIONAL_OPTIONS = [
     'Lektor Kepala',
@@ -60,13 +59,50 @@ export default function ProfilePage() {
     'Staff'
   ];
 
+  // Temukan data dosen di Data Master Dosen (yang dikelola Kaprodi / Admin)
+  const matchedAdvisor = useMemo(() => {
+    if (!currentUser || currentUser.role !== 'dosen') return null;
+    const uNip = String(currentUser.nip || currentUser.nim || '').trim();
+    const uEmail = String(currentUser.email || '').trim().toLowerCase();
+    return (advisors || []).find(a =>
+      (uNip && String(a.nip || '').trim() === uNip) ||
+      (uEmail && String(a.email || '').trim().toLowerCase() === uEmail)
+    ) || null;
+  }, [currentUser, advisors]);
+
+  // Resolusi jabatan fungsional: Sumber kebenaran utama adalah yang diset Kaprodi / Admin di Data Master Dosen
+  const resolvedJabatan = useMemo(() => {
+    if (isMahasiswa) return currentUser?.kelas || 'MI 5A';
+    if (matchedAdvisor?.jabatan_fungsional && matchedAdvisor.jabatan_fungsional !== 'Dosen Pembimbing') {
+      return matchedAdvisor.jabatan_fungsional;
+    }
+    if (currentUser?.jabatan_fungsional && currentUser.jabatan_fungsional !== 'Dosen Pembimbing') {
+      return currentUser.jabatan_fungsional;
+    }
+    if (currentUser?.kelas && currentUser.kelas !== 'Dosen Pembimbing') {
+      return currentUser.kelas;
+    }
+    return 'Asisten Ahli';
+  }, [currentUser, matchedAdvisor, isMahasiswa]);
+
+  const resolvedKeilmuan = useMemo(() => {
+    if (currentUser?.keilmuan) return currentUser.keilmuan;
+    if (currentUser?.keahlian) {
+      return Array.isArray(currentUser.keahlian) ? currentUser.keahlian.join(', ') : currentUser.keahlian;
+    }
+    if (matchedAdvisor?.keahlian) {
+      return Array.isArray(matchedAdvisor.keahlian) ? matchedAdvisor.keahlian.join(', ') : matchedAdvisor.keahlian;
+    }
+    return '';
+  }, [currentUser, matchedAdvisor]);
+
   const [formData, setFormData] = useState({
     nama: currentUser?.nama || '',
     no_hp: currentUser?.no_hp && currentUser?.no_hp !== '-' ? currentUser.no_hp : '',
     prodi: currentUser?.prodi || 'D3 Manajemen Informatika',
-    kelas: currentUser?.kelas || (currentUser?.role === 'mahasiswa' ? 'MI 5A' : 'Dosen Pembimbing'),
-    jabatan_fungsional: currentUser?.jabatan_fungsional || currentUser?.kelas || '',
-    keilmuan: currentUser?.keilmuan || (currentUser?.keahlian ? (Array.isArray(currentUser.keahlian) ? currentUser.keahlian.join(', ') : currentUser.keahlian) : '')
+    kelas: isMahasiswa ? (currentUser?.kelas || 'MI 5A') : resolvedJabatan,
+    jabatan_fungsional: resolvedJabatan,
+    keilmuan: resolvedKeilmuan
   });
 
   useEffect(() => {
@@ -99,12 +135,12 @@ export default function ProfilePage() {
         nama: currentUser.nama || '',
         no_hp: currentUser.no_hp && currentUser.no_hp !== '-' ? currentUser.no_hp : '',
         prodi: currentUser.prodi || 'D3 Manajemen Informatika',
-        kelas: currentUser.kelas || (currentUser.role === 'mahasiswa' ? 'MI 5A' : 'Dosen Pembimbing'),
-        jabatan_fungsional: currentUser.jabatan_fungsional || currentUser.kelas || '',
-        keilmuan: currentUser.keilmuan || (currentUser.keahlian ? (Array.isArray(currentUser.keahlian) ? currentUser.keahlian.join(', ') : currentUser.keahlian) : '')
+        kelas: isMahasiswa ? (currentUser.kelas || 'MI 5A') : resolvedJabatan,
+        jabatan_fungsional: resolvedJabatan,
+        keilmuan: resolvedKeilmuan
       });
     }
-  }, [currentUser?.id, currentUser?.link_wa_group, currentUser?.nip, currentUser?.nim, currentUser?.role, currentUser?.no_hp]);
+  }, [currentUser?.id, currentUser?.link_wa_group, currentUser?.nip, currentUser?.nim, currentUser?.role, currentUser?.no_hp, resolvedJabatan, resolvedKeilmuan, isMahasiswa]);
 
   const roleLabels = {
     mahasiswa: { label: 'Mahasiswa', badge: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
@@ -121,15 +157,13 @@ export default function ProfilePage() {
   };
 
   const handleStartEdit = () => {
-    const currentJf = currentUser?.jabatan_fungsional || currentUser?.kelas || '';
-    setIsCustomJabatan(Boolean(currentJf && !JABATAN_FUNGSIONAL_OPTIONS.includes(currentJf)));
     setFormData({
       nama: currentUser?.nama || '',
       no_hp: currentUser?.no_hp && currentUser?.no_hp !== '-' ? currentUser.no_hp : '',
       prodi: currentUser?.prodi || 'D3 Manajemen Informatika',
-      kelas: currentUser?.kelas || (currentUser?.role === 'mahasiswa' ? 'MI 5A' : 'Dosen Pembimbing'),
-      jabatan_fungsional: currentJf,
-      keilmuan: currentUser?.keilmuan || (currentUser?.keahlian ? (Array.isArray(currentUser.keahlian) ? currentUser.keahlian.join(', ') : currentUser.keahlian) : '')
+      kelas: isMahasiswa ? (currentUser?.kelas || 'MI 5A') : resolvedJabatan,
+      jabatan_fungsional: resolvedJabatan,
+      keilmuan: resolvedKeilmuan
     });
     setIsEditing(true);
     setSuccessMsg('');
@@ -142,7 +176,6 @@ export default function ProfilePage() {
       return;
     }
     setIsEditing(false);
-    setIsCustomJabatan(false);
     setErrorMsg('');
   };
 
@@ -687,69 +720,26 @@ export default function ProfilePage() {
                     <GraduationCap className="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
                   </div>
                 ) : (
-                  <div className="space-y-2">
-                    <div className="relative">
-                      <select
-                        name="jabatan_fungsional_select"
-                        value={isCustomJabatan ? '__custom__' : (formData.jabatan_fungsional || '')}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          if (val === '__custom__') {
-                            setIsCustomJabatan(true);
-                          } else {
-                            setIsCustomJabatan(false);
-                            setFormData(prev => ({
-                              ...prev,
-                              jabatan_fungsional: val,
-                              kelas: val
-                            }));
-                          }
-                        }}
-                        className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 text-xs font-semibold text-slate-900 bg-white transition-all outline-none"
-                      >
-                        <option value="">-- Pilih Jabatan Fungsional --</option>
-                        {JABATAN_FUNGSIONAL_OPTIONS.map(opt => (
-                          <option key={opt} value={opt}>{opt}</option>
-                        ))}
-                        {formData.jabatan_fungsional && !JABATAN_FUNGSIONAL_OPTIONS.includes(formData.jabatan_fungsional) && (
-                          <option value={formData.jabatan_fungsional}>{formData.jabatan_fungsional}</option>
-                        )}
-                        <option value="__custom__">⚙️ -- Ketik Manual (Backdoor) --</option>
-                      </select>
-                      <GraduationCap className="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                    </div>
-
-                    {isCustomJabatan && (
-                      <div className="space-y-1">
-                        <input
-                          type="text"
-                          name="jabatan_fungsional"
-                          value={formData.jabatan_fungsional}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setFormData(prev => ({
-                              ...prev,
-                              jabatan_fungsional: val,
-                              kelas: val
-                            }));
-                          }}
-                          placeholder="Ketik jabatan fungsional kustom..."
-                          className="w-full px-3 py-2 rounded-lg border border-amber-300 bg-amber-50/60 text-xs font-semibold text-slate-900 focus:border-amber-500 focus:ring-2 focus:ring-amber-100 transition-all outline-none"
-                        />
-                        <p className="text-[10px] text-amber-700 italic">
-                          Mode Backdoor aktif: Kaprodi / Admin / Dosen dapat menetapkan jabatan fungsional secara manual jika ada salah konfigurasi.
-                        </p>
-                      </div>
-                    )}
+                  <div className="relative">
+                    <select
+                      name="jabatan_fungsional"
+                      value={formData.jabatan_fungsional}
+                      onChange={handleChange}
+                      className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 text-xs font-semibold text-slate-900 bg-white transition-all outline-none appearance-none"
+                    >
+                      <option value="">-- Pilih Jabatan Fungsional --</option>
+                      {JABATAN_FUNGSIONAL_OPTIONS.map(opt => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                    <GraduationCap className="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
                   </div>
                 )
               ) : (
                 <div className="flex items-center space-x-2 text-slate-900 font-semibold pt-0.5">
                   <GraduationCap className="w-4 h-4 text-slate-400" />
                   <span>
-                    {isMahasiswa
-                      ? (currentUser?.kelas || 'MI 5A')
-                      : (currentUser?.jabatan_fungsional || currentUser?.kelas || 'Dosen Pembimbing')}
+                    {isMahasiswa ? (currentUser?.kelas || 'MI 5A') : resolvedJabatan}
                   </span>
                 </div>
               )}
