@@ -65,6 +65,13 @@ const runLegacyPhoneMigration = () => {
 
 import { supabase, isSupabaseConfigured } from '../services/supabase.js';
 import { broadcastRealtimeNotification, subscribeToRealtimeNotifications } from '../services/realtimeNotificationBus.js';
+import {
+  getStudentCredential,
+  saveStudentCredential,
+  verifyStudentPassword,
+  normalizeNim,
+  resetCredentialCache
+} from '../services/studentCredentials.js';
 
 const generateRowId = () => {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -373,25 +380,7 @@ export function AuthProvider({ children }) {
     };
   };
 
-  // Normalize NIM: strip non-digits and leading zeros for consistent keying
-  const normalizeNim = (nim) => String(nim || '').replace(/\D/g, '').replace(/^0+/, '') || String(nim || '');
-
-  // Student credential helpers (stored in localStorage for offline support)
-  const STUDENT_CRED_KEY = 'simta_student_credentials';
-  const getStudentCredential = async (nim) => {
-    try {
-      const all = JSON.parse(localStorage.getItem(STUDENT_CRED_KEY) || '{}');
-      return all[normalizeNim(nim)] || null;
-    } catch { return null; }
-  };
-  const saveStudentCredential = async ({ nim, password, isProfileCompleted }) => {
-    try {
-      const all = JSON.parse(localStorage.getItem(STUDENT_CRED_KEY) || '{}');
-      all[normalizeNim(nim)] = { nim, password, isProfileCompleted: !!isProfileCompleted };
-      localStorage.setItem(STUDENT_CRED_KEY, JSON.stringify(all));
-      return { success: true };
-    } catch (e) { return { success: false, message: String(e) }; }
-  };
+  // Student credential helpers are imported from ../services/studentCredentials.js
 
   // Helper to read all registered user accounts from localStorage
   const getRegisteredUsers = () => {
@@ -700,6 +689,41 @@ export function AuthProvider({ children }) {
         }
         return p;
       }));
+
+      const studentNim = normalizeNim(merged.nim || merged.nip);
+      if (studentNim) {
+        const passwordToStore = typeof updatedFields.password === 'string' ? updatedFields.password.trim() : '';
+        const shouldMarkCompleted = updatedFields.is_profile_completed === true || merged.is_profile_completed === true;
+
+        if (passwordToStore || shouldMarkCompleted) {
+          try {
+            await saveStudentCredential({
+              nim: studentNim,
+              password: passwordToStore || undefined,
+              isProfileCompleted: shouldMarkCompleted ? true : undefined
+            });
+          } catch (e) {
+            console.warn('Gagal menyimpan kredensial mahasiswa ke Supabase:', e);
+          }
+        }
+
+        if (passwordToStore) {
+          try {
+            const users = getRegisteredUsers();
+            const sIdx = users.findIndex(u => normalizeNim(u.nim || u.nip) === studentNim);
+            if (sIdx >= 0) {
+              users[sIdx] = {
+                ...users[sIdx],
+                password: passwordToStore,
+                is_profile_completed: shouldMarkCompleted ? true : users[sIdx].is_profile_completed
+              };
+              localStorage.setItem('simta_registered_users', JSON.stringify(users));
+            }
+          } catch (e) {
+            console.warn('Failed to update student registered user password locally:', e);
+          }
+        }
+      }
     }
 
     if (isSupabaseConfigured && supabase) {
@@ -2708,6 +2732,25 @@ export function AuthProvider({ children }) {
       return false;
     };
 
+    /**
+     * Verifikasi kata sandi mahasiswa terhadap kredensial yang tersimpan di Supabase.
+     * Sumber kebenaran: tabel `student_credentials`. Bila barisnya ada dan kata sandi valid,
+     * kembalikan true. Bila verifikasi server mengembalikan false, kata sandi salah.
+     * Bila belum ada baris di Supabase, kembalikan null agar jatuh ke validasi lokal/default NIM.
+     */
+    const checkSupabaseCredential = async (user) => {
+      if (!user || user.role !== 'mahasiswa') {
+        return null;
+      }
+
+      const nim = normalizeNim(user.nim || user.nip);
+      if (!nim) {
+        return null;
+      }
+
+      return verifyStudentPassword(nim, inputPass);
+    };
+
     // 1. Akun Kaprodi (dapat login dengan username "koprodi" / "kaprodi" atau NIP/Email)
     if (termLower === 'koprodi' || termLower === 'kaprodi') {
       if (inputPass !== 'Koprodi123') {
@@ -2864,8 +2907,23 @@ export function AuthProvider({ children }) {
     );
 
     if (localFound) {
-      if (!isValidPassword(localFound)) {
+      const supabaseCredential = await checkSupabaseCredential(localFound);
+      if (supabaseCredential === false) {
         throw new Error('Kata sandi salah.');
+      }
+      if (supabaseCredential !== true && !isValidPassword(localFound)) {
+        throw new Error('Kata sandi salah.');
+      }
+
+      if (supabaseCredential === true) {
+        try {
+          const allReg = getRegisteredUsers();
+          const target = allReg.find(u => normalizeNim(u.nim || u.nip) === normalizeNim(localFound.nim || localFound.nip));
+          if (target) {
+            target.password = inputPass;
+            localStorage.setItem('simta_registered_users', JSON.stringify(allReg));
+          }
+        } catch {}
       }
 
       // Status verifikasi awal berasal dari Supabase; objek dari localStorage/mock
@@ -2970,8 +3028,23 @@ export function AuthProvider({ children }) {
     }
 
     if (foundUser) {
-      if (!isValidPassword(foundUser)) {
+      const supabaseCredential = await checkSupabaseCredential(foundUser);
+      if (supabaseCredential === false) {
         throw new Error('Kata sandi salah.');
+      }
+      if (supabaseCredential !== true && !isValidPassword(foundUser)) {
+        throw new Error('Kata sandi salah.');
+      }
+
+      if (supabaseCredential === true) {
+        try {
+          const allReg = getRegisteredUsers();
+          const target = allReg.find(u => normalizeNim(u.nim || u.nip) === normalizeNim(foundUser.nim || foundUser.nip));
+          if (target) {
+            target.password = inputPass;
+            localStorage.setItem('simta_registered_users', JSON.stringify(allReg));
+          }
+        } catch {}
       }
 
       // Samakan dengan jalur registry: status verifikasi diambil dari Supabase
@@ -3079,6 +3152,7 @@ export function AuthProvider({ children }) {
     if (isSupabaseConfigured && supabase) {
       await supabase.auth.signOut();
     }
+    resetCredentialCache();
     localStorage.removeItem('simta_active_user');
     setCurrentUserState(null);
     setIsAuthenticated(false);
@@ -5100,6 +5174,18 @@ export function AuthProvider({ children }) {
         localStorage.setItem('simta_registered_users', JSON.stringify(users));
       }
     } catch (e) { }
+
+    const targetNim = normalizeNim(idOrNim);
+    if (targetNim) {
+      try {
+        const saved = await saveStudentCredential({ nim: targetNim, password: finalPass });
+        if (!saved.success) {
+          console.warn('Gagal menyimpan reset kata sandi mahasiswa ke Supabase:', saved.message);
+        }
+      } catch (e) {
+        console.warn('Gagal menyimpan reset kata sandi mahasiswa ke Supabase:', e);
+      }
+    }
 
     return true;
   };
