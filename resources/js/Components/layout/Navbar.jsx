@@ -13,7 +13,8 @@ import {
   Sparkles,
   ExternalLink,
   ArrowRight,
-  AlertTriangle
+  AlertTriangle,
+  X
 } from 'lucide-react';
 
 import unsriLogo from '../../assets/photo/unsri logo.png';
@@ -88,6 +89,7 @@ export default function Navbar() {
   // Filter notifications relevant to the current active user
   const userNotifications = notifications.filter(n => {
     if (!currentUser) return false;
+    if (n.is_read) return false;
 
     // Bersihkan notifikasi mock dummy lama
     if (n.id === 'notif-1' || n.id === 'notif-2' || n.is_mock) return false;
@@ -160,7 +162,7 @@ export default function Navbar() {
     return false;
   });
 
-  const unreadCount = userNotifications.filter(n => !n.is_read).length;
+  const unreadCount = userNotifications.length;
 
   const roleBadges = {
     mahasiswa: { label: 'Mahasiswa', color: 'bg-emerald-100 text-emerald-800 border-emerald-300', icon: GraduationCap },
@@ -292,16 +294,17 @@ export default function Navbar() {
                       <span className="font-bold text-sm text-slate-800">Notifikasi</span>
                       {unreadCount > 0 && (
                         <span className="ml-2 px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-600 font-bold text-[10px] border border-indigo-200">
-                          {unreadCount} belum dibaca
+                          {unreadCount} baru
                         </span>
                       )}
                     </div>
-                    {unreadCount > 0 && (
+                    {userNotifications.length > 0 && (
                       <button 
-                        onClick={markAllNotificationsAsRead}
-                        className="text-[11px] text-indigo-600 hover:text-indigo-800 font-semibold cursor-pointer transition-colors"
+                        onClick={() => markAllNotificationsAsRead(currentUser)}
+                        className="text-[11px] text-indigo-600 hover:text-indigo-800 font-semibold cursor-pointer transition-colors hover:underline"
+                        title="Tandai semua sudah dibaca dan bersihkan notifikasi"
                       >
-                        Tandai dibaca
+                        Tandai sudah dibaca
                       </button>
                     )}
                   </div>
@@ -391,6 +394,20 @@ export default function Navbar() {
                                     {isApproved ? 'ACC' : n.jenis_revisi ? `Revisi ${n.jenis_revisi}` : 'Respon Dospem'}
                                   </span>
                                 ) : null}
+
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (n.id && markNotificationAsRead) {
+                                      markNotificationAsRead(n.id);
+                                    }
+                                  }}
+                                  className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors ml-1 shrink-0"
+                                  title="Tandai sudah dibaca & hapus"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
                               </div>
                             </div>
 

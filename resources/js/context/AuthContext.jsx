@@ -214,6 +214,105 @@ const buildThesisTitlePayload = (title) => ({
   updated_at: new Date().toISOString()
 });
 
+/**
+ * Daftar ID notifikasi yang telah ditandai sudah dibaca atau dihapus pengguna
+ * Disimpan di localStorage agar tidak kembali muncul setelah reload / sync Supabase
+ */
+export const getReadNotificationIds = () => {
+  try {
+    const saved = localStorage.getItem('simta_read_notification_ids');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) return new Set(parsed);
+    }
+  } catch { }
+  return new Set();
+};
+
+export const addReadNotificationIds = (idsToAdd = []) => {
+  try {
+    const current = getReadNotificationIds();
+    idsToAdd.forEach(id => {
+      if (id !== undefined && id !== null && String(id).trim()) {
+        current.add(String(id).trim());
+      }
+    });
+    localStorage.setItem('simta_read_notification_ids', JSON.stringify(Array.from(current)));
+  } catch { }
+};
+
+/**
+ * Memeriksa apakah suatu notifikasi ditujukan untuk pengguna aktif
+ */
+export const isNotificationForUser = (n, currentUser) => {
+  if (!n || !currentUser) return false;
+  if (n.is_read) return false;
+
+  // Bersihkan notifikasi mock dummy lama
+  if (n.id === 'notif-1' || n.id === 'notif-2' || n.is_mock) return false;
+  if (n.title === 'Judul TA Disetujui!' || n.title === 'Peminjaman Ruangan Disetujui') return false;
+
+  if (currentUser.role === 'admin') {
+    return (
+      n.recipient_role === 'admin' ||
+      n.target_role === 'admin' ||
+      String(n.profile_id) === String(currentUser.id) ||
+      String(n.recipient_id) === String(currentUser.id)
+    );
+  }
+
+  if (currentUser.role === 'kaprodi') {
+    if (n.recipient_role === 'mahasiswa' || n.recipient_role === 'dosen') return false;
+    if (n.related_type === 'bimbingan_status' || n.related_type === 'consultation' || n.related_type === 'bimbingan_reminder') {
+      return false;
+    }
+    return (
+      n.recipient_role === 'kaprodi' ||
+      n.recipient_role === 'all' ||
+      n.related_type === 'thesis_title' ||
+      n.related_type === 'thesis_title_revised' ||
+      n.related_type === 'thesis_title_cancelled' ||
+      n.related_type === 'kaprodi_bimbingan_inactivity_alert' ||
+      n.related_type === 'kaprodi_siap_sidang_alert' ||
+      n.related_type === 'similarity_warning' ||
+      n.related_type === 'kaprodi_monitoring'
+    );
+  }
+
+  if (currentUser.role === 'mahasiswa') {
+    if (n.recipient_role && n.recipient_role !== 'mahasiswa' && n.recipient_role !== 'all') return false;
+    if (n.recipient_nim && currentUser.nim) {
+      return String(n.recipient_nim).trim() === String(currentUser.nim).trim();
+    }
+    if (n.profile_id && (String(n.profile_id) === String(currentUser.id) || String(n.profile_id) === String(currentUser.nim))) {
+      return true;
+    }
+    return !n.recipient_role || n.recipient_role === 'mahasiswa';
+  }
+
+  if (currentUser.role === 'dosen') {
+    if (n.recipient_role === 'mahasiswa' || n.recipient_role === 'kaprodi') return false;
+    const cleanNip = String(currentUser.nip || currentUser.nim || '').trim();
+    const cleanNama = (currentUser.nama || '').toLowerCase().replace(/dr\.|ir\.|prof\.|s\.kom\.|m\.cs\.|m\.t\.|m\.kom\.|ph\.d\.|st\.|s\.t\./gi, '').trim();
+
+    if (n.recipient_nip && cleanNip && String(n.recipient_nip).trim() === cleanNip) {
+      return true;
+    }
+    if (n.dosen_nama && cleanNama) {
+      const cleanNotifNama = n.dosen_nama.toLowerCase().replace(/dr\.|ir\.|prof\.|s\.kom\.|m\.cs\.|m\.t\.|m\.kom\.|ph\.d\.|st\.|s\.t\./gi, '').trim();
+      if (cleanNotifNama.includes(cleanNama) || cleanNama.includes(cleanNotifNama)) {
+        return true;
+      }
+    }
+    if (n.recipient_role === 'dosen') {
+      return !n.recipient_nip || (cleanNip && String(n.recipient_nip).trim() === cleanNip);
+    }
+    return false;
+  }
+
+  return false;
+};
+
 export function AuthProvider({ children }) {
   // Helper to sanitize profile names to guarantee full name and correct role are used
   const sanitizeProfile = (user) => {
@@ -943,13 +1042,16 @@ export function AuthProvider({ children }) {
   // Persistent notifications with local storage synchronization
   const [notifications, setNotifications] = useState(() => {
     try {
+      const readIds = getReadNotificationIds();
       const saved = localStorage.getItem('simta_notifications');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.filter(n => !n.is_read && !readIds.has(String(n.id)));
+        }
       }
     } catch { }
-    return MOCK_NOTIFICATIONS;
+    return [];
   });
   // Real-time Bimbingan Response Alert State for Mahasiswa
   const [activeRealtimeAlert, setActiveRealtimeAlert] = useState(null);
@@ -1005,7 +1107,26 @@ export function AuthProvider({ children }) {
   const [latestRealtimeNotif, setLatestRealtimeNotif] = useState(null);
   const dismissRealtimeNotif = () => setLatestRealtimeNotif(null);
   const markNotificationAsRead = (notifId) => {
-    setNotifications(prev => prev.map(n => String(n.id) === String(notifId) ? { ...n, is_read: true } : n));
+    if (!notifId) return;
+    setNotifications(prev => {
+      const targetNotif = prev.find(n => String(n.id) === String(notifId));
+      const readKeys = [String(notifId)];
+      if (targetNotif) {
+        if (targetNotif.consultation_id) {
+          readKeys.push(`consultation_${targetNotif.consultation_id}_${targetNotif.status}`);
+          readKeys.push(`notif-sync-${targetNotif.consultation_id}-${targetNotif.status}`);
+          readKeys.push(String(targetNotif.consultation_id));
+        }
+        if (targetNotif.related_type === 'bimbingan_reminder') {
+          readKeys.push(`reminder_${targetNotif.profile_id}_${new Date().toISOString().slice(0, 10)}`);
+        }
+      }
+      addReadNotificationIds(readKeys);
+
+      const filtered = prev.filter(n => String(n.id) !== String(notifId));
+      try { localStorage.setItem('simta_notifications', JSON.stringify(filtered)); } catch { }
+      return filtered;
+    });
   };
   const [bimbinganReminderLogs, setBimbinganReminderLogs] = useState(() => {
     try {
@@ -2075,14 +2196,23 @@ export function AuthProvider({ children }) {
               );
 
               if (respondedForStudent.length > 0) {
+                const readIds = getReadNotificationIds();
                 setNotifications(currNotifs => {
                   let updatedNotifs = [...currNotifs];
                   let changed = false;
 
                   respondedForStudent.forEach(item => {
+                    const notifSyncId = `notif-sync-${item.id}-${item.status}`;
+                    const consultKey = `consultation_${item.id}_${item.status}`;
+
+                    // Cek apakah sudah pernah dibaca atau dihapus pengguna
+                    if (readIds.has(notifSyncId) || readIds.has(consultKey) || readIds.has(String(item.id))) {
+                      return;
+                    }
+
                     const alreadyExists = updatedNotifs.some(n =>
-                      String(n.consultation_id) === String(item.id) &&
-                      n.status === item.status
+                      (String(n.consultation_id) === String(item.id) && n.status === item.status) ||
+                      String(n.id) === notifSyncId
                     );
 
                     if (!alreadyExists) {
@@ -2856,7 +2986,8 @@ export function AuthProvider({ children }) {
         try {
           const parsed = JSON.parse(e.newValue);
           if (Array.isArray(parsed)) {
-            setNotifications(parsed);
+            const readIds = getReadNotificationIds();
+            setNotifications(parsed.filter(n => !n.is_read && !readIds.has(String(n.id))));
           }
         } catch { }
       }
@@ -2871,6 +3002,14 @@ export function AuthProvider({ children }) {
       const reminder = calculateBimbinganReminder(consultations, currentUser.nim, 2);
       if (reminder.isReminderActive && (reminder.severity === 'critical' || reminder.severity === 'warning')) {
         const studentEmail = currentUser.email || `${currentUser.nim}@student.unsri.ac.id`;
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const reminderKey = `reminder_${currentUser.id}_${todayStr}`;
+        const readIds = getReadNotificationIds();
+
+        if (readIds.has(reminderKey)) {
+          return;
+        }
+
         setNotifications(prev => {
           const alreadyNotified = prev.some(n => n.related_type === 'bimbingan_reminder' && String(n.profile_id) === String(currentUser.id));
           if (alreadyNotified) return prev;
@@ -4357,9 +4496,32 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // Mark all notifications as read
-  const markAllNotificationsAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+  // Mark all notifications as read & delete/remove them so they don't pile up
+  const markAllNotificationsAsRead = (targetUser = null) => {
+    const activeUser = targetUser || currentUserRef.current || currentUser;
+    setNotifications(prev => {
+      const readKeys = [];
+      const remaining = prev.filter(n => {
+        const isBelongToUser = activeUser ? isNotificationForUser(n, activeUser) : true;
+        if (isBelongToUser) {
+          readKeys.push(String(n.id));
+          if (n.consultation_id) {
+            readKeys.push(`consultation_${n.consultation_id}_${n.status}`);
+            readKeys.push(`notif-sync-${n.consultation_id}-${n.status}`);
+            readKeys.push(String(n.consultation_id));
+          }
+          if (n.related_type === 'bimbingan_reminder') {
+            readKeys.push(`reminder_${n.profile_id}_${new Date().toISOString().slice(0, 10)}`);
+          }
+          return false; // Hapus/hilangkan notifikasi yang sudah dibaca
+        }
+        return true;
+      });
+
+      addReadNotificationIds(readKeys);
+      try { localStorage.setItem('simta_notifications', JSON.stringify(remaining)); } catch { }
+      return remaining;
+    });
   };
 
   // Bulk Import Historical Titles (Kaprodi)
@@ -6494,6 +6656,7 @@ export function AuthProvider({ children }) {
       latestRealtimeNotif,
       dismissRealtimeNotif,
       markNotificationAsRead,
+      deleteNotification: markNotificationAsRead,
       triggerRealtimeTestNotif: () => {
         const sample = thesisTitles[0] || {
           id: 'test-' + Date.now(),
