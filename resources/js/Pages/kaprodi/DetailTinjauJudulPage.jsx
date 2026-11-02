@@ -39,7 +39,8 @@ export default function DetailTinjauJudulPage({ titleId: propTitleId }) {
     addProdiRevisionNote, 
     setThesisTitleFix,
     updateThesisTitleAdvisors,
-    currentUser 
+    currentUser,
+    getStudentAdvisors
   } = useAuth();
 
   // Resolve ID from props or URL pathname (/kaprodi/titles/:id)
@@ -56,6 +57,12 @@ export default function DetailTinjauJudulPage({ titleId: propTitleId }) {
     return thesisTitles.find(t => String(t.id).trim() === String(resolvedId).trim()) || null;
   }, [thesisTitles, resolvedId]);
 
+  // Fallback assigned advisors from student advisor allocation
+  const assigned = useMemo(() => {
+    if (!title?.mhs_nim || typeof getStudentAdvisors !== 'function') return null;
+    return getStudentAdvisors(title.mhs_nim);
+  }, [title?.mhs_nim, getStudentAdvisors]);
+
   // Helper to resolve advisor NIP
   const resolveAdvisorNip = (nip, name) => {
     if (nip && advisors.some(a => String(a.nip) === String(nip))) return String(nip);
@@ -70,15 +77,17 @@ export default function DetailTinjauJudulPage({ titleId: propTitleId }) {
     return '';
   };
 
+  const defaultDospem1Nip = title?.pembimbing_1_nip || resolveAdvisorNip(title?.pembimbing_1_nip, title?.pembimbing_1_nama || title?.pembimbing_1) || assigned?.dospem1?.nip || '';
+  const defaultDospem2Nip = title?.pembimbing_2_nip || resolveAdvisorNip(title?.pembimbing_2_nip, title?.pembimbing_2_nama || title?.pembimbing_2) || assigned?.dospem2?.nip || '';
+
+  const defaultDospem1Nama = title?.pembimbing_1_nama || title?.pembimbing_1 || assigned?.dospem1?.nama || '';
+  const defaultDospem2Nama = title?.pembimbing_2_nama || title?.pembimbing_2 || assigned?.dospem2?.nama || '';
+
   // State Management for Forms
   const [revisiCatatan, setRevisiCatatan] = useState('');
   const [catatanFix, setCatatanFix] = useState(title?.catatan_kaprodi || '');
-  const [confirmedDospem1Nip, setConfirmedDospem1Nip] = useState(() => {
-    return title ? resolveAdvisorNip(title.pembimbing_1_nip, title.pembimbing_1_nama || title.pembimbing_1) : '';
-  });
-  const [confirmedDospem2Nip, setConfirmedDospem2Nip] = useState(() => {
-    return title ? resolveAdvisorNip(title.pembimbing_2_nip, title.pembimbing_2_nama || title.pembimbing_2) : '';
-  });
+  const [confirmedDospem1Nip, setConfirmedDospem1Nip] = useState(() => defaultDospem1Nip);
+  const [confirmedDospem2Nip, setConfirmedDospem2Nip] = useState(() => defaultDospem2Nip);
 
   // Inline edit mode untuk kartu Dosen Pembimbing (Kaprodi bisa ganti-ganti dospem)
   const [isEditingAdvisors, setIsEditingAdvisors] = useState(false);
@@ -90,10 +99,10 @@ export default function DetailTinjauJudulPage({ titleId: propTitleId }) {
   React.useEffect(() => {
     if (title) {
       setCatatanFix(title.catatan_kaprodi || '');
-      setConfirmedDospem1Nip(resolveAdvisorNip(title.pembimbing_1_nip, title.pembimbing_1_nama || title.pembimbing_1));
-      setConfirmedDospem2Nip(resolveAdvisorNip(title.pembimbing_2_nip, title.pembimbing_2_nama || title.pembimbing_2));
+      setConfirmedDospem1Nip(defaultDospem1Nip);
+      setConfirmedDospem2Nip(defaultDospem2Nip);
     }
-  }, [title?.id]);
+  }, [title?.id, defaultDospem1Nip, defaultDospem2Nip]);
 
   // Toast Notification
   const [toastMessage, setToastMessage] = useState('');
@@ -146,10 +155,10 @@ export default function DetailTinjauJudulPage({ titleId: propTitleId }) {
     return aktif.length > 0 ? aktif : list;
   }, [advisors]);
 
-  // Mulai edit dospem: isi dropdown dengan dospem yang sedang terpasang
+  // Mulai edit dospem: isi dropdown dengan dospem yang sedang terpasang / dialokasikan
   const handleStartEditAdvisors = () => {
-    setEditDospem1Nip(resolveAdvisorNip(title.pembimbing_1_nip, title.pembimbing_1_nama || title.pembimbing_1));
-    setEditDospem2Nip(resolveAdvisorNip(title.pembimbing_2_nip, title.pembimbing_2_nama || title.pembimbing_2));
+    setEditDospem1Nip(defaultDospem1Nip);
+    setEditDospem2Nip(defaultDospem2Nip);
     setAdvisorError('');
     setIsEditingAdvisors(true);
   };
@@ -527,20 +536,20 @@ export default function DetailTinjauJudulPage({ titleId: propTitleId }) {
                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
                   <span className="text-[10px] font-bold text-slate-400 uppercase block">Pembimbing 1:</span>
                   <span className="font-bold text-slate-900 block mt-0.5">
-                    {title.pembimbing_1_nama || title.pembimbing_1 || 'Belum Ditetapkan'}
+                    {defaultDospem1Nama || 'Belum Ditetapkan'}
                   </span>
-                  {title.pembimbing_1_nip && (
-                    <span className="text-[10px] text-slate-500 font-mono">NIP: {title.pembimbing_1_nip}</span>
+                  {defaultDospem1Nip && (
+                    <span className="text-[10px] text-slate-500 font-mono">NIP: {defaultDospem1Nip}</span>
                   )}
                 </div>
 
                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
                   <span className="text-[10px] font-bold text-slate-400 uppercase block">Pembimbing 2:</span>
                   <span className="font-bold text-slate-900 block mt-0.5">
-                    {title.pembimbing_2_nama || title.pembimbing_2 || 'Belum Ditetapkan'}
+                    {defaultDospem2Nama || 'Belum Ditetapkan'}
                   </span>
-                  {title.pembimbing_2_nip && (
-                    <span className="text-[10px] text-slate-500 font-mono">NIP: {title.pembimbing_2_nip}</span>
+                  {defaultDospem2Nip && (
+                    <span className="text-[10px] text-slate-500 font-mono">NIP: {defaultDospem2Nip}</span>
                   )}
                 </div>
               </div>

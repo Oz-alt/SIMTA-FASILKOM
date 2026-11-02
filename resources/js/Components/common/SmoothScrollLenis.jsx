@@ -29,14 +29,7 @@ export default function SmoothScroll({ children }) {
           node.closest('[data-lenis-prevent]') ||
           node.closest('[role="dialog"]') ||
           node.closest('[aria-modal="true"]') ||
-          node.closest('.fixed') ||
-          node.closest('.overflow-y-auto') ||
-          node.closest('.overflow-y-scroll') ||
-          node.closest('.overflow-x-auto') ||
-          node.closest('.overflow-x-scroll') ||
-          node.closest('.overflow-auto') ||
-          node.closest('.overflow-scroll') ||
-          node.closest('aside')
+          node.closest('.fixed.inset-0')
         );
       }
     });
@@ -52,8 +45,8 @@ export default function SmoothScroll({ children }) {
     };
 
     gsap.ticker.add(updateTicker);
-    // Enable lag smoothing to prevent stuttering/jumps when frame rate dips temporarily
-    gsap.ticker.lagSmoothing(500, 33);
+    // Disable lag smoothing in GSAP to prevent any jumpy/stuttering scroll animations with Lenis
+    gsap.ticker.lagSmoothing(0);
 
     // 3. Force scroll to top on refresh
     if ('scrollRestoration' in window.history) {
@@ -74,11 +67,15 @@ export default function SmoothScroll({ children }) {
 
     // 4. Reset scroll on route change using Inertia router events
     const unsubscribeRouter = router.on('navigate', () => {
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
       resetScroll();
+      lenis.start();
+      lenis.resize();
+      ScrollTrigger.refresh();
     });
 
-    // 5. Automatically pause Lenis when modals are open (body overflow hidden)
+    // 5. Automatically pause Lenis when modals are open (body or html overflow hidden)
     const bodyObserver = new MutationObserver(() => {
       if (document.body.style.overflow === 'hidden' || document.documentElement.style.overflow === 'hidden') {
         lenis.stop();
@@ -88,9 +85,19 @@ export default function SmoothScroll({ children }) {
     });
 
     bodyObserver.observe(document.body, { attributes: true, attributeFilter: ['style'] });
+    bodyObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['style'] });
+
+    // 6. Keep Lenis dimensions in sync when dynamic data/tables expand content height
+    const resizeObserver = new ResizeObserver(() => {
+      lenis.resize();
+    });
+    if (document.body) {
+      resizeObserver.observe(document.body);
+    }
 
     return () => {
       bodyObserver.disconnect();
+      resizeObserver.disconnect();
       window.removeEventListener('load', resetScroll);
       window.removeEventListener('beforeunload', resetScroll);
       unsubscribeRouter();

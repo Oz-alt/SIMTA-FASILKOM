@@ -175,3 +175,87 @@ export function checkCanAdvisorAccept(studentConsultationsWithAdvisor = []) {
     remainingSessions
   };
 }
+
+/**
+ * Memeriksa kelayakan mahasiswa masuk daftar jadwal sidang tugas akhir.
+ * 
+ * Persyaratan:
+ * 1. Sudah memiliki judul Tugas Akhir (tidak kosong).
+ * 2. Sudah bimbingan minimal 12 kali di Pembimbing 1 (countPemb1 >= 12).
+ * 3. Sudah bimbingan minimal 12 kali di Pembimbing 2 (countPemb2 >= 12).
+ * 4. Pembimbing 1 sudah memberikan status 'Diterima' (ACC) pada sesi bimbingan.
+ * 5. Pembimbing 2 sudah memberikan status 'Diterima' (ACC) pada sesi bimbingan.
+ * (Wajib kedua dosen pembimbing memberikan status menerima; jika salah satu belum menerima, tidak boleh masuk list).
+ * 
+ * @param {Object} params
+ * @param {string} params.studentNim - NIM mahasiswa
+ * @param {Array} params.consultations - Daftar seluruh bimbingan
+ * @param {Array} params.thesisTitles - Daftar judul TA
+ * @param {Array} params.studentAdvisors - Daftar alokasi dospem mahasiswa
+ * @returns {{ isEligible: boolean, reason: string, judul: string, stats: Object }}
+ */
+export function checkStudentDefenseEligibility({
+  studentNim,
+  consultations = [],
+  thesisTitles = [],
+  studentAdvisors = []
+}) {
+  const nim = String(studentNim || '').trim();
+  if (!nim) {
+    return { isEligible: false, reason: 'NIM mahasiswa tidak valid.', judul: '', stats: null };
+  }
+
+  // Syarat 1: Mahasiswa sudah memiliki judul Tugas Akhir
+  const titleObj = (thesisTitles || []).find(t => String(t.mhs_nim || '').trim() === nim);
+  const advRec = (studentAdvisors || []).find(sa => String(sa.student_nim || '').trim() === nim);
+  const judul = (titleObj?.judul || advRec?.judul_ta || '').trim();
+
+  const isPlaceholderJudul = !judul ||
+    judul === 'Judul Tugas Akhir' ||
+    judul === 'Rancang Bangun Sistem Informasi Manajemen Tugas Akhir & Peminjaman Ruang Sidang FASILKOM UNSRI' && !titleObj;
+
+  if (!judul || isPlaceholderJudul) {
+    return {
+      isEligible: false,
+      reason: 'Mahasiswa belum memiliki judul Tugas Akhir yang sah.',
+      judul: '',
+      stats: null
+    };
+  }
+
+  // Syarat 2: Bimbingan minimal 12 kali di masing-masing dospem (12 di dospem 1 & 12 di dospem 2)
+  const stats = calculateBimbinganEligibility(consultations, nim);
+  const { countPemb1, countPemb2, hasAccPemb1, hasAccPemb2 } = stats;
+
+  const passedCount1 = countPemb1 >= MIN_SESSIONS_PER_ADVISOR;
+  const passedCount2 = countPemb2 >= MIN_SESSIONS_PER_ADVISOR;
+
+  if (!passedCount1 || !passedCount2) {
+    return {
+      isEligible: false,
+      reason: `Jumlah bimbingan belum memenuhi target (Pembimbing 1: ${countPemb1}/${MIN_SESSIONS_PER_ADVISOR}, Pembimbing 2: ${countPemb2}/${MIN_SESSIONS_PER_ADVISOR}).`,
+      judul,
+      stats
+    };
+  }
+
+  // Syarat 3: Semua dospem di bimbingan sudah menerima di entry bimbingannya (kedua pihak)
+  if (!hasAccPemb1 || !hasAccPemb2) {
+    const unaccepted = [];
+    if (!hasAccPemb1) unaccepted.push('Pembimbing 1');
+    if (!hasAccPemb2) unaccepted.push('Pembimbing 2');
+    return {
+      isEligible: false,
+      reason: `Belum mendapatkan konfirmasi status 'Diterima' dari ${unaccepted.join(' dan ')}.`,
+      judul,
+      stats
+    };
+  }
+
+  return {
+    isEligible: true,
+    reason: 'Memenuhi seluruh persyaratan bimbingan dan judul Tugas Akhir.',
+    judul,
+    stats
+  };
+}

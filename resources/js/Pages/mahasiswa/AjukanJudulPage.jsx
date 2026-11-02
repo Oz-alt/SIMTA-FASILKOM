@@ -8,6 +8,7 @@ import {
   FileText,
   Save,
   AlertTriangle,
+  AlertCircle,
   ShieldCheck,
   CheckCircle2,
   Search,
@@ -17,7 +18,8 @@ import {
   Tag,
   Layers,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  X
 } from 'lucide-react';
 
 import { supabase, isSupabaseConfigured } from '../../services/supabase.js';
@@ -28,6 +30,17 @@ export default function AjukanJudulPage() {
 
   const [judul, setJudul] = useState('');
   const [abstrak, setAbstrak] = useState('');
+  const [toast, setToast] = useState(null); // { message, type: 'success' | 'error' | 'warning' }
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const toastTimeoutRef = useRef(null);
+
+  const showToast = (message, type = 'success') => {
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    setToast({ message, type });
+    toastTimeoutRef.current = setTimeout(() => {
+      setToast(null);
+    }, 4500);
+  };
   const [similarityResult, setSimilarityResult] = useState({
     highestScore: 0,
     highestTitleScore: 0,
@@ -58,7 +71,7 @@ export default function AjukanJudulPage() {
   // Explicit Similarity Check triggered by button click
   const handleCheckSimilarity = async () => {
     if (!judul || judul.trim().length < 5) {
-      alert('Silakan masukkan judul tugas akhir minimal 5 karakter terlebih dahulu.');
+      showToast('Silakan masukkan judul tugas akhir minimal 5 karakter terlebih dahulu.', 'warning');
       return;
     }
 
@@ -81,15 +94,15 @@ export default function AjukanJudulPage() {
   const threshold = getSimilarityThreshold(similarityResult.highestScore);
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e?.preventDefault?.();
 
     if (!judul || !judul.trim()) {
-      alert('Judul Tugas Akhir wajib diisi.');
+      showToast('Judul Tugas Akhir wajib diisi.', 'error');
       return;
     }
 
     if (!abstrak || !abstrak.trim()) {
-      alert('Abstrak Tugas Akhir wajib diisi.');
+      showToast('Abstrak Tugas Akhir wajib diisi.', 'error');
       return;
     }
 
@@ -112,7 +125,7 @@ export default function AjukanJudulPage() {
 
       const checkThreshold = getSimilarityThreshold(currentScore);
       if (!checkThreshold.allowSubmit) {
-        alert('Pengajuan terkunci karena skor kemiripan melebihi 50% terhadap Repositori UNSRI. Silakan modifikasi judul atau objek studi Anda terlebih dahulu.');
+        showToast('Pengajuan terkunci karena skor kemiripan melebihi 50% terhadap Repositori UNSRI. Silakan modifikasi judul atau objek studi Anda terlebih dahulu.', 'error');
         return;
       }
 
@@ -122,7 +135,7 @@ export default function AjukanJudulPage() {
       }
     } else if (hasChecked) {
       if (!threshold.allowSubmit) {
-        alert('Pengajuan terkunci karena skor kemiripan melebihi 50% terhadap Repositori UNSRI. Silakan modifikasi judul atau objek studi Anda terlebih dahulu.');
+        showToast('Pengajuan terkunci karena skor kemiripan melebihi 50% terhadap Repositori UNSRI. Silakan modifikasi judul atau objek studi Anda terlebih dahulu.', 'error');
         return;
       }
 
@@ -133,26 +146,87 @@ export default function AjukanJudulPage() {
     }
 
     const processedText = preProcessTitle(judul);
+    setIsSubmitting(true);
 
-    // Satu jalur tulis: addThesisTitle() menyimpan ke state + tabel Supabase `thesis_titles`.
-    await addThesisTitle({
-      judul: judul.trim(),
-      abstrak: abstrak.trim(),
-      deskripsi: abstrak.trim(),
-      judul_processed: processedText,
-      skor_kemiripan_terakhir: currentScore,
-      pembimbing_1_nip: '',
-      pembimbing_1_nama: '',
-      pembimbing_2_nip: '',
-      pembimbing_2_nama: ''
-    });
+    try {
+      // Satu jalur tulis: addThesisTitle() menyimpan ke state + tabel Supabase `thesis_titles`.
+      await addThesisTitle({
+        judul: judul.trim(),
+        abstrak: abstrak.trim(),
+        deskripsi: abstrak.trim(),
+        judul_processed: processedText,
+        skor_kemiripan_terakhir: currentScore,
+        pembimbing_1_nip: '',
+        pembimbing_1_nama: '',
+        pembimbing_2_nip: '',
+        pembimbing_2_nama: ''
+      });
 
-    alert('Pengajuan Tugas Akhir berhasil disimpan!');
-    navigate('/dashboard');
+      // Simpan di sessionStorage agar jika redirect, dashboard tetap bisa menampilkannya
+      try {
+        sessionStorage.setItem('simta_toast_message', 'Pengajuan Tugas Akhir berhasil disimpan!');
+      } catch (e) { }
+
+      showToast('Pengajuan Tugas Akhir berhasil disimpan!', 'success');
+
+      // Beri sedikit jeda agar toast tampak jelas sebelum berpindah halaman
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 1200);
+    } catch (err) {
+      setIsSubmitting(false);
+      showToast('Gagal menyimpan pengajuan tugas akhir. Silakan coba beberapa saat lagi.', 'error');
+    }
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-6 relative">
+      
+      {/* Custom Toast Notification */}
+      {toast && (
+        <div className="fixed top-5 right-5 z-[9999] max-w-md w-full sm:w-auto animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className={`flex items-start gap-3.5 p-4 rounded-2xl shadow-2xl border backdrop-blur-md ${
+            toast.type === 'error'
+              ? 'bg-slate-900/95 border-rose-500/50 text-white'
+              : toast.type === 'warning'
+              ? 'bg-slate-900/95 border-amber-500/50 text-white'
+              : 'bg-slate-900/95 border-emerald-500/50 text-white'
+          }`}>
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+              toast.type === 'error'
+                ? 'bg-rose-500/20 text-rose-400 border border-rose-400/30'
+                : toast.type === 'warning'
+                ? 'bg-amber-500/20 text-amber-400 border border-amber-400/30'
+                : 'bg-emerald-500/20 text-emerald-400 border border-emerald-400/30'
+            }`}>
+              {toast.type === 'error' ? (
+                <AlertCircle className="w-5 h-5" />
+              ) : toast.type === 'warning' ? (
+                <AlertTriangle className="w-5 h-5" />
+              ) : (
+                <CheckCircle2 className="w-5 h-5" />
+              )}
+            </div>
+
+            <div className="flex-1 min-w-0 pr-1">
+              <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-300">
+                {toast.type === 'error' ? 'Peringatan Validasi' : toast.type === 'warning' ? 'Perhatian' : 'Berhasil Disimpan'}
+              </h4>
+              <p className="text-xs sm:text-sm font-semibold text-white mt-0.5 leading-snug">
+                {toast.message}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setToast(null)}
+              className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
       
       {/* Header */}
       <div>
@@ -237,15 +311,24 @@ export default function AjukanJudulPage() {
             <div className="pt-2">
               <button
                 type="submit"
-                disabled={!judul.trim() || !abstrak.trim() || (hasChecked && !threshold.allowSubmit)}
+                disabled={isSubmitting || !judul.trim() || !abstrak.trim() || (hasChecked && !threshold.allowSubmit)}
                 className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold text-white transition-all flex items-center justify-center space-x-2 cursor-pointer ${
-                  !judul.trim() || !abstrak.trim() || (hasChecked && !threshold.allowSubmit)
+                  isSubmitting || !judul.trim() || !abstrak.trim() || (hasChecked && !threshold.allowSubmit)
                     ? 'bg-slate-300 cursor-not-allowed'
-                    : 'bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-500/20'
+                    : 'bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-500/20 active:scale-[0.99]'
                 }`}
               >
-                <Save className="w-4 h-4" />
-                <span>Simpan Pengajuan</span>
+                {isSubmitting ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Menyimpan Pengajuan...</span>
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    <span>Simpan Pengajuan</span>
+                  </>
+                )}
               </button>
             </div>
 

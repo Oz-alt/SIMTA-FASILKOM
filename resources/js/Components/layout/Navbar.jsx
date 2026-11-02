@@ -230,14 +230,32 @@ export default function Navbar() {
       }
 
       if (currentUser.role === 'mahasiswa') {
+        // Pengingat kepatuhan bimbingan dari prodi adalah ranah monitoring untuk Dosen Pembimbing, bukan mahasiswa
+        if (n.related_type === 'bimbingan_cadence_reminder' || n.related_type === 'kaprodi_bimbingan_inactivity_alert') {
+          return false;
+        }
+
         if (n.recipient_role && n.recipient_role !== 'mahasiswa' && n.recipient_role !== 'all') return false;
-        if (n.recipient_nim && currentUser.nim) {
-          return String(n.recipient_nim).trim() === String(currentUser.nim).trim();
+
+        const myNim = String(currentUser.nim || '').trim();
+        const myId = String(currentUser.id || '').trim();
+
+        if (n.recipient_nim && myNim) {
+          return String(n.recipient_nim).trim() === myNim;
         }
-        if (n.profile_id && (String(n.profile_id) === String(currentUser.id) || String(n.profile_id) === String(currentUser.nim))) {
-          return true;
+        if (n.profile_id) {
+          if (String(n.profile_id) === myId || String(n.profile_id) === myNim || String(n.profile_id) === `user-${myNim}`) {
+            return true;
+          }
+          // Jika profile_id terisi tapi milik mahasiswa lain, jangan tampilkan
+          return false;
         }
-        return !n.recipient_role || n.recipient_role === 'mahasiswa';
+        if (n.student_nim && myNim) {
+          return String(n.student_nim).trim() === myNim;
+        }
+
+        // Jangan tampilkan notifikasi tanpa sasaran mahasiswa yang spesifik
+        return false;
       }
 
       if (currentUser.role === 'dosen') {

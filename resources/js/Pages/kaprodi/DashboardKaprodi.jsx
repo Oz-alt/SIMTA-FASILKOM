@@ -936,7 +936,7 @@ export default function DashboardKaprodi() {
               </div>
 
               {/* Scrollable Table Container */}
-              <div className="overflow-y-auto overflow-x-auto max-h-[290px] rounded-xl border border-slate-200 text-xs flex-1">
+              <div data-lenis-prevent className="overflow-y-auto overflow-x-auto max-h-[290px] rounded-xl border border-slate-200 text-xs flex-1">
                 <table className="w-full text-left border-collapse text-[11px]">
                   <thead className="sticky top-0 bg-slate-50 z-10 border-b border-slate-200 font-bold text-slate-600 uppercase text-[9px] tracking-wider">
                     <tr>
@@ -1019,7 +1019,7 @@ export default function DashboardKaprodi() {
               </div>
 
               {/* Scrollable Table Container */}
-              <div className="overflow-y-auto overflow-x-auto max-h-[290px] rounded-xl border border-slate-200 text-xs flex-1">
+              <div data-lenis-prevent className="overflow-y-auto overflow-x-auto max-h-[290px] rounded-xl border border-slate-200 text-xs flex-1">
                 <table className="w-full text-left border-collapse text-[11px]">
                   <thead className="sticky top-0 bg-slate-50 z-10 border-b border-slate-200 font-bold text-slate-600 uppercase text-[9px] tracking-wider">
                     <tr>

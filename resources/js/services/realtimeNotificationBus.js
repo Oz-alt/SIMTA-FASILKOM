@@ -60,6 +60,19 @@ const getSharedChannel = async () => {
   return sharedChannelReady;
 };
 
+let sharedSenderBc = null;
+const getSenderBroadcastChannel = () => {
+  if (typeof window === 'undefined' || !('BroadcastChannel' in window)) return null;
+  if (!sharedSenderBc) {
+    try {
+      sharedSenderBc = new BroadcastChannel(BROADCAST_CHANNEL_NAME);
+    } catch (err) {
+      console.warn('BroadcastChannel init error:', err);
+    }
+  }
+  return sharedSenderBc;
+};
+
 /**
  * Broadcast an event to all open tabs and devices (BroadcastChannel + LocalStorage + Supabase)
  * @param {string} eventType e.g. 'THESIS_TITLE_SUBMITTED'
@@ -73,25 +86,32 @@ export function broadcastRealtimeNotification(eventType, payload) {
     timestamp: Date.now()
   };
 
-  // 1. Browser BroadcastChannel API (Cross-tab instantaneous sync)
-  if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+  // 1. Browser BroadcastChannel API (Cross-tab instantaneous sync, persistent channel)
+  const bc = getSenderBroadcastChannel();
+  if (bc) {
     try {
-      const bc = new BroadcastChannel(BROADCAST_CHANNEL_NAME);
       bc.postMessage(envelope);
-      bc.close();
     } catch (err) {
-      console.warn('BroadcastChannel error:', err);
+      console.warn('BroadcastChannel send error:', err);
     }
   }
 
-  // 2. LocalStorage StorageEvent fallback (Cross-tab)
-  if (typeof window !== 'undefined' && window.localStorage) {
+  // 2. Local window CustomEvent (for components in current tab/window)
+  if (typeof window !== 'undefined') {
     try {
-      localStorage.setItem(STORAGE_EVENT_KEY, JSON.stringify(envelope));
+      window.dispatchEvent(new CustomEvent('simta_realtime_local_event', { detail: envelope }));
     } catch {}
   }
 
-  // 3. Supabase Realtime Channel Broadcast (Cross-device / WebSocket sync)
+  // 3. LocalStorage StorageEvent fallback (Cross-tab guarantee)
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      localStorage.setItem(STORAGE_EVENT_KEY, JSON.stringify(envelope));
+      localStorage.setItem('simta_last_realtime_ping', String(Date.now()));
+    } catch {}
+  }
+
+  // 4. Supabase Realtime Channel Broadcast (Cross-device / WebSocket sync)
   getSharedChannel()
     .then((channel) => {
       if (!channel) {
@@ -163,7 +183,16 @@ export function subscribeToRealtimeNotifications(onReceive) {
   window.addEventListener('storage', handleStorage);
   cleanups.push(() => window.removeEventListener('storage', handleStorage));
 
-  // 3. Supabase Realtime channel (lintas perangkat)
+  // 3. Local window event listener (in-app components)
+  const handleLocalEvent = (e) => {
+    if (e && e.detail) {
+      handleEnvelope(e.detail);
+    }
+  };
+  window.addEventListener('simta_realtime_local_event', handleLocalEvent);
+  cleanups.push(() => window.removeEventListener('simta_realtime_local_event', handleLocalEvent));
+
+  // 4. Supabase Realtime channel (lintas perangkat)
   getSharedChannel();
 
   return () => {

@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 
 export default function TinjauJudulPage() {
-  const { thesisTitles, triggerRealtimeTestNotif } = useAuth();
+  const { thesisTitles, getStudentAdvisors } = useAuth();
 
   // Toast Notification
   const [toastMessage, setToastMessage] = useState('');
@@ -118,19 +118,10 @@ export default function TinjauJudulPage() {
             </p>
           </div>
 
-          {triggerRealtimeTestNotif && (
-            <div className="shrink-0">
-              <button
-                type="button"
-                onClick={triggerRealtimeTestNotif}
-                className="inline-flex items-center space-x-2 px-4 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold backdrop-blur-md transition-all border border-white/20 hover:border-white/40 shadow-lg cursor-pointer group"
-                title="Simulasikan notifikasi pengajuan judul mahasiswa secara real-time"
-              >
-                <Sparkles className="w-4 h-4 text-yellow-300 group-hover:rotate-12 transition-transform" />
-                <span>Simulasi Notif Real-Time</span>
-              </button>
-            </div>
-          )}
+          <div className="shrink-0 flex items-center space-x-2 px-3.5 py-2 rounded-2xl bg-emerald-500/20 text-emerald-200 text-xs font-semibold border border-emerald-400/30 backdrop-blur-md shadow-sm">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>Sinkronisasi Otomatis Real-Time</span>
+          </div>
         </div>
       </div>
 
@@ -296,8 +287,11 @@ export default function TinjauJudulPage() {
               ) : (
                 filteredTitles.map(t => {
                   const studentSem = getStudentSemester(t);
-                  const pembimbing1Nama = t.pembimbing_1_nama || t.pembimbing_1;
-                  const pembimbing2Nama = t.pembimbing_2_nama || t.pembimbing_2;
+                  const assigned = (typeof getStudentAdvisors === 'function' && t.mhs_nim) ? getStudentAdvisors(t.mhs_nim) : null;
+                  const pembimbing1Nama = t.pembimbing_1_nama || t.pembimbing_1 || assigned?.dospem1?.nama;
+                  const pembimbing1Nip = t.pembimbing_1_nip || assigned?.dospem1?.nip;
+                  const pembimbing2Nama = t.pembimbing_2_nama || t.pembimbing_2 || assigned?.dospem2?.nama;
+                  const pembimbing2Nip = t.pembimbing_2_nip || assigned?.dospem2?.nip;
 
                   return (
                     <tr key={t.id} className="hover:bg-slate-50/60 transition-colors">
@@ -345,9 +339,9 @@ export default function TinjauJudulPage() {
                                 {pembimbing1Nama}
                               </span>
                             </div>
-                            {t.pembimbing_1_nip && (
+                            {pembimbing1Nip && (
                               <span className="block mt-1 pl-5 text-[9px] text-slate-400 font-mono">
-                                {t.pembimbing_1_nip}
+                                {pembimbing1Nip}
                               </span>
                             )}
                           </div>
@@ -367,9 +361,9 @@ export default function TinjauJudulPage() {
                                 {pembimbing2Nama}
                               </span>
                             </div>
-                            {t.pembimbing_2_nip && (
+                            {pembimbing2Nip && (
                               <span className="block mt-1 pl-5 text-[9px] text-slate-400 font-mono">
-                                {t.pembimbing_2_nip}
+                                {pembimbing2Nip}
                               </span>
                             )}
                           </div>

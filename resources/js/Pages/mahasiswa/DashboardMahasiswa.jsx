@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { Link } from '@inertiajs/react';
 import ThesisStepper from '../../Components/common/ThesisStepper.jsx';
@@ -18,7 +18,8 @@ import {
   UserCheck,
   Mail,
   BookOpen,
-  ExternalLink
+  ExternalLink,
+  X
 } from 'lucide-react';
 
 function WhatsAppIcon({ className = "w-3.5 h-3.5" }) {
@@ -42,6 +43,21 @@ export default function DashboardMahasiswa() {
     if (!currentUser?.nim || !myTitle) return null;
     return calculateBimbinganReminder(consultations, currentUser.nim, 2);
   }, [consultations, currentUser?.nim, myTitle]);
+
+  // Session toast listener (e.g. from successful thesis submission)
+  const [toastMessage, setToastMessage] = useState('');
+
+  useEffect(() => {
+    try {
+      const msg = sessionStorage.getItem('simta_toast_message');
+      if (msg) {
+        setToastMessage(msg);
+        sessionStorage.removeItem('simta_toast_message');
+        const timer = setTimeout(() => setToastMessage(''), 4500);
+        return () => clearTimeout(timer);
+      }
+    } catch {}
+  }, []);
 
   // Dynamic Dospem 1 & 2 assigned by Kaprodi
   const assigned = (getStudentAdvisors && currentUser?.nim) ? getStudentAdvisors(currentUser.nim) : {};
@@ -141,8 +157,30 @@ export default function DashboardMahasiswa() {
   const waLink2 = getAdvisorWaGroupLink(dospem2, dospem2Nama, 'Dospem2');
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
       
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed top-5 right-5 z-[9999] max-w-md w-full sm:w-auto animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="flex items-center gap-3 px-5 py-3.5 rounded-2xl bg-slate-900/95 text-white border border-emerald-500/40 shadow-2xl backdrop-blur-md text-xs sm:text-sm font-semibold">
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-emerald-400 shrink-0">
+              <CheckCircle2 className="w-4 h-4" />
+            </div>
+            <div className="flex-1 min-w-0 pr-1">
+              <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-300">Berhasil</h4>
+              <p className="text-xs sm:text-sm font-semibold text-white mt-0.5 leading-snug">{toastMessage}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setToastMessage('')}
+              className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors ml-1"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Welcome Banner */}
       <div className="bg-gradient-to-r from-indigo-900 via-indigo-800 to-slate-900 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
         <div className="relative z-10">
@@ -164,16 +202,16 @@ export default function DashboardMahasiswa() {
           </p>
 
           {/* Integrated Duo Dospem Assigned by Kaprodi with WhatsApp Phone & Group Buttons */}
-          <div className="mt-4 pt-4 border-t border-white/10 grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-3xl text-xs">
+          <div className="mt-4 pt-4 border-t border-white/10 grid grid-cols-1 md:grid-cols-2 gap-3 max-w-5xl text-xs">
             {/* Pembimbing 1 Card */}
             <div className="p-3 sm:p-3.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/15 flex items-center justify-between gap-3">
-              <div className="flex items-center space-x-3 min-w-0">
+              <div className="flex items-center space-x-3 min-w-0 flex-1">
                 <div className="w-8 h-8 rounded-lg bg-indigo-500/30 border border-indigo-400/40 flex items-center justify-center shrink-0">
                   <UserCheck className="w-4 h-4 text-indigo-200" />
                 </div>
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <span className="text-[10px] font-bold text-indigo-300 uppercase tracking-wider block">Dosen Pembimbing 1 (Utama)</span>
-                  <p className="font-bold text-white truncate text-xs sm:text-sm">{dospem1Nama}</p>
+                  <p className="font-bold text-white text-xs sm:text-sm leading-snug break-words" title={dospem1Nama}>{dospem1Nama}</p>
                 </div>
               </div>
 
@@ -211,13 +249,13 @@ export default function DashboardMahasiswa() {
 
             {/* Pembimbing 2 Card */}
             <div className="p-3 sm:p-3.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/15 flex items-center justify-between gap-3">
-              <div className="flex items-center space-x-3 min-w-0">
+              <div className="flex items-center space-x-3 min-w-0 flex-1">
                 <div className="w-8 h-8 rounded-lg bg-purple-500/30 border border-purple-400/40 flex items-center justify-center shrink-0">
                   <UserCheck className="w-4 h-4 text-purple-200" />
                 </div>
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <span className="text-[10px] font-bold text-purple-300 uppercase tracking-wider block">Dosen Pembimbing 2 (Pendamping)</span>
-                  <p className="font-bold text-white truncate text-xs sm:text-sm">{dospem2Nama}</p>
+                  <p className="font-bold text-white text-xs sm:text-sm leading-snug break-words" title={dospem2Nama}>{dospem2Nama}</p>
                 </div>
               </div>
 
@@ -282,21 +320,31 @@ export default function DashboardMahasiswa() {
         <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs space-y-3">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Judul TA Terdaftar</span>
-            <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full capitalize ${
-              myTitle?.status === 'disetujui' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-            }`}>
-              {myTitle?.status || 'Belum Ada'}
-            </span>
+            {myTitle ? (
+              <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full capitalize border ${
+                myTitle.status === 'disetujui' || myTitle.status === 'judul_fix'
+                  ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                  : myTitle.status === 'perlu_revisi'
+                  ? 'bg-rose-100 text-rose-800 border-rose-300'
+                  : 'bg-amber-100 text-amber-800 border-amber-300'
+              }`}>
+                {myTitle.status === 'tinjauan' || myTitle.status === 'diajukan' ? 'Dalam Tinjauan' : myTitle.status || 'Diajukan'}
+              </span>
+            ) : (
+              <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                Belum Ada
+              </span>
+            )}
           </div>
 
           {myTitle ? (
             <div>
               <h4 className="text-sm font-bold text-slate-900 leading-snug">{myTitle.judul}</h4>
-              <p className="text-xs text-slate-500 mt-2 line-clamp-2">{myTitle.deskripsi}</p>
+              <p className="text-xs text-slate-500 mt-2 line-clamp-2">{myTitle.deskripsi || myTitle.abstrak || '-'}</p>
               
               <div className="mt-4 flex items-center justify-between pt-3 border-t border-slate-100 text-xs">
                 <span className="text-slate-500 font-medium">Similarity Score:</span>
-                <span className="font-bold text-emerald-600">{myTitle.skor_kemiripan_terakhir}% (Aman)</span>
+                <span className="font-bold text-emerald-600">{Number(myTitle.skor_kemiripan_terakhir || 0)}% (Aman)</span>
               </div>
             </div>
           ) : (

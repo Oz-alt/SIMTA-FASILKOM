@@ -98,15 +98,18 @@ export default function JadwalSidangSection({ showHeaderBanner = true }) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Buka Halaman Form Edit
+  // Buka Halaman Form Edit / Atur Jadwal
   const handleOpenEdit = (sch) => {
     setEditingSchedule(sch);
+    // Jika status awalnya 'diajukan', form otomatis mengarahkan ke 'dijadwalkan' setelah Kaprodi menentukan tanggal & ruangan
+    const nextStatus = (sch.status === 'diajukan' || !sch.tanggal) ? 'dijadwalkan' : (sch.status || 'dijadwalkan');
+
     setFormData({
       mhs_nim: sch.mhs_nim || '',
       mhs_nama: sch.mhs_nama || '',
       prodi: sch.prodi || 'D3 Manajemen Informatika',
       judul: sch.judul || '',
-      jenis_sidang: sch.jenis_sidang || 'Seminar Proposal',
+      jenis_sidang: sch.jenis_sidang || 'Sidang Akhir',
       tanggal: sch.tanggal || new Date().toISOString().split('T')[0],
       waktu_mulai: sch.waktu_mulai || '09:00',
       waktu_selesai: sch.waktu_selesai || '10:30',
@@ -119,7 +122,7 @@ export default function JadwalSidangSection({ showHeaderBanner = true }) {
       penguji1_nip: sch.penguji1_nip || '',
       penguji2_nama: sch.penguji2_nama || '',
       penguji2_nip: sch.penguji2_nip || '',
-      status: sch.status || 'terjadwal',
+      status: nextStatus,
       catatan: sch.catatan || '',
       link_berkas: sch.link_berkas || ''
     });
@@ -161,7 +164,7 @@ export default function JadwalSidangSection({ showHeaderBanner = true }) {
     }));
   };
 
-  // Handle Form Submit
+  // Handle Form Submit (Kaprodi Atur Jadwal & Ruangan)
   const handleFormSubmit = (e) => {
     e.preventDefault();
 
@@ -180,16 +183,38 @@ export default function JadwalSidangSection({ showHeaderBanner = true }) {
       return;
     }
 
+    // Status otomatis berubah jadi 'dijadwalkan' setelah jadwal dan ruangan diatur
+    const targetStatus = (formData.status === 'diajukan' || !formData.status) ? 'dijadwalkan' : formData.status;
+
+    const payload = {
+      ...formData,
+      status: targetStatus
+    };
+
     if (editingSchedule) {
-      updateDefenseSchedule(editingSchedule.id, formData);
-      showToast(`Jadwal sidang untuk ${formData.mhs_nama} berhasil diperbarui.`);
+      updateDefenseSchedule(editingSchedule.id, payload);
+      showToast(`Jadwal sidang untuk ${formData.mhs_nama} berhasil ${targetStatus === 'dijadwalkan' ? 'dijadwalkan' : 'diperbarui'}.`);
     } else {
-      addDefenseSchedule(formData);
-      showToast(`Jadwal sidang baru untuk ${formData.mhs_nama} berhasil ditambahkan.`);
+      addDefenseSchedule(payload);
+      showToast(`Jadwal sidang baru untuk ${formData.mhs_nama} berhasil dijadwalkan.`);
     }
 
     setViewMode('list');
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Handle Mark Completed (Ubah Status ke 'Selesai' hanya jika sudah mencapai tanggal sidang)
+  const handleMarkCompleted = (sch) => {
+    const todayStr = new Date().toLocaleDateString('en-CA'); // 'YYYY-MM-DD'
+    if (!sch.tanggal || todayStr < sch.tanggal) {
+      alert(`Sidang belum dapat diselesaikan. Tanggal pelaksanaan sidang adalah ${sch.tanggal}, sedangkan hari ini adalah ${todayStr}.`);
+      return;
+    }
+
+    if (window.confirm(`Apakah Anda yakin ingin menyelesaikan sidang Tugas Akhir untuk ${sch.mhs_nama}? Status akan diubah menjadi 'Selesai'.`)) {
+      updateDefenseSchedule(sch.id, { status: 'selesai' });
+      showToast(`Sidang Tugas Akhir untuk ${sch.mhs_nama} berhasil diselesaikan.`);
+    }
   };
 
   // Handle Delete Schedule
@@ -226,7 +251,16 @@ export default function JadwalSidangSection({ showHeaderBanner = true }) {
 
       const matchesSearch = matchText.includes(searchTerm.toLowerCase());
       const matchesStage = stageFilter === 'all' || sch.jenis_sidang === stageFilter;
-      const matchesStatus = statusFilter === 'all' || sch.status === statusFilter;
+
+      const normStatus = String(sch.status || '').toLowerCase().trim();
+      const matchesStatus =
+        statusFilter === 'all' ? true :
+        statusFilter === 'diajukan' ? (normStatus === 'diajukan') :
+        statusFilter === 'dijadwalkan' ? (normStatus === 'dijadwalkan' || normStatus === 'terjadwal') :
+        statusFilter === 'selesai' ? (normStatus === 'selesai') :
+        statusFilter === 'dibatalkan' ? (normStatus === 'dibatalkan') :
+        normStatus === statusFilter;
+
       const matchesRoom = roomFilter === 'all' || sch.ruangan === roomFilter;
 
       return matchesSearch && matchesStage && matchesStatus && matchesRoom;
@@ -235,11 +269,12 @@ export default function JadwalSidangSection({ showHeaderBanner = true }) {
 
   // Statistics
   const stats = useMemo(() => {
-    const total = (defenseSchedules || []).length;
-    const sempro = (defenseSchedules || []).filter(s => s.jenis_sidang === 'Seminar Proposal').length;
-    const semhas = (defenseSchedules || []).filter(s => s.jenis_sidang === 'Seminar Hasil').length;
-    const sidangAkhir = (defenseSchedules || []).filter(s => s.jenis_sidang === 'Sidang Akhir').length;
-    return { total, sempro, semhas, sidangAkhir };
+    const list = defenseSchedules || [];
+    const total = list.length;
+    const diajukan = list.filter(s => s.status === 'diajukan').length;
+    const dijadwalkan = list.filter(s => s.status === 'dijadwalkan' || s.status === 'terjadwal').length;
+    const selesai = list.filter(s => s.status === 'selesai').length;
+    return { total, diajukan, dijadwalkan, selesai };
   }, [defenseSchedules]);
 
   return (
@@ -821,45 +856,45 @@ export default function JadwalSidangSection({ showHeaderBanner = true }) {
             <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-1">
               <div className="flex items-center justify-between text-slate-500">
                 <span className="text-[11px] font-bold uppercase tracking-wider">Total Jadwal</span>
-                <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600">
+                <div className="p-2 rounded-xl bg-slate-100 text-slate-600">
                   <CalendarDays className="w-4 h-4" />
                 </div>
               </div>
               <div className="text-2xl font-extrabold text-slate-900">{stats.total}</div>
-              <p className="text-[10px] text-slate-500">Semua tahapan sidang</p>
+              <p className="text-[10px] text-slate-500">Semua usulan &amp; jadwal sidang</p>
             </div>
 
             <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-1">
               <div className="flex items-center justify-between text-slate-500">
-                <span className="text-[11px] font-bold uppercase tracking-wider">Seminar Proposal</span>
+                <span className="text-[11px] font-bold uppercase tracking-wider">Diajukan</span>
                 <div className="p-2 rounded-xl bg-amber-50 text-amber-600">
-                  <BookOpen className="w-4 h-4" />
-                </div>
-              </div>
-              <div className="text-2xl font-extrabold text-amber-700">{stats.sempro}</div>
-              <p className="text-[10px] text-slate-500">Tahap awal pengujian</p>
-            </div>
-
-            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-1">
-              <div className="flex items-center justify-between text-slate-500">
-                <span className="text-[11px] font-bold uppercase tracking-wider">Seminar Hasil</span>
-                <div className="p-2 rounded-xl bg-blue-50 text-blue-600">
                   <Clock className="w-4 h-4" />
                 </div>
               </div>
-              <div className="text-2xl font-extrabold text-blue-700">{stats.semhas}</div>
-              <p className="text-[10px] text-slate-500">Tahap validasi hasil</p>
+              <div className="text-2xl font-extrabold text-amber-700">{stats.diajukan}</div>
+              <p className="text-[10px] text-slate-500">Otomatis masuk (menunggu jadwal)</p>
             </div>
 
             <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-1">
               <div className="flex items-center justify-between text-slate-500">
-                <span className="text-[11px] font-bold uppercase tracking-wider">Sidang Akhir</span>
-                <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
-                  <GraduationCap className="w-4 h-4" />
+                <span className="text-[11px] font-bold uppercase tracking-wider">Dijadwalkan</span>
+                <div className="p-2 rounded-xl bg-blue-50 text-blue-600">
+                  <CalendarDays className="w-4 h-4" />
                 </div>
               </div>
-              <div className="text-2xl font-extrabold text-emerald-700">{stats.sidangAkhir}</div>
-              <p className="text-[10px] text-slate-500">Ujian komprehensif kelulusan</p>
+              <div className="text-2xl font-extrabold text-blue-700">{stats.dijadwalkan}</div>
+              <p className="text-[10px] text-slate-500">Tanggal &amp; ruangan telah diset</p>
+            </div>
+
+            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-1">
+              <div className="flex items-center justify-between text-slate-500">
+                <span className="text-[11px] font-bold uppercase tracking-wider">Selesai</span>
+                <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
+                  <CheckCircle2 className="w-4 h-4" />
+                </div>
+              </div>
+              <div className="text-2xl font-extrabold text-emerald-700">{stats.selesai}</div>
+              <p className="text-[10px] text-slate-500">Sidang telah tuntas</p>
             </div>
           </div>
 
@@ -896,9 +931,9 @@ export default function JadwalSidangSection({ showHeaderBanner = true }) {
                 className="px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 bg-white outline-none focus:border-indigo-600 cursor-pointer"
               >
                 <option value="all">Semua Status</option>
-                <option value="terjadwal">Terjadwal</option>
-                <option value="berlangsung">Sedang Berlangsung</option>
-                <option value="selesai">Selesai / Lulus</option>
+                <option value="diajukan">Diajukan</option>
+                <option value="dijadwalkan">Dijadwalkan</option>
+                <option value="selesai">Selesai</option>
                 <option value="dibatalkan">Dibatalkan</option>
               </select>
 
@@ -935,8 +970,8 @@ export default function JadwalSidangSection({ showHeaderBanner = true }) {
                   <th className="py-3 px-3 w-1/6">Jenis &amp; Ruangan</th>
                   <th className="py-3 px-3 w-1/6">Waktu Sidang</th>
                   <th className="py-3 px-3 w-1/5">Dewan Penguji</th>
-                  <th className="py-3 px-2 text-center w-24">Status</th>
-                  <th className="py-3 px-3 text-center w-24">Aksi</th>
+                  <th className="py-3 px-2 text-center w-28">Status</th>
+                  <th className="py-3 px-3 text-center w-36">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
@@ -946,12 +981,20 @@ export default function JadwalSidangSection({ showHeaderBanner = true }) {
                       <div className="max-w-xs mx-auto space-y-2">
                         <CalendarDays className="w-8 h-8 text-slate-300 mx-auto" />
                         <p className="text-xs font-semibold text-slate-600">Belum ada jadwal sidang yang sesuai.</p>
-                        <p className="text-[11px] text-slate-400">Klik tombol "Jadwalkan Sidang Baru" untuk menambahkan jadwal.</p>
+                        <p className="text-[11px] text-slate-400">Mahasiswa yang menyelesaikan minimal 12x bimbingan tiap pembimbing dan di-ACC kedua dospem akan otomatis muncul di sini.</p>
                       </div>
                     </td>
                   </tr>
                 ) : (
                   filteredSchedules.map((sch, index) => {
+                    const normStatus = String(sch.status || '').toLowerCase().trim();
+                    const isDiajukan = normStatus === 'diajukan';
+                    const isSelesai = normStatus === 'selesai';
+                    const isDijadwalkan = normStatus === 'dijadwalkan' || normStatus === 'terjadwal';
+
+                    const todayStr = new Date().toLocaleDateString('en-CA'); // 'YYYY-MM-DD'
+                    const isDateReached = Boolean(sch.tanggal && todayStr >= sch.tanggal);
+
                     const stageColor =
                       sch.jenis_sidang === 'Sidang Akhir'
                         ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
@@ -959,121 +1002,224 @@ export default function JadwalSidangSection({ showHeaderBanner = true }) {
                         ? 'bg-blue-100 text-blue-800 border-blue-200'
                         : 'bg-amber-100 text-amber-800 border-amber-200';
 
-                    const statusColor =
-                      sch.status === 'selesai'
-                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                        : sch.status === 'berlangsung'
-                        ? 'bg-blue-50 text-blue-700 border-blue-200'
-                        : sch.status === 'dibatalkan'
-                        ? 'bg-rose-50 text-rose-700 border-rose-200'
-                        : 'bg-indigo-50 text-indigo-700 border-indigo-200';
-
                     return (
                       <tr key={sch.id} className="hover:bg-slate-50/70 transition-colors">
                         {/* No */}
-                        <td className="py-2.5 px-2 text-center text-[11px] text-slate-400 font-semibold align-top">
+                        <td className="py-3 px-2 text-center text-[11px] text-slate-400 font-semibold align-top">
                           {index + 1}
                         </td>
 
                         {/* Mahasiswa */}
-                        <td className="py-2.5 px-3 align-top">
+                        <td className="py-3 px-3 align-top">
                           <div className="font-bold text-slate-900 leading-snug">{sch.mhs_nama}</div>
                           <div className="text-[10px] text-indigo-700 font-mono font-bold">NIM. {sch.mhs_nim}</div>
                           <div className="text-[10px] text-slate-500">{sch.prodi}</div>
                         </td>
 
                         {/* Judul TA */}
-                        <td className="py-2.5 px-3 align-top">
+                        <td className="py-3 px-3 align-top">
                           <p className="text-[11px] text-slate-800 font-medium leading-relaxed italic line-clamp-2" title={sch.judul}>
                             "{sch.judul}"
                           </p>
                         </td>
 
                         {/* Jenis & Ruangan */}
-                        <td className="py-2.5 px-3 align-top">
+                        <td className="py-3 px-3 align-top">
                           <div className="space-y-1">
                             <span className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase border ${stageColor}`}>
-                              {sch.jenis_sidang}
+                              {sch.jenis_sidang || 'Sidang Akhir'}
                             </span>
-                            <div className="flex items-center space-x-1 text-[11px] text-slate-600">
-                              <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
-                              <span className="truncate max-w-[150px]" title={sch.ruangan}>{sch.ruangan}</span>
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* Waktu Sidang */}
-                        <td className="py-2.5 px-3 align-top">
-                          <div className="space-y-0.5">
-                            <div className="font-semibold text-slate-900 text-[11px]">
-                              {new Date(sch.tanggal).toLocaleDateString('id-ID', {
-                                weekday: 'short',
-                                year: 'numeric',
-                                month: 'short',
-                                day: 'numeric'
-                              })}
-                            </div>
-                            <div className="text-[10px] text-slate-500 font-mono flex items-center space-x-1">
-                              <Clock className="w-3 h-3 text-slate-400" />
-                              <span>{sch.waktu_mulai} - {sch.waktu_selesai} WIB</span>
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* Dewan Penguji */}
-                        <td className="py-2.5 px-3 align-top">
-                          <div className="space-y-0.5 text-[11px]">
-                            <div className="text-slate-800">
-                              <span className="font-bold text-slate-500 text-[10px]">Ketua: </span>
-                              <span className="font-medium">{sch.ketua_penguji_nama || '-'}</span>
-                            </div>
-                            <div className="text-slate-600 text-[10.5px]">
-                              <span className="font-bold text-slate-400 text-[10px]">Sekr: </span>
-                              <span>{sch.sekretaris_nama || '-'}</span>
-                            </div>
-                            {sch.penguji1_nama && (
-                              <div className="text-slate-500 text-[10px] truncate max-w-[180px]" title={sch.penguji1_nama}>
-                                <span className="font-bold text-slate-400">P1: </span>{sch.penguji1_nama}
+                            {sch.ruangan ? (
+                              <div className="flex items-center space-x-1 text-[11px] text-slate-600">
+                                <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                                <span className="truncate max-w-[150px]" title={sch.ruangan}>{sch.ruangan}</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center space-x-1 text-[10px] text-amber-700 italic">
+                                <MapPin className="w-3 h-3 text-amber-500 shrink-0" />
+                                <span>Belum dialokasikan</span>
                               </div>
                             )}
                           </div>
                         </td>
 
+                        {/* Waktu Sidang */}
+                        <td className="py-3 px-3 align-top">
+                          {sch.tanggal ? (
+                            <div className="space-y-0.5">
+                              <div className="font-semibold text-slate-900 text-[11px]">
+                                {new Date(sch.tanggal).toLocaleDateString('id-ID', {
+                                  weekday: 'short',
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric'
+                                })}
+                              </div>
+                              <div className="text-[10px] text-slate-500 font-mono flex items-center space-x-1">
+                                <Clock className="w-3 h-3 text-slate-400" />
+                                <span>{sch.waktu_mulai || '09:00'} - {sch.waktu_selesai || '10:30'} WIB</span>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="space-y-0.5">
+                              <div className="font-bold text-amber-700 text-[11px] flex items-center space-x-1">
+                                <Clock className="w-3 h-3 text-amber-600" />
+                                <span>Menunggu Jadwal</span>
+                              </div>
+                              <div className="text-[10px] text-slate-400">Belum ditentukan</div>
+                            </div>
+                          )}
+                        </td>
+
+                        {/* Dewan Penguji */}
+                        <td className="py-3 px-3 align-top">
+                          {isDiajukan && !sch.ketua_penguji_nama ? (
+                            <div className="space-y-0.5 text-[11px]">
+                              <div className="text-amber-700 font-bold text-[10px] uppercase tracking-wide">
+                                Perlu Atur Penguji
+                              </div>
+                              {sch.sekretaris_nama && (
+                                <div className="text-slate-500 text-[10px] truncate max-w-[180px]">
+                                  <span className="font-bold text-slate-400">Dospem 1: </span>{sch.sekretaris_nama}
+                                </div>
+                              )}
+                              {sch.penguji1_nama && (
+                                <div className="text-slate-500 text-[10px] truncate max-w-[180px]">
+                                  <span className="font-bold text-slate-400">Dospem 2: </span>{sch.penguji1_nama}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="space-y-0.5 text-[11px]">
+                              <div className="text-slate-800">
+                                <span className="font-bold text-slate-500 text-[10px]">Ketua: </span>
+                                <span className="font-medium">{sch.ketua_penguji_nama || '-'}</span>
+                              </div>
+                              <div className="text-slate-600 text-[10.5px]">
+                                <span className="font-bold text-slate-400 text-[10px]">Sekr: </span>
+                                <span>{sch.sekretaris_nama || '-'}</span>
+                              </div>
+                              {sch.penguji1_nama && (
+                                <div className="text-slate-500 text-[10px] truncate max-w-[180px]" title={sch.penguji1_nama}>
+                                  <span className="font-bold text-slate-400">P1: </span>{sch.penguji1_nama}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </td>
+
                         {/* Status */}
-                        <td className="py-2.5 px-2 text-center align-top">
-                          <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-extrabold capitalize border ${statusColor}`}>
-                            {sch.status}
-                          </span>
+                        <td className="py-3 px-2 text-center align-top">
+                          {isDiajukan ? (
+                            <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-50 text-amber-800 border border-amber-200">
+                              <Clock className="w-3 h-3 text-amber-600 shrink-0" />
+                              <span>Diajukan</span>
+                            </span>
+                          ) : isSelesai ? (
+                            <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                              <span>Selesai</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-50 text-blue-700 border border-blue-200">
+                              <CalendarDays className="w-3 h-3 text-blue-600 shrink-0" />
+                              <span>Dijadwalkan</span>
+                            </span>
+                          )}
                         </td>
 
                         {/* Aksi */}
-                        <td className="py-2.5 px-3 text-center align-top">
-                          <div className="flex items-center justify-center space-x-1">
-                            <button
-                              type="button"
-                              onClick={() => handleOpenDetail(sch)}
-                              title="Lihat Detail & Cetak Undangan"
-                              className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
-                            >
-                              <Printer className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEdit(sch)}
-                              title="Edit Jadwal"
-                              className="p-1.5 rounded-lg text-slate-500 hover:text-amber-600 hover:bg-amber-50 transition-colors cursor-pointer"
-                            >
-                              <Edit2 className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDelete(sch)}
-                              title="Hapus Jadwal"
-                              className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
+                        <td className="py-3 px-3 text-center align-top">
+                          {isDiajukan ? (
+                            <div className="flex items-center justify-center space-x-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEdit(sch)}
+                                className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[11px] shadow-xs transition-colors cursor-pointer whitespace-nowrap"
+                                title="Atur tanggal, ruangan, dan dewan penguji sidang"
+                              >
+                                <CalendarDays className="w-3.5 h-3.5" />
+                                <span>Atur Jadwal</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDelete(sch)}
+                                title="Hapus Pengajuan"
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ) : isSelesai ? (
+                            <div className="flex items-center justify-center space-x-1">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenDetail(sch)}
+                                title="Cetak Berkas Undangan / Berita Acara"
+                                className="p-1.5 rounded-lg text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
+                              >
+                                <Printer className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEdit(sch)}
+                                title="Edit Detail"
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-center space-x-1">
+                              {/* Tombol Selesai (Disable sampai tanggal sidang tiba) */}
+                              {isDateReached ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleMarkCompleted(sch)}
+                                  title="Tanggal sidang telah tiba. Klik untuk ubah status menjadi Selesai"
+                                  className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[10.5px] font-bold shadow-xs transition-colors cursor-pointer whitespace-nowrap"
+                                >
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                  <span>Selesai</span>
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  disabled
+                                  title={`Tombol Selesai nonaktif sampai tanggal sidang tiba (${sch.tanggal ? new Date(sch.tanggal).toLocaleDateString('id-ID') : '-'})`}
+                                  className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-400 border border-slate-200 text-[10.5px] font-semibold cursor-not-allowed opacity-60 whitespace-nowrap"
+                                >
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                  <span>Selesai</span>
+                                </button>
+                              )}
+
+                              <button
+                                type="button"
+                                onClick={() => handleOpenDetail(sch)}
+                                title="Cetak Undangan Sidang"
+                                className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
+                              >
+                                <Printer className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEdit(sch)}
+                                title="Edit Jadwal"
+                                className="p-1.5 rounded-lg text-slate-500 hover:text-amber-600 hover:bg-amber-50 transition-colors cursor-pointer"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDelete(sch)}
+                                title="Hapus Jadwal"
+                                className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          )}
                         </td>
                       </tr>
                     );
