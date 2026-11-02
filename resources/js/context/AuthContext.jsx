@@ -1215,173 +1215,45 @@ export function AuthProvider({ children }) {
   });
 
   // ── PROTOKOL PERMINTAAN RESET PASSWORD (ROLE ADMIN) ────────────────────────
-  const DEFAULT_PASSWORD_RESET_REQUESTS = [
-    {
-      id: 'req-rst-101',
-      identifier: '09010182428001',
-      nim: '09010182428001',
-      nip: '',
-      nama: 'MUHAMMAD FATHAN PRATAMA',
-      email: '09010182428001@student.unsri.ac.id',
-      role: 'mahasiswa',
-      prodi: 'D3 Manajemen Informatika',
-      kelas: 'MI 5A',
-      no_hp: '0812-7391-4820',
-      status: 'menunggu',
-      alasan_pengajuan: 'Lupa kata sandi akun SIMONITA setelah install ulang browser.',
-      created_at: '2026-11-02T08:30:00.000Z',
-      processed_at: null,
-      processed_by: null,
-      catatan_admin: '',
-      token: null,
-      expires_at: null,
-      reset_link: null,
-      email_status: 'unconfigured',
-      completed_at: null
-    },
-    {
-      id: 'req-rst-102',
-      identifier: '198410012009121005',
-      nim: '198410012009121005',
-      nip: '198410012009121005',
-      nama: 'Dr. Abdiansah, S.Kom., M.Cs.',
-      email: 'abdiansah@unsri.ac.id',
-      role: 'dosen',
-      prodi: 'D3 Manajemen Informatika',
-      kelas: 'Dosen Pembimbing',
-      no_hp: '0895-3787-34847',
-      status: 'disetujui',
-      alasan_pengajuan: 'Perlu reset kata sandi akun dosen pembimbing untuk validasi bimbingan.',
-      created_at: '2026-11-01T14:15:00.000Z',
-      processed_at: '2026-11-01T14:25:00.000Z',
-      processed_by: 'Rina Agustina, S.Kom. (Admin SIMTA)',
-      catatan_admin: 'Identitas Dosen Pembimbing telah diverifikasi resmi oleh Admin.',
-      token: 'token-rst-dosen-abdiansah-2026',
-      expires_at: Date.now() + 24 * 3600 * 1000,
-      reset_link: '/reset-password?token=token-rst-dosen-abdiansah-2026&email=abdiansah%40unsri.ac.id',
-      email_status: 'unconfigured',
-      completed_at: null
-    },
-    {
-      id: 'req-rst-103',
-      identifier: '09010182428002',
-      nim: '09010182428002',
-      nip: '',
-      nama: 'AULIA AZZAHRA',
-      email: '09010182428002@student.unsri.ac.id',
-      role: 'mahasiswa',
-      prodi: 'D3 Manajemen Informatika',
-      kelas: 'MI 2024',
-      no_hp: '0821-8849-2011',
-      status: 'selesai',
-      alasan_pengajuan: 'Lupa kata sandi awal akun mahasiswa baru.',
-      created_at: '2026-10-31T09:00:00.000Z',
-      processed_at: '2026-10-31T09:12:00.000Z',
-      processed_by: 'Rina Agustina, S.Kom. (Admin SIMTA)',
-      catatan_admin: 'Verifikasi identitas KTM berhasil. Kata sandi telah diperbarui oleh pengguna.',
-      token: 'token-rst-done-aulia-103',
-      expires_at: new Date('2026-11-01T09:12:00.000Z').getTime(),
-      reset_link: '/reset-password?token=token-rst-done-aulia-103&email=09010182428002%40student.unsri.ac.id',
-      email_status: 'unconfigured',
-      completed_at: '2026-10-31T09:25:00.000Z'
-    },
-    {
-      id: 'req-rst-104',
-      identifier: '09010182428999',
-      nim: '09010182428999',
-      nip: '',
-      nama: 'Pengguna Tidak Dikenal',
-      email: 'unknown999@gmail.com',
-      role: 'mahasiswa',
-      prodi: 'D3 Manajemen Informatika',
-      kelas: '-',
-      no_hp: '-',
-      status: 'ditolak',
-      alasan_pengajuan: 'Minta reset akun tanpa data lengkap.',
-      created_at: '2026-10-30T11:20:00.000Z',
-      processed_at: '2026-10-30T11:45:00.000Z',
-      processed_by: 'Rina Agustina, S.Kom. (Admin SIMTA)',
-      catatan_admin: 'NIM dan Email tidak terdaftar dalam basis data resmi Mahasiswa Fasilkom UNSRI.',
-      token: null,
-      expires_at: null,
-      reset_link: null,
-      email_status: 'unconfigured',
-      completed_at: null
-    }
-  ];
+  // Default data bersih tanpa data dummy/simulasi pengujian development
+  const DEFAULT_PASSWORD_RESET_REQUESTS = [];
+  const DEFAULT_PASSWORD_RESET_LOGS = [];
 
-  const DEFAULT_PASSWORD_RESET_LOGS = [
-    {
-      id: 'log-rst-001',
-      request_id: 'req-rst-101',
-      action: 'diajukan',
-      action_label: 'Pengajuan Baru',
-      user_name: 'MUHAMMAD FATHAN PRATAMA',
-      user_identifier: '09010182428001',
-      user_role: 'mahasiswa',
-      actor: 'Pengguna (Portal)',
-      notes: 'Pengajuan pemulihan kata sandi masuk ke antrean verifikasi Admin SIMTA.',
-      created_at: '2026-11-02T08:30:00.000Z'
-    },
-    {
-      id: 'log-rst-002',
-      request_id: 'req-rst-102',
-      action: 'diajukan',
-      action_label: 'Pengajuan Baru',
-      user_name: 'Dr. Abdiansah, S.Kom., M.Cs.',
-      user_identifier: '198410012009121005',
-      user_role: 'dosen',
-      actor: 'Pengguna (Portal)',
-      notes: 'Pengajuan pemulihan kata sandi diajukan oleh Dosen.',
-      created_at: '2026-11-01T14:15:00.000Z'
-    },
-    {
-      id: 'log-rst-003',
-      request_id: 'req-rst-102',
-      action: 'disetujui',
-      action_label: 'Disetujui Admin',
-      user_name: 'Dr. Abdiansah, S.Kom., M.Cs.',
-      user_identifier: '198410012009121005',
-      user_role: 'dosen',
-      actor: 'Rina Agustina, S.Kom. (Admin SIMTA)',
-      notes: 'Permintaan reset sandi disetujui. Tautan reset aman diaktifkan untuk Dosen Pembimbing (berlaku 24 jam).',
-      created_at: '2026-11-01T14:25:00.000Z'
-    },
-    {
-      id: 'log-rst-004',
-      request_id: 'req-rst-103',
-      action: 'selesai',
-      action_label: 'Selesai Direset',
-      user_name: 'AULIA AZZAHRA',
-      user_identifier: '09010182428002',
-      user_role: 'mahasiswa',
-      actor: 'Pengguna (Portal)',
-      notes: 'Kata sandi baru berhasil dibuat dan disimpan menggunakan enkripsi hashing SHA-256.',
-      created_at: '2026-10-31T09:25:00.000Z'
-    },
-    {
-      id: 'log-rst-005',
-      request_id: 'req-rst-104',
-      action: 'ditolak',
-      action_label: 'Ditolak Admin',
-      user_name: 'Pengguna Tidak Dikenal',
-      user_identifier: '09010182428999',
-      user_role: 'mahasiswa',
-      actor: 'Rina Agustina, S.Kom. (Admin SIMTA)',
-      notes: 'Permintaan ditolak: NIM dan email tidak terdaftar dalam database resmi UNSRI.',
-      created_at: '2026-10-30T11:45:00.000Z'
-    }
-  ];
+  // Helper pemeriksa data dummy lama masa pengembangan
+  const isLegacyDummyResetRequest = (r) => {
+    if (!r) return true;
+    const dummyIds = new Set(['req-rst-101', 'req-rst-102', 'req-rst-103', 'req-rst-104']);
+    if (dummyIds.has(r.id)) return true;
+    if (r.nama === 'Pengguna Tidak Dikenal' || r.nama === 'MUHAMMAD FATHAN PRATAMA') return true;
+    if (r.token === 'token-rst-dosen-abdiansah-2026' || r.token === 'token-rst-done-aulia-103') return true;
+    return false;
+  };
+
+  const isLegacyDummyResetLog = (l) => {
+    if (!l) return true;
+    const dummyLogIds = new Set(['log-rst-001', 'log-rst-002', 'log-rst-003', 'log-rst-004', 'log-rst-005']);
+    if (dummyLogIds.has(l.id)) return true;
+    const dummyReqIds = new Set(['req-rst-101', 'req-rst-102', 'req-rst-103', 'req-rst-104']);
+    if (dummyReqIds.has(l.request_id)) return true;
+    if (l.user_name === 'Pengguna Tidak Dikenal' || l.user_name === 'MUHAMMAD FATHAN PRATAMA') return true;
+    return false;
+  };
 
   const [passwordResetRequests, setPasswordResetRequests] = useState(() => {
     try {
       const saved = localStorage.getItem('simta_password_reset_requests');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) {
+          // Bersihkan seluruh data dummy pengujian masa pengembangan
+          const cleaned = parsed.filter(r => !isLegacyDummyResetRequest(r));
+          localStorage.setItem('simta_password_reset_requests', JSON.stringify(cleaned));
+          return cleaned;
+        }
       }
     } catch { }
-    return DEFAULT_PASSWORD_RESET_REQUESTS;
+    try { localStorage.setItem('simta_password_reset_requests', JSON.stringify([])); } catch {}
+    return [];
   });
 
   const [passwordResetLogs, setPasswordResetLogs] = useState(() => {
@@ -1389,11 +1261,41 @@ export function AuthProvider({ children }) {
       const saved = localStorage.getItem('simta_password_reset_logs');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) {
+          // Bersihkan seluruh log dummy pengujian masa pengembangan
+          const cleaned = parsed.filter(l => !isLegacyDummyResetLog(l));
+          localStorage.setItem('simta_password_reset_logs', JSON.stringify(cleaned));
+          return cleaned;
+        }
       }
     } catch { }
-    return DEFAULT_PASSWORD_RESET_LOGS;
+    try { localStorage.setItem('simta_password_reset_logs', JSON.stringify([])); } catch {}
+    return [];
   });
+
+  // Effect pembersihan otomatis saat pertama kali komponen AuthProvider dimuat
+  useEffect(() => {
+    try {
+      const savedReq = localStorage.getItem('simta_password_reset_requests');
+      if (savedReq) {
+        const parsed = JSON.parse(savedReq);
+        if (Array.isArray(parsed) && parsed.some(r => isLegacyDummyResetRequest(r))) {
+          const cleaned = parsed.filter(r => !isLegacyDummyResetRequest(r));
+          localStorage.setItem('simta_password_reset_requests', JSON.stringify(cleaned));
+          setPasswordResetRequests(cleaned);
+        }
+      }
+      const savedLog = localStorage.getItem('simta_password_reset_logs');
+      if (savedLog) {
+        const parsed = JSON.parse(savedLog);
+        if (Array.isArray(parsed) && parsed.some(l => isLegacyDummyResetLog(l))) {
+          const cleaned = parsed.filter(l => !isLegacyDummyResetLog(l));
+          localStorage.setItem('simta_password_reset_logs', JSON.stringify(cleaned));
+          setPasswordResetLogs(cleaned);
+        }
+      }
+    } catch {}
+  }, []);
 
   // Helper to extract revision type from note or status
   const parseConsultationItem = (c) => {
@@ -5847,47 +5749,69 @@ export function AuthProvider({ children }) {
     return newLog;
   };
 
-  // 1. Periksa identitas pengguna terhadap database sistem
+  // 1. Periksa identitas pengguna terhadap basis data resmi sistem (Ketentuan #3)
   const checkUserIdentityInDatabase = (identifier) => {
     const term = String(identifier || '').trim().toLowerCase();
-    if (!term) return { found: false, user: null };
+    if (!term) return { found: false, user: null, status: 'not_found', source: null };
 
     const allMhs = getAllMahasiswaAccounts ? getAllMahasiswaAccounts() : [];
     const allDsn = getAllDosenAccounts ? getAllDosenAccounts() : [];
     const regUsers = getRegisteredUsers();
 
-    // 1. Cari di akun mahasiswa
+    // 1. Cari di akun mahasiswa resmi
     const mhsMatch = allMhs.find(m =>
       String(m.nim || '').toLowerCase() === term ||
       String(m.email || '').toLowerCase() === term
     );
     if (mhsMatch) {
+      const isDeleted = isStudentDeleted ? isStudentDeleted(mhsMatch) : false;
+      const rawStatus = isDeleted ? 'nonaktif' : (mhsMatch.status || 'aktif');
+      const isStatusActive = String(rawStatus).toLowerCase() === 'aktif';
       return {
         found: true,
-        source: 'Mahasiswa (Basis Data SIMTA)',
+        source: 'Basis Data Mahasiswa SIMTA',
+        status: isStatusActive ? 'valid' : 'inactive',
         user: {
           ...mhsMatch,
+          nama: mhsMatch.nama, // Nama Asli Resmi dari Database
           role: 'mahasiswa',
           identifier: mhsMatch.nim,
-          nip: ''
+          nim: mhsMatch.nim,
+          nip: '',
+          email: mhsMatch.email,
+          prodi: mhsMatch.prodi || 'D3 Manajemen Informatika',
+          kelas: mhsMatch.kelas || 'MI 5A',
+          no_hp: mhsMatch.no_hp || '-',
+          status: isStatusActive ? 'Aktif' : 'Non-Aktif'
         }
       };
     }
 
-    // 2. Cari di akun dosen
+    // 2. Cari di akun dosen resmi
     const dsnMatch = allDsn.find(d =>
       String(d.nip || '').toLowerCase() === term ||
       String(d.email || '').toLowerCase() === term
     );
     if (dsnMatch) {
+      const isDeleted = isDosenDeleted ? isDosenDeleted(dsnMatch) : false;
+      const rawStatus = isDeleted ? 'nonaktif' : (dsnMatch.status || 'aktif');
+      const isStatusActive = String(rawStatus).toLowerCase() === 'aktif';
       return {
         found: true,
-        source: 'Dosen Pembimbing (Basis Data SIMTA)',
+        source: 'Basis Data Dosen SIMTA',
+        status: isStatusActive ? 'valid' : 'inactive',
         user: {
           ...dsnMatch,
+          nama: dsnMatch.nama, // Nama Asli Resmi dari Database
           role: dsnMatch.role || 'dosen',
           identifier: dsnMatch.nip,
-          nim: ''
+          nip: dsnMatch.nip,
+          nim: '',
+          email: dsnMatch.email,
+          prodi: dsnMatch.prodi || 'D3 Manajemen Informatika',
+          jabatan_fungsional: dsnMatch.jabatan_fungsional || 'Dosen Pembimbing',
+          no_hp: dsnMatch.no_hp || '-',
+          status: isStatusActive ? 'Aktif' : 'Non-Aktif'
         }
       };
     }
@@ -5900,12 +5824,18 @@ export function AuthProvider({ children }) {
       String(u.username || '').toLowerCase() === term
     );
     if (regMatch) {
+      const isStatusActive = String(regMatch.status || 'aktif').toLowerCase() === 'aktif';
       return {
         found: true,
-        source: 'Pengguna Terdaftar Sistem',
+        source: 'Basis Data Pengguna Terdaftar SIMTA',
+        status: isStatusActive ? 'valid' : 'inactive',
         user: {
           ...regMatch,
-          identifier: regMatch.nim || regMatch.nip || regMatch.username || regMatch.email
+          nama: regMatch.nama || regMatch.name || 'Pengguna SIMTA',
+          role: regMatch.role || 'pengguna',
+          identifier: regMatch.nim || regMatch.nip || regMatch.username || regMatch.email,
+          email: regMatch.email,
+          status: isStatusActive ? 'Aktif' : 'Non-Aktif'
         }
       };
     }
@@ -5920,14 +5850,18 @@ export function AuthProvider({ children }) {
       return {
         found: true,
         source: 'Dataset Master SIMTA',
+        status: 'valid',
         user: {
           ...mockMatch,
-          identifier: mockMatch.nim || mockMatch.nip || mockMatch.email
+          nama: mockMatch.nama,
+          role: mockMatch.role || 'pengguna',
+          identifier: mockMatch.nim || mockMatch.nip || mockMatch.email,
+          status: 'Aktif'
         }
       };
     }
 
-    return { found: false, user: null };
+    return { found: false, user: null, status: 'not_found', source: null };
   };
 
   // 2. Ajukan permintaan reset password (oleh Pengguna / Mahasiswa / Dosen)
@@ -5942,12 +5876,17 @@ export function AuthProvider({ children }) {
       throw new Error('Akun dengan NIM / NIP atau Email tersebut tidak ditemukan dalam sistem SIMTA.');
     }
 
+    if (verification.status === 'inactive') {
+      throw new Error('Akun ini terdaftar namun berstatus non-aktif. Silakan hubungi Administrator SIMTA Fakultas Ilmu Komputer.');
+    }
+
     const u = verification.user;
     const userRole = u.role || 'mahasiswa';
     const userNim = u.nim || (userRole === 'mahasiswa' ? cleanId : '');
     const userNip = u.nip || (userRole === 'dosen' ? cleanId : '');
     const userEmail = u.email || `${cleanId}@student.unsri.ac.id`;
-    const userNama = u.nama || 'Pengguna SIMTA';
+    // Ketentuan: Selalu gunakan nama asli resmi dari basis data, jangan pernah ambil dari form
+    const userNama = u.nama;
 
     // Cek apakah sudah ada pengajuan aktif
     const existing = passwordResetRequests.find(r =>
@@ -6105,11 +6044,16 @@ export function AuthProvider({ children }) {
     setPasswordResetRequests(prev => {
       const next = prev.map(req => {
         if (req.id === requestId) {
+          const verification = checkUserIdentityInDatabase(req.identifier || req.nim || req.nip || req.email);
+          const officialUser = verification.user;
+          const officialName = (verification.found && officialUser?.nama) ? officialUser.nama : req.nama;
+
           const token = `rst-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
           const origin = typeof window !== 'undefined' ? window.location.origin : '';
           const reset_link = `${origin}/reset-password?token=${token}&email=${encodeURIComponent(req.email || req.identifier)}`;
           const updated = {
             ...req,
+            nama: officialName,
             status: 'disetujui',
             processed_at: new Date().toISOString(),
             processed_by: 'Rina Agustina, S.Kom. (Admin SIMTA)',
