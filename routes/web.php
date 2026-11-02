@@ -193,6 +193,14 @@ Route::get('/admin-simta/accounts/dosen', function () {
     return Inertia::render('admin/AkunDosenAdminPage');
 });
 
+Route::get('/admin-simta/accounts/password-resets', function () {
+    return Inertia::render('admin/ResetPasswordRequestsAdminPage');
+});
+
+Route::get('/admin-simta/accounts/reset-requests', function () {
+    return Inertia::render('admin/ResetPasswordRequestsAdminPage');
+});
+
 Route::get('/admin-simta/documents', function () {
     return Inertia::render('admin/DokumenAdminPage');
 });
