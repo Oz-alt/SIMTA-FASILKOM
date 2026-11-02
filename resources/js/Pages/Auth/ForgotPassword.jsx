@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, router, Head } from '@inertiajs/react';
 import { useAuth } from '../../context/AuthContext.jsx';
+import AuthLayout from '../../Layouts/AuthLayout.jsx';
 import gsap from 'gsap';
 import unsriLogo from '../../assets/photo/unsri logo.png';
 import diklatImg from '../../assets/photo/diklat.jpg';
@@ -381,3 +382,7 @@ export default function ForgotPassword({ status }) {
     </div>
   );
 }
+
+// Lepaskan halaman Lupa Kata Sandi dari Admin / Dashboard layout
+ForgotPassword.layout = (page) => <AuthLayout>{page}</AuthLayout>;
+

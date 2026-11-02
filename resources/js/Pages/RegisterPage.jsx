@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { useAuth } from '../context/AuthContext.jsx';
+import AuthLayout from '../Layouts/AuthLayout.jsx';
 import gsap from 'gsap';
 import unsriLogo from '../assets/photo/unsri logo.png';
 import diklatImg from '../assets/photo/diklat.jpg';
@@ -475,5 +476,9 @@ export default function RegisterPage() {
     </div>
   );
 }
+
+// Gunakan layout autentikasi independen
+RegisterPage.layout = (page) => <AuthLayout>{page}</AuthLayout>;
+
 
 

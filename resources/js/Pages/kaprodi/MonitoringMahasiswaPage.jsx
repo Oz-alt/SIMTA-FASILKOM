@@ -221,7 +221,7 @@ export default function MonitoringMahasiswaPage() {
 
   // Filter & Search states (Tambahan 3b: default status mahasiswa adalah 'aktif')
   const [selectedBimbinganFilter, setSelectedBimbinganFilter] = useState('all'); // 'all' | 'siap_sidang' | 'belum_bimbingan' | 'overdue_30' | 'belum_24x'
-  const [selectedAngkatanFilter, setSelectedAngkatanFilter] = useState('2024'); // '2024' (default) | '2025' | '2023' | '2022' | 'all'
+  const [selectedAngkatanFilter, setSelectedAngkatanFilter] = useState('2024'); // '2024' (default) | '2025' | 'all'
   const [selectedStatusMhsFilter, setSelectedStatusMhsFilter] = useState('aktif'); // Tambahan 3b: default 'aktif'
   const [searchQuery, setSearchQuery] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -1176,10 +1176,8 @@ export default function MonitoringMahasiswaPage() {
               }}
               className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-slate-300 bg-slate-50/50 hover:bg-white focus:bg-white text-slate-700 shadow-2xs hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 cursor-pointer transition-all"
             >
-              <option value="2024">Angkatan 2024 (Aktif TA)</option>
+              <option value="2024">Angkatan 2024</option>
               <option value="2025">Angkatan 2025</option>
-              <option value="2023">Angkatan 2023 (Alumni/Lulus)</option>
-              <option value="2022">Angkatan 2022 (Alumni/Lulus)</option>
               <option value="all">Semua Angkatan</option>
             </select>
           </div>

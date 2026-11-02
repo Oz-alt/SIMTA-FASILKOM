@@ -52,7 +52,7 @@ export default function MasterDosenPage() {
     prodi: 'D3 Manajemen Informatika',
     jabatan_fungsional: 'Asisten Ahli',
     keahlian: '',
-    pendidikan: 'S2 (Magister)',
+    pendidikan: 'S2',
     kuota_dospem1: 8,
     kuota_dospem2: 8,
     status: 'aktif'
@@ -108,7 +108,7 @@ export default function MasterDosenPage() {
       prodi: 'D3 Manajemen Informatika',
       jabatan_fungsional: 'Asisten Ahli',
       keahlian: '',
-      pendidikan: 'S2 (Magister)',
+      pendidikan: 'S2',
       kuota_dospem1: 8,
       kuota_dospem2: 8,
       status: 'aktif'
@@ -134,7 +134,7 @@ export default function MasterDosenPage() {
       prodi: dosen.prodi || 'D3 Manajemen Informatika',
       jabatan_fungsional: dosen.jabatan_fungsional || 'Asisten Ahli',
       keahlian: Array.isArray(dosen.keahlian) ? dosen.keahlian.join(', ') : (dosen.keahlian || ''),
-      pendidikan: dosen.pendidikan || 'S2 (Magister)',
+      pendidikan: getPendidikan(dosen),
       kuota_dospem1: dosen.kuota_dospem1 || 8,
       kuota_dospem2: dosen.kuota_dospem2 || 8,
       status: dosen.status || 'aktif'
@@ -154,12 +154,14 @@ export default function MasterDosenPage() {
     return stripped.trim();
   };
 
-  // Derive pendidikan from name if field is missing (handles old localStorage cache)
+  // Derive pendidikan (S2 / S3)
   const getPendidikan = (adv) => {
-    if (adv.pendidikan) return adv.pendidikan;
-    const n = adv.nama || '';
+    const p = String(adv?.pendidikan || '').trim();
+    if (p.toLowerCase().startsWith('s3') || p.toLowerCase().includes('doktor')) return 'S3';
+    if (p.toLowerCase().startsWith('s2') || p.toLowerCase().includes('magister')) return 'S2';
+    const n = adv?.nama || '';
     const isDoktor = /\bDr\.\s/i.test(n) || /Ph\.D/i.test(n) || /\bDr\b/i.test(n);
-    return isDoktor ? 'S3 (Doktor)' : 'S2 (Magister)';
+    return isDoktor ? 'S3' : 'S2';
   };
 
   // Parse CSV/Excel file for import
@@ -561,8 +563,8 @@ export default function MasterDosenPage() {
                   onChange={(e) => setDosenForm({ ...dosenForm, pendidikan: e.target.value })}
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500 font-bold text-slate-800"
                 >
-                  <option value="S2 (Magister)">S2 (Magister)</option>
-                  <option value="S3 (Doktor)">S3 (Doktor)</option>
+                  <option value="S2">S2</option>
+                  <option value="S3">S3</option>
                 </select>
               </div>
 

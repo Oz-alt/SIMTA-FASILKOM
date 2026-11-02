@@ -13,7 +13,28 @@ export default function AppLayout({ children }) {
   const { url } = usePage();
   const { currentUser } = useAuth();
 
+  // Helper untuk mendeteksi rute publik autentikasi & verifikasi (Guest/Auth)
+  const isAuthRoute = (path) => {
+    if (!path) return false;
+    return (
+      path === '/login' ||
+      path.startsWith('/login') ||
+      path === '/register' ||
+      path.startsWith('/register') ||
+      path === '/forgot-password' ||
+      path.startsWith('/forgot-password') ||
+      path === '/reset-password' ||
+      path.startsWith('/reset-password') ||
+      path.startsWith('/verify')
+    );
+  };
+
   useEffect(() => {
+    // Abaikan seluruh alur autentikasi publik & verifikasi dari guard dashboard
+    if (isAuthRoute(url)) {
+      return;
+    }
+
     // 1. Guard Admin Routes: only users with role 'admin' can access /admin and /admin-simta
     const isAdminRoute = url.startsWith('/admin-simta') || url.startsWith('/admin');
     if (isAdminRoute) {
@@ -45,21 +66,19 @@ export default function AppLayout({ children }) {
       currentUser?.role === 'mahasiswa' && 
       !currentUser?.is_profile_completed && 
       !url.startsWith('/profile') &&
-      !url.startsWith('/login') &&
-      !url.startsWith('/register') &&
-      !url.startsWith('/verify') &&
+      !isAuthRoute(url) &&
       url !== '/' &&
       url !== '/documents'
     ) {
       router.visit('/profile?first_login=true');
     }
   }, [currentUser?.role, currentUser?.is_profile_completed, url]);
+
   const isHomePage = url === '/';
   const isDokumenPage = url === '/documents';
-  const isAuthPage = url === '/login' || url === '/register';
-  const isVerifyPage = url.startsWith('/verify');
+  const isAuthPage = isAuthRoute(url);
 
-  if (isAuthPage || isVerifyPage) {
+  if (isAuthPage) {
     return (
       <div className="min-h-screen bg-slate-900 font-sans">
         {children}
