@@ -16,7 +16,8 @@ import {
   Building2,
   CheckSquare,
   Calendar,
-  AlertCircle
+  AlertCircle,
+  KeyRound
 } from 'lucide-react';
 
 export default function DashboardAdminSimta() {
@@ -27,6 +28,7 @@ export default function DashboardAdminSimta() {
     thesisArchives = [],
     bookings = [],
     rooms = [],
+    passwordResetRequests = [],
     getAllMahasiswaAccounts,
     getAllDosenAccounts
   } = useAuth();
@@ -65,6 +67,9 @@ export default function DashboardAdminSimta() {
   const cmsList = Array.isArray(adminCmsContents) ? adminCmsContents : [];
   const tplList = Array.isArray(adminTemplates) ? adminTemplates : [];
   const repoList = Array.isArray(thesisArchives) ? thesisArchives : [];
+  const resetList = Array.isArray(passwordResetRequests) ? passwordResetRequests : [];
+
+  const pendingResetRequests = resetList.filter(r => r && r.status === 'menunggu').length;
 
   const totalDokumen = docsList.length;
   const dokumenAktif = docsList.filter(d => d && d.status === 'aktif').length;
@@ -120,6 +125,33 @@ export default function DashboardAdminSimta() {
           Pusat kendali terpadu untuk mengelola persetujuan ruangan sidang, sarana prasarana, master data akun &amp; tugas akhir, dokumen resmi, CMS, dan repositori SIMTA Fasilkom UNSRI.
         </p>
       </div>
+
+      {/* Alert Banner: Antrean Permintaan Reset Password (Ketentuan #1) */}
+      {pendingResetRequests > 0 && (
+        <div className="bg-amber-50 border border-amber-300/80 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs animate-in fade-in">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold shrink-0 shadow-sm shadow-amber-500/30">
+              <KeyRound className="w-5 h-5 animate-pulse" />
+            </div>
+            <div>
+              <div className="font-extrabold text-sm text-amber-950 flex items-center space-x-2">
+                <span>{pendingResetRequests} Permintaan Reset Password Menunggu Verifikasi</span>
+                <span className="w-2 h-2 rounded-full bg-amber-600 animate-ping inline-block" />
+              </div>
+              <p className="text-xs text-amber-800/90 mt-0.5">
+                Terdapat pengguna (Mahasiswa/Dosen) yang membutuhkan pemulihan kata sandi akun SIMONITA.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/admin-simta/accounts/password-resets"
+            className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs transition-colors shadow-sm shrink-0 flex items-center space-x-1"
+          >
+            <span>Buka Antrean Reset</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+      )}
 
       {/* Row 1: Operasional Sarana & Ruangan Sidang (Unified Feature) */}
       <div>
@@ -274,10 +306,10 @@ export default function DashboardAdminSimta() {
         {[
           { href: '/admin/bookings', Icon: CheckSquare, color: 'amber', title: 'Persetujuan Ruang', sub: 'Peminjaman sidang' },
           { href: '/admin/rooms', Icon: Building2, color: 'indigo', title: 'Kelola Ruangan', sub: 'Fasilitas & gedung' },
+          { href: '/admin-simta/accounts/password-resets', Icon: KeyRound, color: 'rose', title: 'Reset Sandi', sub: `${pendingResetRequests} antrean` },
           { href: '/admin-simta/master/mahasiswa', Icon: GraduationCap, color: 'blue', title: 'Data Mahasiswa', sub: 'Status & data' },
           { href: '/admin-simta/master/dosen', Icon: UserCheck, color: 'purple', title: 'Data Dosen', sub: 'Jabatan & kuota' },
-          { href: '/admin-simta/documents', Icon: FileStack, color: 'cyan', title: 'Kelola Dokumen', sub: 'Upload surat resmi' },
-          { href: '/admin-simta/templates', Icon: FileText, color: 'emerald', title: 'Kelola Template', sub: 'Pedoman & berkas' }
+          { href: '/admin-simta/documents', Icon: FileStack, color: 'cyan', title: 'Kelola Dokumen', sub: 'Upload surat resmi' }
         ].map(({ href, Icon, color, title, sub }) => (
           <Link key={href} href={href}
             className="flex items-center justify-between bg-white border border-slate-200 rounded-2xl px-4 py-3.5 hover:border-slate-300 hover:shadow-md transition-all group">
