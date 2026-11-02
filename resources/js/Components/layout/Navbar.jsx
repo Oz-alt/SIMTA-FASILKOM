@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { 
@@ -14,7 +14,13 @@ import {
   ExternalLink,
   ArrowRight,
   AlertTriangle,
-  X
+  X,
+  KeyRound,
+  Check,
+  CheckCheck,
+  Clock,
+  ShieldCheck,
+  ShieldAlert
 } from 'lucide-react';
 
 import unsriLogo from '../../assets/photo/unsri logo.png';
@@ -70,13 +76,48 @@ export default function Navbar() {
   const { 
     currentUser, 
     switchRole, 
-    notifications, 
+    notifications = [], 
+    passwordResetRequests = [],
+    bookings = [],
     markAllNotificationsAsRead, 
     markNotificationAsRead 
   } = useAuth();
   const [showNotif, setShowNotif] = useState(false);
   const [showRoleMenu, setShowRoleMenu] = useState(false);
   const [currentTime, setCurrentTime] = useState(() => new Date());
+  const notifRef = useRef(null);
+
+  // Status baca persisten untuk notifikasi sistem & admin
+  const [readNotifIds, setReadNotifIds] = useState(() => {
+    try {
+      const saved = localStorage.getItem('simta_read_notif_ids');
+      return new Set(saved ? JSON.parse(saved) : []);
+    } catch {
+      return new Set();
+    }
+  });
+
+  const saveReadNotifIds = (newSet) => {
+    setReadNotifIds(newSet);
+    try {
+      localStorage.setItem('simta_read_notif_ids', JSON.stringify(Array.from(newSet)));
+    } catch {}
+  };
+
+  // Close floating notification popover on click outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (notifRef.current && !notifRef.current.contains(event.target)) {
+        setShowNotif(false);
+      }
+    }
+    if (showNotif) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showNotif]);
 
   // Interval pembaruan waktu otomatis tanpa memuat ulang halaman
   useEffect(() => {
@@ -86,83 +127,174 @@ export default function Navbar() {
     return () => clearInterval(timer);
   }, []);
 
-  // Filter notifications relevant to the current active user
-  const userNotifications = notifications.filter(n => {
-    if (!currentUser) return false;
-    if (n.is_read) return false;
+  // Filter & bangun notifikasi dinamis berdasarkan aktivitas nyata dalam sistem
+  const userNotifications = useMemo(() => {
+    if (!currentUser) return [];
 
-    // Bersihkan notifikasi mock dummy lama
-    if (n.id === 'notif-1' || n.id === 'notif-2' || n.is_mock) return false;
-    if (n.title === 'Judul TA Disetujui!' || n.title === 'Peminjaman Ruangan Disetujui') return false;
-
+    // ============================================================
+    // KHUSUS ROLE ADMIN: Data Notifikasi Terpadu dari Realitas Sistem
+    // ============================================================
     if (currentUser.role === 'admin') {
-      // Admin only sees notifications specifically targeted to the admin
-      return (
-        n.recipient_role === 'admin' ||
-        n.target_role === 'admin' ||
-        String(n.profile_id) === String(currentUser.id) ||
-        String(n.recipient_id) === String(currentUser.id)
-      );
+      // 1. Permintaan Reset Password yang Menunggu Verifikasi
+      const resetNotifs = (passwordResetRequests || [])
+        .filter(r => r && r.status === 'menunggu')
+        .map(r => ({
+          id: `notif-reset-${r.id}`,
+          source_type: 'password_reset',
+          raw_data: r,
+          title: 'Permintaan Reset Password Baru',
+          message: `Terdapat 1 pengguna (${r.nama || 'Pengguna'} - ${r.nim || r.nip || r.role}) yang mengajukan pemulihan kata sandi dan menunggu verifikasi Admin.`,
+          created_at: r.created_at || new Date().toISOString(),
+          action_url: '/admin-simta/accounts/password-resets',
+          action_label: 'Lihat Permintaan',
+          badge_label: 'Reset Sandi',
+          badge_color: 'bg-amber-100 text-amber-900 border-amber-300',
+          icon_type: 'key',
+          recipient_role: 'admin',
+          is_read: readNotifIds.has(`notif-reset-${r.id}`)
+        }));
+
+      // 2. Pengajuan Peminjaman Ruang Sidang Menunggu Persetujuan Admin
+      const bookingNotifs = (bookings || [])
+        .filter(b => b && b.status === 'menunggu_persetujuan')
+        .map(b => ({
+          id: `notif-booking-${b.id}`,
+          source_type: 'booking',
+          raw_data: b,
+          title: 'Pengajuan Peminjaman Ruang Sidang',
+          message: `Peminjaman ruang ${b.room_name || 'Ruang Sidang'} oleh ${b.mhs_nama || b.mhs_nim || 'Mahasiswa'} (${b.booking_date || 'Terjadwal'}) menunggu persetujuan Admin.`,
+          created_at: b.created_at || new Date().toISOString(),
+          action_url: '/admin/bookings',
+          action_label: 'Persetujuan Ruangan',
+          badge_label: 'Sarana Sidang',
+          badge_color: 'bg-indigo-100 text-indigo-900 border-indigo-300',
+          icon_type: 'building',
+          recipient_role: 'admin',
+          is_read: readNotifIds.has(`notif-booking-${b.id}`)
+        }));
+
+      // 3. Notifikasi Sistem Eksisting Bertarget Admin
+      const existingAdminNotifs = (notifications || []).filter(n => {
+        if (!n) return false;
+        if (n.id === 'notif-1' || n.id === 'notif-2' || n.is_mock) return false;
+        if (n.title === 'Judul TA Disetujui!' || n.title === 'Peminjaman Ruangan Disetujui') return false;
+        return (
+          n.recipient_role === 'admin' ||
+          n.target_role === 'admin' ||
+          String(n.profile_id) === String(currentUser.id) ||
+          String(n.recipient_id) === String(currentUser.id)
+        );
+      }).map(n => ({
+        ...n,
+        is_read: Boolean(n.is_read || readNotifIds.has(String(n.id)))
+      }));
+
+      // Deduplikasi & Pengurutan Waktu Terkini (Hanya tampilkan yang belum dibaca)
+      const seen = new Set();
+      return [...resetNotifs, ...bookingNotifs, ...existingAdminNotifs]
+        .filter(n => {
+          if (!n || !n.id) return false;
+          if (n.is_read || readNotifIds.has(String(n.id))) return false;
+          if (seen.has(String(n.id))) return false;
+          seen.add(String(n.id));
+          return true;
+        })
+        .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
     }
 
-    if (currentUser.role === 'kaprodi') {
-      // 1. Kaprodi akun pusat: JANGAN PERNAH izinkan notifikasi tanggapan bimbingan dosen-ke-mahasiswa
-      if (n.recipient_role === 'mahasiswa' || n.recipient_role === 'dosen') return false;
-      if (n.related_type === 'bimbingan_status' || n.related_type === 'consultation' || n.related_type === 'bimbingan_reminder') {
-        return false;
-      }
-      // 2. Hanya izinkan notifikasi koordinasi pusat Kaprodi
-      return (
-        n.recipient_role === 'kaprodi' ||
-        n.recipient_role === 'all' ||
-        n.related_type === 'thesis_title' ||
-        n.related_type === 'thesis_title_revised' ||
-        n.related_type === 'thesis_title_cancelled' ||
-        n.related_type === 'kaprodi_bimbingan_inactivity_alert' ||
-        n.related_type === 'kaprodi_siap_sidang_alert' ||
-        n.related_type === 'similarity_warning' ||
-        n.related_type === 'kaprodi_monitoring'
-      );
-    }
+    // ============================================================
+    // ROLE KAPRODI, MAHASISWA, & DOSEN (Preserve 100% existing logic)
+    // ============================================================
+    return (notifications || []).filter(n => {
+      if (!n) return false;
+      if (n.is_read || readNotifIds.has(String(n.id))) return false;
+      if (n.id === 'notif-1' || n.id === 'notif-2' || n.is_mock) return false;
+      if (n.title === 'Judul TA Disetujui!' || n.title === 'Peminjaman Ruangan Disetujui') return false;
 
-    if (currentUser.role === 'mahasiswa') {
-      if (n.recipient_role && n.recipient_role !== 'mahasiswa' && n.recipient_role !== 'all') return false;
-      if (n.recipient_nim && currentUser.nim) {
-        return String(n.recipient_nim).trim() === String(currentUser.nim).trim();
+      if (currentUser.role === 'kaprodi') {
+        if (n.recipient_role === 'mahasiswa' || n.recipient_role === 'dosen') return false;
+        if (n.related_type === 'bimbingan_status' || n.related_type === 'consultation' || n.related_type === 'bimbingan_reminder') {
+          return false;
+        }
+        return (
+          n.recipient_role === 'kaprodi' ||
+          n.recipient_role === 'all' ||
+          n.related_type === 'thesis_title' ||
+          n.related_type === 'thesis_title_revised' ||
+          n.related_type === 'thesis_title_cancelled' ||
+          n.related_type === 'kaprodi_bimbingan_inactivity_alert' ||
+          n.related_type === 'kaprodi_siap_sidang_alert' ||
+          n.related_type === 'similarity_warning' ||
+          n.related_type === 'kaprodi_monitoring'
+        );
       }
-      if (n.profile_id && (String(n.profile_id) === String(currentUser.id) || String(n.profile_id) === String(currentUser.nim))) {
-        return true;
-      }
-      return !n.recipient_role || n.recipient_role === 'mahasiswa';
-    }
 
-    if (currentUser.role === 'dosen') {
-      if (n.recipient_role === 'mahasiswa' || n.recipient_role === 'kaprodi') return false;
-      const cleanNip = String(currentUser.nip || currentUser.nim || '').trim();
-      const cleanNama = (currentUser.nama || '').toLowerCase().replace(/dr\.|ir\.|prof\.|s\.kom\.|m\.cs\.|m\.t\.|m\.kom\.|ph\.d\.|st\.|s\.t\./gi, '').trim();
-
-      // 1. Cocokkan NIP jika ada
-      if (n.recipient_nip && cleanNip && String(n.recipient_nip).trim() === cleanNip) {
-        return true;
-      }
-      // 2. Cocokkan Nama Dosen jika ada
-      if (n.dosen_nama && cleanNama) {
-        const cleanNotifNama = n.dosen_nama.toLowerCase().replace(/dr\.|ir\.|prof\.|s\.kom\.|m\.cs\.|m\.t\.|m\.kom\.|ph\.d\.|st\.|s\.t\./gi, '').trim();
-        if (cleanNotifNama.includes(cleanNama) || cleanNama.includes(cleanNotifNama)) {
+      if (currentUser.role === 'mahasiswa') {
+        if (n.recipient_role && n.recipient_role !== 'mahasiswa' && n.recipient_role !== 'all') return false;
+        if (n.recipient_nim && currentUser.nim) {
+          return String(n.recipient_nim).trim() === String(currentUser.nim).trim();
+        }
+        if (n.profile_id && (String(n.profile_id) === String(currentUser.id) || String(n.profile_id) === String(currentUser.nim))) {
           return true;
         }
+        return !n.recipient_role || n.recipient_role === 'mahasiswa';
       }
-      // 3. Notifikasi jadwal sidang atau bimbingan umum bertarget dosen
-      if (n.recipient_role === 'dosen') {
-        return !n.recipient_nip || (cleanNip && String(n.recipient_nip).trim() === cleanNip);
-      }
-      return false;
-    }
 
-    return false;
-  });
+      if (currentUser.role === 'dosen') {
+        if (n.recipient_role === 'mahasiswa' || n.recipient_role === 'kaprodi') return false;
+        const cleanNip = String(currentUser.nip || currentUser.nim || '').trim();
+        const cleanNama = (currentUser.nama || '').toLowerCase().replace(/dr\.|ir\.|prof\.|s\.kom\.|m\.cs\.|m\.t\.|m\.kom\.|ph\.d\.|st\.|s\.t\./gi, '').trim();
+
+        if (n.recipient_nip && cleanNip && String(n.recipient_nip).trim() === cleanNip) {
+          return true;
+        }
+        if (n.dosen_nama && cleanNama) {
+          const cleanNotifNama = n.dosen_nama.toLowerCase().replace(/dr\.|ir\.|prof\.|s\.kom\.|m\.cs\.|m\.t\.|m\.kom\.|ph\.d\.|st\.|s\.t\./gi, '').trim();
+          if (cleanNotifNama.includes(cleanNama) || cleanNama.includes(cleanNotifNama)) {
+            return true;
+          }
+        }
+        if (n.recipient_role === 'dosen') {
+          return !n.recipient_nip || (cleanNip && String(n.recipient_nip).trim() === cleanNip);
+        }
+        return false;
+      }
+
+      return false;
+    });
+  }, [currentUser, notifications, passwordResetRequests, bookings, readNotifIds]);
 
   const unreadCount = userNotifications.length;
+
+  const handleMarkSingleAsRead = (id) => {
+    if (id && markNotificationAsRead) {
+      markNotificationAsRead(id);
+    }
+    const next = new Set(readNotifIds);
+    next.add(String(id));
+    saveReadNotifIds(next);
+  };
+
+  const handleMarkAllAsRead = () => {
+    if (markAllNotificationsAsRead) {
+      markAllNotificationsAsRead(currentUser);
+    }
+    const next = new Set(readNotifIds);
+    userNotifications.forEach(n => {
+      if (n?.id) next.add(String(n.id));
+    });
+    saveReadNotifIds(next);
+  };
+
+  const handleNotificationItemClick = (n) => {
+    handleMarkSingleAsRead(n.id);
+    if (n.action_url) {
+      setShowNotif(false);
+      router.visit(n.action_url);
+      return;
+    }
+    handleNotificationClick(n);
+  };
 
   const roleBadges = {
     mahasiswa: { label: 'Mahasiswa', color: 'bg-emerald-100 text-emerald-800 border-emerald-300', icon: GraduationCap },
@@ -273,47 +405,156 @@ export default function Navbar() {
           <div className="flex items-center space-x-3 sm:space-x-4">
 
             {/* Notification Bell */}
-            <div className="relative">
+            <div className="relative" ref={notifRef}>
               <button 
                 onClick={() => setShowNotif(!showNotif)}
                 className="relative p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
                 title="Notifikasi"
               >
                 <Bell className="w-5 h-5" />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-600 text-white font-bold text-[10px] shadow-sm leading-none flex items-center justify-center pointer-events-none">
-                    {unreadCount}
+                {unreadCount === 1 ? (
+                  // Titik merah kecil untuk 1 notifikasi baru / belum dibaca
+                  <span className="absolute top-1.5 right-1.5 flex h-2.5 w-2.5 pointer-events-none">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-600 ring-2 ring-white"></span>
                   </span>
-                )}
+                ) : unreadCount > 1 ? (
+                  // Badge angka untuk beberapa notifikasi belum dibaca
+                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-600 text-white font-bold text-[10px] shadow-sm leading-none flex items-center justify-center pointer-events-none ring-2 ring-white">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                ) : null}
               </button>
 
               {showNotif && (
                 <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-white shadow-2xl border border-slate-200 py-2 z-50 animate-in fade-in">
                   <div className="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between">
-                    <div>
-                      <span className="font-bold text-sm text-slate-800">Notifikasi</span>
-                      {unreadCount > 0 && (
-                        <span className="ml-2 px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-600 font-bold text-[10px] border border-indigo-200">
+                    <div className="flex items-center space-x-2">
+                      <span className="font-bold text-sm text-slate-800">
+                        {userRole === 'admin' ? 'Notifikasi Admin' : 'Notifikasi'}
+                      </span>
+                      {unreadCount > 0 ? (
+                        <span className="px-1.5 py-0.5 rounded-full bg-rose-50 text-rose-600 font-bold text-[10px] border border-rose-200">
                           {unreadCount} baru
+                        </span>
+                      ) : (
+                        <span className="px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium text-[10px]">
+                          Semua dibaca
                         </span>
                       )}
                     </div>
                     {userNotifications.length > 0 && (
                       <button 
-                        onClick={() => markAllNotificationsAsRead(currentUser)}
-                        className="text-[11px] text-indigo-600 hover:text-indigo-800 font-semibold cursor-pointer transition-colors hover:underline"
-                        title="Tandai semua sudah dibaca dan bersihkan notifikasi"
+                        type="button"
+                        onClick={handleMarkAllAsRead}
+                        className="inline-flex items-center space-x-1 text-[11px] text-indigo-600 hover:text-indigo-800 font-semibold cursor-pointer transition-colors hover:underline"
+                        title="Tandai seluruh notifikasi sebagai sudah dibaca dan bersihkan"
                       >
-                        Tandai sudah dibaca
+                        <CheckCheck className="w-3.5 h-3.5" />
+                        <span>Tandai sudah dibaca</span>
                       </button>
                     )}
                   </div>
 
                   <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
                     {userNotifications.length === 0 ? (
-                      <div className="p-6 text-center text-xs text-slate-400">Tidak ada notifikasi baru</div>
+                      <div className="p-6 text-center text-xs text-slate-400">
+                        {userRole === 'admin' ? 'Tidak ada notifikasi baru untuk Admin' : 'Tidak ada notifikasi baru'}
+                      </div>
                     ) : (
                       userNotifications.map(n => {
+                        // ==========================================
+                        // RENDER KHUSUS NOTIFIKASI ROLE ADMIN
+                        // ==========================================
+                        if (userRole === 'admin') {
+                          return (
+                            <div 
+                              key={n.id} 
+                              onClick={() => handleNotificationItemClick(n)}
+                              className={`p-3.5 hover:bg-slate-50 transition-colors cursor-pointer group relative ${
+                                !n.is_read 
+                                  ? (n.source_type === 'password_reset' 
+                                      ? 'border-l-4 border-l-amber-500 bg-amber-50/25' 
+                                      : 'border-l-4 border-l-indigo-500 bg-indigo-50/25')
+                                  : 'border-l-4 border-l-transparent bg-white hover:bg-slate-50 opacity-80'
+                              }`}
+                            >
+                              <div className="flex items-start gap-3">
+                                {/* Category Icon Capsule */}
+                                <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
+                                  n.icon_type === 'key' 
+                                    ? 'bg-amber-100 text-amber-700 border border-amber-200/80 shadow-2xs' 
+                                    : 'bg-indigo-100 text-indigo-700 border border-indigo-200/80 shadow-2xs'
+                                }`}>
+                                  {n.icon_type === 'key' ? (
+                                    <KeyRound className="w-4 h-4" />
+                                  ) : (
+                                    <Building2 className="w-4 h-4" />
+                                  )}
+                                </div>
+
+                                {/* Body Content */}
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center justify-between gap-1">
+                                    <div className="flex items-center space-x-1.5 min-w-0">
+                                      {!n.is_read && (
+                                        <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" title="Belum dibaca"></span>
+                                      )}
+                                      <h4 className={`text-xs truncate ${!n.is_read ? 'font-extrabold text-slate-900 group-hover:text-blue-600' : 'font-semibold text-slate-700'}`}>
+                                        {n.title}
+                                      </h4>
+                                    </div>
+
+                                    <div className="flex items-center space-x-1.5 shrink-0">
+                                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold border ${n.badge_color || 'bg-slate-100 text-slate-700 border-slate-200'}`}>
+                                        {n.badge_label || 'Pemberitahuan'}
+                                      </span>
+                                      {!n.is_read && (
+                                        <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-rose-100 text-rose-700">
+                                          Baru
+                                        </span>
+                                      )}
+                                      {!n.is_read && (
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleMarkSingleAsRead(n.id);
+                                          }}
+                                          className="p-1 rounded text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
+                                          title="Tandai sudah dibaca"
+                                        >
+                                          <Check className="w-3.5 h-3.5" />
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
+                                    {n.message}
+                                  </p>
+
+                                  {/* Footer: Clock relative time & Action Button */}
+                                  <div className="mt-2.5 flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-100/80">
+                                    <span className="flex items-center space-x-1">
+                                      <Clock className="w-3 h-3 text-slate-400" />
+                                      <span>{formatRelativeTime(n.created_at, currentTime)}</span>
+                                    </span>
+
+                                    <span className="text-indigo-600 font-bold inline-flex items-center space-x-1 group-hover:translate-x-0.5 transition-transform">
+                                      <span>{n.action_label || 'Lihat Permintaan'}</span>
+                                      <ArrowRight className="w-3 h-3" />
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        // ==========================================
+                        // RENDER NOTIFIKASI MAHASISWA, DOSEN, KAPRODI
+                        // ==========================================
                         const isInactivityNotif = n.related_type === 'kaprodi_bimbingan_inactivity_alert';
                         const isSiapSidangNotif = n.related_type === 'kaprodi_siap_sidang_alert';
                         const isSimilarityNotif = n.related_type === 'similarity_warning';
@@ -339,7 +580,7 @@ export default function Navbar() {
                         return (
                           <div 
                             key={n.id} 
-                            onClick={() => handleNotificationClick(n)}
+                            onClick={() => handleNotificationItemClick(n)}
                             className={`p-3.5 hover:bg-slate-50 transition-colors cursor-pointer group ${borderClass} ${!n.is_read ? 'bg-indigo-50/30' : ''}`}
                           >
                             <div className="flex items-start justify-between gap-2">

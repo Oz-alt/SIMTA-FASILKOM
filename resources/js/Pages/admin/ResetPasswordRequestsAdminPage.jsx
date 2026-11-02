@@ -564,19 +564,32 @@ export default function ResetPasswordRequestsAdminPage() {
                 <tbody className="divide-y divide-slate-100">
                   {filteredRequests.length === 0 ? (
                     <tr>
-                      <td colSpan="5" className="py-12 text-center text-slate-400 space-y-2">
-                        <KeyRound className="w-8 h-8 mx-auto text-slate-300" />
-                        <div className="font-bold text-slate-600">Tidak ada permintaan reset password yang cocok</div>
-                        <p className="text-[11px] text-slate-400">
+                      <td colSpan="5" className="py-16 text-center">
+                        <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center">
+                          <KeyRound className="w-7 h-7 text-slate-400" />
+                        </div>
+                        <h4 className="font-extrabold text-sm text-slate-700">
                           {searchQuery || statusFilter !== 'ALL' || roleFilter !== 'ALL'
-                            ? 'Coba ubah kata kunci pencarian atau bersihkan filter di atas.'
-                            : 'Saat ini belum ada pengajuan reset kata sandi yang masuk.'}
+                            ? 'Tidak Ada Permintaan yang Cocok'
+                            : 'Belum Ada Permintaan Reset Password'}
+                        </h4>
+                        <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto leading-relaxed">
+                          {searchQuery || statusFilter !== 'ALL' || roleFilter !== 'ALL'
+                            ? 'Silakan sesuaikan kata kunci pencarian atau bersihkan filter di atas.'
+                            : 'Saat ini belum ada pengajuan pemulihan kata sandi yang masuk dari Mahasiswa maupun Dosen SIMTA.'}
                         </p>
                       </td>
                     </tr>
                   ) : (
                     filteredRequests.map(req => {
-                      const isMahasiswa = req.role === 'mahasiswa';
+                      const officialCheck = checkUserIdentityInDatabase(req.identifier || req.nim || req.nip || req.email);
+                      const officialUser = officialCheck.user;
+                      const displayName = (officialCheck.found && officialUser?.nama) ? officialUser.nama : req.nama;
+                      const isRowValid = officialCheck.found && officialCheck.status === 'valid';
+                      const isRowInactive = officialCheck.found && officialCheck.status === 'inactive';
+                      const isRowNotFound = !officialCheck.found;
+                      const isMahasiswa = (officialUser?.role || req.role) === 'mahasiswa';
+
                       return (
                         <tr key={req.id} className="hover:bg-slate-50/60 transition-colors">
                           {/* Pemohon */}
@@ -591,12 +604,29 @@ export default function ResetPasswordRequestsAdminPage() {
                               </div>
                               <div className="min-w-0">
                                 <div className="font-bold text-slate-900 truncate flex items-center space-x-1.5">
-                                  <span>{req.nama}</span>
+                                  <span>{displayName}</span>
                                   <span className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded ${
                                     isMahasiswa ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-purple-50 text-purple-700 border border-purple-200'
                                   }`}>
                                     {isMahasiswa ? 'Mahasiswa' : 'Dosen'}
                                   </span>
+
+                                  {isRowValid && (
+                                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center space-x-0.5" title="Identitas terdaftar resmi di database">
+                                      <Check className="w-2.5 h-2.5 inline" />
+                                      <span>Terverifikasi</span>
+                                    </span>
+                                  )}
+                                  {isRowInactive && (
+                                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200" title="Akun berstatus non-aktif">
+                                      Non-Aktif
+                                    </span>
+                                  )}
+                                  {isRowNotFound && (
+                                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200" title="Akun tidak ditemukan di database">
+                                      Tidak Terdaftar
+                                    </span>
+                                  )}
                                 </div>
                                 <div className="text-[11px] text-slate-500 font-mono mt-0.5">
                                   {isMahasiswa ? `NIM: ${req.nim || req.identifier}` : `NIP: ${req.nip || req.identifier}`}
@@ -607,11 +637,11 @@ export default function ResetPasswordRequestsAdminPage() {
 
                           {/* Kontak & Prodi */}
                           <td className="py-3.5 px-4 text-slate-600">
-                            <div className="truncate font-medium">{req.email}</div>
+                            <div className="truncate font-medium">{officialUser?.email || req.email}</div>
                             <div className="text-[11px] text-slate-400 mt-0.5 flex items-center space-x-1.5">
-                              <span>{req.prodi || 'D3 Manajemen Informatika'}</span>
+                              <span>{officialUser?.prodi || req.prodi || 'D3 Manajemen Informatika'}</span>
                               <span>•</span>
-                              <span>{req.kelas || '-'}</span>
+                              <span>{officialUser?.kelas || req.kelas || '-'}</span>
                             </div>
                           </td>
 
@@ -643,7 +673,7 @@ export default function ResetPasswordRequestsAdminPage() {
                                 type="button"
                                 onClick={() => setVerifyingRequest(req)}
                                 className="p-2 rounded-xl border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 text-indigo-600 transition-colors cursor-pointer"
-                                title="Periksa Identitas di Basis Data"
+                                title="Periksa Identitas di Basis Data Resmi"
                               >
                                 <Eye className="w-4 h-4" />
                               </button>
@@ -653,9 +683,23 @@ export default function ResetPasswordRequestsAdminPage() {
                                 <>
                                   <button
                                     type="button"
-                                    onClick={() => setApprovingRequest(req)}
-                                    className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors cursor-pointer flex items-center space-x-1"
-                                    title="Setujui Permintaan"
+                                    disabled={!isRowValid}
+                                    onClick={() => {
+                                      if (!isRowValid) return;
+                                      setApprovingRequest(req);
+                                    }}
+                                    className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-colors flex items-center space-x-1 ${
+                                      isRowValid
+                                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shadow-xs'
+                                        : 'bg-slate-200 text-slate-400 cursor-not-allowed opacity-60'
+                                    }`}
+                                    title={
+                                      isRowValid
+                                        ? "Setujui Permintaan"
+                                        : isRowNotFound
+                                        ? "Persetujuan dinonaktifkan: Akun tidak ditemukan di database"
+                                        : "Persetujuan dinonaktifkan: Status akun non-aktif"
+                                    }
                                   >
                                     <CheckCircle2 className="w-3.5 h-3.5" />
                                     <span>Setujui</span>
@@ -733,8 +777,14 @@ export default function ResetPasswordRequestsAdminPage() {
                 <tbody className="divide-y divide-slate-100">
                   {passwordResetLogs.length === 0 ? (
                     <tr>
-                      <td colSpan="5" className="py-10 text-center text-slate-400">
-                        Belum ada riwayat aktivitas reset password yang tercatat.
+                      <td colSpan="5" className="py-16 text-center">
+                        <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center">
+                          <Clock className="w-7 h-7 text-slate-400" />
+                        </div>
+                        <h4 className="font-extrabold text-sm text-slate-700">Belum Ada Riwayat Aktivitas</h4>
+                        <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto leading-relaxed">
+                          Seluruh jejak audit pengajuan, persetujuan, penolakan, dan pembaruan kata sandi oleh pengguna dan Admin akan tercatat secara otomatis di sini.
+                        </p>
                       </td>
                     </tr>
                   ) : (
@@ -776,23 +826,31 @@ export default function ResetPasswordRequestsAdminPage() {
         )}
       </div>
 
-      {/* ── MODAL 1: PERIKSA IDENTITAS PENGGUNA TERHADAP BASIS DATA (Ketentuan #3) ── */}
+      {/* ── MODAL 1: PERIKSA IDENTITAS PENGGUNA TERHADAP BASIS DATA (Ketentuan #2 & #3) ── */}
       {verifyingRequest && (() => {
         const checkResult = checkUserIdentityInDatabase(verifyingRequest.identifier || verifyingRequest.nim || verifyingRequest.nip || verifyingRequest.email);
         const dbUser = checkResult.user;
+        const isFound = Boolean(checkResult.found && dbUser);
+        const isStatusActive = isFound && (dbUser.status || 'aktif').toLowerCase() === 'aktif';
+        const hasConflict = isFound && !isStatusActive;
+        const verificationState = !isFound ? 'not_found' : (hasConflict ? 'conflict' : 'valid');
 
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full border border-slate-200 overflow-hidden space-y-4 max-h-[90vh] flex flex-col">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-xl w-full border border-slate-200 overflow-hidden space-y-4 max-h-[90vh] flex flex-col">
               {/* Header */}
               <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
                 <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${
+                    verificationState === 'valid' ? 'bg-emerald-100 text-emerald-700' :
+                    verificationState === 'conflict' ? 'bg-amber-100 text-amber-700' :
+                    'bg-rose-100 text-rose-700'
+                  }`}>
                     <ShieldCheck className="w-5 h-5" />
                   </div>
                   <div>
                     <h3 className="font-extrabold text-sm text-slate-900">Verifikasi Identitas Akun</h3>
-                    <p className="text-xs text-slate-500">Pemeriksaan kecocokan data formulir dengan basis data SIMTA UNSRI</p>
+                    <p className="text-xs text-slate-500">Pemeriksaan identitas resmi pada basis data akun SIMTA UNSRI</p>
                   </div>
                 </div>
                 <button
@@ -806,97 +864,150 @@ export default function ResetPasswordRequestsAdminPage() {
 
               {/* Body */}
               <div className="p-5 space-y-4 overflow-y-auto flex-1">
-                {/* Match indicator */}
-                {checkResult.found ? (
-                  <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center space-x-3 text-emerald-900 text-xs">
-                    <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-                    <div>
-                      <span className="font-bold block">Identitas Terdaftar &amp; Terverifikasi 100%</span>
-                      <span className="text-[11px] text-emerald-800">
-                        Akun ini terdaftar secara resmi di {checkResult.source}. Data NIM/NIP dan email dinyatakan valid.
-                      </span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 flex items-center space-x-3 text-rose-900 text-xs">
-                    <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
-                    <div>
-                      <span className="font-bold block">Data Tidak Ditemukan di Basis Data</span>
-                      <span className="text-[11px] text-rose-800">
-                        NIM/NIP atau Email yang diajukan tidak cocok dengan data Mahasiswa/Dosen yang terdaftar.
+                {/* Hasil Verifikasi Banner */}
+                {verificationState === 'valid' && (
+                  <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start space-x-3 text-emerald-950 text-xs">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                    <div className="space-y-0.5">
+                      <span className="font-extrabold text-sm text-emerald-900 block">Identitas Terverifikasi (Akun Valid &amp; Aktif)</span>
+                      <span className="text-emerald-800 leading-relaxed block">
+                        Akun ditemukan pada <strong>{checkResult.source}</strong>. Data identitas resmi cocok dan berstatus aktif. Permintaan reset kata sandi aman untuk disetujui.
                       </span>
                     </div>
                   </div>
                 )}
 
-                {/* Side-by-side comparison */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                  {/* Kolom 1: Data Pengajuan */}
-                  <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Data Pada Formulir Pengajuan</div>
-                    <div className="space-y-1.5">
-                      <div>
-                        <span className="text-slate-400 block text-[10px]">Nama Pemohon:</span>
-                        <span className="font-bold text-slate-900">{verifyingRequest.nama}</span>
-                      </div>
-                      <div>
-                        <span className="text-slate-400 block text-[10px]">NIM / NIP:</span>
-                        <span className="font-mono font-bold text-slate-900">{verifyingRequest.nim || verifyingRequest.nip || verifyingRequest.identifier}</span>
-                      </div>
-                      <div>
-                        <span className="text-slate-400 block text-[10px]">Email Pemohon:</span>
-                        <span className="font-semibold text-slate-800">{verifyingRequest.email}</span>
-                      </div>
-                      <div>
-                        <span className="text-slate-400 block text-[10px]">Role / Jabatan:</span>
-                        <span className="capitalize font-semibold text-slate-800">{verifyingRequest.role}</span>
-                      </div>
-                      <div>
-                        <span className="text-slate-400 block text-[10px]">Alasan Pengajuan:</span>
-                        <span className="text-slate-700 italic">"{verifyingRequest.alasan_pengajuan || '-'}"</span>
-                      </div>
+                {verificationState === 'conflict' && (
+                  <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 flex items-start space-x-3 text-amber-950 text-xs">
+                    <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                    <div className="space-y-0.5">
+                      <span className="font-extrabold text-sm text-amber-900 block">Perhatian: Status Akun Non-Aktif / Perlu Pemeriksaan</span>
+                      <span className="text-amber-800 leading-relaxed block">
+                        Data akun ditemukan di database namun berstatus <strong>{dbUser.status || 'Non-Aktif'}</strong>. Mohon periksa kembali status keaktifan akun pengguna sebelum memberikan persetujuan.
+                      </span>
                     </div>
                   </div>
+                )}
 
-                  {/* Kolom 2: Data Resmi Database */}
-                  <div className="p-4 rounded-xl border border-indigo-200 bg-indigo-50/30 space-y-2">
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-indigo-600">Data Resmi di Database SIMTA</div>
-                    {dbUser ? (
-                      <div className="space-y-1.5">
-                        <div>
-                          <span className="text-slate-400 block text-[10px]">Nama Resmi DB:</span>
-                          <span className="font-bold text-indigo-950">{dbUser.nama}</span>
+                {verificationState === 'not_found' && (
+                  <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 flex items-start space-x-3 text-rose-950 text-xs">
+                    <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                    <div className="space-y-0.5">
+                      <span className="font-extrabold text-sm text-rose-900 block">Akun Tidak Ditemukan di Basis Data</span>
+                      <span className="text-rose-800 leading-relaxed block">
+                        NIM/NIP atau identitas <code className="font-bold text-rose-950 bg-rose-100/60 px-1 py-0.5 rounded">{verifyingRequest.identifier}</code> tidak terdaftar dalam basis data resmi Mahasiswa, Dosen, maupun Pengguna SIMTA UNSRI. Tombol persetujuan dinonaktifkan demi keamanan.
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* SATU IDENTITAS RESMI AKUN (Ketentuan #2: Tampilkan hanya satu identitas resmi dari database) */}
+                {isFound ? (
+                  <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-2xs">
+                    {/* Header Banner Kartu Identitas Resmi */}
+                    <div className="bg-gradient-to-r from-slate-50 to-indigo-50/50 p-4 border-b border-slate-200 flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-11 h-11 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-extrabold text-sm shadow-sm">
+                          {dbUser.nama ? dbUser.nama.substring(0, 2).toUpperCase() : 'US'}
                         </div>
                         <div>
-                          <span className="text-slate-400 block text-[10px]">NIM / NIP Resmi:</span>
-                          <span className="font-mono font-bold text-indigo-950">{dbUser.nim || dbUser.nip}</span>
+                          <div className="font-extrabold text-sm text-slate-900">{dbUser.nama}</div>
+                          <div className="text-[11px] font-mono text-slate-500">
+                            {dbUser.role === 'dosen' ? `NIP: ${dbUser.nip || dbUser.nim}` : `NIM: ${dbUser.nim || dbUser.nip || dbUser.identifier}`}
+                          </div>
                         </div>
-                        <div>
-                          <span className="text-slate-400 block text-[10px]">Email Resmi:</span>
-                          <span className="font-semibold text-indigo-900">{dbUser.email}</span>
+                      </div>
+                      <div className="flex items-center space-x-1.5">
+                        <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-indigo-100 text-indigo-700">
+                          {dbUser.role || 'Pengguna'}
+                        </span>
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
+                          isStatusActive ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+                        }`}>
+                          {dbUser.status || 'Aktif'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Rincian Data Akun Resmi */}
+                    <div className="p-4 space-y-3 text-xs">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Nama Resmi (Database):</span>
+                          <span className="font-extrabold text-slate-900 text-xs mt-0.5 block">{dbUser.nama}</span>
                         </div>
-                        <div>
-                          <span className="text-slate-400 block text-[10px]">Program Studi:</span>
-                          <span className="font-medium text-slate-700">{dbUser.prodi || 'D3 Manajemen Informatika'}</span>
+
+                        <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">NIM / NIP Resmi:</span>
+                          <span className="font-mono font-bold text-slate-900 text-xs mt-0.5 block">
+                            {dbUser.nim || dbUser.nip || dbUser.identifier}
+                          </span>
                         </div>
-                        <div>
-                          <span className="text-slate-400 block text-[10px]">No. Telepon / WA Resmi:</span>
-                          <span className="font-medium text-slate-700">{dbUser.no_hp || '-'}</span>
+
+                        <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Email Resmi Terdaftar:</span>
+                          <span className="font-semibold text-slate-800 text-xs mt-0.5 block truncate" title={dbUser.email}>
+                            {dbUser.email || '-'}
+                          </span>
                         </div>
-                        <div>
-                          <span className="text-slate-400 block text-[10px]">Status Akun:</span>
-                          <span className="px-2 py-0.5 rounded font-bold text-[10px] bg-emerald-100 text-emerald-800 inline-block uppercase">
-                            {dbUser.status || 'Aktif'}
+
+                        <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Role / Jabatan:</span>
+                          <span className="font-semibold text-slate-800 text-xs mt-0.5 block capitalize">
+                            {dbUser.role} {dbUser.jabatan_fungsional ? `(${dbUser.jabatan_fungsional})` : ''}
+                          </span>
+                        </div>
+
+                        <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Program Studi:</span>
+                          <span className="font-medium text-slate-700 text-xs mt-0.5 block">
+                            {dbUser.prodi || 'D3 Manajemen Informatika'}
+                          </span>
+                        </div>
+
+                        <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Kelas / Kontak Resmi:</span>
+                          <span className="font-medium text-slate-700 text-xs mt-0.5 block">
+                            {dbUser.kelas || dbUser.no_hp || '-'}
                           </span>
                         </div>
                       </div>
-                    ) : (
-                      <div className="py-6 text-center text-rose-500 font-semibold">
-                        Tidak ada catatan akun yang cocok di basis data.
+
+                      {/* Alasan Pengajuan & Waktu Pengajuan */}
+                      <div className="p-3 bg-amber-50/50 rounded-xl border border-amber-200/60 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] text-amber-900 font-bold uppercase tracking-wider">Alasan Pengajuan Reset:</span>
+                          <span className="text-[10px] text-slate-400 font-mono">
+                            {verifyingRequest.created_at ? new Date(verifyingRequest.created_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) : '-'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-800 italic">
+                          "{verifyingRequest.alasan_pengajuan || 'Lupa kata sandi akun SIMONITA.'}"
+                        </p>
                       </div>
-                    )}
+
+                      <div className="text-[11px] text-slate-400 flex items-center justify-between pt-1">
+                        <span>Basis Data: <strong className="text-slate-600">{checkResult.source}</strong></span>
+                        <span>ID Pengajuan: <code className="font-mono text-slate-500">{verifyingRequest.id}</code></span>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="p-6 border border-rose-200 rounded-2xl bg-rose-50/30 text-center space-y-3">
+                    <div className="w-12 h-12 mx-auto rounded-full bg-rose-100 text-rose-600 flex items-center justify-center">
+                      <AlertTriangle className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h4 className="font-extrabold text-sm text-slate-900">Data Identitas Tidak Terdaftar</h4>
+                      <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
+                        Identitas yang dimasukkan pemohon (<span className="font-mono font-bold text-slate-700">{verifyingRequest.identifier}</span>) tidak ditemukan di database resmi SIMTA. Pastikan pemohon memasukkan nomor induk resmi yang terdaftar.
+                      </p>
+                    </div>
+                    <div className="text-[11px] text-slate-400 font-mono">
+                      Waktu Pengajuan: {verifyingRequest.created_at ? new Date(verifyingRequest.created_at).toLocaleString('id-ID') : '-'}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Footer Actions */}
@@ -909,8 +1020,9 @@ export default function ResetPasswordRequestsAdminPage() {
                   Tutup
                 </button>
 
-                {verifyingRequest.status === 'menunggu' && (
-                  <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-2">
+                  {/* Tombol Tolak: Selalu bisa digunakan untuk menolak pengajuan tidak valid */}
+                  {verifyingRequest.status === 'menunggu' && (
                     <button
                       type="button"
                       onClick={() => {
@@ -918,24 +1030,42 @@ export default function ResetPasswordRequestsAdminPage() {
                         setVerifyingRequest(null);
                         setRejectingRequest(target);
                       }}
-                      className="px-4 py-2 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-bold transition-colors cursor-pointer"
+                      className="px-4 py-2 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-bold transition-colors cursor-pointer flex items-center space-x-1.5"
                     >
-                      Tolak Pengajuan
+                      <XCircle className="w-3.5 h-3.5" />
+                      <span>Tolak Pengajuan</span>
                     </button>
+                  )}
+
+                  {/* Tombol Setujui: HANYA AKTIF JIKA verificationState === 'valid' */}
+                  {verifyingRequest.status === 'menunggu' && (
                     <button
                       type="button"
+                      disabled={verificationState !== 'valid'}
                       onClick={() => {
+                        if (verificationState !== 'valid') return;
                         const target = verifyingRequest;
                         setVerifyingRequest(null);
                         setApprovingRequest(target);
                       }}
-                      className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-colors cursor-pointer flex items-center space-x-1.5 shadow-sm"
+                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors flex items-center space-x-1.5 shadow-sm ${
+                        verificationState === 'valid'
+                          ? 'bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer'
+                          : 'bg-slate-200 text-slate-400 cursor-not-allowed opacity-60'
+                      }`}
+                      title={
+                        verificationState === 'valid'
+                          ? 'Setujui Permintaan Reset Kata Sandi'
+                          : verificationState === 'not_found'
+                          ? 'Persetujuan dinonaktifkan: Akun tidak ditemukan di database'
+                          : 'Persetujuan dinonaktifkan: Status akun non-aktif'
+                      }
                     >
                       <CheckCircle2 className="w-4 h-4" />
                       <span>Setujui Permintaan</span>
                     </button>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -943,147 +1073,159 @@ export default function ResetPasswordRequestsAdminPage() {
       })()}
 
       {/* ── MODAL 2: SETUJUI PERMINTAAN RESET PASSWORD (Ketentuan #4 & #5) ── */}
-      {approvingRequest && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full border border-slate-200 overflow-hidden space-y-4">
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
-                  <CheckCircle2 className="w-5 h-5" />
+      {approvingRequest && (() => {
+        const official = checkUserIdentityInDatabase(approvingRequest.identifier || approvingRequest.nim || approvingRequest.nip || approvingRequest.email);
+        const displayName = (official.found && official.user?.nama) ? official.user.nama : approvingRequest.nama;
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full border border-slate-200 overflow-hidden space-y-4">
+              <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
+                    <CheckCircle2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-sm text-slate-900">Setujui Permintaan Reset Kata Sandi</h3>
+                    <p className="text-xs text-slate-500">{displayName} ({approvingRequest.nim || approvingRequest.nip || approvingRequest.identifier})</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-extrabold text-sm text-slate-900">Setujui Permintaan Reset Kata Sandi</h3>
-                  <p className="text-xs text-slate-500">{approvingRequest.nama} ({approvingRequest.nim || approvingRequest.nip})</p>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setApprovingRequest(null)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700"
+                >
+                  <XCircle className="w-5 h-5" />
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => setApprovingRequest(null)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700"
-              >
-                <XCircle className="w-5 h-5" />
-              </button>
-            </div>
 
-            <div className="p-5 space-y-4 text-xs">
-              <p className="text-slate-600 leading-relaxed">
-                Anda akan menyetujui pemulihan kata sandi untuk akun <span className="font-bold text-slate-900">{approvingRequest.nama}</span>. Sistem akan menghasilkan tautan reset resmi dengan token verifikasi unik yang aktif selama 24 jam.
-              </p>
-
-              {/* Informative SMTP note (Ketentuan #9) */}
-              <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 space-y-1">
-                <div className="font-bold flex items-center space-x-1.5">
-                  <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
-                  <span>Informasi Konfigurasi Email:</span>
-                </div>
-                <p className="text-[11px] text-amber-800">
-                  Karena SMTP email saat ini belum dikonfigurasi aktif, tautan reset akan langsung disediakan pada dialog berikutnya agar Admin dapat menyalin dan memberikannya kepada pemohon.
+              <div className="p-5 space-y-4 text-xs">
+                <p className="text-slate-600 leading-relaxed">
+                  Anda akan menyetujui pemulihan kata sandi untuk akun <span className="font-bold text-slate-900">{displayName}</span>. Sistem akan menghasilkan tautan reset resmi dengan token verifikasi unik yang aktif selama 24 jam.
                 </p>
+
+                {/* Informative SMTP note (Ketentuan #9) */}
+                <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 space-y-1">
+                  <div className="font-bold flex items-center space-x-1.5">
+                    <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Informasi Konfigurasi Email:</span>
+                  </div>
+                  <p className="text-[11px] text-amber-800">
+                    Karena SMTP email saat ini belum dikonfigurasi aktif, tautan reset akan langsung disediakan pada dialog berikutnya agar Admin dapat menyalin dan memberikannya kepada pemohon.
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="font-bold text-slate-700 block">
+                    Catatan Verifikasi Admin (Opsional):
+                  </label>
+                  <textarea
+                    rows="3"
+                    value={approvalNote}
+                    onChange={(e) => setApprovalNote(e.target.value)}
+                    placeholder="Contoh: Identitas KTM/KTP telah diverifikasi langsung oleh Admin SIMTA."
+                    className="w-full p-3 rounded-xl border border-slate-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 text-xs text-slate-900 outline-none"
+                  />
+                </div>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="font-bold text-slate-700 block">
-                  Catatan Verifikasi Admin (Opsional):
-                </label>
-                <textarea
-                  rows="3"
-                  value={approvalNote}
-                  onChange={(e) => setApprovalNote(e.target.value)}
-                  placeholder="Contoh: Identitas KTM/KTP telah diverifikasi langsung oleh Admin SIMTA."
-                  className="w-full p-3 rounded-xl border border-slate-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 text-xs text-slate-900 outline-none"
-                />
+              <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-end space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setApprovingRequest(null)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleApprove}
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors cursor-pointer flex items-center space-x-1.5 shadow-sm"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Konfirmasi &amp; Setujui</span>
+                </button>
               </div>
-            </div>
-
-            <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-end space-x-2">
-              <button
-                type="button"
-                onClick={() => setApprovingRequest(null)}
-                className="px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition-colors cursor-pointer"
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                onClick={handleApprove}
-                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors cursor-pointer flex items-center space-x-1.5 shadow-sm"
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Konfirmasi &amp; Setujui</span>
-              </button>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ── MODAL 3: TOLAK PERMINTAAN RESET PASSWORD (Ketentuan #4) ── */}
-      {rejectingRequest && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full border border-slate-200 overflow-hidden space-y-4">
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center font-bold">
+      {rejectingRequest && (() => {
+        const official = checkUserIdentityInDatabase(rejectingRequest.identifier || rejectingRequest.nim || rejectingRequest.nip || rejectingRequest.email);
+        const displayName = (official.found && official.user?.nama) ? official.user.nama : rejectingRequest.nama;
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full border border-slate-200 overflow-hidden space-y-4">
+              <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center font-bold">
+                    <XCircle className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-sm text-slate-900">Tolak Permintaan Reset Kata Sandi</h3>
+                    <p className="text-xs text-slate-500">{displayName} ({rejectingRequest.nim || rejectingRequest.nip || rejectingRequest.identifier})</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setRejectingRequest(null)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700"
+                >
                   <XCircle className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-extrabold text-sm text-slate-900">Tolak Permintaan Reset Kata Sandi</h3>
-                  <p className="text-xs text-slate-500">{rejectingRequest.nama} ({rejectingRequest.nim || rejectingRequest.nip})</p>
+                </button>
+              </div>
+
+              <div className="p-5 space-y-3 text-xs">
+                <p className="text-slate-600 leading-relaxed">
+                  Anda akan menolak pengajuan pemulihan kata sandi untuk <span className="font-bold text-slate-900">{displayName}</span>. Masukkan alasan penolakan agar tercatat dalam riwayat audit.
+                </p>
+
+                <div className="space-y-1.5">
+                  <label className="font-bold text-slate-700 block">
+                    Alasan Penolakan <span className="text-rose-500">*</span>:
+                  </label>
+                  <textarea
+                    rows="3"
+                    value={rejectionReason}
+                    onChange={(e) => setRejectionReason(e.target.value)}
+                    placeholder="Contoh: Identitas pemohon tidak sesuai dengan data resmi mahasiswa UNSRI atau nomor HP tidak dapat dihubungi."
+                    className="w-full p-3 rounded-xl border border-slate-300 focus:border-rose-500 focus:ring-2 focus:ring-rose-100 text-xs text-slate-900 outline-none"
+                  />
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setRejectingRequest(null)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700"
-              >
-                <XCircle className="w-5 h-5" />
-              </button>
-            </div>
 
-            <div className="p-5 space-y-3 text-xs">
-              <p className="text-slate-600 leading-relaxed">
-                Anda akan menolak pengajuan pemulihan kata sandi untuk <span className="font-bold text-slate-900">{rejectingRequest.nama}</span>. Masukkan alasan penolakan agar tercatat dalam riwayat audit.
-              </p>
-
-              <div className="space-y-1.5">
-                <label className="font-bold text-slate-700 block">
-                  Alasan Penolakan <span className="text-rose-500">*</span>:
-                </label>
-                <textarea
-                  rows="3"
-                  value={rejectionReason}
-                  onChange={(e) => setRejectionReason(e.target.value)}
-                  placeholder="Contoh: Identitas pemohon tidak sesuai dengan data resmi mahasiswa UNSRI atau nomor HP tidak dapat dihubungi."
-                  className="w-full p-3 rounded-xl border border-slate-300 focus:border-rose-500 focus:ring-2 focus:ring-rose-100 text-xs text-slate-900 outline-none"
-                />
+              <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-end space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setRejectingRequest(null)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleReject}
+                  className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-colors cursor-pointer flex items-center space-x-1.5 shadow-sm"
+                >
+                  <XCircle className="w-4 h-4" />
+                  <span>Konfirmasi Tolak</span>
+                </button>
               </div>
-            </div>
-
-            <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-end space-x-2">
-              <button
-                type="button"
-                onClick={() => setRejectingRequest(null)}
-                className="px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition-colors cursor-pointer"
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                onClick={handleReject}
-                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-colors cursor-pointer flex items-center space-x-1.5 shadow-sm"
-              >
-                <XCircle className="w-4 h-4" />
-                <span>Konfirmasi Tolak</span>
-              </button>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ── MODAL 4: BAGIKAN / SALIN TAUTAN RESET RESMI (Ketentuan #5) ── */}
       {sharingRequest && (() => {
+        const official = checkUserIdentityInDatabase(sharingRequest.identifier || sharingRequest.nim || sharingRequest.nip || sharingRequest.email);
+        const displayName = (official.found && official.user?.nama) ? official.user.nama : sharingRequest.nama;
         const origin = typeof window !== 'undefined' ? window.location.origin : '';
         const fullLink = sharingRequest.reset_link || `${origin}/reset-password?token=${sharingRequest.token}&email=${encodeURIComponent(sharingRequest.email)}`;
-        const waUrl = getWhatsAppShareUrl(sharingRequest);
+        const waUrl = getWhatsAppShareUrl({ ...sharingRequest, nama: displayName });
 
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
@@ -1095,7 +1237,7 @@ export default function ResetPasswordRequestsAdminPage() {
                   </div>
                   <div>
                     <h3 className="font-extrabold text-sm text-slate-900">Tautan Reset Password Aktif</h3>
-                    <p className="text-xs text-slate-500">Berikan tautan ini langsung kepada pemohon</p>
+                    <p className="text-xs text-slate-500">Berikan tautan ini langsung kepada {displayName}</p>
                   </div>
                 </div>
                 <button
@@ -1114,7 +1256,7 @@ export default function ResetPasswordRequestsAdminPage() {
                     <span>Permintaan Disetujui &amp; Tautan Siap Digunakan</span>
                   </span>
                   <p className="text-[11px] text-emerald-800">
-                    Tautan reset ini aman dan terikat secara spesifik ke akun <span className="font-bold">{sharingRequest.nama}</span> ({sharingRequest.email}). Tautan kedaluwarsa dalam 24 jam.
+                    Tautan reset ini aman dan terikat secara spesifik ke akun <span className="font-bold">{displayName}</span> ({sharingRequest.email}). Tautan kedaluwarsa dalam 24 jam.
                   </p>
                 </div>
 
@@ -1305,41 +1447,47 @@ export default function ResetPasswordRequestsAdminPage() {
       )}
 
       {/* ── MODAL 6: KONFIRMASI HAPUS PENGAJUAN ── */}
-      {deletingRequest && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full border border-slate-200 p-5 space-y-4 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
-              <Trash2 className="w-6 h-6" />
-            </div>
-            <div className="space-y-1">
-              <h3 className="font-extrabold text-sm text-slate-900">Hapus Catatan Pengajuan?</h3>
-              <p className="text-xs text-slate-500">
-                Catatan pengajuan untuk <span className="font-bold text-slate-800">{deletingRequest.nama}</span> akan dihapus dari antrean Admin.
-              </p>
-            </div>
-            <div className="flex items-center justify-center space-x-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setDeletingRequest(null)}
-                className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 transition-colors"
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  deletePasswordResetRequest(deletingRequest.id);
-                  setDeletingRequest(null);
-                  showToast('Pengajuan reset kata sandi berhasil dihapus.');
-                }}
-                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-colors shadow-sm"
-              >
-                Hapus
-              </button>
+      {/* ── MODAL 5: KONFIRMASI HAPUS PERMINTAAN ── */}
+      {deletingRequest && (() => {
+        const official = checkUserIdentityInDatabase(deletingRequest.identifier || deletingRequest.nim || deletingRequest.nip || deletingRequest.email);
+        const displayName = (official.found && official.user?.nama) ? official.user.nama : deletingRequest.nama;
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full border border-slate-200 p-5 space-y-4 text-center">
+              <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="font-extrabold text-sm text-slate-900">Hapus Catatan Pengajuan?</h3>
+                <p className="text-xs text-slate-500">
+                  Catatan pengajuan untuk <span className="font-bold text-slate-800">{displayName}</span> akan dihapus dari antrean Admin.
+                </p>
+              </div>
+              <div className="flex items-center justify-center space-x-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setDeletingRequest(null)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    deletePasswordResetRequest(deletingRequest.id);
+                    setDeletingRequest(null);
+                    showToast('Pengajuan reset kata sandi berhasil dihapus.');
+                  }}
+                  className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-colors shadow-sm"
+                >
+                  Hapus
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
     </div>
   );

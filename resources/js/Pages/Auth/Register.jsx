@@ -118,3 +118,6 @@ export default function Register() {
         </GuestLayout>
     );
 }
+
+Register.layout = (page) => page;
+

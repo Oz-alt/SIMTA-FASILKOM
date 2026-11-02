@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, router, Head } from '@inertiajs/react';
 import { useAuth } from '../../context/AuthContext.jsx';
+import AuthLayout from '../../Layouts/AuthLayout.jsx';
 import gsap from 'gsap';
 import unsriLogo from '../../assets/photo/unsri logo.png';
 import diklatImg from '../../assets/photo/diklat.jpg';
@@ -405,3 +406,7 @@ export default function ResetPassword({ token, email }) {
     </div>
   );
 }
+
+// Lepaskan halaman Buat Password Baru dari Admin / Dashboard layout
+ResetPassword.layout = (page) => <AuthLayout>{page}</AuthLayout>;
+
