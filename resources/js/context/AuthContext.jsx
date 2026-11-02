@@ -207,6 +207,22 @@ const buildThesisTitlePayload = (title) => ({
   updated_at: new Date().toISOString()
 });
 
+// Data Resmi Homebase Dosen D3 Manajemen Informatika (Pendidikan & Jabatan Fungsional)
+export const OFFICIAL_DOSEN_HOMEBASE = {
+  '198410012009121005': { pendidikan: 'S3', jabatan_fungsional: 'Lektor Kepala' },
+  '198810052023212046': { pendidikan: 'S2', jabatan_fungsional: 'Asisten Ahli' },
+  '198803052019031010': { pendidikan: 'S2', jabatan_fungsional: 'Lektor' },
+  '199012222024062001': { pendidikan: 'S2', jabatan_fungsional: 'Asisten Ahli' },
+  '198910142023211013': { pendidikan: 'S2', jabatan_fungsional: 'Asisten Ahli' },
+  '198303182023212034': { pendidikan: 'S2', jabatan_fungsional: 'Asisten Ahli' },
+  '198906262024212001': { pendidikan: 'S2', jabatan_fungsional: 'Asisten Ahli' },
+  '198712032022031006': { pendidikan: 'S3', jabatan_fungsional: 'Asisten Ahli' },
+  '199206092019032025': { pendidikan: 'S2', jabatan_fungsional: 'Lektor' },
+  '198201022024211001': { pendidikan: 'S2', jabatan_fungsional: 'Asisten Ahli' },
+  '198710092024211001': { pendidikan: 'S2', jabatan_fungsional: 'Asisten Ahli' },
+  '199306042024062006': { pendidikan: 'S2', jabatan_fungsional: 'Tenaga Pengajar' }
+};
+
 export function AuthProvider({ children }) {
   // Helper to sanitize profile names to guarantee full name and correct role are used
   const sanitizeProfile = (user) => {
@@ -1242,29 +1258,34 @@ export function AuthProvider({ children }) {
   const [advisors, setAdvisors] = useState(() => {
     try {
       const saved = localStorage.getItem('simta_advisors');
+      let baseList = [];
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Merge pendidikan & jabatan_fungsional from MOCK_ADVISORS if missing (for old cached data)
-          return parsed.map(adv => {
-            let res = { ...adv };
-            if (!res.pendidikan) {
-              const mock = MOCK_ADVISORS.find(m => m.nip === adv.nip);
-              if (mock?.pendidikan) res.pendidikan = mock.pendidikan;
-              else {
-                const n = adv.nama || '';
-                const isDoktor = /\bDr\.\s/i.test(n) || /Ph\.D/i.test(n);
-                res.pendidikan = isDoktor ? 'S3 (Doktor)' : 'S2 (Magister)';
-              }
-            }
-            if (!res.jabatan_fungsional || res.jabatan_fungsional === 'Dosen Pembimbing') {
-              const mock = MOCK_ADVISORS.find(m => m.nip === adv.nip);
-              res.jabatan_fungsional = mock?.jabatan_fungsional || 'Asisten Ahli';
-            }
-            return res;
-          });
+          baseList = parsed;
         }
       }
+      if (baseList.length === 0) {
+        baseList = MOCK_ADVISORS;
+      }
+      return baseList.map(adv => {
+        let res = { ...adv };
+        const official = OFFICIAL_DOSEN_HOMEBASE[String(adv.nip)];
+        if (official) {
+          res.pendidikan = official.pendidikan;
+          res.jabatan_fungsional = official.jabatan_fungsional;
+        } else {
+          if (!res.pendidikan) {
+            const n = adv.nama || '';
+            const isDoktor = /\bDr\.\s/i.test(n) || /Ph\.D/i.test(n);
+            res.pendidikan = isDoktor ? 'S3' : 'S2';
+          }
+          if (!res.jabatan_fungsional || res.jabatan_fungsional === 'Dosen Pembimbing') {
+            res.jabatan_fungsional = 'Asisten Ahli';
+          }
+        }
+        return res;
+      });
     } catch { }
     return MOCK_ADVISORS;
   });
@@ -1785,8 +1806,11 @@ export function AuthProvider({ children }) {
               if (!wa && String(adv.nip) === '198410012009121005') {
                 wa = 'https://chat.whatsapp.com/E8JElpcoGjPOAwz4cRg6nl';
               }
+              const official = OFFICIAL_DOSEN_HOMEBASE[String(adv.nip)];
               return {
                 ...adv,
+                pendidikan: official ? official.pendidikan : (adv.pendidikan || (/\bDr\.\s/i.test(adv.nama || '') || /Ph\.D/i.test(adv.nama || '') ? 'S3' : 'S2')),
+                jabatan_fungsional: official ? official.jabatan_fungsional : (adv.jabatan_fungsional || 'Asisten Ahli'),
                 no_hp: adv.no_hp || (String(adv.nip) === '198410012009121005' ? '0895-3787-34847' : ''),
                 link_wa_group: wa || ''
               };
