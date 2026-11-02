@@ -4313,13 +4313,55 @@ export function AuthProvider({ children }) {
 
   // Add new consultation / revision submission (Mahasiswa)
   const addConsultation = async (consData) => {
+    // 1. Resolve student data
+    const mhsNim = String(currentUser?.nim || consData.mhs_nim || '09010182428002').trim();
+    const mhsNama = currentUser?.nama || consData.mhs_nama || 'Aulia Azzahra';
+    const isPemb2 = String(consData.pembimbing || '').includes('2');
+    const pembTag = isPemb2 ? 'Pembimbing 2' : 'Pembimbing 1';
+    const pembimbingLabel = isPemb2 ? 'Dosen Pembimbing 2 (Pendamping)' : 'Dosen Pembimbing 1 (Utama)';
+
+    // 2. Resolve assigned target lecturer for this student
+    const assigned = (getStudentAdvisors && mhsNim) ? getStudentAdvisors(mhsNim) : null;
+    const targetAdvisor = isPemb2 ? assigned?.dospem2 : assigned?.dospem1;
+
+    let targetNip = consData.dosen_nip || targetAdvisor?.nip || '';
+    let targetNama = consData.dosen_nama || targetAdvisor?.nama || '';
+
+    if (!targetNip || !targetNama) {
+      const matchAdv = (advisors && advisors.find(a => 
+        (targetNama && a.nama === targetNama) || 
+        (targetNip && a.nip === targetNip)
+      )) || MOCK_ADVISORS.find(m => 
+        (targetNama && m.nama === targetNama) || 
+        (targetNip && m.nip === targetNip)
+      );
+      if (matchAdv) {
+        if (!targetNip) targetNip = matchAdv.nip;
+        if (!targetNama) targetNama = matchAdv.nama;
+      }
+    }
+
+    if (!targetNama) {
+      targetNama = isPemb2 ? 'M. Qurhanul Rizkie, Ph.D' : 'Dr. Abdiansah, S.Kom., M.Cs.';
+    }
+    if (!targetNip) {
+      targetNip = isPemb2 ? '198712032022031006' : '198410012009121005';
+    }
+
+    const advisorAccount = (advisors && advisors.find(a => a.nip === targetNip)) ||
+                          MOCK_USERS.find(u => u.nip === targetNip || u.nama === targetNama) ||
+                          MOCK_ADVISORS.find(m => m.nip === targetNip);
+
+    const targetEmail = advisorAccount?.email || `${targetNip}@unsri.ac.id`;
+    const targetProfileId = advisorAccount?.id || (targetNip ? `user-dosen-${targetNip}` : 'user-dosen');
+
     const newEntry = {
       id: generateUUID(),
-      mhs_nim: currentUser?.nim || '09010182428002',
-      mhs_nama: currentUser?.nama || 'Aulia Azzahra',
-      pembimbing: consData.pembimbing || 'Pembimbing 1',
-      dosen_nama: consData.dosen_nama || 'Dr. Abdiansah, S.Kom., M.Cs.',
-      dosen_nip: consData.dosen_nip || '',
+      mhs_nim: mhsNim,
+      mhs_nama: mhsNama,
+      pembimbing: pembTag,
+      dosen_nama: targetNama,
+      dosen_nip: targetNip,
       metode: consData.metode || 'luring',
       tanggal: consData.tanggal || new Date().toISOString().split('T')[0],
       waktu: consData.waktu || '10:00',
