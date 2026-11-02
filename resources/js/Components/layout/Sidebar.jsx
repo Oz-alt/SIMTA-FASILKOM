@@ -28,7 +28,8 @@ import {
   LayoutGrid,
   Bell,
   ClipboardList,
-  Lock
+  Lock,
+  KeyRound
 } from 'lucide-react';
 
 export default function Sidebar() {
@@ -218,7 +219,8 @@ export default function Sidebar() {
               icon: Users,
               items: [
                 { to: '/admin-simta/accounts/mahasiswa', label: 'Akun Mahasiswa', icon: GraduationCap },
-                { to: '/admin-simta/accounts/dosen', label: 'Akun Dosen', icon: UserCheck }
+                { to: '/admin-simta/accounts/dosen', label: 'Akun Dosen', icon: UserCheck },
+                { to: '/admin-simta/accounts/password-resets', label: 'Permintaan Reset Sandi', icon: KeyRound }
               ]
             },
             {

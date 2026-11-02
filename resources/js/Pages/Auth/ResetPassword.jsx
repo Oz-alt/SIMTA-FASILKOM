@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, router, Head } from '@inertiajs/react';
 import { useAuth } from '../../context/AuthContext.jsx';
+import AuthLayout from '../../Layouts/AuthLayout.jsx';
 import gsap from 'gsap';
 import unsriLogo from '../../assets/photo/unsri logo.png';
 import diklatImg from '../../assets/photo/diklat.jpg';
@@ -18,7 +19,7 @@ import {
 } from 'lucide-react';
 
 export default function ResetPassword({ token, email }) {
-  const { confirmPasswordReset } = useAuth();
+  const { confirmPasswordReset, verifyPasswordResetToken } = useAuth();
 
   // Read query params as fallback if not in props
   const getQueryParam = (name) => {
@@ -40,9 +41,24 @@ export default function ResetPassword({ token, email }) {
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [tokenStatus, setTokenStatus] = useState({ checked: false, valid: true, error: '', user: null });
 
   const formPanelRef = useRef(null);
   const leftContentRef = useRef(null);
+
+  // Verifikasi keabsahan token & status persetujuan Admin
+  useEffect(() => {
+    if (verifyPasswordResetToken && (resetToken || userEmail)) {
+      const res = verifyPasswordResetToken(resetToken, userEmail);
+      if (!res.valid) {
+        setTokenStatus({ checked: true, valid: false, error: res.error, user: null });
+      } else {
+        setTokenStatus({ checked: true, valid: true, error: '', user: res.user });
+      }
+    } else {
+      setTokenStatus({ checked: true, valid: true, error: '', user: null });
+    }
+  }, [resetToken, userEmail, verifyPasswordResetToken]);
 
   // GSAP Entrance Animations
   useEffect(() => {
@@ -215,8 +231,34 @@ export default function ResetPassword({ token, email }) {
             </p>
           </div>
 
-          {/* Success Banner */}
-          {isSuccess ? (
+          {/* Token Invalid / Expired Warning */}
+          {tokenStatus.checked && !tokenStatus.valid ? (
+            <div className="p-6 rounded-2xl bg-rose-50 border border-rose-200 text-center space-y-4 animate-in fade-in">
+              <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
+                <AlertCircle className="w-6 h-6" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="font-bold text-sm text-rose-950">Tautan Reset Tidak Valid</h3>
+                <p className="text-xs text-rose-700 leading-relaxed">
+                  {tokenStatus.error || 'Token reset kata sandi tidak ditemukan atau belum disetujui oleh Admin SIMTA.'}
+                </p>
+              </div>
+              <div className="pt-2 flex flex-col gap-2">
+                <Link
+                  href="/forgot-password"
+                  className="w-full py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs transition-all text-center block"
+                >
+                  Ajukan Permintaan Reset Baru
+                </Link>
+                <Link
+                  href="/login"
+                  className="w-full py-2.5 px-4 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs transition-all text-center block"
+                >
+                  Kembali ke Halaman Login
+                </Link>
+              </div>
+            </div>
+          ) : isSuccess ? (
             <div className="p-6 rounded-2xl bg-emerald-50 border border-emerald-200 text-center space-y-4 animate-in fade-in zoom-in-95 duration-300">
               <div className="w-14 h-14 rounded-full bg-emerald-500 text-white flex items-center justify-center mx-auto shadow-lg shadow-emerald-500/30 animate-bounce">
                 <CheckCircle2 className="w-8 h-8" />
@@ -224,7 +266,7 @@ export default function ResetPassword({ token, email }) {
               <div className="space-y-1">
                 <h3 className="font-extrabold text-base text-emerald-950">Kata Sandi Berhasil Diperbarui!</h3>
                 <p className="text-xs text-emerald-700 leading-relaxed">
-                  Kata sandi baru akun Anda telah berhasil disimpan. Mengalihkan Anda ke halaman login...
+                  Kata sandi baru akun Anda telah berhasil disimpan dengan aman (hashing SHA-256). Mengalihkan Anda ke halaman login...
                 </p>
               </div>
               <Link
@@ -236,6 +278,17 @@ export default function ResetPassword({ token, email }) {
             </div>
           ) : (
             <>
+              {/* Account details badge if verified */}
+              {tokenStatus.user && (
+                <div className="p-3.5 rounded-xl bg-blue-50/80 border border-blue-200 text-xs space-y-1">
+                  <div className="text-[10px] uppercase font-bold text-blue-600 tracking-wider">Pemilik Akun Terverifikasi</div>
+                  <div className="font-bold text-slate-900">{tokenStatus.user.nama}</div>
+                  <div className="text-[11px] text-slate-600 font-mono">
+                    NIM / NIP: {tokenStatus.user.nim || tokenStatus.user.nip || tokenStatus.user.identifier} • {tokenStatus.user.email}
+                  </div>
+                </div>
+              )}
+
               {/* Error Message Alert */}
               {errorMessage && (
                 <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center space-x-2 animate-in fade-in">
@@ -353,3 +406,7 @@ export default function ResetPassword({ token, email }) {
     </div>
   );
 }
+
+// Lepaskan halaman Buat Password Baru dari Admin / Dashboard layout
+ResetPassword.layout = (page) => <AuthLayout>{page}</AuthLayout>;
+

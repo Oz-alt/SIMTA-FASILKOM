@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { Link } from '@inertiajs/react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { 
   GraduationCap, 
@@ -35,8 +36,13 @@ export default function AkunMahasiswaAdminPage() {
     updateMahasiswaAccount, 
     deleteMahasiswaAccount, 
     resetMahasiswaPassword,
-    accountsVersion
+    accountsVersion,
+    passwordResetRequests = []
   } = useAuth();
+
+  const pendingMhsResetCount = useMemo(() => {
+    return (passwordResetRequests || []).filter(r => r && r.role === 'mahasiswa' && r.status === 'menunggu').length;
+  }, [passwordResetRequests]);
 
   // Search & Filter States
   const [searchQuery, setSearchQuery] = useState('');
@@ -291,14 +297,29 @@ export default function AkunMahasiswaAdminPage() {
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={handleOpenAdd}
-            className="inline-flex items-center justify-center space-x-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-lg shadow-blue-600/30 transition-all cursor-pointer shrink-0 active:scale-95"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Tambah Akun Mahasiswa</span>
-          </button>
+          <div className="flex items-center gap-2.5 flex-wrap shrink-0">
+            <Link
+              href="/admin-simta/accounts/password-resets?role=mahasiswa"
+              className="inline-flex items-center justify-center space-x-2 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold border border-white/20 backdrop-blur-sm transition-all cursor-pointer"
+            >
+              <KeyRound className="w-4 h-4 text-amber-300" />
+              <span>Permintaan Reset Sandi</span>
+              {pendingMhsResetCount > 0 && (
+                <span className="px-1.5 py-0.5 rounded-full bg-amber-500 text-slate-900 text-[10px] font-black">
+                  {pendingMhsResetCount}
+                </span>
+              )}
+            </Link>
+
+            <button
+              type="button"
+              onClick={handleOpenAdd}
+              className="inline-flex items-center justify-center space-x-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-lg shadow-blue-600/30 transition-all cursor-pointer shrink-0 active:scale-95"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Tambah Akun Mahasiswa</span>
+            </button>
+          </div>
         </div>
       </div>
 
