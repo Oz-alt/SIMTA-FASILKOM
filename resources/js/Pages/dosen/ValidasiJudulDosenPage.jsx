@@ -4,7 +4,11 @@ import StudentWhatsAppLink from '../../Components/common/StudentWhatsAppLink.jsx
 import { 
   Clock,
   X,
-  Check
+  Check,
+  BarChart2,
+  CheckCircle2,
+  AlertTriangle,
+  ChevronDown
 } from 'lucide-react';
 
 export default function ValidasiJudulDosenPage() {
@@ -12,6 +16,11 @@ export default function ValidasiJudulDosenPage() {
   const [selectedTitle, setSelectedTitle] = useState(null);
   const [catatanInput, setCatatanInput] = useState('');
   const [toastMsg, setToastMsg] = useState('');
+  const [expandedStudents, setExpandedStudents] = useState({});
+
+  const toggleStudent = (nim) => {
+    setExpandedStudents(prev => ({ ...prev, [nim]: !prev[nim] }));
+  };
 
   // Normalize current user identifiers
   const userNip = currentUser?.nip || currentUser?.nim || '';
@@ -41,6 +50,14 @@ export default function ValidasiJudulDosenPage() {
   const validatedTitles = relevantTitles.filter(t => 
     t.rekomendasi_dospem_status === 'direkomendasikan' || t.rekomendasi_dospem_status === 'perlu_revisi'
   );
+
+  // Statistik rekap
+  const totalUsulan = relevantTitles.length;
+  const totalAcc = validatedTitles.filter(t => t.rekomendasi_dospem_status === 'direkomendasikan').length;
+  const totalRevisi = validatedTitles.filter(t => t.rekomendasi_dospem_status === 'perlu_revisi').length;
+  const totalMenunggu = pendingValidationTitles.length;
+
+  const pct = (n) => totalUsulan > 0 ? Math.round((n / totalUsulan) * 100) : 0;
 
   // 1 & 2: Langsung ACC tanpa modal catatan
   const handleDirectAcc = (title) => {
@@ -93,7 +110,7 @@ export default function ValidasiJudulDosenPage() {
         </div>
       )}
 
-      {/* Header Halaman (1: Hilangkan Kaprodi) */}
+      {/* Header Halaman */}
       <div className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs">
         <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">Validasi Judul Mahasiswa</h1>
         <p className="text-xs sm:text-sm text-slate-500 font-normal mt-1 leading-relaxed">
@@ -101,10 +118,81 @@ export default function ValidasiJudulDosenPage() {
         </p>
       </div>
 
+      {/* Rekap Statistik */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {/* Total Usulan */}
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-xs space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Usulan</span>
+            <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
+              <BarChart2 className="w-3.5 h-3.5 text-slate-500" />
+            </div>
+          </div>
+          <p className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">{totalUsulan}</p>
+          <div className="space-y-1">
+            <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+              <div className="h-full bg-slate-400 rounded-full" style={{ width: '100%' }} />
+            </div>
+            <p className="text-xs text-slate-400 font-medium">Semua pengajuan judul</p>
+          </div>
+        </div>
+
+        {/* Sudah ACC */}
+        <div className="bg-white rounded-2xl border border-emerald-200/60 p-4 sm:p-5 shadow-xs space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-emerald-600 uppercase tracking-wider">Sudah ACC</span>
+            <div className="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+            </div>
+          </div>
+          <p className="text-2xl sm:text-3xl font-bold text-emerald-700 tracking-tight">{totalAcc}</p>
+          <div className="space-y-1">
+            <div className="w-full h-1.5 bg-emerald-100 rounded-full overflow-hidden">
+              <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${pct(totalAcc)}%` }} />
+            </div>
+            <p className="text-xs text-emerald-500 font-medium">{pct(totalAcc)}% dari total</p>
+          </div>
+        </div>
+
+        {/* Perlu Revisi */}
+        <div className="bg-white rounded-2xl border border-amber-200/60 p-4 sm:p-5 shadow-xs space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-amber-600 uppercase tracking-wider">Perlu Revisi</span>
+            <div className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+            </div>
+          </div>
+          <p className="text-2xl sm:text-3xl font-bold text-amber-700 tracking-tight">{totalRevisi}</p>
+          <div className="space-y-1">
+            <div className="w-full h-1.5 bg-amber-100 rounded-full overflow-hidden">
+              <div className="h-full bg-amber-500 rounded-full transition-all" style={{ width: `${pct(totalRevisi)}%` }} />
+            </div>
+            <p className="text-xs text-amber-500 font-medium">{pct(totalRevisi)}% dari total</p>
+          </div>
+        </div>
+
+        {/* Menunggu Validasi */}
+        <div className="bg-white rounded-2xl border border-blue-200/60 p-4 sm:p-5 shadow-xs space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-blue-600 uppercase tracking-wider">Menunggu</span>
+            <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+              <Clock className="w-3.5 h-3.5 text-blue-600" />
+            </div>
+          </div>
+          <p className="text-2xl sm:text-3xl font-bold text-blue-700 tracking-tight">{totalMenunggu}</p>
+          <div className="space-y-1">
+            <div className="w-full h-1.5 bg-blue-100 rounded-full overflow-hidden">
+              <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${pct(totalMenunggu)}%` }} />
+            </div>
+            <p className="text-xs text-blue-500 font-medium">{pct(totalMenunggu)}% dari total</p>
+          </div>
+        </div>
+      </div>
+
       {/* Layout Utama 2 Kolom */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
-        {/* Kolom Kiri: Antrean Menunggu Validasi */}
+        {/* Kolom Kiri: Antrean Menunggu Validasi — dikelompokkan per mahasiswa */}
         <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <div className="flex items-center space-x-2">
@@ -129,96 +217,127 @@ export default function ValidasiJudulDosenPage() {
                 Tidak ada pengajuan judul baru yang menunggu validasi Anda saat ini.
               </p>
             </div>
-          ) : (
-            <div className="space-y-3.5">
-              {pendingValidationTitles.map(t => {
-                const isDospem1 = (cleanNip && String(t.pembimbing_1_nip || '').trim() === cleanNip) || (cleanNama && t.pembimbing_1 && t.pembimbing_1.toLowerCase().includes(cleanNama));
-                const isDospem2 = (cleanNip && String(t.pembimbing_2_nip || '').trim() === cleanNip) || (cleanNama && t.pembimbing_2 && t.pembimbing_2.toLowerCase().includes(cleanNama));
-                const roleLabel = isDospem1 ? 'Pembimbing 1' : isDospem2 ? 'Pembimbing 2' : 'Dosen Pembimbing';
-                const similarity = getSimilarityColor(t.skor_kemiripan_terakhir);
-                const scoreNum = Number(t.skor_kemiripan_terakhir) || 0;
+          ) : (() => {
+            // Group by mahasiswa NIM
+            const grouped = pendingValidationTitles.reduce((acc, t) => {
+              const key = t.mhs_nim || t.mhs_nama;
+              if (!acc[key]) acc[key] = { info: t, titles: [] };
+              acc[key].titles.push(t);
+              return acc;
+            }, {});
 
-                return (
-                  <div 
-                    key={t.id} 
-                    className="p-4 sm:p-5 rounded-2xl border border-slate-200/80 bg-white hover:border-slate-300 transition-colors space-y-3.5"
-                  >
-                    {/* Header Item: Mahasiswa & Role Badge */}
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <h3 className="text-sm font-semibold text-slate-900 truncate">
-                          <StudentWhatsAppLink
-                            nim={t.mhs_nim}
-                            nama={t.mhs_nama}
-                            className="font-semibold text-slate-900 hover:text-emerald-700"
-                            showIcon={false}
-                          >
-                            {t.mhs_nama}
-                          </StudentWhatsAppLink>
-                        </h3>
-                        <p className="text-xs text-slate-500 font-normal mt-0.5">
-                          <span className="font-mono font-medium">{t.mhs_nim}</span> <span className="text-slate-300 mx-1">•</span> {t.mhs_kelas}
-                        </p>
-                      </div>
-                      <span className="text-xs font-semibold px-2.5 py-0.5 rounded-lg bg-slate-100 text-slate-600 border border-slate-200/60 shrink-0">
-                        {roleLabel}
-                      </span>
-                    </div>
+            return (
+              <div className="space-y-4">
+                {Object.values(grouped).map(({ info, titles }) => {
+                  const isDospem1 = (cleanNip && String(info.pembimbing_1_nip || '').trim() === cleanNip) || (cleanNama && info.pembimbing_1 && info.pembimbing_1.toLowerCase().includes(cleanNama));
+                  const isDospem2 = (cleanNip && String(info.pembimbing_2_nip || '').trim() === cleanNip) || (cleanNama && info.pembimbing_2 && info.pembimbing_2.toLowerCase().includes(cleanNama));
+                  const roleLabel = isDospem1 ? 'Pembimbing 1' : isDospem2 ? 'Pembimbing 2' : 'Dosen Pembimbing';
 
-                    {/* Judul & Deskripsi Tugas Akhir */}
-                    <div className="space-y-1">
-                      <h4 className="text-sm font-semibold text-slate-900 leading-snug">
-                        {t.judul}
-                      </h4>
-                      {t.deskripsi && (
-                        <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed font-normal">
-                          {t.deskripsi}
-                        </p>
-                      )}
-                    </div>
-                    
-                    {/* Footer Item: Skor Kemiripan (Hanya Persen) & Tombol Aksi */}
-                    <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      {/* 4: Resiko persen saja */}
-                      <div className="space-y-1 sm:max-w-xs flex-1">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-slate-500 font-medium">Skor Kemiripan:</span>
-                          <span className={`font-bold ${similarity.textColor}`}>
-                            {scoreNum}%
-                          </span>
+                  return (
+                    <div
+                      key={info.mhs_nim}
+                      className="rounded-2xl border border-slate-200/80 bg-white overflow-hidden"
+                    >
+                      {/* Header kartu mahasiswa — klik untuk expand */}
+                      <button
+                        type="button"
+                        onClick={() => toggleStudent(info.mhs_nim)}
+                        className="w-full flex items-start justify-between gap-3 px-4 py-3.5 bg-slate-50/70 hover:bg-slate-100/70 transition-colors text-left cursor-pointer"
+                      >
+                        <div className="min-w-0">
+                          <h3 className="text-sm font-semibold text-slate-900">
+                            {info.mhs_nama}
+                          </h3>
+                          <p className="text-xs text-slate-500 font-normal mt-0.5">
+                            <span className="font-mono font-medium">{info.mhs_nim}</span>
+                            {info.mhs_kelas && <><span className="text-slate-300 mx-1">•</span>{info.mhs_kelas}</>}
+                          </p>
                         </div>
-                        <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                          <div 
-                            className={`h-full rounded-full transition-all ${similarity.barColor}`}
-                            style={{ width: `${Math.min(100, Math.max(4, scoreNum))}%` }}
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-xs font-semibold px-2.5 py-0.5 rounded-lg bg-white text-slate-600 border border-slate-200/80">
+                            {roleLabel}
+                          </span>
+                          <span className="text-xs font-bold text-blue-600 bg-blue-50 border border-blue-200/60 px-2 py-0.5 rounded-lg">
+                            {titles.length} usulan
+                          </span>
+                          <ChevronDown
+                            className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${
+                              expandedStudents[info.mhs_nim] ? 'rotate-180' : ''
+                            }`}
                           />
                         </div>
-                      </div>
+                      </button>
 
-                      {/* Tombol Aksi (6: Cukup Catatan & 5: Tanpa Emot Ceklis Langsung ACC) */}
-                      <div className="flex items-center space-x-2 shrink-0 self-end sm:self-auto">
-                        <button 
-                          type="button"
-                          onClick={() => openCatatanModal(t)}
-                          className="px-3.5 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs transition-colors cursor-pointer"
-                        >
-                          Catatan
-                        </button>
-                        <button 
-                          type="button"
-                          onClick={() => handleDirectAcc(t)}
-                          className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs transition-colors shadow-xs cursor-pointer"
-                        >
-                          ACC
-                        </button>
-                      </div>
+                      {/* List judul — hanya tampil saat di-expand */}
+                      {expandedStudents[info.mhs_nim] && (
+                        <div className="divide-y divide-slate-100 border-t border-slate-200/60">
+                        {titles.map((t, idx) => {
+                          const similarity = getSimilarityColor(t.skor_kemiripan_terakhir);
+                          const scoreNum = Number(t.skor_kemiripan_terakhir) || 0;
+
+                          return (
+                            <div key={t.id} className="px-4 py-3.5 space-y-2.5">
+                              {/* Nomor + Judul */}
+                              <div className="flex items-start gap-2.5">
+                                <span className="mt-0.5 shrink-0 w-5 h-5 rounded-md bg-slate-100 text-slate-500 text-[10px] font-bold flex items-center justify-center">
+                                  {idx + 1}
+                                </span>
+                                <div className="min-w-0 flex-1 space-y-1">
+                                  <p className="text-xs sm:text-sm font-semibold text-slate-800 leading-snug">
+                                    {t.judul}
+                                  </p>
+                                  {t.deskripsi && (
+                                    <p className="text-xs text-slate-500 line-clamp-1 leading-relaxed font-normal">
+                                      {t.deskripsi}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Footer: Skor + Tombol */}
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pl-7">
+                                <div className="space-y-1 flex-1 sm:max-w-xs">
+                                  <div className="flex items-center justify-between text-xs">
+                                    <span className="text-slate-400 font-medium">Skor Kemiripan</span>
+                                    <span className={`font-bold ${similarity.textColor}`}>{scoreNum}%</span>
+                                  </div>
+                                  <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                    <div
+                                      className={`h-full rounded-full transition-all ${similarity.barColor}`}
+                                      style={{ width: `${Math.min(100, Math.max(4, scoreNum))}%` }}
+                                    />
+                                  </div>
+                                </div>
+                                <div className="flex items-center space-x-2 shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => openCatatanModal(t)}
+                                    className="px-3.5 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs transition-colors cursor-pointer"
+                                  >
+                                    Catatan
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDirectAcc(t)}
+                                    className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs transition-colors shadow-xs cursor-pointer"
+                                  >
+                                    ACC
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                  );
+                })}
+              </div>
+            );
+          })()}
         </div>
+
 
         {/* Kolom Kanan: Riwayat Validasi Dosen */}
         <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs space-y-4">
