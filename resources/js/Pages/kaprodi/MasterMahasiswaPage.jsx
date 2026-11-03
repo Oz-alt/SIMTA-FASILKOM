@@ -27,7 +27,7 @@ import {
   ChevronRight,
   FileText
 } from 'lucide-react';
-import { getStudentSemester, AVAILABLE_SEMESTERS, getStudentAngkatan } from '../../lib/academicUtils.js';
+import { getStudentSemester, getStudentAngkatan } from '../../lib/academicUtils.js';
 
 export default function MasterMahasiswaPage() {
   const { 
@@ -44,7 +44,6 @@ export default function MasterMahasiswaPage() {
   // Search & Filter States
   const [searchQuery, setSearchQuery] = useState('');
   const [angkatanFilter, setAngkatanFilter] = useState('ALL');
-  const [semesterFilter, setSemesterFilter] = useState('Semua Semester');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Modal States
@@ -193,10 +192,9 @@ export default function MasterMahasiswaPage() {
         studentAngkatan.includes(q);
 
       const matchAngkatan = angkatanFilter === 'ALL' || studentAngkatan === angkatanFilter;
-      const matchSemester = semesterFilter === 'Semua Semester' || getStudentSemester(std) === semesterFilter;
-      return matchQuery && matchAngkatan && matchSemester;
+      return matchQuery && matchAngkatan;
     });
-  }, [registeredStudents, searchQuery, angkatanFilter, semesterFilter]);
+  }, [registeredStudents, searchQuery, angkatanFilter]);
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -205,7 +203,7 @@ export default function MasterMahasiswaPage() {
   // Reset to page 1 whenever filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, angkatanFilter, semesterFilter]);
+  }, [searchQuery, angkatanFilter]);
 
   // Paginated Students
   const totalPages = Math.max(1, Math.ceil(filteredStudents.length / pageSize));
@@ -550,19 +548,6 @@ export default function MasterMahasiswaPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2 shrink-0">
-              <div className="flex items-center space-x-1.5">
-                <GraduationCap className="w-4 h-4 text-indigo-600" />
-                <select
-                  value={semesterFilter}
-                  onChange={(e) => setSemesterFilter(e.target.value)}
-                  className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 cursor-pointer"
-                >
-                  {AVAILABLE_SEMESTERS.map(sem => (
-                    <option key={sem} value={sem}>{sem}</option>
-                  ))}
-                </select>
-              </div>
-
               <div className="flex items-center space-x-1.5">
                 <Filter className="w-4 h-4 text-slate-400" />
                 <select
