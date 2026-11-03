@@ -567,6 +567,17 @@ export default function MasterMahasiswaPage() {
           {/* Action Buttons Group */}
           <div className="flex flex-wrap items-center gap-2.5 shrink-0">
             
+            {/* Import Excel Button */}
+            <button
+              type="button"
+              onClick={() => { setImportPreview([]); setImportError(''); setIsImportOpen(true); }}
+              className="inline-flex items-center justify-center space-x-2 px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer border border-slate-700"
+              title="Import Data Mahasiswa Baru dari file Excel/CSV"
+            >
+              <Upload className="w-4 h-4 text-emerald-400" />
+              <span>Import Excel</span>
+            </button>
+
             {/* Export Excel Dropdown */}
             <div className="relative" ref={exportDropdownRef}>
               <button
@@ -612,17 +623,6 @@ export default function MasterMahasiswaPage() {
                 </div>
               )}
             </div>
-
-            {/* Import Excel Button */}
-            <button
-              type="button"
-              onClick={() => { setImportPreview([]); setImportError(''); setIsImportOpen(true); }}
-              className="inline-flex items-center justify-center space-x-2 px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer border border-slate-700"
-              title="Import Data Mahasiswa Baru dari file Excel/CSV"
-            >
-              <Upload className="w-4 h-4 text-emerald-400" />
-              <span>Import Excel</span>
-            </button>
 
             {/* Manual Add Button */}
             <button
