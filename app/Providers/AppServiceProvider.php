@@ -23,6 +23,8 @@ class AppServiceProvider extends ServiceProvider
     {
         if ($this->app->environment('production') || isset($_SERVER['VERCEL']) || getenv('VERCEL')) {
             URL::forceScheme('https');
+            Vite::useHotFile('/tmp/vite.hot');
+            Vite::createAssetPathsUsing(fn (string $path) => '/'.ltrim($path, '/'));
         }
 
         Vite::prefetch(concurrency: 3);
