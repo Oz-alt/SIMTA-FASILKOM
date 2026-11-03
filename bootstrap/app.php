@@ -27,8 +27,8 @@ $app = Application::configure(basePath: dirname(__DIR__))
         );
     })->create();
 
-if (isset($_SERVER['VERCEL']) || env('APP_STORAGE')) {
-    $app->useStoragePath(env('APP_STORAGE', '/tmp/storage'));
+if (isset($_SERVER['VERCEL']) || isset($_ENV['VERCEL']) || getenv('VERCEL') || isset($_SERVER['APP_STORAGE']) || getenv('APP_STORAGE')) {
+    $app->useStoragePath('/tmp/storage');
 }
 
 return $app;

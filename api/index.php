@@ -24,28 +24,25 @@ if (!file_exists('/tmp/database.sqlite')) {
     touch('/tmp/database.sqlite');
 }
 
-putenv('APP_STORAGE=/tmp/storage');
-putenv('APP_PACKAGES_CACHE=/tmp/bootstrap/cache/packages.php');
-putenv('APP_SERVICES_CACHE=/tmp/bootstrap/cache/services.php');
-putenv('APP_CONFIG_CACHE=/tmp/bootstrap/cache/config.php');
-putenv('APP_ROUTES_CACHE=/tmp/bootstrap/cache/routes.php');
-putenv('APP_EVENTS_CACHE=/tmp/bootstrap/cache/events.php');
-putenv('VIEW_COMPILED_PATH=/tmp/storage/framework/views');
-putenv('SESSION_DRIVER=cookie');
-putenv('LOG_CHANNEL=stderr');
-putenv('CACHE_STORE=array');
-putenv('DB_CONNECTION=sqlite');
-putenv('DB_DATABASE=/tmp/database.sqlite');
+$vercelEnv = [
+    'APP_STORAGE' => '/tmp/storage',
+    'APP_PACKAGES_CACHE' => '/tmp/bootstrap/cache/packages.php',
+    'APP_SERVICES_CACHE' => '/tmp/bootstrap/cache/services.php',
+    'APP_CONFIG_CACHE' => '/tmp/bootstrap/cache/config.php',
+    'APP_ROUTES_CACHE' => '/tmp/bootstrap/cache/routes.php',
+    'APP_EVENTS_CACHE' => '/tmp/bootstrap/cache/events.php',
+    'VIEW_COMPILED_PATH' => '/tmp/storage/framework/views',
+    'SESSION_DRIVER' => 'cookie',
+    'LOG_CHANNEL' => 'stderr',
+    'CACHE_STORE' => 'array',
+    'DB_CONNECTION' => 'sqlite',
+    'DB_DATABASE' => '/tmp/database.sqlite',
+];
 
-try {
-    require __DIR__ . '/../public/index.php';
-} catch (\Throwable $e) {
-    http_response_code(500);
-    header('Content-Type: text/plain');
-    echo "ERROR VERCEL LARAVEL:\n";
-    echo $e->getMessage() . "\n\n";
-    echo "File: " . $e->getFile() . " (Line " . $e->getLine() . ")\n\n";
-    echo "Trace:\n" . $e->getTraceAsString();
-    exit;
+foreach ($vercelEnv as $key => $val) {
+    putenv("$key=$val");
+    $_ENV[$key] = $val;
+    $_SERVER[$key] = $val;
 }
 
+require __DIR__ . '/../public/index.php';
