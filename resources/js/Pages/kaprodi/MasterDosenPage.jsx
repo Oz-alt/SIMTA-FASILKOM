@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { exportToExcel, parseExcelFile } from '../../lib/excelUtils.js';
 import { 
   UserCheck, 
   Search, 
@@ -164,51 +165,44 @@ export default function MasterDosenPage() {
     return isDoktor ? 'S3' : 'S2';
   };
 
-  // Parse CSV/Excel file for import
-  const handleImportFile = (file) => {
+  // Parse CSV/Excel file for import (.xlsx, .xls, .csv)
+  const handleImportFile = async (file) => {
     if (!file) return;
-    const ext = file.name.split('.').pop().toLowerCase();
-    if (!['csv', 'xlsx', 'xls'].includes(ext)) {
-      setImportError('Format file tidak didukung. Gunakan CSV atau Excel (.xlsx/.xls)');
-      return;
-    }
     setImportError('');
-    import('papaparse').then(({ default: Papa }) => {
-      Papa.parse(file, {
-        header: true,
-        skipEmptyLines: true,
-        complete: (results) => {
-          if (!results.data || results.data.length === 0) {
-            setImportError('File kosong atau tidak ada data yang bisa dibaca.');
-            return;
-          }
-          // Normalize column names (case-insensitive)
-          const normalized = results.data.map(row => {
-            const r = {};
-            Object.keys(row).forEach(k => { r[k.toLowerCase().trim()] = row[k]; });
-            return {
-              nip: r['nip'] || r['kode'] || '',
-              nama: r['nama'] || r['nama dosen'] || r['nama_dosen'] || '',
-              email: r['email'] || '',
-              no_hp: r['no_hp'] || r['no hp'] || r['telepon'] || r['hp'] || '',
-              jabatan_fungsional: r['jabatan_fungsional'] || r['jabatan fungsional'] || r['jabatan'] || 'Asisten Ahli',
-              keahlian: r['keahlian'] || r['bidang keahlian'] || r['bidang_keahlian'] || '',
-              pendidikan: r['pendidikan'] || r['pendidikan terakhir'] || '',
-              prodi: r['prodi'] || r['program studi'] || 'D3 Manajemen Informatika',
-              status: r['status'] || 'aktif',
-              kuota_dospem1: Number(r['kuota_dospem1'] || r['kuota dospem1'] || 8),
-              kuota_dospem2: Number(r['kuota_dospem2'] || r['kuota dospem2'] || 8),
-            };
-          }).filter(r => r.nip && r.nama);
-          if (normalized.length === 0) {
-            setImportError('Tidak ada baris valid. Pastikan kolom NIP dan Nama terisi.');
-            return;
-          }
-          setImportPreview(normalized);
-        },
-        error: () => setImportError('Gagal membaca file. Pastikan format CSV yang valid.')
-      });
-    });
+    try {
+      const rawRows = await parseExcelFile(file);
+      if (!rawRows || rawRows.length === 0) {
+        setImportError('File kosong atau tidak ada data yang bisa dibaca.');
+        return;
+      }
+      // Normalize column names (case-insensitive)
+      const normalized = rawRows.map(row => {
+        const r = {};
+        Object.keys(row).forEach(k => { r[k.toLowerCase().trim().replace(/[\s-]+/g, '_')] = row[k]; });
+        return {
+          nip: String(r['nip'] || r['kode'] || '').trim().replace(/^'/, ''),
+          nama: String(r['nama'] || r['nama_dosen'] || '').trim(),
+          email: String(r['email'] || '').trim(),
+          no_hp: String(r['no_hp'] || r['nohp'] || r['telepon'] || r['hp'] || '').trim().replace(/^'/, ''),
+          jabatan_fungsional: String(r['jabatan_fungsional'] || r['jabatan'] || 'Asisten Ahli').trim(),
+          keahlian: String(r['keahlian'] || r['bidang_keahlian'] || '').trim(),
+          pendidikan: String(r['pendidikan'] || '').trim(),
+          prodi: String(r['prodi'] || r['program_studi'] || 'D3 Manajemen Informatika').trim(),
+          status: String(r['status'] || 'aktif').trim(),
+          kuota_dospem1: Number(r['kuota_dospem1'] || 8),
+          kuota_dospem2: Number(r['kuota_dospem2'] || 8),
+        };
+      }).filter(r => r.nip && r.nama);
+
+      if (normalized.length === 0) {
+        setImportError('Tidak ada baris valid. Pastikan kolom NIP dan Nama terisi.');
+        return;
+      }
+      setImportPreview(normalized);
+    } catch (err) {
+      console.error('Import error:', err);
+      setImportError('Gagal membaca file. Pastikan format file Excel (.xlsx / .xls) atau .CSV yang valid.');
+    }
   };
 
   const handleConfirmImport = () => {
@@ -227,16 +221,37 @@ export default function MasterDosenPage() {
   };
 
   const handleDownloadTemplate = () => {
-    const headers = 'NIP,Nama,Email,No_HP,Jabatan_Fungsional,Keahlian,Pendidikan,Prodi,Status,Kuota_Dospem1,Kuota_Dospem2';
-    const example = '198410012009121005,Dr. Abdiansah S.Kom. M.Cs.,abdiansah@unsri.ac.id,,Lektor Kepala,Kecerdasan Buatan,S3 (Doktor),D3 Manajemen Informatika,aktif,8,8';
-    const csv = `${headers}\n${example}`;
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'template_import_dosen.csv';
-    a.click();
-    URL.revokeObjectURL(url);
+    const headers = [
+      'NIP',
+      'Nama',
+      'Email',
+      'No_HP',
+      'Jabatan_Fungsional',
+      'Keahlian',
+      'Pendidikan',
+      'Prodi',
+      'Status',
+      'Kuota_Dospem1',
+      'Kuota_Dospem2'
+    ];
+    const example = [
+      [
+        '198410012009121005',
+        'Dr. Abdiansah, S.Kom., M.CS.',
+        'abdiansah@unsri.ac.id',
+        '',
+        'Lektor Kepala',
+        'Kecerdasan Buatan',
+        'S3',
+        'D3 Manajemen Informatika',
+        'aktif',
+        8,
+        8
+      ]
+    ];
+    const colWidths = [22, 30, 26, 16, 20, 22, 12, 26, 12, 16, 16];
+    exportToExcel([headers, ...example], 'template_import_dosen.xlsx', 'Template Dosen', colWidths);
+    showToast('Template Excel (.xlsx) data dosen berhasil diunduh.');
   };
 
   return (
@@ -715,8 +730,8 @@ export default function MasterDosenPage() {
                   <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-slate-900 text-sm">Import Data Dosen dari Excel / CSV</h3>
-                  <p className="text-[11px] text-slate-500">Upload file CSV atau Excel dengan kolom: NIP, Nama, Email, No_HP, Jabatan, Keahlian, Pendidikan</p>
+                  <h3 className="font-extrabold text-slate-900 text-sm">Import Data Dosen dari File Excel</h3>
+                  <p className="text-[11px] text-slate-500">Upload file Excel (.xlsx / .xls) atau CSV dengan kolom: NIP, Nama, Email, No_HP, Jabatan, Keahlian, Pendidikan</p>
                 </div>
               </div>
               <button
@@ -734,7 +749,7 @@ export default function MasterDosenPage() {
               <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
                 <div className="flex items-center space-x-2">
                   <Download className="w-4 h-4 text-blue-600" />
-                  <span className="text-xs font-semibold text-blue-800">Belum punya template? Download contoh file CSV terlebih dahulu.</span>
+                  <span className="text-xs font-semibold text-blue-800">Belum punya template? Download contoh file Excel (.xlsx) terlebih dahulu.</span>
                 </div>
                 <button
                   type="button"

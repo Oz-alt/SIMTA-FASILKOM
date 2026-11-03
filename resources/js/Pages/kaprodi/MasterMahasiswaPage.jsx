@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
-import Papa from 'papaparse';
+import { exportToExcel, parseExcelFile } from '../../lib/excelUtils.js';
 import { 
   GraduationCap, 
   Search, 
@@ -221,7 +221,7 @@ export default function MasterMahasiswaPage() {
     }
   };
 
-  // Export All / Filtered Students to Excel CSV
+  // Export All / Filtered Students to Excel (.xlsx)
   const handleExportDataExcel = () => {
     const headers = [
       'No',
@@ -230,7 +230,7 @@ export default function MasterMahasiswaPage() {
       'Email',
       'No HP',
       'Program Studi',
-      'Kelas',
+      'Angkatan',
       'Semester',
       'Pembimbing 1 (Nama)',
       'Pembimbing 1 (NIP)',
@@ -239,42 +239,48 @@ export default function MasterMahasiswaPage() {
       'Status Mahasiswa'
     ];
 
-    const escape = (str) => `"${String(str || '').replace(/"/g, '""').trim()}"`;
-
     const rows = filteredStudents.map((std, idx) => {
       const advs = getStudentAdvisors(std);
       return [
         idx + 1,
-        `'${std.nim}`,
-        escape(std.nama),
-        escape(std.email || '-'),
-        std.no_hp ? `'${std.no_hp}` : '-',
-        escape(std.prodi || 'D3 Manajemen Informatika'),
-        escape(std.kelas || 'MI 5A'),
-        escape(getStudentSemester(std)),
-        escape(advs.dospem1.nama || '-'),
-        advs.dospem1.nip ? `'${advs.dospem1.nip}` : '-',
-        escape(advs.dospem2.nama || '-'),
-        advs.dospem2.nip ? `'${advs.dospem2.nip}` : '-',
-        escape(std.status || 'aktif')
-      ].join(',');
+        String(std.nim || '').trim(),
+        String(std.nama || '').trim(),
+        String(std.email || '-').trim(),
+        String(std.no_hp || '-').trim(),
+        String(std.prodi || 'D3 Manajemen Informatika').trim(),
+        String(getStudentAngkatan(std)),
+        String(getStudentSemester(std)),
+        String(advs.dospem1.nama || '-').trim(),
+        String(advs.dospem1.nip || '-').trim(),
+        String(advs.dospem2.nama || '-').trim(),
+        String(advs.dospem2.nip || '-').trim(),
+        String(std.status || 'aktif').trim()
+      ];
     });
 
-    const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `data_mahasiswa_simta_${new Date().toISOString().slice(0, 10)}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    const colWidths = [
+      6,   // No
+      18,  // NIM
+      30,  // Nama Mahasiswa
+      32,  // Email
+      16,  // No HP
+      26,  // Program Studi
+      12,  // Angkatan
+      14,  // Semester
+      32,  // Pembimbing 1 (Nama)
+      22,  // Pembimbing 1 (NIP)
+      32,  // Pembimbing 2 (Nama)
+      22,  // Pembimbing 2 (NIP)
+      16   // Status Mahasiswa
+    ];
+
+    const fileName = `data_mahasiswa_simta_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    exportToExcel([headers, ...rows], fileName, 'Data Mahasiswa', colWidths);
     setIsExportDropdownOpen(false);
-    showToast('Data master mahasiswa berhasil diekspor ke format Excel/CSV.');
+    showToast('Data master mahasiswa berhasil diekspor ke format Excel (.xlsx).');
   };
 
-  // Download Template Excel for adding new students
+  // Download Template Excel (.xlsx) for adding new students
   const handleDownloadTemplate = () => {
     const headers = [
       'NIM',
@@ -282,86 +288,117 @@ export default function MasterMahasiswaPage() {
       'Email',
       'No_HP',
       'Prodi',
-      'Kelas',
+      'Angkatan',
       'NIP_Pembimbing_1',
       'NIP_Pembimbing_2',
       'Status'
-    ].join(',');
+    ];
 
-    // Example rows using real advisor NIPs so users have a clear working template.
-    // Kolom No_HP sengaja dikosongkan agar import tidak membawa nomor palsu.
     const sampleRows = [
-      '09010582428099,"RAFFI AHMAD PRATAMA",09010582428099@student.unsri.ac.id,,"D3 Manajemen Informatika","MI 5A",198803052019031010,198303182023212034,aktif',
-      '09010582428100,"NADIA ZAHRA",09010582428100@student.unsri.ac.id,,"D3 Manajemen Informatika","MI 5B",198410012009121005,198710092024211001,aktif',
-      '09010582428101,"DIMAS SETIAWAN",09010582428101@student.unsri.ac.id,,"D3 Manajemen Informatika","MI 5A",,,aktif'
-    ].join('\n');
+      [
+        '09010582428099',
+        'RAFFI AHMAD PRATAMA',
+        '09010582428099@student.unsri.ac.id',
+        '',
+        'D3 Manajemen Informatika',
+        '2024',
+        '198803052019031010',
+        '198303182023212034',
+        'aktif'
+      ],
+      [
+        '09010582428100',
+        'NADIA ZAHRA',
+        '09010582428100@student.unsri.ac.id',
+        '',
+        'D3 Manajemen Informatika',
+        '2024',
+        '198410012009121005',
+        '198710092024211001',
+        'aktif'
+      ],
+      [
+        '09010582428101',
+        'DIMAS SETIAWAN',
+        '09010582428101@student.unsri.ac.id',
+        '',
+        'D3 Manajemen Informatika',
+        '2024',
+        '',
+        '',
+        'aktif'
+      ]
+    ];
 
-    const csvContent = '\uFEFF' + `${headers}\n${sampleRows}`;
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'template_tambah_mahasiswa_baru.csv';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    const colWidths = [
+      18,  // NIM
+      28,  // Nama
+      32,  // Email
+      16,  // No_HP
+      26,  // Prodi
+      12,  // Angkatan
+      22,  // NIP_Pembimbing_1
+      22,  // NIP_Pembimbing_2
+      12   // Status
+    ];
+
+    exportToExcel([headers, ...sampleRows], 'template_tambah_mahasiswa_baru.xlsx', 'Template Mahasiswa', colWidths);
     setIsExportDropdownOpen(false);
-    showToast('Template Excel untuk tambah mahasiswa baru berhasil diunduh.');
+    showToast('Template Excel (.xlsx) untuk tambah mahasiswa baru berhasil diunduh.');
   };
 
-  // Handle Import file upload
-  const handleImportFile = (file) => {
+  // Handle Import file upload (supports .xlsx, .xls, .csv)
+  const handleImportFile = async (file) => {
     setImportError('');
     if (!file) return;
 
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (results) => {
-        if (!results.data || results.data.length === 0) {
-          setImportError('File kosong atau tidak ada data yang bisa dibaca.');
-          return;
-        }
+    try {
+      const rawRows = await parseExcelFile(file);
+      if (!rawRows || rawRows.length === 0) {
+        setImportError('File kosong atau tidak ada data yang bisa dibaca.');
+        return;
+      }
 
-        const normalized = results.data.map(row => {
-          const r = {};
-          Object.keys(row).forEach(k => {
-            r[k.toLowerCase().trim().replace(/[\s-]+/g, '_')] = row[k];
-          });
+      const normalized = rawRows.map(row => {
+        const r = {};
+        Object.keys(row).forEach(k => {
+          r[k.toLowerCase().trim().replace(/[\s-]+/g, '_')] = row[k];
+        });
 
-          const nim = String(r['nim'] || r['student_nim'] || r['nomor_induk'] || '').trim().replace(/^'/, '');
-          const nama = String(r['nama'] || r['nama_mahasiswa'] || r['nama_lengkap'] || '').trim();
-          const email = String(r['email'] || (nim ? `${nim}@student.unsri.ac.id` : '')).trim();
-          const no_hp = String(r['no_hp'] || r['nohp'] || r['telepon'] || r['whatsapp'] || '').trim().replace(/^'/, '');
-          const prodi = String(r['prodi'] || r['program_studi'] || 'D3 Manajemen Informatika').trim();
-          const kelas = String(r['kelas'] || 'MI 5A').trim();
-          const dospem1_nip = String(r['nip_pembimbing_1'] || r['pembimbing_1_nip'] || r['dospem1_nip'] || r['pembimbing_1'] || '').trim().replace(/^'/, '');
-          const dospem2_nip = String(r['nip_pembimbing_2'] || r['pembimbing_2_nip'] || r['dospem2_nip'] || r['pembimbing_2'] || '').trim().replace(/^'/, '');
-          const status = String(r['status'] || 'aktif').trim();
+        const nim = String(r['nim'] || r['student_nim'] || r['nomor_induk'] || '').trim().replace(/^'/, '');
+        const nama = String(r['nama'] || r['nama_mahasiswa'] || r['nama_lengkap'] || '').trim();
+        const email = String(r['email'] || (nim ? `${nim}@student.unsri.ac.id` : '')).trim();
+        const no_hp = String(r['no_hp'] || r['nohp'] || r['telepon'] || r['whatsapp'] || '').trim().replace(/^'/, '');
+        const prodi = String(r['prodi'] || r['program_studi'] || 'D3 Manajemen Informatika').trim();
+        const angkatan = String(r['angkatan'] || r['tahun_angkatan'] || r['kelas'] || '').trim();
+        const dospem1_nip = String(r['nip_pembimbing_1'] || r['pembimbing_1_nip'] || r['dospem1_nip'] || r['pembimbing_1'] || '').trim().replace(/^'/, '');
+        const dospem2_nip = String(r['nip_pembimbing_2'] || r['pembimbing_2_nip'] || r['dospem2_nip'] || r['pembimbing_2'] || '').trim().replace(/^'/, '');
+        const status = String(r['status'] || 'aktif').trim();
 
-          return {
-            nim,
-            nama,
-            email,
-            no_hp,
-            prodi,
-            kelas,
-            dospem1_nip,
-            dospem2_nip,
-            status: status || 'aktif'
-          };
-        }).filter(r => r.nim && r.nama);
+        return {
+          nim,
+          nama,
+          email,
+          no_hp,
+          prodi,
+          angkatan: angkatan || getStudentAngkatan({ nim }),
+          kelas: angkatan || '2024',
+          dospem1_nip,
+          dospem2_nip,
+          status: status || 'aktif'
+        };
+      }).filter(r => r.nim && r.nama);
 
-        if (normalized.length === 0) {
-          setImportError('Tidak ada baris data valid. Pastikan kolom NIM dan Nama Mahasiswa terisi.');
-          return;
-        }
+      if (normalized.length === 0) {
+        setImportError('Tidak ada baris data valid. Pastikan kolom NIM dan Nama Mahasiswa terisi.');
+        return;
+      }
 
-        setImportPreview(normalized);
-      },
-      error: () => setImportError('Gagal membaca file. Pastikan format file .CSV yang valid.')
-    });
+      setImportPreview(normalized);
+    } catch (err) {
+      console.error('Import error:', err);
+      setImportError('Gagal membaca file. Pastikan format file Excel (.xlsx / .xls) atau .CSV yang valid.');
+    }
   };
 
   // Confirm Import
@@ -605,7 +642,7 @@ export default function MasterMahasiswaPage() {
                     <Download className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0 group-hover:scale-110 transition-transform" />
                     <div>
                       <p className="text-xs font-bold text-slate-800">Export Data Mahasiswa</p>
-                      <p className="text-[11px] text-slate-500">Unduh seluruh data terdaftar beserta Dospem 1 &amp; 2 (.csv)</p>
+                      <p className="text-[11px] text-slate-500">Unduh seluruh data terdaftar beserta Dospem 1 &amp; 2 (.xlsx)</p>
                     </div>
                   </button>
 
@@ -617,7 +654,7 @@ export default function MasterMahasiswaPage() {
                     <FileText className="w-4 h-4 text-indigo-600 mt-0.5 shrink-0 group-hover:scale-110 transition-transform" />
                     <div>
                       <p className="text-xs font-bold text-indigo-900">Format Tambah Mahasiswa</p>
-                      <p className="text-[11px] text-indigo-600/80">Template Excel resmi untuk penambahan mahasiswa baru</p>
+                      <p className="text-[11px] text-indigo-600/80">Template Excel resmi untuk penambahan mahasiswa baru (.xlsx)</p>
                     </div>
                   </button>
                 </div>
@@ -1116,8 +1153,8 @@ export default function MasterMahasiswaPage() {
                   <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-slate-900 text-sm">Import Mahasiswa Baru dari Excel / CSV</h3>
-                  <p className="text-[11px] text-slate-500">Upload file CSV atau Excel dengan kolom: NIM, Nama, Email, No_HP, Prodi, Kelas, NIP_Pembimbing_1, NIP_Pembimbing_2</p>
+                  <h3 className="font-extrabold text-slate-900 text-sm">Import Mahasiswa Baru dari Excel</h3>
+                  <p className="text-[11px] text-slate-500">Upload file Excel (.xlsx / .xls) dengan kolom: NIM, Nama, Email, No_HP, Prodi, Angkatan, NIP_Pembimbing_1, NIP_Pembimbing_2</p>
                 </div>
               </div>
               <button
@@ -1135,7 +1172,7 @@ export default function MasterMahasiswaPage() {
               <div className="flex items-center justify-between bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-3">
                 <div className="flex items-center space-x-2">
                   <Download className="w-4 h-4 text-indigo-600 shrink-0" />
-                  <span className="text-xs font-semibold text-indigo-900">Belum memiliki file? Unduh format template Excel untuk tambah mahasiswa baru.</span>
+                  <span className="text-xs font-semibold text-indigo-900">Belum memiliki file? Unduh format template Excel (.xlsx) untuk tambah mahasiswa baru.</span>
                 </div>
                 <button
                   type="button"
@@ -1166,7 +1203,7 @@ export default function MasterMahasiswaPage() {
                 <input
                   ref={importFileRef}
                   type="file"
-                  accept=".csv,.xlsx,.xls"
+                  accept=".xlsx,.xls,.csv"
                   className="hidden"
                   onChange={(e) => { if (e.target.files[0]) handleImportFile(e.target.files[0]); }}
                 />
@@ -1174,7 +1211,7 @@ export default function MasterMahasiswaPage() {
                 <p className="text-sm font-bold text-slate-700">
                   {isDragOver ? 'Lepaskan file di sini' : 'Drag & drop file, atau klik untuk pilih'}
                 </p>
-                <p className="text-xs text-slate-400 mt-1">Mendukung format: .CSV, .XLSX, .XLS</p>
+                <p className="text-xs text-slate-400 mt-1">Mendukung format: Excel (.XLSX, .XLS) atau .CSV</p>
               </div>
 
               {/* Error Message */}

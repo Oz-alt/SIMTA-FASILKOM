@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useAuth, OFFICIAL_DOSEN_HOMEBASE } from '../../context/AuthContext.jsx';
+import { exportToExcel, parseExcelFile } from '../../lib/excelUtils.js';
 import {
   Users,
   UserCheck,
@@ -185,57 +186,51 @@ export default function KelolaDospemPage() {
     }
   };
 
-  // CSV Template Downloader
+  // Excel / CSV Template Downloader
   const downloadCsvTemplate = () => {
-    const csvContent =
-      'data:text/csv;charset=utf-8,' +
-      'NIP,Nama,Email,NoHP,Prodi,Keahlian,KuotaDospem1,KuotaDospem2\n' +
-      '198710092024211001,Willy, S.Kom., M.Kom.,willy@unsri.ac.id,,D3 Manajemen Informatika,"Sistem Informasi, Machine Learning",8,8\n' +
-      '198303182023212034,Iin Seprina, M.Kom.,iinseprina@unsri.ac.id,,D3 Manajemen Informatika,"UI/UX Design, Web Engineering",8,8';
-
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', 'template_pendataan_dospem_simta.csv');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const headers = ['NIP', 'Nama', 'Email', 'NoHP', 'Prodi', 'Keahlian', 'KuotaDospem1', 'KuotaDospem2'];
+    const example = [
+      ['198710092024211001', 'Willy, S.Kom., M.Kom.', 'willy@unsri.ac.id', '', 'D3 Manajemen Informatika', 'Sistem Informasi, Machine Learning', 8, 8],
+      ['198303182023212034', 'Iin Seprina, M.Kom.', 'iinseprina@unsri.ac.id', '', 'D3 Manajemen Informatika', 'UI/UX Design, Web Engineering', 8, 8]
+    ];
+    const colWidths = [22, 28, 24, 16, 26, 32, 14, 14];
+    exportToExcel([headers, ...example], 'template_pendataan_dospem_simta.xlsx', 'Template Dospem', colWidths);
+    showToast('Template Excel (.xlsx) pendataan dosen berhasil diunduh.');
   };
 
-  // Handle File Select for CSV Upload
-  const handleFileUpload = (e) => {
+  // Handle File Select for Excel / CSV Upload
+  const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     setCsvFileName(file.name);
 
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      const text = evt.target.result;
-      setCsvText(text);
+    try {
+      const rawRows = await parseExcelFile(file);
+      if (rawRows.length > 0) {
+        const rows = rawRows.map((r, i) => {
+          const keys = Object.keys(r);
+          const getVal = (pattern) => {
+            const key = keys.find(k => pattern.test(k));
+            return key ? String(r[key] || '').trim() : '';
+          };
 
-      // Simple CSV Parser
-      const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-      if (lines.length > 1) {
-        const rows = [];
-        for (let i = 1; i < lines.length; i++) {
-          const cols = lines[i].split(',').map(c => c.replace(/^"|"$/g, '').trim());
-          if (cols.length >= 2) {
-            rows.push({
-              nip: cols[0] || `1990${i}12345`,
-              nama: cols[1] || 'Dosen Pembimbing',
-              email: cols[2] || '',
-              no_hp: cols[3] || '',
-              prodi: cols[4] || 'D3 Manajemen Informatika',
-              keahlian: cols[5] || 'Sistem Informasi',
-              kuota_dospem1: Number(cols[6]) || 8,
-              kuota_dospem2: Number(cols[7]) || 8
-            });
-          }
-        }
+          return {
+            nip: getVal(/nip/i) || `1990${i}12345`,
+            nama: getVal(/nama/i) || 'Dosen Pembimbing',
+            email: getVal(/email/i) || '',
+            no_hp: getVal(/hp|telepon/i) || '',
+            prodi: getVal(/prodi/i) || 'D3 Manajemen Informatika',
+            keahlian: getVal(/keahlian/i) || 'Sistem Informasi',
+            kuota_dospem1: Number(getVal(/kuota.*1/i)) || 8,
+            kuota_dospem2: Number(getVal(/kuota.*2/i)) || 8,
+            status: 'aktif'
+          };
+        }).filter(r => r.nip && r.nama);
         setParsedCsvRows(rows);
       }
-    };
-    reader.readAsText(file);
+    } catch (err) {
+      console.error('Error parsing file:', err);
+    }
   };
 
   // Confirm Import CSV
@@ -741,15 +736,15 @@ export default function KelolaDospemPage() {
               <div className="border-2 border-dashed border-slate-300 hover:border-emerald-500 rounded-2xl p-6 text-center bg-slate-50/50 transition-colors cursor-pointer relative">
                 <input
                   type="file"
-                  accept=".csv,.txt"
+                  accept=".xlsx,.xls,.csv,.txt"
                   onChange={handleFileUpload}
                   className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
                 />
                 <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" />
                 <p className="text-xs font-bold text-slate-700">
-                  {csvFileName ? `File Terpilih: ${csvFileName}` : 'Klik atau seret file CSV di sini'}
+                  {csvFileName ? `File Terpilih: ${csvFileName}` : 'Klik atau seret file Excel / CSV di sini'}
                 </p>
-                <p className="text-[11px] text-slate-400 mt-1">Format file .csv (pisahkan dengan koma)</p>
+                <p className="text-[11px] text-slate-400 mt-1">Mendukung file Excel (.xlsx, .xls) atau .csv</p>
               </div>
 
               {/* Parsed Preview Table */}
