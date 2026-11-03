@@ -1,96 +1,158 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import StudentWhatsAppLink from '../../Components/common/StudentWhatsAppLink.jsx';
+import { isConsultationEvaluated } from '../../lib/consultationUtils.js';
 import { 
   Clock,
   X,
   Check,
   BarChart2,
   CheckCircle2,
-  AlertTriangle,
-  ChevronDown
+  Search,
+  Lock,
+  Eye
 } from 'lucide-react';
 
 export default function ValidasiJudulDosenPage() {
-  const { currentUser, thesisTitles, studentAdvisors, validateThesisTitleDosen } = useAuth();
-  const [selectedTitle, setSelectedTitle] = useState(null);
-  const [catatanInput, setCatatanInput] = useState('');
-  const [toastMsg, setToastMsg] = useState('');
-  const [expandedStudents, setExpandedStudents] = useState({});
+  const {
+    currentUser,
+    thesisTitles = [],
+    studentAdvisors = [],
+    consultations = [],
+    studentAccounts = [],
+    masterStudents = [],
+    validateThesisTitleDosen
+  } = useAuth();
 
-  const toggleStudent = (nim) => {
-    setExpandedStudents(prev => ({ ...prev, [nim]: !prev[nim] }));
-  };
+  const [toastMsg, setToastMsg] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const MIN_BIMBINGAN = 12;
 
   // Normalize current user identifiers
   const userNip = currentUser?.nip || currentUser?.nim || '';
   const userNama = currentUser?.nama || '';
-
-  // Filter titles where this dosen is proposed as Pembimbing 1 or 2, or assigned
   const cleanNip = String(userNip || '').trim();
   const cleanNama = (userNama || '').split(',')[0].toLowerCase().trim();
 
-  const relevantTitles = thesisTitles.filter(t => {
-    const isProposed1 = (cleanNip && String(t.pembimbing_1_nip || '').trim() === cleanNip) || 
-                        (cleanNama && t.pembimbing_1 && t.pembimbing_1.toLowerCase().includes(cleanNama));
-    const isProposed2 = (cleanNip && String(t.pembimbing_2_nip || '').trim() === cleanNip) || 
-                        (cleanNama && t.pembimbing_2 && t.pembimbing_2.toLowerCase().includes(cleanNama));
-    const isAssigned = studentAdvisors.some(sa => 
-      String(sa.student_nim || '').trim() === String(t.mhs_nim || '').trim() && 
-      ((cleanNip && (String(sa.dospem1_nip || '').trim() === cleanNip || String(sa.dospem2_nip || '').trim() === cleanNip)) ||
-       (cleanNama && ((sa.dospem1_nama && sa.dospem1_nama.toLowerCase().includes(cleanNama)) || (sa.dospem2_nama && sa.dospem2_nama.toLowerCase().includes(cleanNama)))))
+  // Helper ambil Angkatan sesuai profil mahasiswa bersangkutan
+  const getStudentAngkatan = (t) => {
+    const nim = String(t?.mhs_nim || '').trim();
+    const acc = (studentAccounts || []).find(a => String(a.nim || '').trim() === nim);
+    const master = (masterStudents || []).find(m => String(m.nim || '').trim() === nim);
+    return (
+      (t?.mhs_kelas && t.mhs_kelas !== '-' && t.mhs_kelas !== 'MI 2024' ? t.mhs_kelas : '') ||
+      (acc?.kelas && acc.kelas !== '-' ? acc.kelas : '') ||
+      (master?.angkatan ? String(master.angkatan) : '') ||
+      t?.mhs_kelas ||
+      '-'
     );
-    return isProposed1 || isProposed2 || isAssigned;
-  });
+  };
 
-  // Split into pending validation by dosen vs already validated by dosen
-  const pendingValidationTitles = relevantTitles.filter(t => 
-    !t.rekomendasi_dospem_status || t.rekomendasi_dospem_status === 'menunggu_validasi'
-  );
-  const validatedTitles = relevantTitles.filter(t => 
-    t.rekomendasi_dospem_status === 'direkomendasikan' || t.rekomendasi_dospem_status === 'perlu_revisi'
-  );
+  // Filter titles where this dosen is proposed as Pembimbing 1 or 2, or assigned
+  const relevantTitles = useMemo(() => {
+    return (thesisTitles || []).filter(t => {
+      const isProposed1 = (cleanNip && String(t.pembimbing_1_nip || '').trim() === cleanNip) || 
+                          (cleanNama && t.pembimbing_1 && t.pembimbing_1.toLowerCase().includes(cleanNama));
+      const isProposed2 = (cleanNip && String(t.pembimbing_2_nip || '').trim() === cleanNip) || 
+                          (cleanNama && t.pembimbing_2 && t.pembimbing_2.toLowerCase().includes(cleanNama));
+      const isAssigned = (studentAdvisors || []).some(sa => 
+        String(sa.student_nim || '').trim() === String(t.mhs_nim || '').trim() && 
+        ((cleanNip && (String(sa.dospem1_nip || '').trim() === cleanNip || String(sa.dospem2_nip || '').trim() === cleanNip)) ||
+         (cleanNama && ((sa.dospem1_nama && sa.dospem1_nama.toLowerCase().includes(cleanNama)) || (sa.dospem2_nama && sa.dospem2_nama.toLowerCase().includes(cleanNama)))))
+      );
+      return isProposed1 || isProposed2 || isAssigned;
+    });
+  }, [thesisTitles, studentAdvisors, cleanNip, cleanNama]);
+
+  // Enrich setiap baris dengan peran dosen (Pembimbing 1 / 2), progres bimbingan, dan status persetujuan
+  const tableRows = useMemo(() => {
+    return relevantTitles.map(t => {
+      const nim = String(t.mhs_nim || '').trim();
+      const sa = (studentAdvisors || []).find(s => String(s.student_nim || '').trim() === nim);
+
+      const isDospem1 =
+        (cleanNip && (String(t.pembimbing_1_nip || '').trim() === cleanNip || String(sa?.dospem1_nip || '').trim() === cleanNip)) ||
+        (cleanNama && ((t.pembimbing_1 && t.pembimbing_1.toLowerCase().includes(cleanNama)) || (sa?.dospem1_nama && sa.dospem1_nama.toLowerCase().includes(cleanNama))));
+
+      const isDospem2 =
+        !isDospem1 && (
+          (cleanNip && (String(t.pembimbing_2_nip || '').trim() === cleanNip || String(sa?.dospem2_nip || '').trim() === cleanNip)) ||
+          (cleanNama && ((t.pembimbing_2 && t.pembimbing_2.toLowerCase().includes(cleanNama)) || (sa?.dospem2_nama && sa.dospem2_nama.toLowerCase().includes(cleanNama))))
+        );
+
+      // Hitung bimbingan mahasiswa di Pembimbing 1
+      const mhsCons = (consultations || []).filter(c => String(c.mhs_nim || c.nim || '').trim() === nim);
+      const pemb1Cons = mhsCons.filter(c => {
+        const p = String(c.pembimbing || '').toLowerCase().trim();
+        return !p.includes('2');
+      });
+
+      const evaluatedCount = pemb1Cons.filter(c => isConsultationEvaluated(c)).length;
+      const hasDiterimaInLog = pemb1Cons.some(c =>
+        c.status === 'disetujui' || String(c.jenis_revisi || '').toLowerCase().trim() === 'diterima'
+      );
+
+      // Status judul: Disetujui jika sudah direkomendasikan/disetujui Pembimbing 1, selain itu default "Diajukan"
+      const isApproved =
+        t.rekomendasi_dospem_status === 'direkomendasikan' ||
+        t.status === 'disetujui' ||
+        t.status === 'judul_fix';
+
+      // Syarat tombol Disetujui aktif: Hanya untuk Pembimbing 1, bimbingan >= 12x & ada status Diterima di log bimbingan
+      const canApprove = isDospem1 && evaluatedCount >= MIN_BIMBINGAN && hasDiterimaInLog;
+
+      return {
+        ...t,
+        angkatan: getStudentAngkatan(t),
+        isDospem1,
+        isDospem2,
+        roleLabel: isDospem1 ? 'Pembimbing 1' : isDospem2 ? 'Pembimbing 2' : 'Pembimbing 1',
+        evaluatedCount,
+        hasDiterimaInLog,
+        isApproved,
+        statusLabel: isApproved ? 'Disetujui' : 'Diajukan',
+        canApprove
+      };
+    });
+  }, [relevantTitles, studentAdvisors, consultations, studentAccounts, masterStudents, cleanNip, cleanNama]);
+
+  const filteredRows = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return tableRows;
+    return tableRows.filter(r =>
+      (r.mhs_nama || '').toLowerCase().includes(q) ||
+      (r.mhs_nim || '').toLowerCase().includes(q) ||
+      (r.judul || '').toLowerCase().includes(q) ||
+      String(r.angkatan || '').toLowerCase().includes(q)
+    );
+  }, [tableRows, searchQuery]);
 
   // Statistik rekap
-  const totalUsulan = relevantTitles.length;
-  const totalAcc = validatedTitles.filter(t => t.rekomendasi_dospem_status === 'direkomendasikan').length;
-  const totalRevisi = validatedTitles.filter(t => t.rekomendasi_dospem_status === 'perlu_revisi').length;
-  const totalMenunggu = pendingValidationTitles.length;
+  const totalUsulan = tableRows.length;
+  const totalDisetujui = tableRows.filter(t => t.isApproved).length;
+  const totalDiajukan = tableRows.filter(t => !t.isApproved).length;
 
   const pct = (n) => totalUsulan > 0 ? Math.round((n / totalUsulan) * 100) : 0;
 
-  // 1 & 2: Langsung ACC tanpa modal catatan
-  const handleDirectAcc = (title) => {
-    validateThesisTitleDosen(title.id, 'direkomendasikan', '');
-    setToastMsg(`Judul "${title.judul}" berhasil di-ACC.`);
+  // Setujui judul (khusus Pembimbing 1 yang memenuhi syarat)
+  const handleApproveTitle = (row) => {
+    if (!row.canApprove || row.isApproved) return;
+    validateThesisTitleDosen(row.id, 'direkomendasikan', '');
+    setToastMsg(`Judul "${row.judul}" milik ${row.mhs_nama} berhasil disetujui.`);
     setTimeout(() => setToastMsg(''), 4000);
   };
 
-  // 6: Buka modal Catatan
-  const openCatatanModal = (title) => {
-    setSelectedTitle(title);
-    setCatatanInput(title.catatan_dospem || '');
-  };
-
-  const handleSendCatatan = () => {
-    if (!selectedTitle) return;
-    validateThesisTitleDosen(selectedTitle.id, 'perlu_revisi', catatanInput.trim());
-    setToastMsg(`Catatan untuk ${selectedTitle.mhs_nama} berhasil dikirim.`);
-    setSelectedTitle(null);
-    setCatatanInput('');
-    setTimeout(() => setToastMsg(''), 4000);
-  };
-
-  // 4: Helper warna skor kemiripan (hanya persentase)
+  // Helper warna skor kemiripan
   const getSimilarityColor = (score = 0) => {
     const num = Number(score) || 0;
     if (num <= 30) {
-      return { textColor: 'text-emerald-700', barColor: 'bg-emerald-500' };
+      return { textColor: 'text-emerald-700', barColor: 'bg-emerald-500', badgeBg: 'bg-emerald-50 border-emerald-200 text-emerald-700' };
     }
     if (num <= 50) {
-      return { textColor: 'text-amber-700', barColor: 'bg-amber-500' };
+      return { textColor: 'text-amber-700', barColor: 'bg-amber-500', badgeBg: 'bg-amber-50 border-amber-200 text-amber-700' };
     }
-    return { textColor: 'text-rose-700', barColor: 'bg-rose-500' };
+    return { textColor: 'text-rose-700', barColor: 'bg-rose-500', badgeBg: 'bg-rose-50 border-rose-200 text-rose-700' };
   };
 
   return (
@@ -114,12 +176,12 @@ export default function ValidasiJudulDosenPage() {
       <div className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs">
         <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">Validasi Judul Mahasiswa</h1>
         <p className="text-xs sm:text-sm text-slate-500 font-normal mt-1 leading-relaxed">
-          Tinjau dan setujui (ACC) usulan judul tugas akhir mahasiswa bimbingan Anda.
+          Tinjau dan setujui usulan judul tugas akhir mahasiswa bimbingan Anda. Persetujuan judul dibuka bagi Pembimbing 1 setelah mahasiswa menyelesaikan minimal {MIN_BIMBINGAN}x bimbingan dan berstatus Diterima pada log bimbingan.
         </p>
       </div>
 
       {/* Rekap Statistik */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         {/* Total Usulan */}
         <div className="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-xs space-y-3">
           <div className="flex items-center justify-between">
@@ -137,342 +199,226 @@ export default function ValidasiJudulDosenPage() {
           </div>
         </div>
 
-        {/* Sudah ACC */}
-        <div className="bg-white rounded-2xl border border-emerald-200/60 p-4 sm:p-5 shadow-xs space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-emerald-600 uppercase tracking-wider">Sudah ACC</span>
-            <div className="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-            </div>
-          </div>
-          <p className="text-2xl sm:text-3xl font-bold text-emerald-700 tracking-tight">{totalAcc}</p>
-          <div className="space-y-1">
-            <div className="w-full h-1.5 bg-emerald-100 rounded-full overflow-hidden">
-              <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${pct(totalAcc)}%` }} />
-            </div>
-            <p className="text-xs text-emerald-500 font-medium">{pct(totalAcc)}% dari total</p>
-          </div>
-        </div>
-
-        {/* Perlu Revisi */}
-        <div className="bg-white rounded-2xl border border-amber-200/60 p-4 sm:p-5 shadow-xs space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-amber-600 uppercase tracking-wider">Perlu Revisi</span>
-            <div className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
-              <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
-            </div>
-          </div>
-          <p className="text-2xl sm:text-3xl font-bold text-amber-700 tracking-tight">{totalRevisi}</p>
-          <div className="space-y-1">
-            <div className="w-full h-1.5 bg-amber-100 rounded-full overflow-hidden">
-              <div className="h-full bg-amber-500 rounded-full transition-all" style={{ width: `${pct(totalRevisi)}%` }} />
-            </div>
-            <p className="text-xs text-amber-500 font-medium">{pct(totalRevisi)}% dari total</p>
-          </div>
-        </div>
-
-        {/* Menunggu Validasi */}
+        {/* Status Diajukan */}
         <div className="bg-white rounded-2xl border border-blue-200/60 p-4 sm:p-5 shadow-xs space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-blue-600 uppercase tracking-wider">Menunggu</span>
+            <span className="text-xs font-semibold text-blue-600 uppercase tracking-wider">Diajukan</span>
             <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
               <Clock className="w-3.5 h-3.5 text-blue-600" />
             </div>
           </div>
-          <p className="text-2xl sm:text-3xl font-bold text-blue-700 tracking-tight">{totalMenunggu}</p>
+          <p className="text-2xl sm:text-3xl font-bold text-blue-700 tracking-tight">{totalDiajukan}</p>
           <div className="space-y-1">
             <div className="w-full h-1.5 bg-blue-100 rounded-full overflow-hidden">
-              <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${pct(totalMenunggu)}%` }} />
+              <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${pct(totalDiajukan)}%` }} />
             </div>
-            <p className="text-xs text-blue-500 font-medium">{pct(totalMenunggu)}% dari total</p>
+            <p className="text-xs text-blue-500 font-medium">{pct(totalDiajukan)}% dari total</p>
+          </div>
+        </div>
+
+        {/* Sudah Disetujui */}
+        <div className="bg-white rounded-2xl border border-emerald-200/60 p-4 sm:p-5 shadow-xs space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-emerald-600 uppercase tracking-wider">Disetujui</span>
+            <div className="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+            </div>
+          </div>
+          <p className="text-2xl sm:text-3xl font-bold text-emerald-700 tracking-tight">{totalDisetujui}</p>
+          <div className="space-y-1">
+            <div className="w-full h-1.5 bg-emerald-100 rounded-full overflow-hidden">
+              <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${pct(totalDisetujui)}%` }} />
+            </div>
+            <p className="text-xs text-emerald-500 font-medium">{pct(totalDisetujui)}% dari total</p>
           </div>
         </div>
       </div>
 
-      {/* Layout Utama 2 Kolom */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        
-        {/* Kolom Kiri: Antrean Menunggu Validasi — dikelompokkan per mahasiswa */}
-        <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-            <div className="flex items-center space-x-2">
-              <h2 className="text-sm font-bold text-slate-900 tracking-tight">Menunggu Validasi</h2>
-              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                {pendingValidationTitles.length}
-              </span>
-            </div>
-            <div className="flex items-center space-x-1 text-xs text-slate-400 font-medium">
-              <Clock className="w-3.5 h-3.5" />
-              <span>Antrean Dosen</span>
-            </div>
+      {/* Tabel Validasi Judul Mahasiswa */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+        {/* Toolbar Pencarian */}
+        <div className="p-4 sm:p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-bold text-slate-900 tracking-tight">Daftar Usulan Judul Tugas Akhir</h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Status default pengajuan adalah <span className="font-semibold text-slate-700">Diajukan</span>. Hanya Pembimbing 1 yang dapat menyetujui judul setelah syarat bimbingan terpenuhi.
+            </p>
           </div>
+          <div className="relative w-full sm:w-72">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Cari nama, NIM, angkatan, judul..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-normal"
+            />
+          </div>
+        </div>
 
-          {pendingValidationTitles.length === 0 ? (
-            <div className="text-center py-12 px-4 space-y-2">
-              <div className="w-10 h-10 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center mx-auto text-slate-400">
-                <Check className="w-5 h-5 text-emerald-500" />
-              </div>
-              <p className="text-xs font-semibold text-slate-700">Semua usulan telah divalidasi</p>
-              <p className="text-xs text-slate-400 max-w-xs mx-auto font-normal">
-                Tidak ada pengajuan judul baru yang menunggu validasi Anda saat ini.
-              </p>
-            </div>
-          ) : (() => {
-            // Group by mahasiswa NIM
-            const grouped = pendingValidationTitles.reduce((acc, t) => {
-              const key = t.mhs_nim || t.mhs_nama;
-              if (!acc[key]) acc[key] = { info: t, titles: [] };
-              acc[key].titles.push(t);
-              return acc;
-            }, {});
-
-            return (
-              <div className="space-y-4">
-                {Object.values(grouped).map(({ info, titles }) => {
-                  const isDospem1 = (cleanNip && String(info.pembimbing_1_nip || '').trim() === cleanNip) || (cleanNama && info.pembimbing_1 && info.pembimbing_1.toLowerCase().includes(cleanNama));
-                  const isDospem2 = (cleanNip && String(info.pembimbing_2_nip || '').trim() === cleanNip) || (cleanNama && info.pembimbing_2 && info.pembimbing_2.toLowerCase().includes(cleanNama));
-                  const roleLabel = isDospem1 ? 'Pembimbing 1' : isDospem2 ? 'Pembimbing 2' : 'Dosen Pembimbing';
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr className="bg-slate-50/80 border-b border-slate-200/80 font-semibold text-slate-500 uppercase text-[11px] tracking-wider">
+                <th className="py-3.5 px-4">Nama</th>
+                <th className="py-3.5 px-4">NIM</th>
+                <th className="py-3.5 px-4 text-center">Angkatan</th>
+                <th className="py-3.5 px-4">Judul Tugas Akhir</th>
+                <th className="py-3.5 px-4 text-center">Similarity</th>
+                <th className="py-3.5 px-4 text-center">Status</th>
+                <th className="py-3.5 px-4 text-right">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {filteredRows.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-slate-400 text-xs">
+                    Belum ada usulan judul mahasiswa bimbingan yang ditemukan.
+                  </td>
+                </tr>
+              ) : (
+                filteredRows.map((row) => {
+                  const scoreNum = Number(row.skor_kemiripan_terakhir) || 0;
+                  const similarity = getSimilarityColor(scoreNum);
 
                   return (
-                    <div
-                      key={info.mhs_nim}
-                      className="rounded-2xl border border-slate-200/80 bg-white overflow-hidden"
-                    >
-                      {/* Header kartu mahasiswa — klik untuk expand */}
-                      <button
-                        type="button"
-                        onClick={() => toggleStudent(info.mhs_nim)}
-                        className="w-full flex items-start justify-between gap-3 px-4 py-3.5 bg-slate-50/70 hover:bg-slate-100/70 transition-colors text-left cursor-pointer"
-                      >
-                        <div className="min-w-0">
-                          <h3 className="text-sm font-semibold text-slate-900">
-                            {info.mhs_nama}
-                          </h3>
-                          <p className="text-xs text-slate-500 font-normal mt-0.5">
-                            <span className="font-mono font-medium">{info.mhs_nim}</span>
-                            {info.mhs_kelas && <><span className="text-slate-300 mx-1">•</span>{info.mhs_kelas}</>}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span className="text-xs font-semibold px-2.5 py-0.5 rounded-lg bg-white text-slate-600 border border-slate-200/80">
-                            {roleLabel}
-                          </span>
-                          <span className="text-xs font-bold text-blue-600 bg-blue-50 border border-blue-200/60 px-2 py-0.5 rounded-lg">
-                            {titles.length} usulan
-                          </span>
-                          <ChevronDown
-                            className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${
-                              expandedStudents[info.mhs_nim] ? 'rotate-180' : ''
-                            }`}
-                          />
-                        </div>
-                      </button>
-
-                      {/* List judul — hanya tampil saat di-expand */}
-                      {expandedStudents[info.mhs_nim] && (
-                        <div className="divide-y divide-slate-100 border-t border-slate-200/60">
-                        {titles.map((t, idx) => {
-                          const similarity = getSimilarityColor(t.skor_kemiripan_terakhir);
-                          const scoreNum = Number(t.skor_kemiripan_terakhir) || 0;
-
-                          return (
-                            <div key={t.id} className="px-4 py-3.5 space-y-2.5">
-                              {/* Nomor + Judul */}
-                              <div className="flex items-start gap-2.5">
-                                <span className="mt-0.5 shrink-0 w-5 h-5 rounded-md bg-slate-100 text-slate-500 text-[10px] font-bold flex items-center justify-center">
-                                  {idx + 1}
-                                </span>
-                                <div className="min-w-0 flex-1 space-y-1">
-                                  <p className="text-xs sm:text-sm font-semibold text-slate-800 leading-snug">
-                                    {t.judul}
-                                  </p>
-                                  {t.deskripsi && (
-                                    <p className="text-xs text-slate-500 line-clamp-1 leading-relaxed font-normal">
-                                      {t.deskripsi}
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
-
-                              {/* Footer: Skor + Tombol */}
-                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pl-7">
-                                <div className="space-y-1 flex-1 sm:max-w-xs">
-                                  <div className="flex items-center justify-between text-xs">
-                                    <span className="text-slate-400 font-medium">Skor Kemiripan</span>
-                                    <span className={`font-bold ${similarity.textColor}`}>{scoreNum}%</span>
-                                  </div>
-                                  <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                    <div
-                                      className={`h-full rounded-full transition-all ${similarity.barColor}`}
-                                      style={{ width: `${Math.min(100, Math.max(4, scoreNum))}%` }}
-                                    />
-                                  </div>
-                                </div>
-                                <div className="flex items-center space-x-2 shrink-0">
-                                  <button
-                                    type="button"
-                                    onClick={() => openCatatanModal(t)}
-                                    className="px-3.5 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs transition-colors cursor-pointer"
-                                  >
-                                    Catatan
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDirectAcc(t)}
-                                    className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs transition-colors shadow-xs cursor-pointer"
-                                  >
-                                    ACC
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })()}
-        </div>
-
-
-        {/* Kolom Kanan: Riwayat Validasi Dosen */}
-        <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-            <div className="flex items-center space-x-2">
-              <h2 className="text-sm font-bold text-slate-900 tracking-tight">Riwayat Validasi</h2>
-              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                {validatedTitles.length}
-              </span>
-            </div>
-            <span className="text-xs text-slate-400 font-medium">Telah Divalidasi</span>
-          </div>
-
-          {validatedTitles.length === 0 ? (
-            <div className="text-center py-12 px-4 space-y-1">
-              <p className="text-xs font-medium text-slate-400">Belum ada judul yang divalidasi.</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-slate-100">
-              {validatedTitles.map(t => {
-                const isAcc = t.rekomendasi_dospem_status === 'direkomendasikan' || t.status === 'disetujui';
-
-                return (
-                  <div key={t.id} className="py-3.5 first:pt-0 last:pb-0 space-y-1.5">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <div className="block truncate">
+                    <tr key={row.id} className="hover:bg-slate-50/70 transition-colors align-middle">
+                      {/* Nama Mahasiswa & Peran Dosen */}
+                      <td className="py-3.5 px-4">
+                        <div className="font-semibold text-slate-900 text-xs sm:text-sm">
                           <StudentWhatsAppLink
-                            nim={t.mhs_nim}
-                            nama={t.mhs_nama}
-                            className="text-xs sm:text-sm font-semibold text-slate-900 hover:text-emerald-700"
+                            nim={row.mhs_nim}
+                            nama={row.mhs_nama}
+                            className="text-slate-900 font-semibold hover:text-emerald-700"
                             showIcon={false}
                           >
-                            {t.mhs_nama}
+                            {row.mhs_nama}
                           </StudentWhatsAppLink>
                         </div>
-                        <span className="text-xs font-mono text-slate-400 font-medium">{t.mhs_nim}</span>
-                      </div>
-
-                      {/* 3: Tanda bulat di samping rekomendasi dihilangkan, 1: status ACC */}
-                      {isAcc ? (
-                        <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-2.5 py-0.5 rounded-md shrink-0">
-                          ACC
+                        <span className={`inline-block mt-1 text-[10px] font-semibold px-2 py-0.5 rounded-md border ${
+                          row.isDospem1
+                            ? 'bg-indigo-50 text-indigo-700 border-indigo-200/70'
+                            : 'bg-slate-100 text-slate-600 border-slate-200'
+                        }`}>
+                          {row.roleLabel}
                         </span>
-                      ) : (
-                        <span className="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200/60 px-2.5 py-0.5 rounded-md shrink-0">
-                          Revisi
-                        </span>
-                      )}
-                    </div>
+                      </td>
 
-                    <p className="text-xs text-slate-700 font-medium leading-relaxed line-clamp-2" title={t.judul}>
-                      {t.judul}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                      {/* NIM */}
+                      <td className="py-3.5 px-4 font-mono font-medium text-slate-600 whitespace-nowrap">
+                        {row.mhs_nim}
+                      </td>
+
+                      {/* Angkatan */}
+                      <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                        <span className="inline-block px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-semibold text-xs border border-slate-200/80">
+                          {row.angkatan}
+                        </span>
+                      </td>
+
+                      {/* Judul Tugas Akhir */}
+                      <td className="py-3.5 px-4 max-w-md">
+                        <p className="text-xs sm:text-sm font-semibold text-slate-800 leading-snug">
+                          {row.judul}
+                        </p>
+                        {row.deskripsi && (
+                          <p className="text-xs text-slate-500 line-clamp-1 mt-0.5 font-normal">
+                            {row.deskripsi}
+                          </p>
+                        )}
+                      </td>
+
+                      {/* Similarity */}
+                      <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                        <div className="inline-flex flex-col items-center space-y-1 min-w-[72px]">
+                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${similarity.badgeBg}`}>
+                            {scoreNum}%
+                          </span>
+                          <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full ${similarity.barColor}`}
+                              style={{ width: `${Math.min(100, Math.max(6, scoreNum))}%` }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Status (Default: Diajukan | Setelah disetujui Pembimbing 1: Disetujui) */}
+                      <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                        {row.isApproved ? (
+                          <span className="inline-flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Disetujui</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                            <Clock className="w-3.5 h-3.5 text-amber-600" />
+                            <span>Diajukan</span>
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Aksi: Button Disetujui (Khusus Pembimbing 1) atau Read-Only (Pembimbing 2) */}
+                      <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                        {row.isDospem2 ? (
+                          <div className="inline-flex flex-col items-end">
+                            <span
+                              className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-100 text-slate-600 border border-slate-200 text-xs font-medium"
+                              title="Sebagai Pembimbing 2, Anda hanya dapat melihat status persetujuan dari Pembimbing 1"
+                            >
+                              <Eye className="w-3.5 h-3.5 text-slate-400" />
+                              <span>{row.isApproved ? 'Disetujui Pembimbing 1' : 'Menunggu Pembimbing 1'}</span>
+                            </span>
+                          </div>
+                        ) : row.isApproved ? (
+                          <button
+                            type="button"
+                            disabled
+                            className="inline-flex items-center space-x-1.5 px-4 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold text-xs cursor-default"
+                          >
+                            <Check className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Disetujui</span>
+                          </button>
+                        ) : (
+                          <div className="inline-flex flex-col items-end space-y-1">
+                            <button
+                              type="button"
+                              onClick={() => handleApproveTitle(row)}
+                              disabled={!row.canApprove}
+                              title={
+                                row.canApprove
+                                  ? 'Klik untuk menyetujui judul Tugas Akhir mahasiswa'
+                                  : `Syarat belum terpenuhi: Bimbingan Pembimbing 1 (${row.evaluatedCount}/${MIN_BIMBINGAN}) & status Diterima di log bimbingan (${row.hasDiterimaInLog ? 'Sudah' : 'Belum'})`
+                              }
+                              className={`inline-flex items-center space-x-1.5 px-4 py-1.5 rounded-xl font-semibold text-xs transition-all ${
+                                row.canApprove
+                                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs cursor-pointer'
+                                  : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
+                              }`}
+                            >
+                              {row.canApprove ? (
+                                <Check className="w-3.5 h-3.5" />
+                              ) : (
+                                <Lock className="w-3 h-3 text-slate-400" />
+                              )}
+                              <span>Disetujui</span>
+                            </button>
+                            {!row.canApprove && (
+                              <span className="text-[10px] text-slate-400 font-medium">
+                                Bimbingan: {row.evaluatedCount}/{MIN_BIMBINGAN} {row.hasDiterimaInLog ? '• ACC Log ✓' : '• Belum ACC Log'}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
-
       </div>
-
-      {/* Modal Khusus Catatan Mahasiswa (6: Cukup Catatan) */}
-      {selectedTitle && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in" data-lenis-prevent>
-          <div className="bg-white rounded-2xl max-w-lg w-full border border-slate-200 shadow-xl p-5 sm:p-6 space-y-4">
-            
-            <div className="flex items-start justify-between pb-3 border-b border-slate-100">
-              <div>
-                <h3 className="text-base font-bold text-slate-900 tracking-tight">Catatan untuk Mahasiswa</h3>
-                <div className="text-xs text-slate-500 mt-0.5 flex items-center space-x-1 font-normal">
-                  <StudentWhatsAppLink
-                    nim={selectedTitle.mhs_nim}
-                    nama={selectedTitle.mhs_nama}
-                    className="text-slate-600 hover:text-emerald-700 font-medium"
-                    showIcon={false}
-                  >
-                    {selectedTitle.mhs_nama}
-                  </StudentWhatsAppLink>
-                  <span>•</span>
-                  <span className="font-mono">{selectedTitle.mhs_nim}</span>
-                </div>
-              </div>
-              <button 
-                type="button"
-                onClick={() => setSelectedTitle(null)} 
-                className="text-slate-400 hover:text-slate-600 rounded-lg p-1 transition-colors cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="space-y-1">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 block">Judul Usulan</span>
-              <p className="text-xs sm:text-sm font-semibold text-slate-800 bg-slate-50 p-3 rounded-xl border border-slate-200/80 leading-snug">
-                {selectedTitle.judul}
-              </p>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-slate-700">
-                Catatan Revisi:
-              </label>
-              <textarea
-                rows={3}
-                value={catatanInput}
-                onChange={(e) => setCatatanInput(e.target.value)}
-                placeholder="Tuliskan catatan revisi untuk mahasiswa..."
-                className="w-full text-xs sm:text-sm p-3.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-800 placeholder:text-slate-400 leading-relaxed font-normal"
-                autoFocus
-              />
-            </div>
-
-            <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setSelectedTitle(null)}
-                className="px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs rounded-xl border border-slate-200 transition-colors cursor-pointer"
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                onClick={handleSendCatatan}
-                disabled={!catatanInput.trim()}
-                className="px-4 py-2 font-semibold text-xs rounded-xl bg-amber-600 hover:bg-amber-700 text-white shadow-xs transition-colors cursor-pointer disabled:opacity-50"
-              >
-                Kirim Catatan
-              </button>
-            </div>
-
-          </div>
-        </div>
-      )}
 
     </div>
   );
