@@ -10,9 +10,6 @@ import {
   Trash2, 
   X, 
   CheckCircle2, 
-  Mail, 
-  Phone, 
-  BookOpen, 
   Users,
   Building2,
   RefreshCw,
@@ -27,7 +24,7 @@ import {
   ChevronRight,
   FileText
 } from 'lucide-react';
-import { getStudentSemester, getStudentAngkatan } from '../../lib/academicUtils.js';
+import { getStudentAngkatan } from '../../lib/academicUtils.js';
 
 export default function MasterMahasiswaPage() {
   const { 
@@ -224,54 +221,33 @@ export default function MasterMahasiswaPage() {
   // Export All / Filtered Students to Excel (.xlsx)
   const handleExportDataExcel = () => {
     const headers = [
-      'No',
       'NIM',
-      'Nama Mahasiswa',
-      'Email',
-      'No HP',
-      'Program Studi',
+      'Nama',
       'Angkatan',
-      'Semester',
-      'Pembimbing 1 (Nama)',
-      'Pembimbing 1 (NIP)',
-      'Pembimbing 2 (Nama)',
-      'Pembimbing 2 (NIP)',
-      'Status Mahasiswa'
+      'Pembimbing 1',
+      'Pembimbing 2',
+      'Status'
     ];
 
-    const rows = filteredStudents.map((std, idx) => {
+    const rows = filteredStudents.map((std) => {
       const advs = getStudentAdvisors(std);
       return [
-        idx + 1,
         String(std.nim || '').trim(),
         String(std.nama || '').trim(),
-        String(std.email || '-').trim(),
-        String(std.no_hp || '-').trim(),
-        String(std.prodi || 'D3 Manajemen Informatika').trim(),
         String(getStudentAngkatan(std)),
-        String(getStudentSemester(std)),
-        String(advs.dospem1.nama || '-').trim(),
-        String(advs.dospem1.nip || '-').trim(),
-        String(advs.dospem2.nama || '-').trim(),
-        String(advs.dospem2.nip || '-').trim(),
+        String(advs.dospem1.nama || advs.dospem1.nip || '-').trim(),
+        String(advs.dospem2.nama || advs.dospem2.nip || '-').trim(),
         String(std.status || 'aktif').trim()
       ];
     });
 
     const colWidths = [
-      6,   // No
       18,  // NIM
-      30,  // Nama Mahasiswa
-      32,  // Email
-      16,  // No HP
-      26,  // Program Studi
+      28,  // Nama
       12,  // Angkatan
-      14,  // Semester
-      32,  // Pembimbing 1 (Nama)
-      22,  // Pembimbing 1 (NIP)
-      32,  // Pembimbing 2 (Nama)
-      22,  // Pembimbing 2 (NIP)
-      16   // Status Mahasiswa
+      26,  // Pembimbing 1
+      26,  // Pembimbing 2
+      12   // Status
     ];
 
     const fileName = `data_mahasiswa_simta_${new Date().toISOString().slice(0, 10)}.xlsx`;
@@ -583,7 +559,7 @@ export default function MasterMahasiswaPage() {
               <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input 
                 type="text"
-                placeholder="Cari NIM, Nama Mahasiswa, Email, No HP..."
+                placeholder="Cari NIM, Nama Mahasiswa, Angkatan..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all font-medium"
@@ -701,11 +677,11 @@ export default function MasterMahasiswaPage() {
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-extrabold uppercase tracking-wider text-[11px]">
                 <th className="py-3 px-3 whitespace-nowrap w-[130px]">NIM</th>
-                <th className="py-3 px-3 min-w-[130px]">Nama Mahasiswa</th>
-                <th className="py-3 px-3 max-w-[150px]">Kontak / Email</th>
-                <th className="py-3 px-3 max-w-[140px]">Prodi &amp; Angkatan</th>
-                <th className="py-3 px-3 min-w-[170px]">Dosen Pembimbing</th>
-                <th className="py-3 px-3 w-24 text-center">Status</th>
+                <th className="py-3 px-3 min-w-[150px]">Nama Mahasiswa</th>
+                <th className="py-3 px-3 w-[110px] text-center">Angkatan</th>
+                <th className="py-3 px-3 min-w-[170px]">Pembimbing 1</th>
+                <th className="py-3 px-3 min-w-[170px]">Pembimbing 2</th>
+                <th className="py-3 px-3 w-28 text-center">Status</th>
                 <th className="py-3 px-3 w-20 text-center">Aksi</th>
               </tr>
             </thead>
@@ -727,80 +703,46 @@ export default function MasterMahasiswaPage() {
                         </p>
                       </td>
 
-                      {/* Kontak / Email */}
-                      <td className="py-3 px-3 space-y-0.5">
-                        <div className="flex items-center space-x-1.5 text-slate-600" title={std.email}>
-                          <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <span className="truncate max-w-[130px] text-[11px]">{std.email || '-'}</span>
-                        </div>
-                        {std.no_hp && (
-                          <div className="flex items-center space-x-1.5 text-slate-500 text-[11px]">
-                            <Phone className="w-3 h-3 text-slate-400 shrink-0" />
-                            <span>{std.no_hp}</span>
+                      {/* Angkatan */}
+                      <td className="py-3 px-3 text-center whitespace-nowrap">
+                        <span className="inline-block px-2.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700 text-[11px] font-bold border border-indigo-200/60">
+                          {getStudentAngkatan(std)}
+                        </span>
+                      </td>
+
+                      {/* Pembimbing 1 */}
+                      <td className="py-3 px-3">
+                        {advisorsData.dospem1.nama ? (
+                          <div>
+                            <p className="font-bold text-slate-900 text-xs truncate max-w-[180px] xl:max-w-[220px]" title={advisorsData.dospem1.nama}>
+                              {advisorsData.dospem1.nama}
+                            </p>
+                            {advisorsData.dospem1.nip && (
+                              <p className="text-[10px] text-slate-400 font-mono mt-0.5">
+                                NIP. {advisorsData.dospem1.nip}
+                              </p>
+                            )}
                           </div>
+                        ) : (
+                          <span className="text-slate-400 font-normal italic text-[11px]">-</span>
                         )}
                       </td>
 
-                      {/* Prodi & Angkatan / Kelas */}
-                      <td className="py-3 px-3 space-y-0.5">
-                        <div className="flex items-center space-x-1.5 font-semibold text-slate-800" title={std.prodi || 'D3 Manajemen Informatika'}>
-                          <BookOpen className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-                          <span className="truncate max-w-[120px] text-[11px]">{std.prodi || 'D3 Manajemen Informatika'}</span>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-1">
-                          <span className="inline-block px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700 text-[10px] font-bold border border-indigo-200/60">
-                            Angkatan {getStudentAngkatan(std)}
-                          </span>
-                          {std.kelas && !std.kelas.includes(getStudentAngkatan(std)) && (
-                            <span className="inline-block px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[10px] font-medium">
-                              {std.kelas}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-
-                      {/* Dosen Pembimbing (1 & 2 dalam satu kolom) */}
+                      {/* Pembimbing 2 */}
                       <td className="py-3 px-3">
-                        {(!advisorsData.dospem1.nama && !advisorsData.dospem2.nama) ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium text-slate-400 bg-slate-50 border border-slate-200">
-                            Belum Ditetapkan
-                          </span>
-                        ) : (
-                          <div className="space-y-1">
-                            {/* Pembimbing 1 */}
-                            <div>
-                              <div className="flex items-center space-x-1.5 min-w-0">
-                                <span className="w-3.5 h-3.5 rounded bg-indigo-50 text-indigo-700 font-black text-[9px] flex items-center justify-center shrink-0 border border-indigo-200">
-                                  1
-                                </span>
-                                <span className="font-bold text-slate-900 text-xs truncate max-w-[160px] xl:max-w-[200px]" title={advisorsData.dospem1.nama || 'Belum Ditentukan'}>
-                                  {advisorsData.dospem1.nama || <span className="text-slate-400 font-normal italic text-[11px]">Belum Ditentukan</span>}
-                                </span>
-                              </div>
-                              {advisorsData.dospem1.nip && (
-                                <p className="text-[10px] text-slate-400 font-mono pl-5">
-                                  NIP. {advisorsData.dospem1.nip}
-                                </p>
-                              )}
-                            </div>
-
-                            {/* Pembimbing 2 */}
-                            <div>
-                              <div className="flex items-center space-x-1.5 min-w-0">
-                                <span className="w-3.5 h-3.5 rounded bg-blue-50 text-blue-700 font-black text-[9px] flex items-center justify-center shrink-0 border border-blue-200">
-                                  2
-                                </span>
-                                <span className="font-bold text-slate-900 text-xs truncate max-w-[160px] xl:max-w-[200px]" title={advisorsData.dospem2.nama || 'Belum Ditentukan'}>
-                                  {advisorsData.dospem2.nama || <span className="text-slate-400 font-normal italic text-[11px]">Belum Ditentukan</span>}
-                                </span>
-                              </div>
-                              {advisorsData.dospem2.nip && (
-                                <p className="text-[10px] text-slate-400 font-mono pl-5">
-                                  NIP. {advisorsData.dospem2.nip}
-                                </p>
-                              )}
-                            </div>
+                        {advisorsData.dospem2.nama ? (
+                          <div>
+                            <p className="font-bold text-slate-900 text-xs truncate max-w-[180px] xl:max-w-[220px]" title={advisorsData.dospem2.nama}>
+                              {advisorsData.dospem2.nama}
+                            </p>
+                            {advisorsData.dospem2.nip && (
+                              <p className="text-[10px] text-slate-400 font-mono mt-0.5">
+                                NIP. {advisorsData.dospem2.nip}
+                              </p>
+                            )}
                           </div>
+                        ) : (
+                          <span className="text-slate-400 font-normal italic text-[11px]">-</span>
                         )}
                       </td>
 
@@ -829,7 +771,7 @@ export default function MasterMahasiswaPage() {
                             : 'bg-rose-500';
 
                           return (
-                            <span className={`inline-flex items-center space-x-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold border ${badgeColor}`}>
+                            <span className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border ${badgeColor}`}>
                               <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
                               <span className="capitalize">{std.status || 'Aktif'}</span>
                             </span>
@@ -865,7 +807,7 @@ export default function MasterMahasiswaPage() {
                 <tr>
                   <td colSpan="7" className="py-12 text-center text-slate-500">
                     <p className="text-sm font-semibold">Tidak ada data mahasiswa ditemukan.</p>
-                    <p className="text-xs text-slate-400 mt-1">Coba sesuaikan kata kunci pencarian atau filter kelas.</p>
+                    <p className="text-xs text-slate-400 mt-1">Coba sesuaikan kata kunci pencarian atau filter angkatan.</p>
                   </td>
                 </tr>
               )}
