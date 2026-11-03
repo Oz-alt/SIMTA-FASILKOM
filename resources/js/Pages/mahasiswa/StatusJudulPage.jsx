@@ -240,9 +240,9 @@ export default function StatusJudulPage() {
           {/* Full Detail Sheet Container */}
           {(() => {
             const t = selectedTitle;
-            const isFix = t.status === 'disetujui' || t.status === 'judul_fix';
-            const isRevisi = t.status === 'perlu_revisi';
-            const isTinjauan = t.status === 'tinjauan' || t.status === 'diajukan';
+            const isFix = t.status === 'disetujui' || t.status === 'judul_fix' || t.rekomendasi_dospem_status === 'direkomendasikan';
+            const isRevisi = false;
+            const isTinjauan = !isFix;
 
             return (
               <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 shadow-xs space-y-6">

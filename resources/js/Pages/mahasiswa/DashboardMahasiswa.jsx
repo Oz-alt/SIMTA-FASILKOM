@@ -321,14 +321,14 @@ export default function DashboardMahasiswa() {
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Judul TA Terdaftar</span>
             {myTitle ? (
-              <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full capitalize border ${
-                myTitle.status === 'disetujui' || myTitle.status === 'judul_fix'
+              <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${
+                myTitle.status === 'disetujui' || myTitle.status === 'judul_fix' || myTitle.rekomendasi_dospem_status === 'direkomendasikan'
                   ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                  : myTitle.status === 'perlu_revisi'
-                  ? 'bg-rose-100 text-rose-800 border-rose-300'
                   : 'bg-amber-100 text-amber-800 border-amber-300'
               }`}>
-                {myTitle.status === 'tinjauan' || myTitle.status === 'diajukan' ? 'Dalam Tinjauan' : myTitle.status || 'Diajukan'}
+                {myTitle.status === 'disetujui' || myTitle.status === 'judul_fix' || myTitle.rekomendasi_dospem_status === 'direkomendasikan'
+                  ? 'Disetujui'
+                  : 'Diajukan'}
               </span>
             ) : (
               <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">

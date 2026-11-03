@@ -55,40 +55,31 @@ export default function StatusBadge({
     );
   }
 
-  // 2. Thesis Submission Status (Judul Fix, Perlu Revisi, Dalam Tinjauan)
+  // 2. Thesis Submission Status (Disetujui vs Diajukan)
   if (type === 'thesis') {
     if (normStatus === 'disetujui' || normStatus === 'approved' || normStatus === 'judul_fix' || normStatus === 'fix') {
       return (
         <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-semibold tracking-tight shadow-xs whitespace-nowrap ${className}`}>
           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-          <span>Judul Fix</span>
+          <span>Disetujui</span>
         </span>
       );
     }
 
-    if (normStatus === 'perlu_revisi' || normStatus === 'revisi') {
+    if (
+      normStatus === 'diajukan' ||
+      normStatus === 'tinjauan' ||
+      normStatus === 'dalam_tinjauan' ||
+      normStatus === 'pending' ||
+      normStatus === 'perlu_revisi' ||
+      normStatus === 'revisi' ||
+      normStatus === 'ditolak' ||
+      normStatus === 'rejected'
+    ) {
       return (
-        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-300 text-[11px] font-semibold tracking-tight shadow-xs whitespace-nowrap ${className}`}>
-          <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-          <span>Perlu Revisi</span>
-        </span>
-      );
-    }
-
-    if (normStatus === 'diajukan' || normStatus === 'tinjauan' || normStatus === 'dalam_tinjauan' || normStatus === 'pending') {
-      return (
-        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-yellow-50 text-yellow-800 border border-yellow-300 text-[11px] font-semibold tracking-tight shadow-xs whitespace-nowrap ${className}`}>
-          <Clock className="w-3.5 h-3.5 text-yellow-600 shrink-0" />
-          <span>Dalam Tinjauan</span>
-        </span>
-      );
-    }
-
-    if (normStatus === 'ditolak' || normStatus === 'rejected') {
-      return (
-        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-300 text-[11px] font-semibold tracking-tight shadow-xs whitespace-nowrap ${className}`}>
-          <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-          <span>Perlu Revisi</span>
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[11px] font-semibold tracking-tight shadow-xs whitespace-nowrap ${className}`}>
+          <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+          <span>Diajukan</span>
         </span>
       );
     }

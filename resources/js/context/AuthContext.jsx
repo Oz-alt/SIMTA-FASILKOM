@@ -140,7 +140,7 @@ const normalizeThesisTitleRecord = (row) => {
     deskripsi: row.deskripsi || '',
     abstrak: row.abstrak || row.deskripsi || '',
     judul_processed: row.judul_processed || '',
-    status: row.status || 'tinjauan',
+    status: (row.status === 'disetujui' || row.status === 'judul_fix' || row.rekomendasi_dospem_status === 'direkomendasikan') ? 'disetujui' : 'diajukan',
     skor_kemiripan_terakhir: Number(score) || 0,
     mhs_nim: row.mhs_nim || '',
     mhs_nama: cred?.nama || row.mhs_nama || '',
@@ -154,9 +154,9 @@ const normalizeThesisTitleRecord = (row) => {
     pembimbing_1: d1Nama,
     pembimbing_2: d2Nama,
     dospem_confirmed: Boolean(row.dospem_confirmed),
-    catatan_kaprodi: row.catatan_kaprodi || '',
-    catatan_dospem: row.catatan_dospem || '',
-    rekomendasi_dospem_status: row.rekomendasi_dospem_status || 'menunggu_validasi',
+    catatan_kaprodi: '',
+    catatan_dospem: '',
+    rekomendasi_dospem_status: row.rekomendasi_dospem_status === 'direkomendasikan' ? 'direkomendasikan' : 'menunggu_validasi',
     riwayat_revisi: Array.isArray(row.riwayat_revisi) ? row.riwayat_revisi : [],
     status_kelulusan: row.status_kelulusan || 'aktif_proses',
     status_sidang: row.status_sidang || 'bimbingan',
@@ -1099,7 +1099,7 @@ export function AuthProvider({ children }) {
             const idStr = String(item.id || '');
             const isMockId = idStr.startsWith('title-10') || idStr.startsWith('mock-');
             return !isMockId && !item.is_mock;
-          });
+          }).map(normalizeThesisTitleRecord);
           return realOnly;
         }
       }
