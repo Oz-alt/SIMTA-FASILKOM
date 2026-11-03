@@ -72,7 +72,7 @@ export default function ProfilePage() {
 
   // Resolusi jabatan fungsional: Sumber kebenaran utama adalah yang diset Kaprodi / Admin di Data Master Dosen
   const resolvedJabatan = useMemo(() => {
-    if (isMahasiswa) return currentUser?.kelas || 'MI 5A';
+    if (isMahasiswa) return currentUser?.kelas || 'MI 2024';
     if (matchedAdvisor?.jabatan_fungsional && matchedAdvisor.jabatan_fungsional !== 'Dosen Pembimbing') {
       return matchedAdvisor.jabatan_fungsional;
     }
@@ -100,7 +100,7 @@ export default function ProfilePage() {
     nama: currentUser?.nama || '',
     no_hp: currentUser?.no_hp && currentUser?.no_hp !== '-' ? currentUser.no_hp : '',
     prodi: currentUser?.prodi || 'D3 Manajemen Informatika',
-    kelas: isMahasiswa ? (currentUser?.kelas || 'MI 5A') : resolvedJabatan,
+    kelas: isMahasiswa ? (currentUser?.kelas || 'MI 2024') : resolvedJabatan,
     jabatan_fungsional: resolvedJabatan,
     keilmuan: resolvedKeilmuan
   });
@@ -135,7 +135,7 @@ export default function ProfilePage() {
         nama: currentUser.nama || '',
         no_hp: currentUser.no_hp && currentUser.no_hp !== '-' ? currentUser.no_hp : '',
         prodi: currentUser.prodi || 'D3 Manajemen Informatika',
-        kelas: isMahasiswa ? (currentUser.kelas || 'MI 5A') : resolvedJabatan,
+        kelas: isMahasiswa ? (currentUser.kelas || 'MI 2024') : resolvedJabatan,
         jabatan_fungsional: resolvedJabatan,
         keilmuan: resolvedKeilmuan
       });
@@ -161,7 +161,7 @@ export default function ProfilePage() {
       nama: currentUser?.nama || '',
       no_hp: currentUser?.no_hp && currentUser?.no_hp !== '-' ? currentUser.no_hp : '',
       prodi: currentUser?.prodi || 'D3 Manajemen Informatika',
-      kelas: isMahasiswa ? (currentUser?.kelas || 'MI 5A') : resolvedJabatan,
+      kelas: isMahasiswa ? (currentUser?.kelas || 'MI 2024') : resolvedJabatan,
       jabatan_fungsional: resolvedJabatan,
       keilmuan: resolvedKeilmuan
     });
@@ -197,7 +197,7 @@ export default function ProfilePage() {
         return;
       }
       if (!formData.kelas.trim()) {
-        setErrorMsg('Kelas mahasiswa wajib diisi (contoh: MI 5A).');
+        setErrorMsg('Angkatan mahasiswa wajib diisi (contoh: MI 2024).');
         return;
       }
 
@@ -439,7 +439,7 @@ export default function ProfilePage() {
                 </span>
               </div>
               <p className="text-xs text-amber-900/90 leading-relaxed">
-                Halo <strong>{currentUser?.nama}</strong>, akun Anda saat ini terdeteksi masih menggunakan kredensial bawaan (kata sandi default NIM). Demi keamanan data akademik dan privasi proses bimbingan Tugas Akhir Anda di SIMTA, Anda diwajibkan melengkapi nomor WhatsApp aktif, kelas, serta membuat <strong>kata sandi baru</strong> Anda.
+                Halo <strong>{currentUser?.nama}</strong>, akun Anda saat ini terdeteksi masih menggunakan kredensial bawaan (kata sandi default NIM). Demi keamanan data akademik dan privasi proses bimbingan Tugas Akhir Anda di SIMTA, Anda diwajibkan melengkapi nomor WhatsApp aktif, angkatan mahasiswa, serta membuat <strong>kata sandi baru</strong> Anda.
               </p>
             </div>
           </div>
@@ -701,10 +701,10 @@ export default function ProfilePage() {
               )}
             </div>
 
-            {/* 6. Kelas Mahasiswa / Jabatan Fungsional */}
+            {/* 6. Angkatan Mahasiswa / Jabatan Fungsional */}
             <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 space-y-1.5">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                {isMahasiswa ? 'Kelas Mahasiswa' : 'Jabatan Fungsional'}
+                {isMahasiswa ? 'Angkatan Mahasiswa' : 'Jabatan Fungsional'}
               </span>
               {isEditing ? (
                 isMahasiswa ? (
@@ -715,7 +715,7 @@ export default function ProfilePage() {
                       value={formData.kelas}
                       onChange={handleChange}
                       className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 text-xs font-semibold text-slate-900 bg-white transition-all outline-none"
-                      placeholder="Contoh: MI 5A, TI 3B"
+                      placeholder="Contoh: MI 2024"
                     />
                     <GraduationCap className="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
                   </div>
@@ -739,7 +739,7 @@ export default function ProfilePage() {
                 <div className="flex items-center space-x-2 text-slate-900 font-semibold pt-0.5">
                   <GraduationCap className="w-4 h-4 text-slate-400" />
                   <span>
-                    {isMahasiswa ? (currentUser?.kelas || 'MI 5A') : resolvedJabatan}
+                    {isMahasiswa ? (currentUser?.kelas || 'MI 2024') : resolvedJabatan}
                   </span>
                 </div>
               )}

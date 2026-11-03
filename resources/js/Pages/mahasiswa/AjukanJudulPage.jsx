@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { router } from '@inertiajs/react';
 import SimilarityGauge from '../../Components/common/SimilarityGauge.jsx';
@@ -25,14 +25,57 @@ import {
 import { supabase, isSupabaseConfigured } from '../../services/supabase.js';
 
 export default function AjukanJudulPage() {
-  const { currentUser, thesisTitles, historicalTitles, thesisArchives, addThesisTitle } = useAuth();
+  const { 
+    currentUser, 
+    thesisTitles, 
+    historicalTitles, 
+    thesisArchives, 
+    addThesisTitle,
+    updateThesisSubmission 
+  } = useAuth();
   const navigate = (url) => router.visit(url);
+
+  // Deteksi apakah mahasiswa yang login sudah memiliki pengajuan tugas akhir sebelumnya
+  const existingThesis = useMemo(() => {
+    if (!thesisTitles || !currentUser) return null;
+    const myNim = String(currentUser.nim || '').trim();
+    const myId = String(currentUser.id || '').trim();
+    const myNama = String(currentUser.nama || '').trim();
+
+    return thesisTitles.find(t => 
+      (myNim && String(t.mhs_nim || '').trim() === myNim) ||
+      (myId && String(t.profile_id || '').trim() === myId) ||
+      (myNama && String(t.mhs_nama || '').trim() === myNama)
+    ) || null;
+  }, [thesisTitles, currentUser]);
+
+  const isEditMode = Boolean(existingThesis);
 
   const [judul, setJudul] = useState('');
   const [abstrak, setAbstrak] = useState('');
   const [toast, setToast] = useState(null); // { message, type: 'success' | 'error' | 'warning' }
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasInitialized, setHasInitialized] = useState(false);
   const toastTimeoutRef = useRef(null);
+
+  // Jika mahasiswa sudah memiliki data usulan judul tersimpan, muat data tersebut ke form
+  useEffect(() => {
+    if (existingThesis && !hasInitialized) {
+      setJudul(existingThesis.judul || '');
+      setAbstrak(existingThesis.deskripsi || existingThesis.abstrak || '');
+      if (existingThesis.skor_kemiripan_terakhir !== undefined && existingThesis.skor_kemiripan_terakhir !== null) {
+        setSimilarityResult(prev => ({
+          ...prev,
+          highestScore: Number(existingThesis.skor_kemiripan_terakhir) || 0,
+          highestTitleScore: Number(existingThesis.skor_kemiripan_terakhir) || 0,
+          highestAbstractScore: Number(existingThesis.skor_kemiripan_terakhir) || 0,
+          hasAbstract: Boolean(existingThesis.deskripsi || existingThesis.abstrak)
+        }));
+        setHasChecked(true);
+      }
+      setHasInitialized(true);
+    }
+  }, [existingThesis, hasInitialized]);
 
   const showToast = (message, type = 'success') => {
     if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
@@ -65,8 +108,18 @@ export default function AjukanJudulPage() {
     }
   }, [judul]);
 
-  // Combine active and historical titles
-  const allDbTitles = [...thesisTitles, ...historicalTitles];
+  // Combine active and historical titles (kecualikan judul sendiri agar tidak menghitung 100% kemiripan terhadap diri sendiri saat edit)
+  const allDbTitles = useMemo(() => {
+    const combined = [...thesisTitles, ...historicalTitles];
+    if (existingThesis?.id) {
+      const myNim = String(currentUser?.nim || '').trim();
+      return combined.filter(t => 
+        String(t.id) !== String(existingThesis.id) && 
+        (!myNim || String(t.mhs_nim || '').trim() !== myNim)
+      );
+    }
+    return combined;
+  }, [thesisTitles, historicalTitles, existingThesis, currentUser]);
 
   // Explicit Similarity Check triggered by button click
   const handleCheckSimilarity = async () => {
@@ -149,25 +202,42 @@ export default function AjukanJudulPage() {
     setIsSubmitting(true);
 
     try {
-      // Satu jalur tulis: addThesisTitle() menyimpan ke state + tabel Supabase `thesis_titles`.
-      await addThesisTitle({
-        judul: judul.trim(),
-        abstrak: abstrak.trim(),
-        deskripsi: abstrak.trim(),
-        judul_processed: processedText,
-        skor_kemiripan_terakhir: currentScore,
-        pembimbing_1_nip: '',
-        pembimbing_1_nama: '',
-        pembimbing_2_nip: '',
-        pembimbing_2_nama: ''
-      });
+      if (isEditMode && existingThesis) {
+        // Mode Edit: Perbarui data pengajuan usulan yang sudah ada
+        await updateThesisSubmission({
+          titleId: existingThesis.id,
+          judul: judul.trim(),
+          abstrak: abstrak.trim(),
+          deskripsi: abstrak.trim(),
+          judul_processed: processedText,
+          skor_kemiripan_terakhir: currentScore
+        });
 
-      // Simpan di sessionStorage agar jika redirect, dashboard tetap bisa menampilkannya
-      try {
-        sessionStorage.setItem('simta_toast_message', 'Pengajuan Tugas Akhir berhasil disimpan!');
-      } catch (e) { }
+        try {
+          sessionStorage.setItem('simta_toast_message', 'Perubahan Tugas Akhir berhasil disimpan & notifikasi telah dikirim ke Dospem dan Koprodi!');
+        } catch (e) { }
 
-      showToast('Pengajuan Tugas Akhir berhasil disimpan!', 'success');
+        showToast('Perubahan Tugas Akhir berhasil diperbarui!', 'success');
+      } else {
+        // Mode Pengajuan Awal
+        await addThesisTitle({
+          judul: judul.trim(),
+          abstrak: abstrak.trim(),
+          deskripsi: abstrak.trim(),
+          judul_processed: processedText,
+          skor_kemiripan_terakhir: currentScore,
+          pembimbing_1_nip: '',
+          pembimbing_1_nama: '',
+          pembimbing_2_nip: '',
+          pembimbing_2_nama: ''
+        });
+
+        try {
+          sessionStorage.setItem('simta_toast_message', 'Pengajuan Tugas Akhir berhasil disimpan!');
+        } catch (e) { }
+
+        showToast('Pengajuan Tugas Akhir berhasil disimpan!', 'success');
+      }
 
       // Beri sedikit jeda agar toast tampak jelas sebelum berpindah halaman
       setTimeout(() => {
@@ -229,15 +299,67 @@ export default function AjukanJudulPage() {
       )}
       
       {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold text-slate-900 flex items-center space-x-2">
-          <FileText className="w-5 h-5 text-indigo-600" />
-          <span>Pengajuan Tugas Akhir</span>
-        </h1>
-        <p className="text-xs text-slate-500 mt-1">
-          Sistem akan memeriksa kemiripan judul dan abstrak Anda terhadap arsip historis D3 MI Fasilkom yang terhubung langsung ke <strong>Repositori UNSRI</strong>.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-slate-900 flex items-center space-x-2">
+            <FileText className="w-5 h-5 text-indigo-600" />
+            <span>{isEditMode ? 'Kelola & Perbarui Tugas Akhir' : 'Pengajuan Tugas Akhir'}</span>
+          </h1>
+          <p className="text-xs text-slate-500 mt-1">
+            {isEditMode 
+              ? 'Data pengajuan Anda tersimpan di sistem. Silakan perbarui judul atau abstrak di bawah ini jika terdapat perubahan.'
+              : 'Sistem akan memeriksa kemiripan judul dan abstrak Anda terhadap arsip historis D3 MI Fasilkom yang terhubung langsung ke Repositori UNSRI.'}
+          </p>
+        </div>
+
+        {isEditMode && (
+          <div className="flex items-center gap-2">
+            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${
+              existingThesis.status === 'disetujui' || existingThesis.status === 'judul_fix'
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                : existingThesis.status === 'perlu_revisi'
+                ? 'bg-amber-50 text-amber-700 border-amber-200'
+                : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+            }`}>
+              <span className={`w-2 h-2 rounded-full ${
+                existingThesis.status === 'disetujui' || existingThesis.status === 'judul_fix'
+                  ? 'bg-emerald-500'
+                  : existingThesis.status === 'perlu_revisi'
+                  ? 'bg-amber-500'
+                  : 'bg-indigo-500'
+              }`} />
+              <span>
+                {existingThesis.status === 'disetujui' || existingThesis.status === 'judul_fix'
+                  ? 'Judul Disetujui'
+                  : existingThesis.status === 'perlu_revisi'
+                  ? 'Perlu Revisi Rapat Prodi'
+                  : 'Status: Dalam Tinjauan Prodi'}
+              </span>
+            </span>
+          </div>
+        )}
       </div>
+
+      {/* Mode Edit Banner */}
+      {isEditMode && (
+        <div className="bg-indigo-50/70 border border-indigo-200/80 rounded-xl p-4 text-xs text-indigo-950 flex items-start gap-3 shadow-2xs">
+          <ShieldCheck className="w-5 h-5 text-indigo-600 shrink-0 mt-0.5" />
+          <div className="flex-1 space-y-1">
+            <p className="font-semibold text-indigo-900">
+              Pengajuan Anda sudah tersimpan di sistem SIMTA.
+            </p>
+            <p className="text-slate-600 leading-relaxed text-[11px]">
+              Jika Anda melakukan perubahan pada judul atau abstrak, data usulan akan langsung diperbarui tanpa membuat duplikasi pengajuan baru. Notifikasi detail perubahan akan diteruskan secara otomatis ke Dosen Pembimbing dan Koprodi.
+            </p>
+            {existingThesis.catatan_kaprodi && (
+              <div className="mt-2 p-2.5 bg-amber-50 border border-amber-200 rounded-lg text-amber-900 text-xs font-medium">
+                <span className="font-bold text-amber-950 block mb-0.5">Catatan Rapat Prodi Sebelumnya:</span>
+                &ldquo;{existingThesis.catatan_kaprodi}&rdquo;
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
@@ -321,12 +443,12 @@ export default function AjukanJudulPage() {
                 {isSubmitting ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>Menyimpan Pengajuan...</span>
+                    <span>{isEditMode ? 'Menyimpan Perubahan...' : 'Menyimpan Pengajuan...'}</span>
                   </>
                 ) : (
                   <>
                     <Save className="w-4 h-4" />
-                    <span>Simpan Pengajuan</span>
+                    <span>{isEditMode ? 'Simpan Perubahan Tugas Akhir' : 'Simpan Pengajuan'}</span>
                   </>
                 )}
               </button>

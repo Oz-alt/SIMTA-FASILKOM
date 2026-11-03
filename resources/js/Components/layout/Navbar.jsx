@@ -386,7 +386,11 @@ export default function Navbar() {
 
     // 4. Judul TA
     if (n.related_id && (n.related_type === 'thesis_title' || n.related_type === 'thesis_title_revised')) {
-      router.visit(`/kaprodi/titles/${n.related_id}`);
+      if (userRole === 'dosen') {
+        router.visit('/dosen/validasi-judul');
+      } else {
+        router.visit(`/kaprodi/titles/${n.related_id}`);
+      }
       return;
     }
 

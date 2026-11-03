@@ -78,13 +78,30 @@ export const getStudentCredential = async (nim, options = {}) => {
 
         const row = Array.isArray(data) ? data[0] : data;
         if (!row) {
-            cache.delete(key);
-            return null;
+            const emptyStatus = {
+                exists: false,
+                hasPassword: false,
+                isProfileCompleted: false,
+                nama: null,
+                noHp: null,
+                kelas: null,
+                prodi: null,
+                fromServer: true,
+            };
+            cache.set(key, emptyStatus);
+            cacheLoadedAt = Date.now();
+            return emptyStatus;
         }
 
         const status = {
+            exists: true,
             hasPassword: row.has_password === true,
             isProfileCompleted: row.is_profile_completed === true,
+            nama: row.nama || null,
+            noHp: row.no_hp || null,
+            kelas: row.kelas || null,
+            prodi: row.prodi || null,
+            fromServer: true,
         };
         cache.set(key, status);
         cacheLoadedAt = Date.now();
@@ -97,10 +114,10 @@ export const getStudentCredential = async (nim, options = {}) => {
 /**
  * Simpan kata sandi dan/atau status profil lengkap ke server.
  *
- * @param {{ nim: string, password?: string, isProfileCompleted?: boolean }} params
+ * @param {{ nim: string, password?: string, isProfileCompleted?: boolean, nama?: string, noHp?: string, kelas?: string, prodi?: string }} params
  * @returns {Promise<{ success: boolean, tableMissing?: boolean, message?: string }>}
  */
-export const saveStudentCredential = async ({ nim, password, isProfileCompleted }) => {
+export const saveStudentCredential = async ({ nim, password, isProfileCompleted, nama, noHp, kelas, prodi }) => {
     const key = normalizeNim(nim);
     if (!key) {
         return { success: false, message: 'NIM tidak valid.' };
@@ -110,17 +127,35 @@ export const saveStudentCredential = async ({ nim, password, isProfileCompleted 
     }
 
     const plainPassword = typeof password === 'string' && password.trim() ? password.trim() : null;
+    const cleanNama = typeof nama === 'string' && nama.trim() ? nama.trim() : null;
+    const cleanNoHp = typeof noHp === 'string' && noHp.trim() ? noHp.trim() : null;
+    const cleanKelas = typeof kelas === 'string' && kelas.trim() ? kelas.trim() : null;
+    const cleanProdi = typeof prodi === 'string' && prodi.trim() ? prodi.trim() : null;
 
-    if (!plainPassword && typeof isProfileCompleted !== 'boolean') {
+    if (!plainPassword && typeof isProfileCompleted !== 'boolean' && !cleanNama && !cleanNoHp && !cleanKelas) {
         return { success: true };
     }
 
     try {
-        const { error } = await supabase.rpc('save_student_credential', {
+        let { error } = await supabase.rpc('save_student_credential', {
             p_nim: key,
             p_password: plainPassword,
             p_is_profile_completed: typeof isProfileCompleted === 'boolean' ? isProfileCompleted : null,
+            p_nama: cleanNama,
+            p_no_hp: cleanNoHp,
+            p_kelas: cleanKelas,
+            p_prodi: cleanProdi,
         });
+
+        // Fallback ke signature 3 argumen bila SQL versi terbaru belum dijalankan
+        if (error && (String(error.code) === 'PGRST202' || String(error.code) === '42883')) {
+            const retry = await supabase.rpc('save_student_credential', {
+                p_nim: key,
+                p_password: plainPassword,
+                p_is_profile_completed: typeof isProfileCompleted === 'boolean' ? isProfileCompleted : null,
+            });
+            error = retry.error;
+        }
 
         if (error) {
             return {
@@ -132,8 +167,14 @@ export const saveStudentCredential = async ({ nim, password, isProfileCompleted 
 
         const prev = cache.get(key) || { hasPassword: false, isProfileCompleted: false };
         cache.set(key, {
+            exists: true,
             hasPassword: prev.hasPassword || Boolean(plainPassword),
             isProfileCompleted: typeof isProfileCompleted === 'boolean' ? isProfileCompleted : prev.isProfileCompleted,
+            nama: cleanNama || prev.nama || null,
+            noHp: cleanNoHp || prev.noHp || null,
+            kelas: cleanKelas || prev.kelas || null,
+            prodi: cleanProdi || prev.prodi || null,
+            fromServer: true,
         });
         cacheLoadedAt = Date.now();
 
@@ -145,8 +186,9 @@ export const saveStudentCredential = async ({ nim, password, isProfileCompleted 
 
 /**
  * Verifikasi kata sandi di server (bcrypt compare).
- * Mengembalikan `null` bila NIM belum punya kredensial tersimpan, agar pemanggil
- * bisa jatuh ke aturan default NIM.
+ * Mengembalikan `null` hanya bila server/fungsi RPC tidak dapat dihubungi.
+ * Bila NIM di server belum punya kata sandi kustom (atau telah direset ke default),
+ * hanya kata sandi default (NIM) yang dianggap valid (mengabaikan sisa cache localStorage).
  *
  * @param {string} nim
  * @param {string} password
@@ -163,9 +205,13 @@ export const verifyStudentPassword = async (nim, password) => {
     }
 
     try {
-        const status = await getStudentCredential(key);
-        if (!status || !status.hasPassword) {
+        const status = await getStudentCredential(key, { fresh: true });
+        if (!status) {
             return null;
+        }
+
+        if (!status.hasPassword) {
+            return plain.trim().toLowerCase() === key.toLowerCase();
         }
 
         const { data, error } = await supabase.rpc('verify_student_password', {
