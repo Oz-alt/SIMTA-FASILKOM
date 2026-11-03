@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { getStudentAngkatan } from '../../lib/academicUtils.js';
 import { 
   Users, 
   UserCheck, 
@@ -41,7 +42,7 @@ export default function MasterDataKaprodi() {
 
   // Search & Filter States
   const [searchQuery, setSearchQuery] = useState('');
-  const [classFilter, setClassFilter] = useState('ALL');
+  const [angkatanFilter, setAngkatanFilter] = useState('ALL');
   const [dosenStatusFilter, setDosenStatusFilter] = useState('ALL');
 
   // Modal States - Mahasiswa
@@ -90,26 +91,38 @@ export default function MasterDataKaprodi() {
     return getAllRegisteredStudents();
   }, [getAllRegisteredStudents]);
 
-  // Unique Classes list for filter
-  const availableClasses = useMemo(() => {
-    const classes = new Set(registeredStudents.map(s => s.kelas).filter(Boolean));
-    return ['ALL', ...Array.from(classes).sort()];
+  // Unique Angkatan list for filter
+  const availableAngkatans = useMemo(() => {
+    const set = new Set();
+    registeredStudents.forEach(s => {
+      const ang = getStudentAngkatan(s);
+      if (ang) set.add(ang);
+    });
+    if (set.size === 0) {
+      set.add('2025');
+      set.add('2024');
+    }
+    const sorted = Array.from(set).sort((a, b) => b.localeCompare(a));
+    return ['ALL', ...sorted];
   }, [registeredStudents]);
 
   // Filtered Students List
   const filteredStudents = useMemo(() => {
     return registeredStudents.filter(std => {
       const q = searchQuery.toLowerCase().trim();
+      const studentAngkatan = getStudentAngkatan(std);
+
       const matchQuery = !q || 
         std.nim?.toLowerCase().includes(q) ||
         std.nama?.toLowerCase().includes(q) ||
         std.email?.toLowerCase().includes(q) ||
-        std.no_hp?.toLowerCase().includes(q);
+        std.no_hp?.toLowerCase().includes(q) ||
+        studentAngkatan.includes(q);
 
-      const matchClass = classFilter === 'ALL' || std.kelas === classFilter;
-      return matchQuery && matchClass;
+      const matchAngkatan = angkatanFilter === 'ALL' || studentAngkatan === angkatanFilter;
+      return matchQuery && matchAngkatan;
     });
-  }, [registeredStudents, searchQuery, classFilter]);
+  }, [registeredStudents, searchQuery, angkatanFilter]);
 
   // Filtered Dosen List
   const filteredAdvisors = useMemo(() => {
@@ -336,13 +349,13 @@ export default function MasterDataKaprodi() {
           {activeTab === 'mahasiswa' ? (
             <div className="relative shrink-0">
               <select
-                value={classFilter}
-                onChange={(e) => setClassFilter(e.target.value)}
+                value={angkatanFilter}
+                onChange={(e) => setAngkatanFilter(e.target.value)}
                 className="pl-8 pr-8 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-700 bg-white focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 outline-none cursor-pointer"
               >
-                <option value="ALL">Semua Kelas / Rombel</option>
-                {availableClasses.filter(c => c !== 'ALL').map(c => (
-                  <option key={c} value={c}>Kelas {c}</option>
+                <option value="ALL">Semua Angkatan</option>
+                {availableAngkatans.filter(c => c !== 'ALL').map(c => (
+                  <option key={c} value={c}>Angkatan {c}</option>
                 ))}
               </select>
               <Filter className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />

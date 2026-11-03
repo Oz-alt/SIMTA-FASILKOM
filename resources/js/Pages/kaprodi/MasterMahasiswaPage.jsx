@@ -27,7 +27,7 @@ import {
   ChevronRight,
   FileText
 } from 'lucide-react';
-import { getStudentSemester, AVAILABLE_SEMESTERS } from '../../lib/academicUtils.js';
+import { getStudentSemester, AVAILABLE_SEMESTERS, getStudentAngkatan } from '../../lib/academicUtils.js';
 
 export default function MasterMahasiswaPage() {
   const { 
@@ -43,7 +43,7 @@ export default function MasterMahasiswaPage() {
 
   // Search & Filter States
   const [searchQuery, setSearchQuery] = useState('');
-  const [classFilter, setClassFilter] = useState('ALL');
+  const [angkatanFilter, setAngkatanFilter] = useState('ALL');
   const [semesterFilter, setSemesterFilter] = useState('Semua Semester');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
@@ -157,27 +157,45 @@ export default function MasterMahasiswaPage() {
     };
   };
 
-  // Unique Classes list for filter
+  // Unique Classes list
   const availableClasses = useMemo(() => {
     const classes = new Set(registeredStudents.map(s => s.kelas).filter(Boolean));
     return ['ALL', ...Array.from(classes).sort()];
+  }, [registeredStudents]);
+
+  // Unique Angkatan list for filter
+  const availableAngkatans = useMemo(() => {
+    const set = new Set();
+    registeredStudents.forEach(s => {
+      const ang = getStudentAngkatan(s);
+      if (ang) set.add(ang);
+    });
+    if (set.size === 0) {
+      set.add('2025');
+      set.add('2024');
+    }
+    const sorted = Array.from(set).sort((a, b) => b.localeCompare(a));
+    return ['ALL', ...sorted];
   }, [registeredStudents]);
 
   // Filtered Students List
   const filteredStudents = useMemo(() => {
     return registeredStudents.filter(std => {
       const q = searchQuery.toLowerCase().trim();
+      const studentAngkatan = getStudentAngkatan(std);
+
       const matchQuery = !q || 
         std.nim?.toLowerCase().includes(q) ||
         std.nama?.toLowerCase().includes(q) ||
         std.email?.toLowerCase().includes(q) ||
-        std.no_hp?.toLowerCase().includes(q);
+        std.no_hp?.toLowerCase().includes(q) ||
+        studentAngkatan.includes(q);
 
-      const matchClass = classFilter === 'ALL' || std.kelas === classFilter;
+      const matchAngkatan = angkatanFilter === 'ALL' || studentAngkatan === angkatanFilter;
       const matchSemester = semesterFilter === 'Semua Semester' || getStudentSemester(std) === semesterFilter;
-      return matchQuery && matchClass && matchSemester;
+      return matchQuery && matchAngkatan && matchSemester;
     });
-  }, [registeredStudents, searchQuery, classFilter, semesterFilter]);
+  }, [registeredStudents, searchQuery, angkatanFilter, semesterFilter]);
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -186,7 +204,7 @@ export default function MasterMahasiswaPage() {
   // Reset to page 1 whenever filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, classFilter, semesterFilter]);
+  }, [searchQuery, angkatanFilter, semesterFilter]);
 
   // Paginated Students
   const totalPages = Math.max(1, Math.ceil(filteredStudents.length / pageSize));
@@ -502,9 +520,9 @@ export default function MasterMahasiswaPage() {
             <Building2 className="w-6 h-6 text-blue-600" />
           </div>
           <div>
-            <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">Jumlah Kelas</p>
+            <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">Jumlah Angkatan</p>
             <p className="text-2xl font-black text-slate-900">
-              {availableClasses.filter(c => c !== 'ALL').length} Kelas
+              {availableAngkatans.filter(c => c !== 'ALL').length} Angkatan
             </p>
           </div>
         </div>
@@ -544,13 +562,13 @@ export default function MasterMahasiswaPage() {
               <div className="flex items-center space-x-1.5">
                 <Filter className="w-4 h-4 text-slate-400" />
                 <select
-                  value={classFilter}
-                  onChange={(e) => setClassFilter(e.target.value)}
+                  value={angkatanFilter}
+                  onChange={(e) => setAngkatanFilter(e.target.value)}
                   className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 cursor-pointer"
                 >
-                  <option value="ALL">Semua Kelas</option>
-                  {availableClasses.filter(c => c !== 'ALL').map(cls => (
-                    <option key={cls} value={cls}>Kelas {cls}</option>
+                  <option value="ALL">Semua Angkatan</option>
+                  {availableAngkatans.filter(c => c !== 'ALL').map(ang => (
+                    <option key={ang} value={ang}>Angkatan {ang}</option>
                   ))}
                 </select>
               </div>
@@ -652,7 +670,7 @@ export default function MasterMahasiswaPage() {
                 <th className="py-3 px-3 whitespace-nowrap w-[130px]">NIM</th>
                 <th className="py-3 px-3 min-w-[130px]">Nama Mahasiswa</th>
                 <th className="py-3 px-3 max-w-[150px]">Kontak / Email</th>
-                <th className="py-3 px-3 max-w-[140px]">Prodi &amp; Kelas</th>
+                <th className="py-3 px-3 max-w-[140px]">Prodi &amp; Angkatan</th>
                 <th className="py-3 px-3 min-w-[170px]">Dosen Pembimbing</th>
                 <th className="py-3 px-3 w-24 text-center">Status</th>
                 <th className="py-3 px-3 w-20 text-center">Aksi</th>
@@ -690,15 +708,22 @@ export default function MasterMahasiswaPage() {
                         )}
                       </td>
 
-                      {/* Prodi & Kelas */}
+                      {/* Prodi & Angkatan / Kelas */}
                       <td className="py-3 px-3 space-y-0.5">
                         <div className="flex items-center space-x-1.5 font-semibold text-slate-800" title={std.prodi || 'D3 Manajemen Informatika'}>
                           <BookOpen className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
                           <span className="truncate max-w-[120px] text-[11px]">{std.prodi || 'D3 Manajemen Informatika'}</span>
                         </div>
-                        <span className="inline-block px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[10px] font-bold">
-                          {std.kelas || 'MI 5A'}
-                        </span>
+                        <div className="flex flex-wrap items-center gap-1">
+                          <span className="inline-block px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700 text-[10px] font-bold border border-indigo-200/60">
+                            Angkatan {getStudentAngkatan(std)}
+                          </span>
+                          {std.kelas && !std.kelas.includes(getStudentAngkatan(std)) && (
+                            <span className="inline-block px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[10px] font-medium">
+                              {std.kelas}
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       {/* Dosen Pembimbing (1 & 2 dalam satu kolom) */}

@@ -57,3 +57,42 @@ export const AVAILABLE_SEMESTERS = [
   'Semester 7',
   'Semester 8+'
 ];
+
+export const getStudentAngkatan = (std) => {
+  if (!std) return '2024';
+
+  // 1. Explicit angkatan or tahun_angkatan
+  if (std.angkatan) {
+    const a = String(std.angkatan).trim();
+    if (a.length === 4 && /^\d{4}$/.test(a)) return a;
+    if (a.length === 2 && /^\d{2}$/.test(a)) return `20${a}`;
+  }
+  if (std.tahun_angkatan) {
+    const a = String(std.tahun_angkatan).trim();
+    if (a.length === 4 && /^\d{4}$/.test(a)) return a;
+    if (a.length === 2 && /^\d{2}$/.test(a)) return `20${a}`;
+  }
+
+  // 2. Derive from kelas name if it contains 4-digit year (e.g. "MI 2024", "MI 2025")
+  const kelasMatch = String(std.kelas || '').match(/\b(20\d{2})\b/);
+  if (kelasMatch) {
+    return kelasMatch[1];
+  }
+
+  // 3. Derive from UNSRI NIM format (e.g. 09010182428019 or 09031182428001 -> '24' -> '2024')
+  const nim = String(std.nim || '').trim();
+  if (nim.length >= 9) {
+    const yrCode = nim.substring(7, 9);
+    const yrNum = parseInt(yrCode, 10);
+    if (!isNaN(yrNum) && yrNum >= 15 && yrNum <= 35) {
+      return `20${yrCode}`;
+    }
+  }
+
+  const nimMatch = nim.match(/\d{6,7}(2[0-9])\d+/);
+  if (nimMatch && nimMatch[1]) {
+    return `20${nimMatch[1]}`;
+  }
+
+  return '2024';
+};
