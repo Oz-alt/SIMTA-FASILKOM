@@ -209,10 +209,23 @@ export default function Navbar() {
       if (!n) return false;
       if (n.is_read || readNotifIds.has(String(n.id))) return false;
       if (n.id === 'notif-1' || n.id === 'notif-2' || n.is_mock) return false;
-      if (n.title === 'Judul TA Disetujui!' || n.title === 'Peminjaman Ruangan Disetujui') return false;
+      if (
+        n.title === 'Judul TA Disetujui!' ||
+        n.title === 'Peminjaman Ruangan Disetujui' ||
+        n.title === 'Catatan Revisi Judul dari Dosen'
+      ) {
+        return false;
+      }
 
       if (currentUser.role === 'kaprodi') {
         if (n.recipient_role === 'mahasiswa' || n.recipient_role === 'dosen') return false;
+        if (
+          String(n.id || '').endsWith('-mhs') ||
+          n.title === 'Usulan Judul Disetujui (ACC) Dosen' ||
+          n.title === 'Usulan Judul Disetujui Dosen Pembimbing'
+        ) {
+          return false;
+        }
         if (n.related_type === 'bimbingan_status' || n.related_type === 'consultation' || n.related_type === 'bimbingan_reminder') {
           return false;
         }

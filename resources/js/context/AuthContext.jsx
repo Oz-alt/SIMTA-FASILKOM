@@ -313,9 +313,15 @@ export const isNotificationForUser = (n, currentUser) => {
   if (!n || !currentUser) return false;
   if (n.is_read) return false;
 
-  // Bersihkan notifikasi mock dummy lama
+  // Bersihkan notifikasi mock dummy lama & fitur catatan revisi judul dosen yang sudah dihapus
   if (n.id === 'notif-1' || n.id === 'notif-2' || n.is_mock) return false;
-  if (n.title === 'Judul TA Disetujui!' || n.title === 'Peminjaman Ruangan Disetujui') return false;
+  if (
+    n.title === 'Judul TA Disetujui!' ||
+    n.title === 'Peminjaman Ruangan Disetujui' ||
+    n.title === 'Catatan Revisi Judul dari Dosen'
+  ) {
+    return false;
+  }
 
   if (currentUser.role === 'admin') {
     return (
@@ -328,6 +334,7 @@ export const isNotificationForUser = (n, currentUser) => {
 
   if (currentUser.role === 'kaprodi') {
     if (n.recipient_role === 'mahasiswa' || n.recipient_role === 'dosen') return false;
+    if (String(n.id || '').endsWith('-mhs') || n.title === 'Usulan Judul Disetujui (ACC) Dosen') return false;
     if (n.related_type === 'bimbingan_status' || n.related_type === 'consultation' || n.related_type === 'bimbingan_reminder') {
       return false;
     }
@@ -4386,19 +4393,19 @@ export function AuthProvider({ children }) {
       return updated;
     });
 
-    if (affectedTitle) {
+    if (affectedTitle && statusRekomendasi === 'direkomendasikan') {
       persistThesisTitle(affectedTitle);
-      // Notifikasi ke Mahasiswa dengan Integrasi Email
+      // Notifikasi khusus ke Mahasiswa bersangkutan saat judul disetujui Pembimbing 1
       const studentUser = MOCK_USERS.find(u => u.nim === affectedTitle.mhs_nim);
-      const studentEmail = studentUser?.email || (affectedTitle.mhs_nim ? `${affectedTitle.mhs_nim}@student.unsri.ac.id` : '09010182428002@student.unsri.ac.id');
-      const notifTitle = statusRekomendasi === 'direkomendasikan' ? 'Usulan Judul Disetujui (ACC) Dosen' : 'Catatan Revisi Judul dari Dosen';
-      const notifMessage = statusRekomendasi === 'direkomendasikan'
-        ? `${currentUser?.nama || 'Dosen Pembimbing'} telah menyetujui (ACC) usulan judul tugas akhir Anda.`
-        : `${currentUser?.nama || 'Dosen Pembimbing'} memberikan catatan revisi pada usulan judul: "${catatanDosen}"`;
+      const studentEmail = studentUser?.email || (affectedTitle.mhs_nim ? `${affectedTitle.mhs_nim}@student.unsri.ac.id` : '');
+      const notifTitle = 'Usulan Judul Disetujui Dosen Pembimbing';
+      const notifMessage = `${currentUser?.nama || 'Dosen Pembimbing'} telah menyetujui usulan judul tugas akhir Anda.`;
 
       const notifMhs = {
         id: `notif-${Date.now()}-mhs`,
-        profile_id: affectedTitle.profile_id,
+        profile_id: affectedTitle.profile_id || affectedTitle.mhs_nim,
+        recipient_role: 'mahasiswa',
+        recipient_nim: affectedTitle.mhs_nim,
         related_type: 'thesis_title',
         title: notifTitle,
         message: notifMessage,
@@ -4409,7 +4416,11 @@ export function AuthProvider({ children }) {
         created_at: new Date().toISOString()
       };
       setNotifications(prev => [notifMhs, ...prev]);
-      sendEmailNotification(studentEmail, notifTitle, notifMessage);
+      if (studentEmail) {
+        sendEmailNotification(studentEmail, notifTitle, notifMessage);
+      }
+    } else if (affectedTitle) {
+      persistThesisTitle(affectedTitle);
     }
   };
 
