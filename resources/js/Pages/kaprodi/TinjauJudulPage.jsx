@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Link } from '@inertiajs/react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { getStudentSemester, AVAILABLE_SEMESTERS } from '../../lib/academicUtils.js';
+import { getCachedStudentCredential, normalizeStudentAngkatan } from '../../services/studentCredentials.js';
 import { 
   CheckCircle2, 
   Clock, 
@@ -9,14 +10,30 @@ import {
   Search, 
   GraduationCap, 
   BookOpen,
-  MessageSquare,
-  Sparkles,
-  Wifi,
-  Radio
+  MessageSquare
 } from 'lucide-react';
 
 export default function TinjauJudulPage() {
-  const { thesisTitles, getStudentAdvisors } = useAuth();
+  const { thesisTitles, getStudentAdvisors, getAllMahasiswaAccounts, accountsVersion } = useAuth();
+
+  const resolveAngkatanForTitle = (t) => {
+    if (!t) return '';
+    const nim = String(t.mhs_nim || '').trim();
+    const cred = nim ? getCachedStudentCredential(nim) : null;
+    if (cred?.kelas) {
+      const fromCred = normalizeStudentAngkatan(cred.kelas);
+      if (fromCred) return fromCred;
+    }
+    if (nim && typeof getAllMahasiswaAccounts === 'function') {
+      const allMhs = getAllMahasiswaAccounts() || [];
+      const matched = allMhs.find(m => String(m.nim || '').trim() === nim);
+      if (matched?.kelas) {
+        const fromAcc = normalizeStudentAngkatan(matched.kelas);
+        if (fromAcc) return fromAcc;
+      }
+    }
+    return normalizeStudentAngkatan(t.angkatan || t.mhs_kelas || '');
+  };
 
   // Toast Notification
   const [toastMessage, setToastMessage] = useState('');
@@ -269,7 +286,7 @@ export default function TinjauJudulPage() {
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 font-bold text-slate-600 uppercase text-[10px]">
-                <th className="py-3 px-4 w-[24%] min-w-[210px]">Mahasiswa (NIM &amp; Kelas)</th>
+                <th className="py-3 px-4 w-[24%] min-w-[210px]">Mahasiswa (NIM &amp; Angkatan)</th>
                 <th className="py-3 px-4 w-[28%] min-w-[220px]">Judul Tugas Akhir</th>
                 <th className="py-3 px-3 w-[16%] min-w-[140px]">Pembimbing 1</th>
                 <th className="py-3 px-3 w-[16%] min-w-[140px]">Pembimbing 2</th>
@@ -287,6 +304,7 @@ export default function TinjauJudulPage() {
               ) : (
                 filteredTitles.map(t => {
                   const studentSem = getStudentSemester(t);
+                  const studentAngkatan = resolveAngkatanForTitle(t);
                   const assigned = (typeof getStudentAdvisors === 'function' && t.mhs_nim) ? getStudentAdvisors(t.mhs_nim) : null;
                   const pembimbing1Nama = t.pembimbing_1_nama || t.pembimbing_1 || assigned?.dospem1?.nama;
                   const pembimbing1Nip = t.pembimbing_1_nip || assigned?.dospem1?.nip;
@@ -307,11 +325,11 @@ export default function TinjauJudulPage() {
                         </div>
                         <div className="text-[10px] text-slate-500 font-mono flex items-center flex-wrap gap-1.5 mt-1">
                           <span className="font-bold text-slate-600 whitespace-nowrap">{t.mhs_nim}</span>
-                          {t.mhs_kelas && (
+                          {studentAngkatan && (
                             <>
                               <span className="text-slate-300">•</span>
                               <span className="inline-block px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 font-semibold text-[10px] border border-indigo-200/60 whitespace-nowrap shrink-0">
-                                {t.mhs_kelas}
+                                Angkatan {studentAngkatan}
                               </span>
                             </>
                           )}

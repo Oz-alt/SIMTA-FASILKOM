@@ -110,6 +110,8 @@ import {
   saveStudentCredential,
   verifyStudentPassword,
   normalizeNim,
+  normalizeStudentAngkatan,
+  hydrateStudentProfileMeta,
   resetCredentialCache
 } from '../services/studentCredentials.js';
 
@@ -129,6 +131,8 @@ const normalizeThesisTitleRecord = (row) => {
   const score = row.skor_kemiripan_terakhir ?? row.skor_similarity ?? 0;
   const d1Nama = row.pembimbing_1_nama || row.pembimbing_1 || '';
   const d2Nama = row.pembimbing_2_nama || row.pembimbing_2 || '';
+  const cred = row.mhs_nim ? getCachedStudentCredential(row.mhs_nim) : null;
+  const normalizedKelas = normalizeStudentAngkatan(cred?.kelas || row.angkatan || row.mhs_kelas || '');
 
   return {
     ...row,
@@ -139,10 +143,10 @@ const normalizeThesisTitleRecord = (row) => {
     status: row.status || 'tinjauan',
     skor_kemiripan_terakhir: Number(score) || 0,
     mhs_nim: row.mhs_nim || '',
-    mhs_nama: row.mhs_nama || '',
-    mhs_kelas: row.mhs_kelas || '',
-    prodi: row.prodi || 'D3 Manajemen Informatika',
-    angkatan: row.angkatan || '',
+    mhs_nama: cred?.nama || row.mhs_nama || '',
+    mhs_kelas: normalizedKelas,
+    prodi: cred?.prodi || row.prodi || 'D3 Manajemen Informatika',
+    angkatan: normalizedKelas,
     pembimbing_1_nip: row.pembimbing_1_nip || '',
     pembimbing_2_nip: row.pembimbing_2_nip || '',
     pembimbing_1_nama: d1Nama,
@@ -168,7 +172,6 @@ const normalizeThesisTitleRecord = (row) => {
  */
 const enrichThesisTitleRecord = (title, profiles = [], advisorRows = []) => {
   if (!title) return title;
-  if (title.mhs_nama && title.mhs_kelas) return title;
 
   const profile = (profiles || []).find(p =>
     (title.profile_id && String(p.id) === String(title.profile_id)) ||
@@ -178,17 +181,23 @@ const enrichThesisTitleRecord = (title, profiles = [], advisorRows = []) => {
     title.mhs_nim && String(sa.student_nim || '').trim() === String(title.mhs_nim).trim()
   );
 
-  const mhsNama = title.mhs_nama || profile?.nama || advisorRow?.student_nama || '';
   const mhsNim = title.mhs_nim || profile?.nim || profile?.nip || advisorRow?.student_nim || '';
+  const cred = mhsNim ? getCachedStudentCredential(mhsNim) : null;
+  const mhsNama = cred?.nama || title.mhs_nama || profile?.nama || advisorRow?.student_nama || '';
 
   if (!mhsNama && !mhsNim) return title;
+
+  const resolvedKelas = normalizeStudentAngkatan(
+    cred?.kelas || title.angkatan || title.mhs_kelas || profile?.kelas || advisorRow?.kelas || ''
+  );
 
   return {
     ...title,
     mhs_nama: mhsNama,
     mhs_nim: mhsNim,
-    mhs_kelas: title.mhs_kelas || profile?.kelas || advisorRow?.kelas || '',
-    prodi: title.prodi || profile?.prodi || advisorRow?.prodi || 'D3 Manajemen Informatika'
+    mhs_kelas: resolvedKelas,
+    angkatan: resolvedKelas,
+    prodi: cred?.prodi || title.prodi || profile?.prodi || advisorRow?.prodi || 'D3 Manajemen Informatika'
   };
 };
 
@@ -936,6 +945,38 @@ export function AuthProvider({ children }) {
           }
         } catch (e) {
           console.warn('Failed to update student registered user locally:', e);
+        }
+
+        // Sinkronkan juga perubahan profil mahasiswa (angkatan/kelas, nama, prodi) ke data usulan judul TA
+        const normalizedAngkatan = normalizeStudentAngkatan(merged.kelas || updatedFields.kelas || '');
+        if (normalizedAngkatan || merged.nama || merged.prodi) {
+          let updatedTitleToPersist = null;
+          setThesisTitles(prev => {
+            let changed = false;
+            const next = prev.map(t => {
+              if (normalizeNim(t.mhs_nim) === studentNim) {
+                changed = true;
+                const nextTitle = {
+                  ...t,
+                  ...(merged.nama ? { mhs_nama: merged.nama } : {}),
+                  ...(normalizedAngkatan ? { mhs_kelas: normalizedAngkatan, angkatan: normalizedAngkatan } : {}),
+                  ...(merged.prodi ? { prodi: merged.prodi } : {}),
+                  updated_at: new Date().toISOString()
+                };
+                updatedTitleToPersist = nextTitle;
+                return nextTitle;
+              }
+              return t;
+            });
+            if (changed) {
+              try { localStorage.setItem('simta_thesis_titles', JSON.stringify(next)); } catch {}
+              return next;
+            }
+            return prev;
+          });
+          if (updatedTitleToPersist) {
+            try { await persistThesisTitle(updatedTitleToPersist); } catch {}
+          }
         }
       }
     }
@@ -2774,7 +2815,27 @@ export function AuthProvider({ children }) {
       supabase.from('admin_cms').select('*').order('updated_at', { ascending: false })
         .then(({ data, error }) => {
           if (!error && data && data.length > 0) {
-            setAdminCmsContents(data);
+            // Hidrasi metadata profil mahasiswa terverifikasi (no_hp, kelas/angkatan, nama, prodi)
+            hydrateStudentProfileMeta(data);
+
+            // Segarkan usulan judul TA agar langsung mengikuti angkatan & nama terbaru dari profil mahasiswa
+            setThesisTitles(prev => {
+              if (!Array.isArray(prev) || prev.length === 0) return prev;
+              const updated = prev.map(row => normalizeThesisTitleRecord(row));
+              try { localStorage.setItem('simta_thesis_titles', JSON.stringify(updated)); } catch {}
+              return updated;
+            });
+            mhsAccountsCacheRef.current = null;
+            setAccountsVersion(v => v + 1);
+
+            const cmsItems = data.filter(row =>
+              row &&
+              row.kategori !== 'student_profile_meta' &&
+              !String(row.id || '').startsWith('student-profile-')
+            );
+            if (cmsItems.length > 0) {
+              setAdminCmsContents(cmsItems);
+            }
           }
         });
       supabase.from('admin_templates').select('*').order('updated_at', { ascending: false })
@@ -3334,11 +3395,16 @@ export function AuthProvider({ children }) {
       if (profileQuery) {
         const { data: profData } = await profileQuery.maybeSingle();
         if (profData) {
-          if (profData.no_hp) enriched.no_hp = profData.no_hp;
-          if (profData.link_wa_group) enriched.link_wa_group = profData.link_wa_group;
-          if (profData.kelas && profData.kelas !== 'Dosen Pembimbing') {
-            enriched.kelas = profData.kelas;
-            if (enriched.role !== 'mahasiswa') {
+          if (enriched.role === 'mahasiswa') {
+            if (!enriched.no_hp && profData.no_hp) enriched.no_hp = profData.no_hp;
+            if (!enriched.kelas && profData.kelas) {
+              enriched.kelas = normalizeStudentAngkatan(profData.kelas);
+            }
+          } else {
+            if (profData.no_hp) enriched.no_hp = profData.no_hp;
+            if (profData.link_wa_group) enriched.link_wa_group = profData.link_wa_group;
+            if (profData.kelas && profData.kelas !== 'Dosen Pembimbing') {
+              enriched.kelas = profData.kelas;
               enriched.jabatan_fungsional = profData.kelas;
             }
           }
@@ -3921,12 +3987,16 @@ export function AuthProvider({ children }) {
       oleh: currentUser?.nama || 'Mahasiswa'
     };
 
+    const cred = studentNim ? getCachedStudentCredential(studentNim) : null;
+    const resolvedAngkatan = normalizeStudentAngkatan(cred?.kelas || currentUser?.kelas || newTitleData.mhs_kelas || '');
+
     const createdTitle = {
       id: newId,
       profile_id: currentUser?.id || 'user-mhs-aulia',
-      mhs_nama: currentUser?.nama || 'Aulia Azzahra',
+      mhs_nama: cred?.nama || currentUser?.nama || 'Aulia Azzahra',
       mhs_nim: currentUser?.nim || '09010182428002',
-      mhs_kelas: currentUser?.kelas || 'MI 5A',
+      mhs_kelas: resolvedAngkatan,
+      angkatan: resolvedAngkatan,
       pembimbing_1_nip: d1Nip,
       pembimbing_1_nama: d1Nama,
       pembimbing_2_nip: d2Nip,
@@ -5700,15 +5770,22 @@ export function AuthProvider({ children }) {
       // 5. Merge verified student credentials from Supabase / local cache (highest priority for no_hp & verification status)
       accountMap.forEach((existing, nim) => {
         const cred = getCachedStudentCredential(nim);
+        const normalizedExistingKelas = normalizeStudentAngkatan(existing.kelas);
         if (cred) {
           const verifiedPhone = cred.noHp || cred.no_hp || '';
+          const verifiedKelas = normalizeStudentAngkatan(cred.kelas) || normalizedExistingKelas;
           accountMap.set(nim, {
             ...existing,
             nama: cred.nama || existing.nama,
             no_hp: verifiedPhone || (cred.isProfileCompleted === false ? '-' : existing.no_hp),
-            kelas: cred.kelas || existing.kelas,
+            kelas: verifiedKelas,
             prodi: cred.prodi || existing.prodi,
             is_profile_completed: cred.isProfileCompleted === true
+          });
+        } else if (normalizedExistingKelas !== existing.kelas) {
+          accountMap.set(nim, {
+            ...existing,
+            kelas: normalizedExistingKelas
           });
         }
       });

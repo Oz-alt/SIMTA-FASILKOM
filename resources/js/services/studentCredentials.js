@@ -19,6 +19,8 @@ import { supabase, isSupabaseConfigured } from './supabase.js';
 
 const CACHE_TTL_MS = 60_000;
 const LOCAL_CRED_STORAGE_KEY = 'simta_student_credentials_v1';
+const PROFILE_META_PREFIX = 'student-profile-';
+const PROFILE_META_CATEGORY = 'student_profile_meta';
 
 /**
  * @typedef {{ exists?: boolean, hasPassword: boolean, isProfileCompleted: boolean, nama?: string|null, noHp?: string|null, no_hp?: string|null, kelas?: string|null, prodi?: string|null, fromServer?: boolean }} CredentialStatus
@@ -33,12 +35,20 @@ let cacheLoadedAt = 0;
 /** Normalisasi NIM agar konsisten sebagai kunci. */
 export const normalizeNim = (value) => String(value ?? '').trim();
 
+/** Normalisasi nilai angkatan/kelas agar konsisten mengikuti input profil mahasiswa (mis. "MI 2024" -> "2024"). */
+export const normalizeStudentAngkatan = (value) => {
+    const raw = String(value ?? '').trim();
+    if (!raw || raw === '-' || raw === 'MI 5A' || raw === 'MI 5B') return '';
+    return raw.replace(/^MI\s+/i, '').trim();
+};
+
 const persistLocalCred = (nim, status) => {
     if (typeof window === 'undefined' || !nim || !status) return;
     try {
         const raw = localStorage.getItem(LOCAL_CRED_STORAGE_KEY);
         const map = raw ? JSON.parse(raw) : {};
         if (map && typeof map === 'object') {
+            const cleanKelas = normalizeStudentAngkatan(status.kelas);
             map[nim] = {
                 exists: Boolean(status.exists),
                 hasPassword: Boolean(status.hasPassword),
@@ -46,13 +56,49 @@ const persistLocalCred = (nim, status) => {
                 nama: status.nama || null,
                 noHp: status.noHp || status.no_hp || null,
                 no_hp: status.noHp || status.no_hp || null,
-                kelas: status.kelas || null,
+                kelas: cleanKelas || null,
                 prodi: status.prodi || null,
                 updatedAt: Date.now(),
             };
             localStorage.setItem(LOCAL_CRED_STORAGE_KEY, JSON.stringify(map));
         }
-    } catch {}
+    } catch { }
+};
+
+/**
+ * Hidrasi cache profil mahasiswa terverifikasi dari baris metadata Supabase (`admin_cms`).
+ * Dipanggil otomatis saat aplikasi memuat data awal sehingga seluruh halaman (Kaprodi/Dosen/Mahasiswa)
+ * langsung memiliki nomor WhatsApp dan Angkatan terbaru lintas perangkat.
+ */
+export const hydrateStudentProfileMeta = (rows = []) => {
+    if (!Array.isArray(rows)) return;
+    rows.forEach((row) => {
+        if (!row) return;
+        const idStr = String(row.id || '');
+        if (row.kategori !== PROFILE_META_CATEGORY && !idStr.startsWith(PROFILE_META_PREFIX)) {
+            return;
+        }
+        try {
+            const parsed = typeof row.isi === 'string' ? JSON.parse(row.isi) : row.isi;
+            const nim = normalizeNim(parsed?.nim || row.judul || idStr.replace(PROFILE_META_PREFIX, ''));
+            if (!nim) return;
+            const prev = cache.get(nim) || getCachedStudentCredential(nim) || {};
+            const cleanKelas = normalizeStudentAngkatan(parsed?.kelas || prev.kelas);
+            const merged = {
+                exists: true,
+                hasPassword: Boolean(prev.hasPassword ?? true),
+                isProfileCompleted: parsed?.isProfileCompleted !== undefined ? Boolean(parsed.isProfileCompleted) : Boolean(prev.isProfileCompleted ?? true),
+                nama: parsed?.nama || prev.nama || null,
+                noHp: parsed?.noHp || parsed?.no_hp || prev.noHp || prev.no_hp || null,
+                no_hp: parsed?.noHp || parsed?.no_hp || prev.noHp || prev.no_hp || null,
+                kelas: cleanKelas || null,
+                prodi: parsed?.prodi || prev.prodi || null,
+                fromServer: true,
+            };
+            cache.set(nim, merged);
+            persistLocalCred(nim, merged);
+        } catch {}
+    });
 };
 
 export const getCachedStudentCredential = (nim) => {
@@ -68,7 +114,7 @@ export const getCachedStudentCredential = (nim) => {
                     return map[key];
                 }
             }
-        } catch {}
+        } catch { }
     }
     return null;
 };
@@ -143,15 +189,39 @@ export const getStudentCredential = async (nim, options = {}) => {
                 return emptyStatus;
             }
 
+            const prev = cached || getCachedStudentCredential(key) || {};
+            const isCompleted = row.is_profile_completed === true;
+
+            let remoteMeta = null;
+            if (isCompleted && (!row.no_hp || !row.kelas)) {
+                try {
+                    const { data: metaRow } = await supabase
+                        .from('admin_cms')
+                        .select('isi')
+                        .eq('id', `${PROFILE_META_PREFIX}${key}`)
+                        .maybeSingle();
+                    if (metaRow?.isi) {
+                        remoteMeta = typeof metaRow.isi === 'string' ? JSON.parse(metaRow.isi) : metaRow.isi;
+                    }
+                } catch {}
+            }
+
+            const resolvedNama = row.nama || remoteMeta?.nama || (isCompleted ? prev.nama : null) || null;
+            const resolvedNoHp = row.no_hp || remoteMeta?.noHp || remoteMeta?.no_hp || (isCompleted ? (prev.noHp || prev.no_hp) : null) || null;
+            const resolvedKelas = normalizeStudentAngkatan(
+                row.kelas || remoteMeta?.kelas || (isCompleted ? prev.kelas : null)
+            ) || null;
+            const resolvedProdi = row.prodi || remoteMeta?.prodi || (isCompleted ? prev.prodi : null) || null;
+
             const status = {
                 exists: true,
                 hasPassword: row.has_password === true,
-                isProfileCompleted: row.is_profile_completed === true,
-                nama: row.nama || null,
-                noHp: row.no_hp || null,
-                no_hp: row.no_hp || null,
-                kelas: row.kelas || null,
-                prodi: row.prodi || null,
+                isProfileCompleted: isCompleted,
+                nama: resolvedNama,
+                noHp: resolvedNoHp,
+                no_hp: resolvedNoHp,
+                kelas: resolvedKelas,
+                prodi: resolvedProdi,
                 fromServer: true,
             };
             cache.set(key, status);
@@ -224,6 +294,7 @@ export const saveStudentCredential = async ({ nim, password, isProfileCompleted,
         }
 
         const prev = cache.get(key) || getCachedStudentCredential(key) || { hasPassword: false, isProfileCompleted: false };
+        const normalizedKelas = normalizeStudentAngkatan(cleanKelas || prev.kelas) || null;
         const nextStatus = {
             exists: true,
             hasPassword: prev.hasPassword || Boolean(plainPassword),
@@ -231,13 +302,37 @@ export const saveStudentCredential = async ({ nim, password, isProfileCompleted,
             nama: cleanNama || prev.nama || null,
             noHp: cleanNoHp || prev.noHp || prev.no_hp || null,
             no_hp: cleanNoHp || prev.noHp || prev.no_hp || null,
-            kelas: cleanKelas || prev.kelas || null,
+            kelas: normalizedKelas,
             prodi: cleanProdi || prev.prodi || null,
             fromServer: true,
         };
         cache.set(key, nextStatus);
         cacheLoadedAt = Date.now();
         persistLocalCred(key, nextStatus);
+
+        // Simpan juga metadata profil non-sensitif (nama, noHp, kelas/angkatan, prodi) ke Supabase
+        // agar lintas perangkat/browser (Kaprodi, Dosen, Mahasiswa) selalu sinkron meski RPC 3-argumen.
+        if (nextStatus.nama || nextStatus.noHp || nextStatus.kelas || nextStatus.prodi || typeof isProfileCompleted === 'boolean') {
+            try {
+                await supabase.from('admin_cms').upsert([{
+                    id: `${PROFILE_META_PREFIX}${key}`,
+                    judul: key,
+                    kategori: PROFILE_META_CATEGORY,
+                    isi: JSON.stringify({
+                        nim: key,
+                        nama: nextStatus.nama,
+                        noHp: nextStatus.noHp,
+                        no_hp: nextStatus.no_hp,
+                        kelas: nextStatus.kelas,
+                        prodi: nextStatus.prodi,
+                        isProfileCompleted: nextStatus.isProfileCompleted,
+                    }),
+                    status: 'draf',
+                    penulis: 'Student Profile Sync',
+                    updated_at: new Date().toISOString(),
+                }], { onConflict: 'id' });
+            } catch {}
+        }
 
         return { success: true };
     } catch (err) {

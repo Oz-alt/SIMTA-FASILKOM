@@ -74,7 +74,7 @@ export default function ProfilePage() {
     if (!user || !user.is_profile_completed) return '';
     const val = String(user.kelas || '').trim();
     if (!val || val === '-' || val === 'MI 5A' || val === 'MI 5B') return '';
-    return val;
+    return val.replace(/^MI\s+/i, '').trim();
   };
 
   // Resolusi jabatan fungsional: Sumber kebenaran utama adalah yang diset Kaprodi / Admin di Data Master Dosen

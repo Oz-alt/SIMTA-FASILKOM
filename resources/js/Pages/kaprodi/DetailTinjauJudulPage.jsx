@@ -1,46 +1,33 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Link, usePage } from '@inertiajs/react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import SimilarityGauge from '../../Components/common/SimilarityGauge.jsx';
 import StatusBadge from '../../Components/common/StatusBadge.jsx';
 import { getStudentSemester } from '../../lib/academicUtils.js';
 import {
+  getStudentCredential,
+  getCachedStudentCredential,
+  normalizeStudentAngkatan
+} from '../../services/studentCredentials.js';
+import {
   ArrowLeft,
   CheckCircle2, 
-  Eye, 
-  AlertTriangle, 
   MessageSquare, 
-  UserCheck, 
-  Users, 
-  Clock, 
-  ShieldCheck, 
   AlertCircle, 
   GraduationCap, 
   BookOpen,
   Send,
   History,
-  FileText,
-  Sparkles,
-  ExternalLink,
-  Check,
-  Calendar,
-  Mail,
-  Copy,
-  Pencil,
-  X,
-  Save
+  Calendar
 } from 'lucide-react';
 
 export default function DetailTinjauJudulPage({ titleId: propTitleId }) {
   const { url } = usePage();
   const { 
     thesisTitles, 
-    advisors, 
     addProdiRevisionNote, 
-    setThesisTitleFix,
-    updateThesisTitleAdvisors,
-    currentUser,
-    getStudentAdvisors
+    getAllMahasiswaAccounts,
+    accountsVersion
   } = useAuth();
 
   // Resolve ID from props or URL pathname (/kaprodi/titles/:id)
@@ -57,52 +44,47 @@ export default function DetailTinjauJudulPage({ titleId: propTitleId }) {
     return thesisTitles.find(t => String(t.id).trim() === String(resolvedId).trim()) || null;
   }, [thesisTitles, resolvedId]);
 
-  // Fallback assigned advisors from student advisor allocation
-  const assigned = useMemo(() => {
-    if (!title?.mhs_nim || typeof getStudentAdvisors !== 'function') return null;
-    return getStudentAdvisors(title.mhs_nim);
-  }, [title?.mhs_nim, getStudentAdvisors]);
+  const [remoteCred, setRemoteCred] = useState(() => (
+    title?.mhs_nim ? getCachedStudentCredential(title.mhs_nim) : null
+  ));
 
-  // Helper to resolve advisor NIP
-  const resolveAdvisorNip = (nip, name) => {
-    if (nip && advisors.some(a => String(a.nip) === String(nip))) return String(nip);
-    if (name) {
-      const cleanName = String(name).toLowerCase().trim();
-      const matched = advisors.find(a => 
-        a.nama.toLowerCase().includes(cleanName) || 
-        cleanName.includes(a.nama.toLowerCase())
-      );
-      if (matched) return String(matched.nip);
+  useEffect(() => {
+    if (!title?.mhs_nim) return;
+    let active = true;
+    const cached = getCachedStudentCredential(title.mhs_nim);
+    if (cached) setRemoteCred(cached);
+    getStudentCredential(title.mhs_nim, { fresh: true })
+      .then(res => {
+        if (active && res) setRemoteCred(res);
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [title?.mhs_nim]);
+
+  // Resolve Angkatan Mahasiswa langsung mengikuti isi profil mahasiswa bersangkutan
+  const studentAngkatan = useMemo(() => {
+    if (!title) return '';
+    const nim = String(title.mhs_nim || '').trim();
+    const cred = remoteCred || (nim ? getCachedStudentCredential(nim) : null);
+    if (cred?.kelas) {
+      const fromCred = normalizeStudentAngkatan(cred.kelas);
+      if (fromCred) return fromCred;
     }
-    return '';
-  };
 
-  const defaultDospem1Nip = title?.pembimbing_1_nip || resolveAdvisorNip(title?.pembimbing_1_nip, title?.pembimbing_1_nama || title?.pembimbing_1) || assigned?.dospem1?.nip || '';
-  const defaultDospem2Nip = title?.pembimbing_2_nip || resolveAdvisorNip(title?.pembimbing_2_nip, title?.pembimbing_2_nama || title?.pembimbing_2) || assigned?.dospem2?.nip || '';
+    if (nim && typeof getAllMahasiswaAccounts === 'function') {
+      const allMhs = getAllMahasiswaAccounts() || [];
+      const matched = allMhs.find(m => String(m.nim || '').trim() === nim);
+      if (matched?.kelas) {
+        const fromAcc = normalizeStudentAngkatan(matched.kelas);
+        if (fromAcc) return fromAcc;
+      }
+    }
 
-  const defaultDospem1Nama = title?.pembimbing_1_nama || title?.pembimbing_1 || assigned?.dospem1?.nama || '';
-  const defaultDospem2Nama = title?.pembimbing_2_nama || title?.pembimbing_2 || assigned?.dospem2?.nama || '';
+    return normalizeStudentAngkatan(title.angkatan || title.mhs_kelas || '');
+  }, [title, remoteCred, getAllMahasiswaAccounts, accountsVersion]);
 
   // State Management for Forms
   const [revisiCatatan, setRevisiCatatan] = useState('');
-  const [catatanFix, setCatatanFix] = useState(title?.catatan_kaprodi || '');
-  const [confirmedDospem1Nip, setConfirmedDospem1Nip] = useState(() => defaultDospem1Nip);
-  const [confirmedDospem2Nip, setConfirmedDospem2Nip] = useState(() => defaultDospem2Nip);
-
-  // Inline edit mode untuk kartu Dosen Pembimbing (Kaprodi bisa ganti-ganti dospem)
-  const [isEditingAdvisors, setIsEditingAdvisors] = useState(false);
-  const [editDospem1Nip, setEditDospem1Nip] = useState('');
-  const [editDospem2Nip, setEditDospem2Nip] = useState('');
-  const [advisorError, setAdvisorError] = useState('');
-
-  // Sync dospem initial value if title changes/loads
-  React.useEffect(() => {
-    if (title) {
-      setCatatanFix(title.catatan_kaprodi || '');
-      setConfirmedDospem1Nip(defaultDospem1Nip);
-      setConfirmedDospem2Nip(defaultDospem2Nip);
-    }
-  }, [title?.id, defaultDospem1Nip, defaultDospem2Nip]);
 
   // Toast Notification
   const [toastMessage, setToastMessage] = useState('');
@@ -131,70 +113,6 @@ export default function DetailTinjauJudulPage({ titleId: propTitleId }) {
     addProdiRevisionNote(title.id, revisiCatatan.trim());
     showToast(`Catatan revisi berhasil disimpan & dikirim ke ${title.mhs_nama}. Status menjadi "Perlu Revisi".`);
     setRevisiCatatan('');
-  };
-
-  // Tetapkan Status Judul Fix (Final) - Hijau Emerald
-  const handleSetTitleFix = (e) => {
-    e.preventDefault();
-    if (!title) return;
-
-    setThesisTitleFix(
-      title.id,
-      confirmedDospem1Nip,
-      confirmedDospem2Nip,
-      catatanFix.trim() || 'Judul resmi ditetapkan FIX oleh Kaprodi.'
-    );
-
-    showToast(`Judul Tugas Akhir ${title.mhs_nama} resmi berstatus JUDUL FIX!`);
-  };
-
-  // Daftar dosen pembimbing aktif untuk dropdown ganti-ganti dospem
-  const activeAdvisors = useMemo(() => {
-    const list = Array.isArray(advisors) ? advisors : [];
-    const aktif = list.filter(a => String(a.status || 'aktif').toLowerCase() === 'aktif');
-    return aktif.length > 0 ? aktif : list;
-  }, [advisors]);
-
-  // Mulai edit dospem: isi dropdown dengan dospem yang sedang terpasang / dialokasikan
-  const handleStartEditAdvisors = () => {
-    setEditDospem1Nip(defaultDospem1Nip);
-    setEditDospem2Nip(defaultDospem2Nip);
-    setAdvisorError('');
-    setIsEditingAdvisors(true);
-  };
-
-  const handleCancelEditAdvisors = () => {
-    setAdvisorError('');
-    setIsEditingAdvisors(false);
-  };
-
-  // Simpan pergantian dospem lewat context (otomatis sinkron ke portal mahasiswa)
-  const handleSaveAdvisors = (e) => {
-    e.preventDefault();
-    if (!title) return;
-
-    if (!editDospem1Nip && !editDospem2Nip) {
-      setAdvisorError('Pilih minimal satu dosen pembimbing sebelum menyimpan.');
-      return;
-    }
-
-    if (editDospem1Nip && editDospem2Nip && editDospem1Nip === editDospem2Nip) {
-      setAdvisorError('Pembimbing 1 dan Pembimbing 2 tidak boleh dosen yang sama.');
-      return;
-    }
-
-    updateThesisTitleAdvisors(title.id, editDospem1Nip, editDospem2Nip);
-
-    // Sinkronkan dropdown "Penetapan Judul Fix" agar memakai dospem terbaru
-    setConfirmedDospem1Nip(editDospem1Nip);
-    setConfirmedDospem2Nip(editDospem2Nip);
-
-    const nama1 = activeAdvisors.find(a => String(a.nip) === String(editDospem1Nip))?.nama || '-';
-    const nama2 = activeAdvisors.find(a => String(a.nip) === String(editDospem2Nip))?.nama || '-';
-    showToast(`Dosen pembimbing ${title.mhs_nama} diperbarui: ${nama1} & ${nama2}.`);
-
-    setAdvisorError('');
-    setIsEditingAdvisors(false);
   };
 
   // Format timestamp helper
@@ -296,15 +214,14 @@ export default function DetailTinjauJudulPage({ titleId: propTitleId }) {
               <span className="font-mono bg-blue-950/60 px-2.5 py-0.5 rounded border border-blue-800">
                 NIM: {title.mhs_nim}
               </span>
-              <span>•</span>
-              <span className="bg-blue-950/60 px-2.5 py-0.5 rounded border border-blue-800">
-                Kelas: {title.mhs_kelas || 'MI 5A'}
-              </span>
-              <span>•</span>
-              <span className="flex items-center gap-1.5 text-emerald-300">
-                <Mail className="w-3.5 h-3.5" />
-                <span>{title.mhs_nim}@student.unsri.ac.id</span>
-              </span>
+              {studentAngkatan && (
+                <>
+                  <span>•</span>
+                  <span className="bg-blue-950/60 px-2.5 py-0.5 rounded border border-blue-800">
+                    Angkatan: {studentAngkatan}
+                  </span>
+                </>
+              )}
             </div>
           </div>
 
@@ -423,139 +340,9 @@ export default function DetailTinjauJudulPage({ titleId: propTitleId }) {
 
         </div>
 
-        {/* Right Column: Actions (Catatan Revisi & Penetapan Judul Fix) */}
+        {/* Right Column: Actions (Catatan Revisi Rapat Prodi) */}
         <div className="space-y-6">
           
-          {/* Card Info Dosen Pembimbing Saat Ini (bisa diganti Kaprodi) */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-3">
-            <div className="flex items-center justify-between gap-2">
-              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                <UserCheck className="w-4 h-4 text-indigo-600" />
-                <span>Dosen Pembimbing Terdaftar</span>
-              </h4>
-
-              {!isEditingAdvisors && (
-                <button
-                  type="button"
-                  onClick={handleStartEditAdvisors}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[11px] font-bold transition-colors cursor-pointer whitespace-nowrap"
-                  title="Ganti dosen pembimbing"
-                >
-                  <Pencil className="w-3 h-3" />
-                  <span>Ganti</span>
-                </button>
-              )}
-            </div>
-
-            {isEditingAdvisors ? (
-              <form onSubmit={handleSaveAdvisors} className="space-y-3">
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
-                    Dosen Pembimbing 1
-                  </label>
-                  <select
-                    value={editDospem1Nip}
-                    onChange={(e) => {
-                      setEditDospem1Nip(e.target.value);
-                      if (advisorError) setAdvisorError('');
-                    }}
-                    className="w-full text-xs p-2.5 border border-slate-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
-                  >
-                    <option value="">-- Pilih Pembimbing 1 --</option>
-                    {activeAdvisors.map(adv => (
-                      <option
-                        key={adv.id || adv.nip}
-                        value={adv.nip}
-                        disabled={String(adv.nip) === String(editDospem2Nip)}
-                      >
-                        {adv.nama}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
-                    Dosen Pembimbing 2
-                  </label>
-                  <select
-                    value={editDospem2Nip}
-                    onChange={(e) => {
-                      setEditDospem2Nip(e.target.value);
-                      if (advisorError) setAdvisorError('');
-                    }}
-                    className="w-full text-xs p-2.5 border border-slate-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
-                  >
-                    <option value="">-- Pilih Pembimbing 2 --</option>
-                    {activeAdvisors.map(adv => (
-                      <option
-                        key={adv.id || adv.nip}
-                        value={adv.nip}
-                        disabled={String(adv.nip) === String(editDospem1Nip)}
-                      >
-                        {adv.nama}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {advisorError && (
-                  <div className="flex items-start gap-1.5 text-[11px] font-semibold text-rose-600 bg-rose-50 p-2.5 rounded-xl border border-rose-200">
-                    <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                    <span>{advisorError}</span>
-                  </div>
-                )}
-
-                <div className="bg-blue-50 p-2.5 rounded-xl border border-blue-200 text-[10px] text-blue-800 flex items-start gap-1.5">
-                  <UserCheck className="w-3.5 h-3.5 text-blue-600 shrink-0 mt-0.5" />
-                  <span>
-                    Perubahan langsung aktif di portal mahasiswa tanpa perlu kirim ulang email penetapan.
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-end gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={handleCancelEditAdvisors}
-                    className="inline-flex items-center gap-1 px-3 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-[11px] font-bold transition-colors cursor-pointer"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                    <span>Batal</span>
-                  </button>
-                  <button
-                    type="submit"
-                    className="inline-flex items-center gap-1 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
-                  >
-                    <Save className="w-3.5 h-3.5" />
-                    <span>Simpan</span>
-                  </button>
-                </div>
-              </form>
-            ) : (
-              <div className="space-y-2 text-xs">
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase block">Pembimbing 1:</span>
-                  <span className="font-bold text-slate-900 block mt-0.5">
-                    {defaultDospem1Nama || 'Belum Ditetapkan'}
-                  </span>
-                  {defaultDospem1Nip && (
-                    <span className="text-[10px] text-slate-500 font-mono">NIP: {defaultDospem1Nip}</span>
-                  )}
-                </div>
-
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase block">Pembimbing 2:</span>
-                  <span className="font-bold text-slate-900 block mt-0.5">
-                    {defaultDospem2Nama || 'Belum Ditetapkan'}
-                  </span>
-                  {defaultDospem2Nip && (
-                    <span className="text-[10px] text-slate-500 font-mono">NIP: {defaultDospem2Nip}</span>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-
           {/* FORM 1: BERIKAN CATATAN REVISI RAPAT PRODI */}
           <div className="bg-amber-50/60 border border-amber-200 rounded-2xl p-5 shadow-2xs space-y-4">
             <div className="flex items-center justify-between border-b border-amber-200/80 pb-3">
