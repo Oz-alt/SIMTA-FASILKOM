@@ -187,16 +187,6 @@ export default function BimbinganTAPage() {
         </div>
       </div>
 
-      {/* Automatic Bimbingan Cadence Reminder Banner for Mahasiswa (Min. 2x/Bulan) */}
-      {isStudentRole && (
-        <BimbinganReminderBanner 
-          reminder={reminderStatus} 
-          studentEmail={currentUser?.email}
-          studentUser={currentUser}
-          showAction={false}
-        />
-      )}
-
       {/* Rekapitulasi Quick Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-xs font-semibold">
         

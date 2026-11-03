@@ -257,14 +257,6 @@ export default function KartuBimbinganPage() {
             </button>
           </div>
         </div>
-
-        {/* Cadence Reminder Banner */}
-        <BimbinganReminderBanner 
-          reminder={reminderStatus} 
-          studentEmail={currentUser?.email}
-          studentUser={currentUser}
-          showAction={false}
-        />
       </div>
 
       {/* Printable Area */}

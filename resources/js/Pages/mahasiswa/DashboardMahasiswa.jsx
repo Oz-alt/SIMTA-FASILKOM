@@ -297,16 +297,6 @@ export default function DashboardMahasiswa() {
       {/* Thesis Journey Stepper */}
       <ThesisStepper currentTitle={myTitle} stages={myStages} />
 
-      {/* Automated Bimbingan Reminder Banner (Minimal 2x/Bulan) */}
-      {reminderStatus && (
-        <BimbinganReminderBanner 
-          reminder={reminderStatus} 
-          studentEmail={currentUser?.email}
-          studentUser={currentUser}
-          showAction={true}
-        />
-      )}
-
       {/* Linimasa Bimbingan Tugas Akhir */}
       <BimbinganTimeline 
         consultations={consultations} 
