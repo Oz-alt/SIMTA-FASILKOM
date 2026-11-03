@@ -82,7 +82,7 @@ export default function DashboardDosen() {
             student_nim: std.nim,
             student_nama: std.nama,
             prodi: 'D3 Manajemen Informatika',
-            judul_ta: 'Rancang Bangun Sistem Informasi Tugas Akhir',
+            judul_ta: '',
             dospem1_nip: std.dospem1_nip,
             dospem1_nama: 'Dr. Abdiansah, S.Kom., M.Cs.',
             status_pembagian: 'lengkap'
@@ -180,7 +180,7 @@ export default function DashboardDosen() {
 
       return {
         ...student,
-        thesisTitle: title?.judul || (student.judul_ta && student.judul_ta !== 'Judul Tugas Akhir' && !student.judul_ta.includes('Peminjaman Ruang') ? student.judul_ta : 'Rancang Bangun Sistem Informasi Tugas Akhir Berbasis Web'),
+        thesisTitle: title?.judul || (student.judul_ta && student.judul_ta !== 'Judul Tugas Akhir' && student.judul_ta !== 'Sistem Informasi Tugas Akhir' && !student.judul_ta.includes('Rancang Bangun Sistem Informasi Tugas Akhir') && !student.judul_ta.includes('Peminjaman Ruang') ? student.judul_ta : '-'),
         totalConsultations,
         pendingCount: pendingList.length,
         isPending,

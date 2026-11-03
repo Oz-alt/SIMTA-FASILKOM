@@ -47,6 +47,19 @@ export default function BimbinganPage() {
       targetNims = Array.from(new Set([...assignedNims, ...consNims]));
     }
 
+    const isDummyTitle = (val) => {
+      const clean = String(val || '').trim();
+      return (
+        !clean ||
+        clean === '-' ||
+        clean === 'Judul Tugas Akhir' ||
+        clean === 'Sistem Informasi Tugas Akhir' ||
+        clean === 'Rancang Bangun Sistem Informasi Tugas Akhir' ||
+        clean === 'Rancang Bangun Sistem Informasi Tugas Akhir Berbasis Web' ||
+        clean.includes('Peminjaman Ruang Sidang')
+      );
+    };
+
     return targetNims.map(nim => {
       const sa = studentAdvisors.find(s => String(s.student_nim) === nim);
       const cons = consultations.find(c => String(c.mhs_nim) === nim);
@@ -55,7 +68,7 @@ export default function BimbinganPage() {
         id: `std-${nim}`,
         student_nim: nim,
         student_nama: sa?.student_nama || cons?.mhs_nama || tt?.mhs_nama || `Mahasiswa (${nim})`,
-        judul_ta: tt?.judul || sa?.judul_ta || 'Sistem Informasi Tugas Akhir',
+        judul_ta: tt?.judul || (!isDummyTitle(sa?.judul_ta) ? sa.judul_ta : '-'),
         dospem1: sa?.dospem1_nama || tt?.pembimbing_1_nama || 'Dosen Pembimbing 1',
         dospem2: sa?.dospem2_nama || tt?.pembimbing_2_nama || 'Dosen Pembimbing 2'
       };
@@ -96,10 +109,23 @@ export default function BimbinganPage() {
     const tt = thesisTitles?.find(t => String(t.mhs_nim) === String(selectedNim));
     const fromList = myStudents.find(s => String(s.student_nim) === String(selectedNim));
 
+    const isDummyTitle = (val) => {
+      const clean = String(val || '').trim();
+      return (
+        !clean ||
+        clean === '-' ||
+        clean === 'Judul Tugas Akhir' ||
+        clean === 'Sistem Informasi Tugas Akhir' ||
+        clean === 'Rancang Bangun Sistem Informasi Tugas Akhir' ||
+        clean === 'Rancang Bangun Sistem Informasi Tugas Akhir Berbasis Web' ||
+        clean.includes('Peminjaman Ruang Sidang')
+      );
+    };
+
     return {
       nim: selectedNim,
       nama: sa?.student_nama || cons?.mhs_nama || tt?.mhs_nama || fromList?.student_nama || `Mahasiswa (${selectedNim})`,
-      judul: tt?.judul || sa?.judul_ta || fromList?.judul_ta || 'Sistem Informasi Tugas Akhir',
+      judul: tt?.judul || (!isDummyTitle(sa?.judul_ta) ? sa.judul_ta : (!isDummyTitle(fromList?.judul_ta) ? fromList.judul_ta : '-')),
       prodi: sa?.prodi || 'D3 Manajemen Informatika',
       dospem1_nip: sa?.dospem1_nip || tt?.pembimbing_1_nip || '',
       dospem1_nama: sa?.dospem1_nama || tt?.pembimbing_1_nama || tt?.pembimbing_1 || '',

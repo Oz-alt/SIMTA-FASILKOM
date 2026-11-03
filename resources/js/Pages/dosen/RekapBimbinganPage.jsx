@@ -66,7 +66,7 @@ export default function RekapBimbinganPage() {
             student_nim: std.nim,
             student_nama: std.nama,
             prodi: 'D3 Manajemen Informatika',
-            judul_ta: 'Rancang Bangun Sistem Informasi Tugas Akhir Berbasis Web',
+            judul_ta: '',
             dospem1_nip: std.dospem1_nip,
             dospem1_nama: 'Dr. Abdiansah, S.Kom., M.Cs.',
             status_pembagian: 'lengkap'
@@ -78,6 +78,19 @@ export default function RekapBimbinganPage() {
     return matched;
   }, [studentAdvisors, userNip, userNama]);
 
+  const isDummyTitle = (val) => {
+    const clean = String(val || '').trim();
+    return (
+      !clean ||
+      clean === '-' ||
+      clean === 'Judul Tugas Akhir' ||
+      clean === 'Sistem Informasi Tugas Akhir' ||
+      clean === 'Rancang Bangun Sistem Informasi Tugas Akhir' ||
+      clean === 'Rancang Bangun Sistem Informasi Tugas Akhir Berbasis Web' ||
+      clean.includes('Peminjaman Ruang Sidang')
+    );
+  };
+
   const rekapData = useMemo(() => {
     return assignedStudents.map(student => {
       const title = thesisTitles.find(t => String(t.mhs_nim || '').trim() === String(student.student_nim || '').trim());
@@ -87,10 +100,11 @@ export default function RekapBimbinganPage() {
       const pendingCount = mhsConsultations.filter(c => !isConsultationEvaluated(c)).length;
       
       const isEligible = approvedCount >= MIN_BIMBINGAN;
+      const realTitle = title?.judul || (!isDummyTitle(student.judul_ta) ? student.judul_ta : '-');
 
       return {
         ...student,
-        thesisTitle: title?.judul || (student.judul_ta && student.judul_ta !== 'Judul Tugas Akhir' ? student.judul_ta : 'Sistem Informasi Tugas Akhir'),
+        thesisTitle: realTitle,
         totalConsultations: mhsConsultations.length,
         approvedCount,
         pendingCount,
