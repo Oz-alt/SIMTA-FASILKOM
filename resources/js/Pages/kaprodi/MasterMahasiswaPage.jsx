@@ -68,7 +68,8 @@ export default function MasterMahasiswaPage() {
     email: '',
     no_hp: '',
     prodi: 'D3 Manajemen Informatika',
-    kelas: 'MI 5A',
+    angkatan: '2024',
+    kelas: '2024',
     status: 'aktif',
     dospem1_nip: '',
     dospem2_nip: ''
@@ -431,7 +432,8 @@ export default function MasterMahasiswaPage() {
       email: '',
       no_hp: '',
       prodi: 'D3 Manajemen Informatika',
-      kelas: 'MI 5A',
+      angkatan: '2024',
+      kelas: '2024',
       status: 'aktif',
       dospem1_nip: '',
       dospem2_nip: ''
@@ -450,6 +452,7 @@ export default function MasterMahasiswaPage() {
   // Open Edit Modal
   const openEditModal = (student) => {
     const advs = getStudentAdvisors(student);
+    const studentAngkatan = student.angkatan || student.tahun_angkatan || getStudentAngkatan(student) || '2024';
     setEditingStudent(student);
     setStudentForm({
       nim: student.nim || '',
@@ -457,7 +460,8 @@ export default function MasterMahasiswaPage() {
       email: student.email || '',
       no_hp: student.no_hp || '',
       prodi: student.prodi || 'D3 Manajemen Informatika',
-      kelas: student.kelas || 'MI 5A',
+      angkatan: studentAngkatan,
+      kelas: studentAngkatan,
       status: student.status || 'aktif',
       dospem1_nip: advs.dospem1.nip || '',
       dospem2_nip: advs.dospem2.nip || ''
@@ -645,7 +649,8 @@ export default function MasterMahasiswaPage() {
                   email: '',
                   no_hp: '',
                   prodi: 'D3 Manajemen Informatika',
-                  kelas: 'MI 5A',
+                  angkatan: '2024',
+                  kelas: '2024',
                   status: 'aktif',
                   dospem1_nip: '',
                   dospem2_nip: ''
@@ -956,18 +961,38 @@ export default function MasterMahasiswaPage() {
                     disabled={!!editingStudent}
                     placeholder="Contoh: 09010182428002"
                     value={studentForm.nim}
-                    onChange={(e) => setStudentForm({ ...studentForm, nim: e.target.value })}
+                    onChange={(e) => {
+                      const newNim = e.target.value;
+                      const updates = { ...studentForm, nim: newNim };
+                      if (!editingStudent && newNim.length >= 9) {
+                        const detected = getStudentAngkatan({ nim: newNim });
+                        if (detected) {
+                          updates.angkatan = detected;
+                          updates.tahun_angkatan = detected;
+                          updates.kelas = detected;
+                        }
+                      }
+                      setStudentForm(updates);
+                    }}
                     className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 disabled:opacity-60"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-700 font-bold mb-1">Kelas <span className="text-rose-500">*</span></label>
+                  <label className="block text-slate-700 font-bold mb-1">Angkatan <span className="text-rose-500">*</span></label>
                   <input
                     type="text"
                     required
-                    placeholder="Contoh: MI 5A"
-                    value={studentForm.kelas}
-                    onChange={(e) => setStudentForm({ ...studentForm, kelas: e.target.value })}
+                    placeholder="Contoh: 2024"
+                    value={studentForm.angkatan || studentForm.kelas || ''}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setStudentForm({ 
+                        ...studentForm, 
+                        angkatan: val,
+                        tahun_angkatan: val,
+                        kelas: val 
+                      });
+                    }}
                     className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>

@@ -57,7 +57,8 @@ export default function MasterDataKaprodi() {
     email: '',
     no_hp: '',
     prodi: 'D3 Manajemen Informatika',
-    kelas: 'MI 5A',
+    angkatan: '2024',
+    kelas: '2024',
     status: 'aktif'
   });
 
@@ -668,12 +669,20 @@ export default function MasterDataKaprodi() {
                   </select>
                 </div>
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Kelas / Rombel</label>
+                  <label className="font-bold text-slate-700 block mb-1">Angkatan</label>
                   <input
                     type="text"
-                    value={studentForm.kelas}
-                    onChange={(e) => setStudentForm({ ...studentForm, kelas: e.target.value })}
-                    placeholder="Contoh: MI 5A"
+                    value={studentForm.angkatan || studentForm.kelas || ''}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setStudentForm({ 
+                        ...studentForm, 
+                        angkatan: val,
+                        tahun_angkatan: val,
+                        kelas: val 
+                      });
+                    }}
+                    placeholder="Contoh: 2024"
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 outline-none text-slate-900"
                   />
                 </div>
