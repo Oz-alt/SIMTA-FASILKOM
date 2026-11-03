@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { Link } from '@inertiajs/react';
 import StudentWhatsAppLink from '../../Components/common/StudentWhatsAppLink.jsx';
+import { isConsultationEvaluated } from '../../lib/consultationUtils.js';
 import { 
   Users, 
   Search, 
@@ -83,7 +84,7 @@ export default function MahasiswaBimbinganPage() {
 
       // Konsultasi milik mahasiswa ini
       const mhsConsultations = consultations.filter(c => String(c.mhs_nim || c.nim).trim() === String(student.student_nim).trim());
-      const approvedConsultations = mhsConsultations.filter(c => c.status === 'disetujui' || c.jenis_revisi === 'Diterima');
+      const approvedConsultations = mhsConsultations.filter(c => isConsultationEvaluated(c));
       
       // Pengajuan bimbingan baru yang belum diperiksa (status menunggu tanggapan)
       const pendingConsultations = mhsConsultations.filter(c => 
