@@ -3,7 +3,16 @@
   "framework": null,
   "functions": {
     "api/index.php": {
-      "runtime": "vercel-php@0.7.3"
+      "runtime": "vercel-php@0.7.3",
+      "includeFiles": [
+        "app/**",
+        "bootstrap/**",
+        "config/**",
+        "database/**",
+        "public/**",
+        "resources/**",
+        "routes/**"
+      ]
     }
   },
   "routes": [
@@ -22,7 +31,7 @@
   ],
   "env": {
     "APP_ENV": "production",
-    "APP_DEBUG": "false",
+    "APP_DEBUG": "true",
     "SESSION_DRIVER": "cookie",
     "CACHE_STORE": "array",
     "LOG_CHANNEL": "stderr"
