@@ -269,12 +269,12 @@ export default function TinjauJudulPage() {
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 font-bold text-slate-600 uppercase text-[10px]">
-                <th className="py-3 px-4 w-[18%]">Mahasiswa (NIM &amp; Kelas)</th>
-                <th className="py-3 px-4 w-[26%]">Judul Tugas Akhir</th>
-                <th className="py-3 px-3 w-[16%]">Pembimbing 1</th>
-                <th className="py-3 px-3 w-[16%]">Pembimbing 2</th>
-                <th className="py-3 px-4 text-center w-24">Similarity</th>
-                <th className="py-3 px-4 text-center w-40 whitespace-nowrap">Aksi</th>
+                <th className="py-3 px-4 w-[24%] min-w-[210px]">Mahasiswa (NIM &amp; Kelas)</th>
+                <th className="py-3 px-4 w-[28%] min-w-[220px]">Judul Tugas Akhir</th>
+                <th className="py-3 px-3 w-[16%] min-w-[140px]">Pembimbing 1</th>
+                <th className="py-3 px-3 w-[16%] min-w-[140px]">Pembimbing 2</th>
+                <th className="py-3 px-4 text-center w-24 whitespace-nowrap">Similarity</th>
+                <th className="py-3 px-4 text-center w-36 whitespace-nowrap">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -299,20 +299,30 @@ export default function TinjauJudulPage() {
                         <div className="flex items-center space-x-2">
                           <span className="font-bold text-slate-900 text-sm">{t.mhs_nama}</span>
                           {t.created_at && (Date.now() - new Date(t.created_at).getTime() < 1000 * 60 * 60 * 24) && (
-                            <span className="inline-flex items-center space-x-1 px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-extrabold shrink-0 animate-pulse">
+                            <span className="inline-flex items-center space-x-1 px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-extrabold shrink-0 whitespace-nowrap animate-pulse">
                               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                               <span>Baru</span>
                             </span>
                           )}
                         </div>
-                        <div className="text-[10px] text-slate-500 font-mono flex items-center space-x-1.5 mt-0.5">
-                          <span>{t.mhs_nim}</span>
-                          <span>•</span>
-                          <span className="text-indigo-600 font-semibold">{t.mhs_kelas}</span>
-                          <span>•</span>
-                          <span className="px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-700 font-medium text-[9px] border border-indigo-200">
-                            {studentSem}
-                          </span>
+                        <div className="text-[10px] text-slate-500 font-mono flex items-center flex-wrap gap-1.5 mt-1">
+                          <span className="font-bold text-slate-600 whitespace-nowrap">{t.mhs_nim}</span>
+                          {t.mhs_kelas && (
+                            <>
+                              <span className="text-slate-300">•</span>
+                              <span className="inline-block px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 font-semibold text-[10px] border border-indigo-200/60 whitespace-nowrap shrink-0">
+                                {t.mhs_kelas}
+                              </span>
+                            </>
+                          )}
+                          {studentSem && (
+                            <>
+                              <span className="text-slate-300">•</span>
+                              <span className="inline-block px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-medium text-[10px] border border-slate-200 whitespace-nowrap shrink-0">
+                                {studentSem}
+                              </span>
+                            </>
+                          )}
                         </div>
                       </td>
 
