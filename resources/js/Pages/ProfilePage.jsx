@@ -70,9 +70,16 @@ export default function ProfilePage() {
     ) || null;
   }, [currentUser, advisors]);
 
+  const resolveStudentAngkatan = (user) => {
+    if (!user || !user.is_profile_completed) return '';
+    const val = String(user.kelas || '').trim();
+    if (!val || val === '-' || val === 'MI 5A' || val === 'MI 5B') return '';
+    return val;
+  };
+
   // Resolusi jabatan fungsional: Sumber kebenaran utama adalah yang diset Kaprodi / Admin di Data Master Dosen
   const resolvedJabatan = useMemo(() => {
-    if (isMahasiswa) return currentUser?.kelas || 'MI 2024';
+    if (isMahasiswa) return resolveStudentAngkatan(currentUser);
     if (matchedAdvisor?.jabatan_fungsional && matchedAdvisor.jabatan_fungsional !== 'Dosen Pembimbing') {
       return matchedAdvisor.jabatan_fungsional;
     }
@@ -100,7 +107,7 @@ export default function ProfilePage() {
     nama: currentUser?.nama || '',
     no_hp: currentUser?.no_hp && currentUser?.no_hp !== '-' ? currentUser.no_hp : '',
     prodi: currentUser?.prodi || 'D3 Manajemen Informatika',
-    kelas: isMahasiswa ? (currentUser?.kelas || 'MI 2024') : resolvedJabatan,
+    kelas: isMahasiswa ? resolveStudentAngkatan(currentUser) : resolvedJabatan,
     jabatan_fungsional: resolvedJabatan,
     keilmuan: resolvedKeilmuan
   });
@@ -135,12 +142,12 @@ export default function ProfilePage() {
         nama: currentUser.nama || '',
         no_hp: currentUser.no_hp && currentUser.no_hp !== '-' ? currentUser.no_hp : '',
         prodi: currentUser.prodi || 'D3 Manajemen Informatika',
-        kelas: isMahasiswa ? (currentUser.kelas || 'MI 2024') : resolvedJabatan,
+        kelas: isMahasiswa ? resolveStudentAngkatan(currentUser) : resolvedJabatan,
         jabatan_fungsional: resolvedJabatan,
         keilmuan: resolvedKeilmuan
       });
     }
-  }, [currentUser?.id, currentUser?.link_wa_group, currentUser?.nip, currentUser?.nim, currentUser?.role, currentUser?.no_hp, resolvedJabatan, resolvedKeilmuan, isMahasiswa]);
+  }, [currentUser?.id, currentUser?.link_wa_group, currentUser?.nip, currentUser?.nim, currentUser?.role, currentUser?.no_hp, currentUser?.kelas, currentUser?.is_profile_completed, resolvedJabatan, resolvedKeilmuan, isMahasiswa]);
 
   const roleLabels = {
     mahasiswa: { label: 'Mahasiswa', badge: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
@@ -161,7 +168,7 @@ export default function ProfilePage() {
       nama: currentUser?.nama || '',
       no_hp: currentUser?.no_hp && currentUser?.no_hp !== '-' ? currentUser.no_hp : '',
       prodi: currentUser?.prodi || 'D3 Manajemen Informatika',
-      kelas: isMahasiswa ? (currentUser?.kelas || 'MI 2024') : resolvedJabatan,
+      kelas: isMahasiswa ? resolveStudentAngkatan(currentUser) : resolvedJabatan,
       jabatan_fungsional: resolvedJabatan,
       keilmuan: resolvedKeilmuan
     });
@@ -655,7 +662,9 @@ export default function ProfilePage() {
 
             {/* 4. No. WhatsApp */}
             <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 space-y-1.5">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">No. HP / WhatsApp</span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                No. HP / WhatsApp {isMahasiswa && isEditing && <span className="text-rose-500">*</span>}
+              </span>
               {isEditing ? (
                 <div className="relative">
                   <input
@@ -663,6 +672,7 @@ export default function ProfilePage() {
                     name="no_hp"
                     value={formData.no_hp}
                     onChange={handleChange}
+                    required={isMahasiswa}
                     className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 text-xs font-semibold text-slate-900 bg-white transition-all outline-none"
                     placeholder="Contoh: 081278901234"
                   />
@@ -704,7 +714,7 @@ export default function ProfilePage() {
             {/* 6. Angkatan Mahasiswa / Jabatan Fungsional */}
             <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 space-y-1.5">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                {isMahasiswa ? 'Angkatan Mahasiswa' : 'Jabatan Fungsional'}
+                {isMahasiswa ? 'Angkatan Mahasiswa' : 'Jabatan Fungsional'} {isMahasiswa && isEditing && <span className="text-rose-500">*</span>}
               </span>
               {isEditing ? (
                 isMahasiswa ? (
@@ -714,8 +724,9 @@ export default function ProfilePage() {
                       name="kelas"
                       value={formData.kelas}
                       onChange={handleChange}
+                      required
                       className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 text-xs font-semibold text-slate-900 bg-white transition-all outline-none"
-                      placeholder="Contoh: MI 2024"
+                      placeholder="Masukkan angkatan (contoh: 2024 / MI 2024)"
                     />
                     <GraduationCap className="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
                   </div>
@@ -739,7 +750,9 @@ export default function ProfilePage() {
                 <div className="flex items-center space-x-2 text-slate-900 font-semibold pt-0.5">
                   <GraduationCap className="w-4 h-4 text-slate-400" />
                   <span>
-                    {isMahasiswa ? (currentUser?.kelas || 'MI 2024') : resolvedJabatan}
+                    {isMahasiswa
+                      ? (resolveStudentAngkatan(currentUser) || <span className="text-slate-400 font-normal italic">Belum diisi</span>)
+                      : resolvedJabatan}
                   </span>
                 </div>
               )}
