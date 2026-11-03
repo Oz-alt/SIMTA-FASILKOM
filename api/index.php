@@ -1,8 +1,44 @@
 <?php
 
-ini_set('display_errors', '1');
-ini_set('display_startup_errors', '1');
-error_reporting(E_ALL);
+// Layani file statis dari public/ jika request aset masuk ke fungsi PHP
+$uri = urldecode(parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH));
+if ($uri !== '/' && $uri !== '' && !str_contains($uri, '..')) {
+    $publicFile = __DIR__ . '/../public' . $uri;
+    if (is_file($publicFile)) {
+        $ext = strtolower(pathinfo($publicFile, PATHINFO_EXTENSION));
+        $mimes = [
+            'css' => 'text/css; charset=utf-8',
+            'js' => 'application/javascript; charset=utf-8',
+            'mjs' => 'application/javascript; charset=utf-8',
+            'json' => 'application/json; charset=utf-8',
+            'png' => 'image/png',
+            'jpg' => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'gif' => 'image/gif',
+            'svg' => 'image/svg+xml',
+            'ico' => 'image/x-icon',
+            'webp' => 'image/webp',
+            'woff' => 'font/woff',
+            'woff2' => 'font/woff2',
+            'ttf' => 'font/ttf',
+            'eot' => 'application/vnd.ms-fontobject',
+            'pdf' => 'application/pdf',
+            'txt' => 'text/plain; charset=utf-8',
+        ];
+
+        if (isset($mimes[$ext])) {
+            header('Content-Type: ' . $mimes[$ext]);
+            header('Cache-Control: public, max-age=31536000, immutable');
+            readfile($publicFile);
+            exit;
+        }
+    }
+}
+
+// Pastikan Laravel mengenali koneksi HTTPS di balik proxy Vercel
+$_SERVER['HTTPS'] = 'on';
+$_SERVER['SERVER_PORT'] = 443;
+$_SERVER['HTTP_X_FORWARDED_PROTO'] = 'https';
 
 // Siapkan folder storage & cache di /tmp karena sistem file Vercel bersifat read-only
 $storageDirs = [
