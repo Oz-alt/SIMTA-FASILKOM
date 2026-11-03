@@ -149,15 +149,6 @@ export default function BimbinganTAPage() {
               <BookOpen className="w-3.5 h-3.5" />
               <span>Form Bimbingan &amp; Konsultasi TA Terpadu</span>
             </div>
-            {isStudentRole && (
-              <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-500/25 text-emerald-200 text-xs font-bold border border-emerald-400/40 backdrop-blur-md shadow-xs">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-300 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
-                </span>
-                <span>Notifikasi Real-time Dosen: AKTIF (ON)</span>
-              </div>
-            )}
           </div>
           <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-white leading-tight">
             Form Bimbingan Tugas Akhir
@@ -178,10 +169,6 @@ export default function BimbinganTAPage() {
                 <Printer className="w-4 h-4 text-blue-300" />
                 <span>Kartu Bimbingan Digital</span>
               </Link>
-              <div className="flex items-center space-x-2 px-3.5 py-2.5 rounded-xl bg-white/10 text-emerald-300 text-xs font-medium border border-white/15 backdrop-blur-md">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <span>Respon status &amp; revisi dari dosen langsung muncul secara realtime</span>
-              </div>
             </div>
           )}
         </div>

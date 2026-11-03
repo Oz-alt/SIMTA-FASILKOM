@@ -188,10 +188,6 @@ export default function DashboardMahasiswa() {
             <span className="inline-flex items-center px-3 py-1 rounded-full bg-white/10 text-indigo-200 text-xs font-semibold backdrop-blur-sm">
               Portal Mahasiswa
             </span>
-            <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-200 text-xs font-semibold border border-emerald-400/30 backdrop-blur-sm">
-              <Mail className="w-3.5 h-3.5 text-emerald-300" />
-              <span>Notifikasi Terintegrasi Email: {currentUser?.email || '09010182428002@student.unsri.ac.id'}</span>
-            </span>
           </div>
 
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
