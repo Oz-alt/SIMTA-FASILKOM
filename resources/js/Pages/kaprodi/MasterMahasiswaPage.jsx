@@ -285,12 +285,9 @@ export default function MasterMahasiswaPage() {
     const headers = [
       'NIM',
       'Nama',
-      'Email',
-      'No_HP',
-      'Prodi',
       'Angkatan',
-      'NIP_Pembimbing_1',
-      'NIP_Pembimbing_2',
+      'Pembimbing 1',
+      'Pembimbing 2',
       'Status'
     ];
 
@@ -298,9 +295,6 @@ export default function MasterMahasiswaPage() {
       [
         '09010582428099',
         'RAFFI AHMAD PRATAMA',
-        '09010582428099@student.unsri.ac.id',
-        '',
-        'D3 Manajemen Informatika',
         '2024',
         '198803052019031010',
         '198303182023212034',
@@ -309,9 +303,6 @@ export default function MasterMahasiswaPage() {
       [
         '09010582428100',
         'NADIA ZAHRA',
-        '09010582428100@student.unsri.ac.id',
-        '',
-        'D3 Manajemen Informatika',
         '2024',
         '198410012009121005',
         '198710092024211001',
@@ -320,9 +311,6 @@ export default function MasterMahasiswaPage() {
       [
         '09010582428101',
         'DIMAS SETIAWAN',
-        '09010582428101@student.unsri.ac.id',
-        '',
-        'D3 Manajemen Informatika',
         '2024',
         '',
         '',
@@ -333,18 +321,31 @@ export default function MasterMahasiswaPage() {
     const colWidths = [
       18,  // NIM
       28,  // Nama
-      32,  // Email
-      16,  // No_HP
-      26,  // Prodi
       12,  // Angkatan
-      22,  // NIP_Pembimbing_1
-      22,  // NIP_Pembimbing_2
+      24,  // Pembimbing 1
+      24,  // Pembimbing 2
       12   // Status
     ];
 
     exportToExcel([headers, ...sampleRows], 'template_tambah_mahasiswa_baru.xlsx', 'Template Mahasiswa', colWidths);
     setIsExportDropdownOpen(false);
     showToast('Template Excel (.xlsx) untuk tambah mahasiswa baru berhasil diunduh.');
+  };
+
+  // Helper to resolve advisor NIP from either NIP digits or Lecturer Name
+  const resolveAdvisorNip = (inputVal) => {
+    const val = String(inputVal || '').trim().replace(/^'/, '');
+    if (!val) return '';
+    // 1. Direct NIP match in advisors list
+    const byNip = advisors.find(a => String(a.nip).trim() === val);
+    if (byNip) return byNip.nip;
+    // 2. Name search in advisors list
+    const lower = val.toLowerCase();
+    const byName = advisors.find(a => a.nama && a.nama.toLowerCase().includes(lower));
+    if (byName) return byName.nip;
+    // 3. Fallback: if it's numeric and looks like NIP (>= 8 digits), return as NIP
+    if (/^\d{8,}$/.test(val)) return val;
+    return '';
   };
 
   // Handle Import file upload (supports .xlsx, .xls, .csv)
@@ -367,19 +368,24 @@ export default function MasterMahasiswaPage() {
 
         const nim = String(r['nim'] || r['student_nim'] || r['nomor_induk'] || '').trim().replace(/^'/, '');
         const nama = String(r['nama'] || r['nama_mahasiswa'] || r['nama_lengkap'] || '').trim();
+        const angkatan = String(r['angkatan'] || r['tahun_angkatan'] || r['kelas'] || '').trim();
+
+        const rawP1 = String(r['pembimbing_1'] || r['pembimbing 1'] || r['pembimbing1'] || r['nip_pembimbing_1'] || r['pembimbing_1_nip'] || r['dospem1_nip'] || '').trim();
+        const dospem1_nip = resolveAdvisorNip(rawP1);
+
+        const rawP2 = String(r['pembimbing_2'] || r['pembimbing 2'] || r['pembimbing2'] || r['nip_pembimbing_2'] || r['pembimbing_2_nip'] || r['dospem2_nip'] || '').trim();
+        const dospem2_nip = resolveAdvisorNip(rawP2);
+
+        const status = String(r['status'] || 'aktif').trim();
         const email = String(r['email'] || (nim ? `${nim}@student.unsri.ac.id` : '')).trim();
         const no_hp = String(r['no_hp'] || r['nohp'] || r['telepon'] || r['whatsapp'] || '').trim().replace(/^'/, '');
         const prodi = String(r['prodi'] || r['program_studi'] || 'D3 Manajemen Informatika').trim();
-        const angkatan = String(r['angkatan'] || r['tahun_angkatan'] || r['kelas'] || '').trim();
-        const dospem1_nip = String(r['nip_pembimbing_1'] || r['pembimbing_1_nip'] || r['dospem1_nip'] || r['pembimbing_1'] || '').trim().replace(/^'/, '');
-        const dospem2_nip = String(r['nip_pembimbing_2'] || r['pembimbing_2_nip'] || r['dospem2_nip'] || r['pembimbing_2'] || '').trim().replace(/^'/, '');
-        const status = String(r['status'] || 'aktif').trim();
 
         return {
           nim,
           nama,
           email,
-          no_hp,
+          no_hp: no_hp || '-',
           prodi,
           angkatan: angkatan || getStudentAngkatan({ nim }),
           kelas: angkatan || '2024',
@@ -1154,7 +1160,7 @@ export default function MasterMahasiswaPage() {
                 </div>
                 <div>
                   <h3 className="font-extrabold text-slate-900 text-sm">Import Mahasiswa Baru dari Excel</h3>
-                  <p className="text-[11px] text-slate-500">Upload file Excel (.xlsx / .xls) dengan kolom: NIM, Nama, Email, No_HP, Prodi, Angkatan, NIP_Pembimbing_1, NIP_Pembimbing_2</p>
+                  <p className="text-[11px] text-slate-500">Upload file Excel (.xlsx / .xls) dengan 6 kolom: NIM, Nama, Angkatan, Pembimbing 1, Pembimbing 2, Status</p>
                 </div>
               </div>
               <button
@@ -1235,13 +1241,13 @@ export default function MasterMahasiswaPage() {
                     <table className="w-full text-left text-xs border-collapse">
                       <thead className="bg-slate-50 sticky top-0 border-b border-slate-200">
                         <tr className="text-slate-600 font-extrabold uppercase text-[10px]">
-                          <th className="py-2.5 px-3">Status</th>
+                          <th className="py-2.5 px-3">Data</th>
                           <th className="py-2.5 px-3">NIM</th>
                           <th className="py-2.5 px-3">Nama</th>
-                          <th className="py-2.5 px-3">Email</th>
-                          <th className="py-2.5 px-3">Kelas</th>
-                          <th className="py-2.5 px-3">Dospem 1</th>
-                          <th className="py-2.5 px-3">Dospem 2</th>
+                          <th className="py-2.5 px-3">Angkatan</th>
+                          <th className="py-2.5 px-3">Pembimbing 1</th>
+                          <th className="py-2.5 px-3">Pembimbing 2</th>
+                          <th className="py-2.5 px-3">Status</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -1264,13 +1270,21 @@ export default function MasterMahasiswaPage() {
                               </td>
                               <td className="py-2 px-3 font-mono font-bold text-slate-900">{row.nim}</td>
                               <td className="py-2 px-3 font-medium text-slate-800">{row.nama}</td>
-                              <td className="py-2 px-3 text-slate-600">{row.email || '-'}</td>
-                              <td className="py-2 px-3">{row.kelas}</td>
+                              <td className="py-2 px-3">{row.angkatan}</td>
                               <td className="py-2 px-3 text-[11px] text-slate-700">
                                 {d1?.nama || (row.dospem1_nip ? `NIP. ${row.dospem1_nip}` : '-')}
                               </td>
                               <td className="py-2 px-3 text-[11px] text-slate-700">
                                 {d2?.nama || (row.dospem2_nip ? `NIP. ${row.dospem2_nip}` : '-')}
+                              </td>
+                              <td className="py-2 px-3 capitalize">
+                                <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                  (row.status || '').toLowerCase() === 'aktif'
+                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                    : 'bg-slate-100 text-slate-700'
+                                }`}>
+                                  {row.status || 'aktif'}
+                                </span>
                               </td>
                             </tr>
                           );
