@@ -106,6 +106,7 @@ import { supabase, isSupabaseConfigured } from '../services/supabase.js';
 import { broadcastRealtimeNotification, subscribeToRealtimeNotifications } from '../services/realtimeNotificationBus.js';
 import {
   getStudentCredential,
+  getCachedStudentCredential,
   saveStudentCredential,
   verifyStudentPassword,
   normalizeNim,
@@ -748,6 +749,9 @@ export function AuthProvider({ children }) {
         users.unshift(user);
       }
       localStorage.setItem('simta_registered_users', JSON.stringify(users));
+      if (mhsAccountsCacheRef?.current) {
+        mhsAccountsCacheRef.current = null;
+      }
     } catch (e) {
       console.warn('Failed to save registered user locally:', e);
     }
@@ -837,12 +841,62 @@ export function AuthProvider({ children }) {
     // Sync student registry & profiles if updating student
     if (merged.role === 'mahasiswa') {
       const userNim = String(merged.nim || merged.id || '').trim();
-      setDbProfiles(prev => prev.map(p => {
-        if (String(p.id) === userNim || String(p.nim) === userNim || String(p.id) === String(merged.id)) {
-          return { ...p, ...updatedFields };
+      if (mhsAccountsCacheRef?.current) {
+        mhsAccountsCacheRef.current = null;
+      }
+
+      setDbProfiles(prev => {
+        const exists = prev.some(p =>
+          String(p.id) === userNim ||
+          String(p.nim) === userNim ||
+          String(p.id) === String(merged.id)
+        );
+        if (exists) {
+          return prev.map(p => {
+            if (String(p.id) === userNim || String(p.nim) === userNim || String(p.id) === String(merged.id)) {
+              return { ...p, ...updatedFields, nim: userNim, role: 'mahasiswa' };
+            }
+            return p;
+          });
         }
-        return p;
-      }));
+        return [
+          {
+            id: merged.id || `user-mhs-${userNim}`,
+            nim: userNim,
+            nip: userNim,
+            nama: merged.nama || '',
+            email: merged.email || `${userNim}@student.unsri.ac.id`,
+            no_hp: merged.no_hp || '',
+            kelas: merged.kelas || '',
+            prodi: merged.prodi || 'D3 Manajemen Informatika',
+            role: 'mahasiswa',
+            is_profile_completed: merged.is_profile_completed === true,
+            ...updatedFields
+          },
+          ...prev
+        ];
+      });
+
+      setStudentAdvisors(prev => {
+        let changed = false;
+        const next = prev.map(sa => {
+          if (String(sa.student_nim || '').trim() === userNim) {
+            changed = true;
+            return {
+              ...sa,
+              ...(updatedFields.nama ? { student_nama: updatedFields.nama } : {}),
+              ...(updatedFields.no_hp !== undefined ? { no_hp: updatedFields.no_hp } : {}),
+              ...(updatedFields.kelas !== undefined ? { kelas: updatedFields.kelas } : {})
+            };
+          }
+          return sa;
+        });
+        if (changed) {
+          try { localStorage.setItem('simta_student_advisors', JSON.stringify(next)); } catch {}
+          return next;
+        }
+        return prev;
+      });
 
       const studentNim = normalizeNim(merged.nim || merged.nip);
       if (studentNim) {
@@ -5637,7 +5691,24 @@ export function AuthProvider({ children }) {
             kelas: u.kelas || existing?.kelas || 'MI 5A',
             role: 'mahasiswa',
             status: u.status || existing?.status || 'aktif',
+            is_profile_completed: u.is_profile_completed === true || existing?.is_profile_completed === true,
             created_at: u.created_at || existing?.created_at || new Date().toISOString()
+          });
+        }
+      });
+
+      // 5. Merge verified student credentials from Supabase / local cache (highest priority for no_hp & verification status)
+      accountMap.forEach((existing, nim) => {
+        const cred = getCachedStudentCredential(nim);
+        if (cred) {
+          const verifiedPhone = cred.noHp || cred.no_hp || '';
+          accountMap.set(nim, {
+            ...existing,
+            nama: cred.nama || existing.nama,
+            no_hp: verifiedPhone || (cred.isProfileCompleted === false ? '-' : existing.no_hp),
+            kelas: cred.kelas || existing.kelas,
+            prodi: cred.prodi || existing.prodi,
+            is_profile_completed: cred.isProfileCompleted === true
           });
         }
       });

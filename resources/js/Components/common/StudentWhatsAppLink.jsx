@@ -5,6 +5,10 @@ import {
   resolveStudentContact, 
   normalizeWhatsAppNumber 
 } from '../../lib/whatsappHelper.js';
+import {
+  getStudentCredential,
+  getCachedStudentCredential
+} from '../../services/studentCredentials.js';
 import { MessageCircle, AlertTriangle, CheckCircle2, X } from 'lucide-react';
 
 /**
@@ -101,30 +105,79 @@ export default function StudentWhatsAppLink({
 
   // Dapatkan info kontak mahasiswa
   const studentData = student || { nim, nama };
+  const registeredList = typeof auth.getAllMahasiswaAccounts === 'function'
+    ? auth.getAllMahasiswaAccounts()
+    : (typeof auth.getAllRegisteredStudents === 'function' ? auth.getAllRegisteredStudents() : (auth.registeredUsers || []));
   const contact = resolveStudentContact(studentData, {
-    registeredStudents: typeof auth.getAllRegisteredStudents === 'function' ? auth.getAllRegisteredStudents() : [],
+    registeredStudents: registeredList,
     dbProfiles: auth.dbProfiles || [],
     studentAdvisors: auth.studentAdvisors || []
   });
 
   const displayName = children || contact.nama || nama || student?.student_nama || student?.mhs_nama || student?.nama || 'Mahasiswa';
-  const targetNim = contact.nim || nim || student?.student_nim || student?.mhs_nim || student?.nim || '';
-  const validation = normalizeWhatsAppNumber(contact.phone);
+  const targetNim = String(contact.nim || nim || student?.student_nim || student?.mhs_nim || student?.nim || '').trim();
 
-  const handleClick = (e) => {
+  // Sinkronisasi langsung dengan tabel student_credentials di Supabase (tempat no_hp verifikasi mahasiswa disimpan)
+  const [remoteCred, setRemoteCred] = useState(() => (targetNim ? getCachedStudentCredential(targetNim) : null));
+
+  useEffect(() => {
+    let isMounted = true;
+    if (!targetNim) return;
+
+    const cached = getCachedStudentCredential(targetNim);
+    if (cached) {
+      setRemoteCred(cached);
+    }
+
+    getStudentCredential(targetNim).then((cred) => {
+      if (isMounted && cred) {
+        setRemoteCred(cred);
+      }
+    }).catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
+  }, [targetNim]);
+
+  // Prioritaskan nomor WhatsApp dari hasil verifikasi mahasiswa di Supabase (student_credentials)
+  // Jika status dari server menyatakan mahasiswa BELUM verifikasi (isProfileCompleted === false), jangan gunakan nomor kosong/lama
+  const verifiedPhone = remoteCred?.fromServer
+    ? (remoteCred.isProfileCompleted && (remoteCred.noHp || remoteCred.no_hp) ? (remoteCred.noHp || remoteCred.no_hp) : (remoteCred.noHp || remoteCred.no_hp || ''))
+    : (remoteCred?.noHp || remoteCred?.no_hp || contact.phone || '');
+
+  const effectivePhone = verifiedPhone || (remoteCred?.fromServer && !remoteCred?.isProfileCompleted ? '' : contact.phone);
+  const validation = normalizeWhatsAppNumber(effectivePhone);
+
+  const handleClick = async (e) => {
     e.stopPropagation();
     e.preventDefault();
+
+    let finalPhone = effectivePhone;
+
+    // Jika belum ter-load dari server atau masih kosong, cek cepat ke server
+    if (!finalPhone && targetNim && (!remoteCred || !remoteCred.fromServer)) {
+      try {
+        const freshCred = await getStudentCredential(targetNim, { fresh: true });
+        if (freshCred) {
+          setRemoteCred(freshCred);
+          if (freshCred.noHp || freshCred.no_hp) {
+            finalPhone = freshCred.noHp || freshCred.no_hp;
+          }
+        }
+      } catch {}
+    }
 
     openStudentWhatsAppChat({
       student: {
         ...studentData,
         nim: targetNim,
-        nama: typeof displayName === 'string' ? displayName : contact.nama,
-        no_hp: contact.phone
+        nama: typeof displayName === 'string' ? displayName : (remoteCred?.nama || contact.nama),
+        no_hp: finalPhone
       },
       currentUser,
       context: {
-        registeredStudents: typeof auth.getAllRegisteredStudents === 'function' ? auth.getAllRegisteredStudents() : [],
+        registeredStudents: registeredList,
         dbProfiles: auth.dbProfiles || [],
         studentAdvisors: auth.studentAdvisors || []
       },
@@ -135,7 +188,7 @@ export default function StudentWhatsAppLink({
 
   const tooltipTitle = validation.isValid
     ? `Klik untuk chat WhatsApp ${displayName} (${validation.cleanNumber})`
-    : `Klik untuk chat WhatsApp ${displayName} (Nomor belum lengkap)`;
+    : `Klik untuk chat WhatsApp ${displayName} (Belum verifikasi / Nomor WhatsApp belum terdaftar)`;
 
   return (
     <button

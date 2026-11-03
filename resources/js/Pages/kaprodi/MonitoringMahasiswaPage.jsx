@@ -30,6 +30,8 @@ import {
   Phone
 } from 'lucide-react';
 import { MOCK_USERS, MOCK_THESIS_ARCHIVES } from '../../services/mockData.js';
+import { resolveStudentContact } from '../../lib/whatsappHelper.js';
+import { getStudentCredential, getCachedStudentCredential } from '../../services/studentCredentials.js';
 
 // Helper to determine year of admission (angkatan) from UNSRI NIM format (0901xxxYYZZnnn)
 const getAngkatanFromNim = (nim, fallback = '2024') => {
@@ -54,165 +56,16 @@ const normalizePhoneNumber = (phone) => {
   return cleaned;
 };
 
-// Seed titles for the 2024 cohort to ensure rich real-world test cases (long titles, standard titles, and empty titles)
-const SEED_COHORT_TITLES = {
-  '09010182428003': 'Rancang Bangun Sistem Monitoring dan Evaluasi Bimbingan Tugas Akhir Berbasis Web Menggunakan Notifikasi Otomatis Terintegrasi WhatsApp API', // Long title with ellipsis & tooltip
-  '09010282428027': 'Sistem Informasi Pengelolaan Inventaris Laboratorium Komputer Berbasis Web',
-  '09010282428030': 'Aplikasi Portal Layanan Akademik dan Peminjaman Ruang Kuliah Berbasis Web',
-  '09010182428002': 'Sistem Presensi Mahasiswa Berbasis Geofencing dan Dynamic QR Code pada Jurusan Manajemen Informatika',
-  '09010582428082': 'Aplikasi E-Surat dan Pengarsipan Dokumen Tugas Akhir Digital',
-  '09010282428032': 'Sistem Pendukung Keputusan Pemilihan Dosen Pembimbing Menggunakan Metode Simple Additive Weighting',
-  '09010582428063': 'Rancang Bangun Marketplace Jasa Desain Grafis Mahasiswa Berbasis Web',
-  '09010582428064': 'Sistem Informasi Manajemen Antrean Poliklinik Berbasis Web',
-  '09010282428022': 'Aplikasi Pelaporan Kerusakan Fasilitas Kampus Berbasis Mobile Web',
-  '09010282428042': 'Sistem Informasi Penjadwalan Sidang Tugas Akhir Menggunakan Algoritma Genetika'
-};
-
-// Seed consultations specifically for the 2024 cohort to match official monitoring status
-const SEED_COHORT_CONSULTATIONS = [
-  // Akhmad Latief (2 sessions with Dr. Abdiansah)
-  {
-    id: 'cons-seed-1',
-    nim: '09010182428003',
-    mhs_nim: '09010182428003',
-    mhs_nama: 'AKHMAD LATIEF SRI BINTANG PAMUNGKAS',
-    pembimbing: 'Pembimbing 1',
-    dosen_nip: '198410012009121005',
-    dosen_nama: 'Dr. Abdiansah, S.Kom., M.CS.',
-    tanggal: '2026-10-08',
-    status: 'Revisi Minor'
-  },
-  {
-    id: 'cons-seed-2',
-    nim: '09010182428003',
-    mhs_nim: '09010182428003',
-    mhs_nama: 'AKHMAD LATIEF SRI BINTANG PAMUNGKAS',
-    pembimbing: 'Pembimbing 1',
-    dosen_nip: '198410012009121005',
-    dosen_nama: 'Dr. Abdiansah, S.Kom., M.CS.',
-    tanggal: '2026-10-15',
-    status: 'Revisi Mayor'
-  },
-  // Anggi Sastika Sari (1 session with Dewi Sartika)
-  {
-    id: 'cons-seed-3',
-    nim: '09010282428027',
-    mhs_nim: '09010282428027',
-    mhs_nama: 'ANGGI SASTIKA SARI',
-    pembimbing: 'Pembimbing 1',
-    dosen_nip: '198804022019032007',
-    dosen_nama: 'Dewi Sartika, S.Kom., M.Kom.',
-    tanggal: '2026-09-23',
-    status: 'Menunggu Validasi'
-  },
-  // Overdue > 30 days
-  {
-    id: 'cons-seed-4',
-    nim: '09010282428030',
-    mhs_nim: '09010282428030',
-    mhs_nama: 'ARIELENDRA FEBRIANO DEWA PUTRA',
-    pembimbing: 'Pembimbing 1',
-    dosen_nip: '198803052019031010',
-    dosen_nama: 'Bayu Wijaya Putra, S.Kom., M.Kom.',
-    tanggal: '2026-09-08',
-    status: 'Valid'
-  },
-  {
-    id: 'cons-seed-4b',
-    nim: '09010182428002',
-    mhs_nim: '09010182428002',
-    mhs_nama: 'AULIA AZZAHRA',
-    pembimbing: 'Pembimbing 1',
-    dosen_nip: '196807101997021001',
-    dosen_nama: 'Dr. Julian Supardi, M.T.',
-    tanggal: '2026-09-10',
-    status: 'Valid'
-  },
-  // 7 other active sessions within 30 days
-  {
-    id: 'cons-seed-5',
-    nim: '09010582428082',
-    mhs_nim: '09010582428082',
-    mhs_nama: 'BASMAH AISYAH',
-    pembimbing: 'Pembimbing 1',
-    tanggal: '2026-09-20',
-    status: 'Valid'
-  },
-  {
-    id: 'cons-seed-6',
-    nim: '09010282428032',
-    mhs_nim: '09010282428032',
-    mhs_nama: 'BUNGA ANGELICA RAMADHANI',
-    pembimbing: 'Pembimbing 1',
-    tanggal: '2026-10-02',
-    status: 'Valid'
-  },
-  {
-    id: 'cons-seed-7',
-    nim: '09010582428063',
-    mhs_nim: '09010582428063',
-    mhs_nama: 'RAKHA BAGAS FIRJATULLAH',
-    pembimbing: 'Pembimbing 1',
-    tanggal: '2026-10-04',
-    status: 'Valid'
-  },
-  {
-    id: 'cons-seed-8',
-    nim: '09010582428064',
-    mhs_nim: '09010582428064',
-    mhs_nama: 'TAUFIK ARABI',
-    pembimbing: 'Pembimbing 1',
-    tanggal: '2026-10-05',
-    status: 'Valid'
-  },
-  {
-    id: 'cons-seed-9',
-    nim: '09010282428022',
-    mhs_nim: '09010282428022',
-    mhs_nama: 'JUBAIDI',
-    pembimbing: 'Pembimbing 1',
-    tanggal: '2026-10-07',
-    status: 'Valid'
-  },
-  {
-    id: 'cons-seed-10',
-    nim: '09010282428042',
-    mhs_nim: '09010282428042',
-    mhs_nama: 'INTAN NURAINI',
-    pembimbing: 'Pembimbing 1',
-    tanggal: '2026-10-11',
-    status: 'Valid'
-  },
-  {
-    id: 'cons-seed-11',
-    nim: '09010582428093',
-    mhs_nim: '09010582428093',
-    mhs_nama: 'LATIFAH AZKIYAH UMMU TAQWA',
-    pembimbing: 'Pembimbing 1',
-    tanggal: '2026-10-12',
-    status: 'Valid'
-  }
-];
-
-// Set of exactly 11 students in the 101 cohort who have registered sessions
-const COHORT_NIMS_WITH_SESSIONS = new Set([
-  '09010182428003', // Akhmad Latief (2x)
-  '09010282428027', // Anggi Sastika (1x)
-  '09010182428002', // Aulia Azzahra (> 30 days)
-  '09010282428030', // Arielendra (> 30 days)
-  '09010582428082', // Basmah
-  '09010282428032', // Bunga
-  '09010582428063', // Rakha
-  '09010582428064', // Taufik
-  '09010282428022', // Jubaidi
-  '09010282428042', // Intan
-  '09010582428093'  // Latifah
-]);
+// Data murni 100% dari database (tanpa seed dummy)
+const SEED_COHORT_TITLES = {};
+const SEED_COHORT_CONSULTATIONS = [];
 
 export default function MonitoringMahasiswaPage() {
   const {
     currentUser,
     getAllRegisteredStudents,
+    getAllMahasiswaAccounts,
+    dbProfiles = [],
     studentAdvisors = [],
     advisors = [],
     consultations = [],
@@ -449,8 +302,15 @@ export default function MonitoringMahasiswaPage() {
       const matchingTitle = (thesisTitles || []).find(t => String(t.mhs_nim || '').trim() === cleanNim);
       const judul_ta = matchingTitle?.judul || SEED_COHORT_TITLES[cleanNim] || std.judul_ta || (std.archiveData ? std.archiveData.judul : '') || '';
 
-      // Tambahan 1: Student Phone number (no_hp)
-      const no_hp = std.no_hp || '';
+      // Tambahan 1: Student Phone number (no_hp) - utamakan hasil verifikasi akun mahasiswa
+      const cachedCred = getCachedStudentCredential(cleanNim);
+      const resolvedContact = resolveStudentContact(
+        { nim: cleanNim, nama, no_hp: cachedCred?.noHp || cachedCred?.no_hp || std.no_hp || '' },
+        { registeredStudents: fromAuth || [], dbProfiles, studentAdvisors }
+      );
+      const no_hp = cachedCred?.fromServer && !cachedCred?.isProfileCompleted
+        ? ''
+        : (cachedCred?.noHp || cachedCred?.no_hp || resolvedContact.phone || '');
 
       // Find advisor assignment
       const assignment = (studentAdvisors || []).find(sa => String(sa.student_nim || '').trim() === cleanNim) || {};
@@ -496,7 +356,7 @@ export default function MonitoringMahasiswaPage() {
         latestStatus = 'Valid';
         daysSinceLast = 77;
         studentSessionsList = [];
-      } else if (COHORT_NIMS_WITH_SESSIONS.has(cleanNim)) {
+      } else {
         const seed = SEED_COHORT_CONSULTATIONS.filter(s => s.nim === cleanNim);
         const fromContext = (consultations || []).filter(c => String(c.mhs_nim || c.nim || '').trim() === cleanNim);
         const studentSessions = seed.length > 0 ? seed : fromContext;
@@ -740,6 +600,23 @@ export default function MonitoringMahasiswaPage() {
       selectedTarget: defaultTarget,
       message: defaultMsg
     });
+
+    if (type === 'mahasiswa' && student?.nim) {
+      getStudentCredential(student.nim, { fresh: true }).then((cred) => {
+        if (!cred) return;
+        const verifiedPhone = cred.noHp || cred.no_hp || '';
+        setWaModal(prev => {
+          if (!prev.isOpen || prev.student?.nim !== student.nim) return prev;
+          return {
+            ...prev,
+            student: {
+              ...prev.student,
+              no_hp: verifiedPhone || (cred.isProfileCompleted === false ? '' : prev.student.no_hp)
+            }
+          };
+        });
+      }).catch(() => {});
+    }
   };
 
   // Switch Target Dosen in WA Modal

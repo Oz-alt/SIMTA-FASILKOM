@@ -103,31 +103,11 @@ export default function DashboardDosen() {
     const cleanNip = String(userNip || '').trim();
     const cleanNama = (userNama || '').split(',')[0].toLowerCase().trim();
 
-    const filtered = (consultations || []).filter(c => 
+    return (consultations || []).filter(c => 
       (cleanNip && String(c.dosen_nip || '').trim() === cleanNip) ||
       myStudentNims.has(String(c.mhs_nim)) ||
       (cleanNama && c.dosen_nama && c.dosen_nama.toLowerCase().includes(cleanNama))
     );
-
-    // Seeded pending consultations if not present yet
-    const fallbackPending = [
-      { id: 'cons-pend-1', mhs_nim: '09010182428003', mhs_nama: 'AKHMAD LATIEF SRI BINTANG PAMUNGKAS', tanggal: '2026-10-15', status: 'menunggu_validasi', bab_topik: 'Bab 2 - Kajian Pustaka & Metodologi' },
-      { id: 'cons-pend-2', mhs_nim: '09010182428009', mhs_nama: 'MEDINA ZAHRAH', tanggal: '2026-09-30', status: 'menunggu_validasi', bab_topik: 'Bab 1 - Pendahuluan & Latar Belakang' },
-      { id: 'cons-pend-3', mhs_nim: '09010182428012', mhs_nama: 'TESA ALIZIA PUTRI', tanggal: '2026-09-22', status: 'menunggu_validasi', bab_topik: 'Bab 1 - Latar Belakang & Ruang Lingkup' },
-      { id: 'cons-pend-4', mhs_nim: '09010282428031', mhs_nama: 'MUHAMMAD RIZKY ELPARIZA', tanggal: '2026-09-15', status: 'menunggu_validasi', bab_topik: 'Bab 1 - Pendahuluan & Batasan Masalah' },
-      { id: 'cons-pend-5', mhs_nim: '09010182428011', mhs_nama: 'MELVA OLIFIA', tanggal: '2026-09-11', status: 'menunggu_validasi', bab_topik: 'Bab 1 - Rumusan Masalah & Tujuan' }
-    ];
-
-    const currentIds = new Set(filtered.map(c => c.id));
-    const currentMhsPending = new Set(filtered.filter(c => c.status === 'menunggu_validasi' || c.status === 'pending').map(c => c.mhs_nim));
-
-    fallbackPending.forEach(p => {
-      if (!currentIds.has(p.id) && !currentMhsPending.has(p.mhs_nim)) {
-        filtered.push(p);
-      }
-    });
-
-    return filtered;
   }, [consultations, userNip, userNama, myStudentNims]);
 
   // 3. Find pending title proposals for this dosen
@@ -144,7 +124,7 @@ export default function DashboardDosen() {
 
   // 4. Detailed Monitored Student List with Progress & Inactivity Calculations
   const monitoredStudents = useMemo(() => {
-    const refDate = new Date('2026-10-15T12:00:00Z').getTime();
+    const refDate = Date.now();
 
     return myStudents.map(student => {
       const title = (thesisTitles || []).find(t => String(t.mhs_nim) === String(student.student_nim));
@@ -181,12 +161,6 @@ export default function DashboardDosen() {
           const d = new Date(lastDate);
           lastDateFormatted = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
         }
-      }
-
-      // Check if student is overdue > 30 days
-      // For Melva Olifia with date 11/09/2026, daysInactive is exactly 34
-      if (student.student_nim === '09010182428011' || student.student_nama.includes('MELVA OLIFIA')) {
-        daysInactive = 34;
       }
 
       const isOverdue = daysInactive > 30;

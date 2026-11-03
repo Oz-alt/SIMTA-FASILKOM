@@ -18,17 +18,60 @@ import { supabase, isSupabaseConfigured } from './supabase.js';
  */
 
 const CACHE_TTL_MS = 60_000;
+const LOCAL_CRED_STORAGE_KEY = 'simta_student_credentials_v1';
 
 /**
- * @typedef {{ hasPassword: boolean, isProfileCompleted: boolean }} CredentialStatus
+ * @typedef {{ exists?: boolean, hasPassword: boolean, isProfileCompleted: boolean, nama?: string|null, noHp?: string|null, no_hp?: string|null, kelas?: string|null, prodi?: string|null, fromServer?: boolean }} CredentialStatus
  */
 
 /** @type {Map<string, CredentialStatus>} */
 let cache = new Map();
+/** @type {Map<string, Promise<CredentialStatus | null>>} */
+let inFlight = new Map();
 let cacheLoadedAt = 0;
 
 /** Normalisasi NIM agar konsisten sebagai kunci. */
 export const normalizeNim = (value) => String(value ?? '').trim();
+
+const persistLocalCred = (nim, status) => {
+    if (typeof window === 'undefined' || !nim || !status) return;
+    try {
+        const raw = localStorage.getItem(LOCAL_CRED_STORAGE_KEY);
+        const map = raw ? JSON.parse(raw) : {};
+        if (map && typeof map === 'object') {
+            map[nim] = {
+                exists: Boolean(status.exists),
+                hasPassword: Boolean(status.hasPassword),
+                isProfileCompleted: Boolean(status.isProfileCompleted),
+                nama: status.nama || null,
+                noHp: status.noHp || status.no_hp || null,
+                no_hp: status.noHp || status.no_hp || null,
+                kelas: status.kelas || null,
+                prodi: status.prodi || null,
+                updatedAt: Date.now(),
+            };
+            localStorage.setItem(LOCAL_CRED_STORAGE_KEY, JSON.stringify(map));
+        }
+    } catch {}
+};
+
+export const getCachedStudentCredential = (nim) => {
+    const key = normalizeNim(nim);
+    if (!key) return null;
+    if (cache.has(key)) return cache.get(key);
+    if (typeof window !== 'undefined') {
+        try {
+            const raw = localStorage.getItem(LOCAL_CRED_STORAGE_KEY);
+            if (raw) {
+                const map = JSON.parse(raw);
+                if (map && typeof map === 'object' && map[key]) {
+                    return map[key];
+                }
+            }
+        } catch {}
+    }
+    return null;
+};
 
 const isReady = () => Boolean(isSupabaseConfigured && supabase);
 
@@ -66,49 +109,64 @@ export const getStudentCredential = async (nim, options = {}) => {
     }
 
     if (!isReady()) {
-        return cached ?? null;
+        return cached ?? getCachedStudentCredential(key);
     }
 
-    try {
-        const { data, error } = await supabase.rpc('get_student_credential', { p_nim: key });
+    if (!options.fresh && inFlight.has(key)) {
+        return inFlight.get(key);
+    }
 
-        if (error) {
-            return cached ?? null;
-        }
+    const requestPromise = (async () => {
+        try {
+            const { data, error } = await supabase.rpc('get_student_credential', { p_nim: key });
 
-        const row = Array.isArray(data) ? data[0] : data;
-        if (!row) {
-            const emptyStatus = {
-                exists: false,
-                hasPassword: false,
-                isProfileCompleted: false,
-                nama: null,
-                noHp: null,
-                kelas: null,
-                prodi: null,
+            if (error) {
+                return cached ?? getCachedStudentCredential(key);
+            }
+
+            const row = Array.isArray(data) ? data[0] : data;
+            if (!row) {
+                const emptyStatus = {
+                    exists: false,
+                    hasPassword: false,
+                    isProfileCompleted: false,
+                    nama: null,
+                    noHp: null,
+                    no_hp: null,
+                    kelas: null,
+                    prodi: null,
+                    fromServer: true,
+                };
+                cache.set(key, emptyStatus);
+                cacheLoadedAt = Date.now();
+                persistLocalCred(key, emptyStatus);
+                return emptyStatus;
+            }
+
+            const status = {
+                exists: true,
+                hasPassword: row.has_password === true,
+                isProfileCompleted: row.is_profile_completed === true,
+                nama: row.nama || null,
+                noHp: row.no_hp || null,
+                no_hp: row.no_hp || null,
+                kelas: row.kelas || null,
+                prodi: row.prodi || null,
                 fromServer: true,
             };
-            cache.set(key, emptyStatus);
+            cache.set(key, status);
             cacheLoadedAt = Date.now();
-            return emptyStatus;
+            persistLocalCred(key, status);
+            return status;
+        } catch {
+            return cached ?? getCachedStudentCredential(key);
+        } finally {
+            inFlight.delete(key);
         }
+    })();
 
-        const status = {
-            exists: true,
-            hasPassword: row.has_password === true,
-            isProfileCompleted: row.is_profile_completed === true,
-            nama: row.nama || null,
-            noHp: row.no_hp || null,
-            kelas: row.kelas || null,
-            prodi: row.prodi || null,
-            fromServer: true,
-        };
-        cache.set(key, status);
-        cacheLoadedAt = Date.now();
-        return status;
-    } catch {
-        return cached ?? null;
-    }
+    inFlight.set(key, requestPromise);
+    return requestPromise;
 };
 
 /**
@@ -165,18 +223,21 @@ export const saveStudentCredential = async ({ nim, password, isProfileCompleted,
             };
         }
 
-        const prev = cache.get(key) || { hasPassword: false, isProfileCompleted: false };
-        cache.set(key, {
+        const prev = cache.get(key) || getCachedStudentCredential(key) || { hasPassword: false, isProfileCompleted: false };
+        const nextStatus = {
             exists: true,
             hasPassword: prev.hasPassword || Boolean(plainPassword),
             isProfileCompleted: typeof isProfileCompleted === 'boolean' ? isProfileCompleted : prev.isProfileCompleted,
             nama: cleanNama || prev.nama || null,
-            noHp: cleanNoHp || prev.noHp || null,
+            noHp: cleanNoHp || prev.noHp || prev.no_hp || null,
+            no_hp: cleanNoHp || prev.noHp || prev.no_hp || null,
             kelas: cleanKelas || prev.kelas || null,
             prodi: cleanProdi || prev.prodi || null,
             fromServer: true,
-        });
+        };
+        cache.set(key, nextStatus);
         cacheLoadedAt = Date.now();
+        persistLocalCred(key, nextStatus);
 
         return { success: true };
     } catch (err) {
