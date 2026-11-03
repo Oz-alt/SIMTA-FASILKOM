@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { usePage, router } from '@inertiajs/react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { 
@@ -365,64 +365,224 @@ export default function ProfilePage() {
     } catch {}
   };
 
-  // Upload Avatar Photo to Supabase Storage Bucket ('avatars')
-  const handlePhotoUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // Photo Link & Interactive Crop Modal state
+  const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+  const [photoLinkInput, setPhotoLinkInput] = useState('');
+  const [processedPhotoUrl, setProcessedPhotoUrl] = useState('');
+  const [isProcessingLink, setIsProcessingLink] = useState(false);
+  const [photoModalError, setPhotoModalError] = useState('');
+  const [cropZoom, setCropZoom] = useState(1);
+  const [cropOffset, setCropOffset] = useState({ x: 0, y: 0 });
+  const [isDraggingCrop, setIsDraggingCrop] = useState(false);
+  const [dragStartPos, setDragStartPos] = useState({ x: 0, y: 0 });
+  const [naturalImgSize, setNaturalImgSize] = useState({ width: 300, height: 300 });
+  const cropImgRef = useRef(null);
+  const CROP_BOX_SIZE = 240;
 
-    if (!file.type.startsWith('image/')) {
-      setErrorMsg('File harus berupa gambar (JPG, PNG, atau WEBP).');
+  // Normalisasi URL gambar (mendukung Google Drive share link, Dropbox, maupun direct image link)
+  const normalizeExternalImageUrl = (rawUrl) => {
+    let url = String(rawUrl || '').trim();
+    if (!url) return '';
+    if (!url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('data:image/')) {
+      url = 'https://' + url;
+    }
+
+    // Konversi Google Drive share link menjadi direct image link
+    const gdriveMatch =
+      url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/) ||
+      url.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/) ||
+      url.match(/drive\.google\.com\/uc\?.*id=([a-zA-Z0-9_-]+)/);
+    if (gdriveMatch && gdriveMatch[1]) {
+      return `https://lh3.googleusercontent.com/d/${gdriveMatch[1]}=w1000`;
+    }
+
+    // Konversi Dropbox link
+    if (url.includes('dropbox.com') && url.includes('?dl=0')) {
+      return url.replace('?dl=0', '?raw=1');
+    }
+
+    return url;
+  };
+
+  const handleOpenPhotoModal = () => {
+    setPhotoModalError('');
+    const existingUrl = currentUser?.avatar_url && !currentUser.avatar_url.startsWith('data:image/')
+      ? currentUser.avatar_url
+      : '';
+    setPhotoLinkInput(existingUrl);
+    setProcessedPhotoUrl('');
+    setCropZoom(1);
+    setCropOffset({ x: 0, y: 0 });
+    setIsPhotoModalOpen(true);
+  };
+
+  const handleProcessPhotoLink = (e) => {
+    if (e) e.preventDefault();
+    setPhotoModalError('');
+
+    const normalized = normalizeExternalImageUrl(photoLinkInput);
+    if (!normalized) {
+      setPhotoModalError('Masukkan tautan (link) foto terlebih dahulu.');
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      setErrorMsg('Ukuran file foto maksimal 5 MB.');
+    try {
+      if (!normalized.startsWith('data:image/')) {
+        new URL(normalized);
+      }
+    } catch {
+      setPhotoModalError('Format link foto tidak valid. Pastikan diawali https://');
+      return;
+    }
+
+    setIsProcessingLink(true);
+    setCropZoom(1);
+    setCropOffset({ x: 0, y: 0 });
+
+    // Gunakan proxy CORS agar gambar dari domain mana pun bisa dimuat dan di-crop ke Canvas
+    const proxyUrl = normalized.startsWith('data:image/')
+      ? normalized
+      : `https://images.weserv.nl/?url=${encodeURIComponent(normalized.replace(/^https?:\/\//, ''))}&w=1200&output=jpg`;
+
+    const testImg = new Image();
+    testImg.crossOrigin = 'anonymous';
+    testImg.onload = () => {
+      setNaturalImgSize({
+        width: testImg.naturalWidth || 300,
+        height: testImg.naturalHeight || 300
+      });
+      setProcessedPhotoUrl(proxyUrl);
+      setIsProcessingLink(false);
+    };
+    testImg.onerror = () => {
+      // Fallback: coba load URL asli secara langsung jika proxy gagal
+      const directImg = new Image();
+      directImg.onload = () => {
+        setNaturalImgSize({
+          width: directImg.naturalWidth || 300,
+          height: directImg.naturalHeight || 300
+        });
+        setProcessedPhotoUrl(normalized);
+        setIsProcessingLink(false);
+      };
+      directImg.onerror = () => {
+        setIsProcessingLink(false);
+        setPhotoModalError('Gagal memuat gambar dari link tersebut. Pastikan link foto bersifat publik dan dapat diakses.');
+      };
+      directImg.src = normalized;
+    };
+    testImg.src = proxyUrl;
+  };
+
+  // Handler drag / geser posisi foto di area crop
+  const handleCropPointerDown = (e) => {
+    if (!processedPhotoUrl) return;
+    e.preventDefault();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    setIsDraggingCrop(true);
+    setDragStartPos({
+      x: clientX - cropOffset.x,
+      y: clientY - cropOffset.y
+    });
+  };
+
+  const handleCropPointerMove = (e) => {
+    if (!isDraggingCrop) return;
+    e.preventDefault();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    setCropOffset({
+      x: clientX - dragStartPos.x,
+      y: clientY - dragStartPos.y
+    });
+  };
+
+  const handleCropPointerUp = () => {
+    setIsDraggingCrop(false);
+  };
+
+  // Hitung dimensi render dasar agar gambar menutupi kotak CROP_BOX_SIZE (object-cover base)
+  const baseRenderDims = useMemo(() => {
+    const { width, height } = naturalImgSize;
+    if (!width || !height) return { w: CROP_BOX_SIZE, h: CROP_BOX_SIZE };
+    const scale = Math.max(CROP_BOX_SIZE / width, CROP_BOX_SIZE / height);
+    return {
+      w: width * scale,
+      h: height * scale
+    };
+  }, [naturalImgSize]);
+
+  // Simpan hasil crop ke profil pengguna
+  const handleSaveCroppedPhoto = async () => {
+    if (!processedPhotoUrl) {
+      setPhotoModalError('Silakan masukkan link foto dan klik "Proses Link" terlebih dahulu.');
       return;
     }
 
     setIsUploadingPhoto(true);
+    setPhotoModalError('');
     setErrorMsg('');
     setSuccessMsg('');
 
     try {
-      let avatarUrl = '';
+      let finalAvatarUrl = processedPhotoUrl;
 
-      // 1. Try Supabase Storage Upload if configured
-      if (isSupabaseConfigured && supabase) {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `avatar-${currentUser?.id || Date.now()}-${Date.now()}.${fileExt}`;
-        const filePath = `user-avatars/${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('avatars')
-          .upload(filePath, file, { upsert: true });
-
-        if (!uploadError) {
-          const { data: publicUrlData } = supabase.storage
-            .from('avatars')
-            .getPublicUrl(filePath);
-          avatarUrl = publicUrlData.publicUrl;
-        } else {
-          console.warn('Supabase storage upload fallback to Local DataURL:', uploadError.message);
-        }
-      }
-
-      // 2. Local DataURL Fallback if Storage Bucket is offline or pending
-      if (!avatarUrl) {
-        avatarUrl = await new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result);
-          reader.readAsDataURL(file);
+      // Render hasil crop & zoom ke Canvas 300x300
+      try {
+        const imgEl = new Image();
+        imgEl.crossOrigin = 'anonymous';
+        await new Promise((resolve, reject) => {
+          imgEl.onload = resolve;
+          imgEl.onerror = reject;
+          imgEl.src = processedPhotoUrl;
         });
+
+        const OUTPUT_SIZE = 300;
+        const canvas = document.createElement('canvas');
+        canvas.width = OUTPUT_SIZE;
+        canvas.height = OUTPUT_SIZE;
+        const ctx = canvas.getContext('2d');
+
+        const ratio = OUTPUT_SIZE / CROP_BOX_SIZE;
+        const drawW = baseRenderDims.w * cropZoom * ratio;
+        const drawH = baseRenderDims.h * cropZoom * ratio;
+        const drawX = (OUTPUT_SIZE - drawW) / 2 + cropOffset.x * ratio;
+        const drawY = (OUTPUT_SIZE - drawH) / 2 + cropOffset.y * ratio;
+
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
+        ctx.drawImage(imgEl, drawX, drawY, drawW, drawH);
+
+        finalAvatarUrl = canvas.toDataURL('image/jpeg', 0.88);
+      } catch (canvasErr) {
+        // Jika CORS memblokir export canvas, simpan URL gambar langsung
+        console.warn('Canvas crop fallback to direct URL:', canvasErr);
+        finalAvatarUrl = normalizeExternalImageUrl(photoLinkInput) || processedPhotoUrl;
       }
 
-      await updateUserProfile({ avatar_url: avatarUrl });
+      await updateUserProfile({ avatar_url: finalAvatarUrl });
       setIsUploadingPhoto(false);
-      setSuccessMsg('Foto profil berhasil diunggah!');
+      setIsPhotoModalOpen(false);
+      setSuccessMsg('Foto profil berhasil diproses dan disimpan!');
       setTimeout(() => setSuccessMsg(''), 4000);
     } catch (err) {
       setIsUploadingPhoto(false);
-      setErrorMsg(err.message || 'Gagal mengunggah foto profil.');
+      setPhotoModalError(err.message || 'Gagal menyimpan foto profil.');
+    }
+  };
+
+  const handleRemovePhoto = async () => {
+    setIsUploadingPhoto(true);
+    try {
+      await updateUserProfile({ avatar_url: '' });
+      setIsUploadingPhoto(false);
+      setIsPhotoModalOpen(false);
+      setSuccessMsg('Foto profil berhasil dihapus.');
+      setTimeout(() => setSuccessMsg(''), 3500);
+    } catch (err) {
+      setIsUploadingPhoto(false);
+      setPhotoModalError(err.message || 'Gagal menghapus foto profil.');
     }
   };
 
@@ -503,9 +663,13 @@ export default function ProfilePage() {
         
         <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-6">
           
-          {/* Avatar Photo Circle with Upload Trigger */}
+          {/* Avatar Photo Circle with Link + Crop Modal Trigger */}
           <div className="relative group shrink-0">
-            <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-blue-900 via-indigo-900 to-slate-900 text-white font-extrabold text-3xl flex items-center justify-center shadow-md overflow-hidden border-2 border-white">
+            <div
+              onClick={handleOpenPhotoModal}
+              className="w-24 h-24 rounded-2xl bg-gradient-to-br from-blue-900 via-indigo-900 to-slate-900 text-white font-extrabold text-3xl flex items-center justify-center shadow-md overflow-hidden border-2 border-white cursor-pointer"
+              title="Klik untuk mengubah foto profil via Link & Crop"
+            >
               {currentUser?.avatar_url ? (
                 <img 
                   src={currentUser.avatar_url} 
@@ -524,23 +688,15 @@ export default function ProfilePage() {
               )}
             </div>
 
-            {/* Hidden File Input */}
-            <input 
-              type="file"
-              id="avatar-file-input"
-              accept="image/*"
-              onChange={handlePhotoUpload}
-              className="hidden"
-            />
-
             {/* Camera Overlay Button */}
-            <label
-              htmlFor="avatar-file-input"
+            <button
+              type="button"
+              onClick={handleOpenPhotoModal}
               className="absolute -bottom-1.5 -right-1.5 p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center border-2 border-white hover:scale-105"
-              title="Ganti Foto Profil (Upload Ke Supabase Storage)"
+              title="Atur Foto Profil dari Link & Crop"
             >
               <Camera className="w-4 h-4" />
-            </label>
+            </button>
           </div>
 
           <div className="space-y-1.5">
@@ -551,8 +707,16 @@ export default function ProfilePage() {
               </span>
             </div>
             <p className="text-xs text-slate-500 font-medium">{currentUser?.email || (currentUser?.nim ? `${currentUser.nim}@student.unsri.ac.id` : '-')}</p>
-            <div className="text-[11px] text-slate-400 font-medium pt-0.5 flex items-center space-x-1">
+            <div className="text-[11px] text-slate-400 font-medium pt-0.5 flex flex-wrap items-center gap-2">
               <span>Fakultas Ilmu Komputer • Universitas Sriwijaya</span>
+              <button
+                type="button"
+                onClick={handleOpenPhotoModal}
+                className="inline-flex items-center space-x-1 text-[11px] font-bold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-2.5 py-0.5 rounded-lg border border-blue-200 transition-colors cursor-pointer"
+              >
+                <Link2 className="w-3 h-3" />
+                <span>Ubah Foto via Link</span>
+              </button>
             </div>
           </div>
 
@@ -1145,6 +1309,210 @@ export default function ProfilePage() {
               )}
             </>
           )}
+        </div>
+      )}
+
+      {/* Modal Input Link Foto Profil & Crop Interaktif */}
+      {isPhotoModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in"
+          onMouseMove={handleCropPointerMove}
+          onMouseUp={handleCropPointerUp}
+          onMouseLeave={handleCropPointerUp}
+          onTouchMove={handleCropPointerMove}
+          onTouchEnd={handleCropPointerUp}
+        >
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-md overflow-hidden">
+            {/* Header Modal */}
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
+              <div className="flex items-center space-x-2.5">
+                <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center">
+                  <Camera className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Atur Foto Profil dari Link</h3>
+                  <p className="text-[11px] text-slate-500">Masukkan tautan gambar, proses, lalu sesuaikan & crop</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPhotoModalOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-5">
+              {/* Alert Error di dalam Modal */}
+              {photoModalError && (
+                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium flex items-start space-x-2">
+                  <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                  <span>{photoModalError}</span>
+                </div>
+              )}
+
+              {/* Step 1: Input Link Foto + Tombol Proses */}
+              <form onSubmit={handleProcessPhotoLink} className="space-y-2">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                  Tautan / Link Foto (URL Gambar atau Google Drive Publik)
+                </label>
+                <div className="flex items-center space-x-2">
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      value={photoLinkInput}
+                      onChange={(e) => {
+                        setPhotoLinkInput(e.target.value);
+                        if (photoModalError) setPhotoModalError('');
+                      }}
+                      placeholder="https://contoh.com/foto.jpg atau link Google Drive..."
+                      className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 text-xs font-medium text-slate-900 bg-white outline-none transition-all"
+                    />
+                    <Link2 className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={isProcessingLink}
+                    className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-all cursor-pointer shrink-0 disabled:opacity-60 flex items-center space-x-1.5"
+                  >
+                    {isProcessingLink ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>Memproses...</span>
+                      </>
+                    ) : (
+                      <span>Proses Link</span>
+                    )}
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-400">
+                  Mendukung link gambar langsung (.jpg, .png, .webp), Imgur, Postimages, maupun link Google Drive (akses publik).
+                </p>
+              </form>
+
+              {/* Step 2: Area Preview & Interactive Crop */}
+              {processedPhotoUrl ? (
+                <div className="space-y-4 pt-1">
+                  <div className="flex flex-col items-center space-y-2">
+                    <span className="text-[11px] font-semibold text-slate-600">
+                      Geser foto di bawah untuk mengatur posisi wajah Anda:
+                    </span>
+
+                    {/* Kotak Crop 240x240 */}
+                    <div
+                      onMouseDown={handleCropPointerDown}
+                      onTouchStart={handleCropPointerDown}
+                      style={{ width: `${CROP_BOX_SIZE}px`, height: `${CROP_BOX_SIZE}px` }}
+                      className="relative rounded-2xl overflow-hidden bg-slate-900 border-2 border-blue-500 shadow-inner cursor-move select-none touch-none flex items-center justify-center"
+                    >
+                      <img
+                        ref={cropImgRef}
+                        src={processedPhotoUrl}
+                        alt="Crop Preview"
+                        draggable={false}
+                        style={{
+                          width: `${baseRenderDims.w * cropZoom}px`,
+                          height: `${baseRenderDims.h * cropZoom}px`,
+                          transform: `translate(${cropOffset.x}px, ${cropOffset.y}px)`,
+                          maxWidth: 'none'
+                        }}
+                        className="pointer-events-none select-none object-cover"
+                      />
+
+                      {/* Garis bantu grid crop */}
+                      <div className="absolute inset-0 pointer-events-none border border-white/25 rounded-2xl">
+                        <div className="w-full h-1/3 border-b border-white/15" />
+                        <div className="w-full h-1/3 border-b border-white/15" />
+                      </div>
+                      <div className="absolute inset-0 pointer-events-none flex">
+                        <div className="w-1/3 h-full border-r border-white/15" />
+                        <div className="w-1/3 h-full border-r border-white/15" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Kontrol Zoom & Reset */}
+                  <div className="space-y-2 bg-slate-50 p-3.5 rounded-xl border border-slate-200/80">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="font-bold text-slate-600">Perbesar / Zoom ({Math.round(cropZoom * 100)}%)</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCropZoom(1);
+                          setCropOffset({ x: 0, y: 0 });
+                        }}
+                        className="text-blue-600 hover:text-blue-700 font-bold cursor-pointer"
+                      >
+                        Reset Posisi
+                      </button>
+                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="3"
+                      step="0.05"
+                      value={cropZoom}
+                      onChange={(e) => setCropZoom( parseFloat(e.target.value) )}
+                      className="w-full accent-blue-600 cursor-pointer"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="py-8 px-4 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/60 flex flex-col items-center justify-center text-center space-y-2">
+                  <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center">
+                    <Camera className="w-6 h-6" />
+                  </div>
+                  <p className="text-xs font-semibold text-slate-600">Belum Ada Foto yang Diproses</p>
+                  <p className="text-[11px] text-slate-400 max-w-xs">
+                    Tempelkan link foto Anda pada kolom di atas lalu klik tombol <strong>Proses Link</strong> untuk mulai memotong (crop) foto.
+                  </p>
+                </div>
+              )}
+
+              {/* Footer Modal Actions */}
+              <div className="flex items-center justify-between pt-2 border-t border-slate-100 gap-2">
+                {currentUser?.avatar_url ? (
+                  <button
+                    type="button"
+                    onClick={handleRemovePhoto}
+                    disabled={isUploadingPhoto}
+                    className="px-3 py-2 rounded-xl text-rose-600 hover:bg-rose-50 font-bold text-xs transition-colors cursor-pointer"
+                  >
+                    Hapus Foto Saat Ini
+                  </button>
+                ) : <div />}
+
+                <div className="flex items-center space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsPhotoModalOpen(false)}
+                    className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors cursor-pointer"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveCroppedPhoto}
+                    disabled={!processedPhotoUrl || isUploadingPhoto}
+                    className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-600/20 transition-all flex items-center space-x-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isUploadingPhoto ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>Menyimpan...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Simpan Hasil Crop</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
