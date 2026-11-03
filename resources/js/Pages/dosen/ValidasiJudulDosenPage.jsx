@@ -260,13 +260,13 @@ export default function ValidasiJudulDosenPage() {
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="bg-slate-50/80 border-b border-slate-200/80 font-semibold text-slate-500 uppercase text-[11px] tracking-wider">
-                <th className="py-3.5 px-4">Nama</th>
-                <th className="py-3.5 px-4">NIM</th>
-                <th className="py-3.5 px-4 text-center">Angkatan</th>
+                <th className="py-3.5 px-4 whitespace-nowrap">Nama</th>
+                <th className="py-3.5 px-4 whitespace-nowrap">NIM</th>
+                <th className="py-3.5 px-4 text-center whitespace-nowrap">Angkatan</th>
                 <th className="py-3.5 px-4">Judul Tugas Akhir</th>
-                <th className="py-3.5 px-4 text-center">Similarity</th>
-                <th className="py-3.5 px-4 text-center">Status</th>
-                <th className="py-3.5 px-4 text-right">Aksi</th>
+                <th className="py-3.5 px-4 text-center whitespace-nowrap">Similarity</th>
+                <th className="py-3.5 px-4 text-center whitespace-nowrap">Status</th>
+                <th className="py-3.5 px-4 text-center whitespace-nowrap">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -283,25 +283,18 @@ export default function ValidasiJudulDosenPage() {
 
                   return (
                     <tr key={row.id} className="hover:bg-slate-50/70 transition-colors align-middle">
-                      {/* Nama Mahasiswa & Peran Dosen */}
-                      <td className="py-3.5 px-4">
-                        <div className="font-semibold text-slate-900 text-xs sm:text-sm">
+                      {/* Nama Mahasiswa (Wajib 1 Baris) */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <div className="font-semibold text-slate-900 text-xs sm:text-sm whitespace-nowrap">
                           <StudentWhatsAppLink
                             nim={row.mhs_nim}
                             nama={row.mhs_nama}
-                            className="text-slate-900 font-semibold hover:text-emerald-700"
+                            className="text-slate-900 font-semibold hover:text-emerald-700 whitespace-nowrap"
                             showIcon={false}
                           >
                             {row.mhs_nama}
                           </StudentWhatsAppLink>
                         </div>
-                        <span className={`inline-block mt-1 text-[10px] font-semibold px-2 py-0.5 rounded-md border ${
-                          row.isDospem1
-                            ? 'bg-indigo-50 text-indigo-700 border-indigo-200/70'
-                            : 'bg-slate-100 text-slate-600 border-slate-200'
-                        }`}>
-                          {row.roleLabel}
-                        </span>
                       </td>
 
                       {/* NIM */}
@@ -358,57 +351,48 @@ export default function ValidasiJudulDosenPage() {
                         )}
                       </td>
 
-                      {/* Aksi: Button Disetujui (Khusus Pembimbing 1) atau Read-Only (Pembimbing 2) */}
-                      <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                      {/* Aksi: Simetris di tengah (text-center) */}
+                      <td className="py-3.5 px-4 text-center whitespace-nowrap">
                         {row.isDospem2 ? (
-                          <div className="inline-flex flex-col items-end">
-                            <span
-                              className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-100 text-slate-600 border border-slate-200 text-xs font-medium"
-                              title="Sebagai Pembimbing 2, Anda hanya dapat melihat status persetujuan dari Pembimbing 1"
-                            >
-                              <Eye className="w-3.5 h-3.5 text-slate-400" />
-                              <span>{row.isApproved ? 'Disetujui Pembimbing 1' : 'Menunggu Pembimbing 1'}</span>
-                            </span>
-                          </div>
+                          <span
+                            className="inline-flex items-center justify-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-100 text-slate-600 border border-slate-200 text-xs font-medium"
+                            title="Sebagai Pembimbing 2, Anda hanya dapat melihat status persetujuan dari Pembimbing 1"
+                          >
+                            <Eye className="w-3.5 h-3.5 text-slate-400" />
+                            <span>{row.isApproved ? 'Disetujui' : 'Diajukan'}</span>
+                          </span>
                         ) : row.isApproved ? (
                           <button
                             type="button"
                             disabled
-                            className="inline-flex items-center space-x-1.5 px-4 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold text-xs cursor-default"
+                            className="inline-flex items-center justify-center space-x-1.5 px-4 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold text-xs cursor-default"
                           >
                             <Check className="w-3.5 h-3.5 text-emerald-600" />
                             <span>Disetujui</span>
                           </button>
                         ) : (
-                          <div className="inline-flex flex-col items-end space-y-1">
-                            <button
-                              type="button"
-                              onClick={() => handleApproveTitle(row)}
-                              disabled={!row.canApprove}
-                              title={
-                                row.canApprove
-                                  ? 'Klik untuk menyetujui judul Tugas Akhir mahasiswa'
-                                  : `Syarat belum terpenuhi: Bimbingan Pembimbing 1 (${row.evaluatedCount}/${MIN_BIMBINGAN}) & status Diterima di log bimbingan (${row.hasDiterimaInLog ? 'Sudah' : 'Belum'})`
-                              }
-                              className={`inline-flex items-center space-x-1.5 px-4 py-1.5 rounded-xl font-semibold text-xs transition-all ${
-                                row.canApprove
-                                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs cursor-pointer'
-                                  : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
-                              }`}
-                            >
-                              {row.canApprove ? (
-                                <Check className="w-3.5 h-3.5" />
-                              ) : (
-                                <Lock className="w-3 h-3 text-slate-400" />
-                              )}
-                              <span>Disetujui</span>
-                            </button>
-                            {!row.canApprove && (
-                              <span className="text-[10px] text-slate-400 font-medium">
-                                Bimbingan: {row.evaluatedCount}/{MIN_BIMBINGAN} {row.hasDiterimaInLog ? '• ACC Log ✓' : '• Belum ACC Log'}
-                              </span>
+                          <button
+                            type="button"
+                            onClick={() => handleApproveTitle(row)}
+                            disabled={!row.canApprove}
+                            title={
+                              row.canApprove
+                                ? 'Klik untuk menyetujui judul Tugas Akhir mahasiswa'
+                                : `Syarat belum terpenuhi: Bimbingan Pembimbing 1 (${row.evaluatedCount}/${MIN_BIMBINGAN}) & status Diterima di log bimbingan`
+                            }
+                            className={`inline-flex items-center justify-center space-x-1.5 px-4 py-1.5 rounded-xl font-semibold text-xs transition-all ${
+                              row.canApprove
+                                ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs cursor-pointer'
+                                : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
+                            }`}
+                          >
+                            {row.canApprove ? (
+                              <Check className="w-3.5 h-3.5" />
+                            ) : (
+                              <Lock className="w-3 h-3 text-slate-400" />
                             )}
-                          </div>
+                            <span>Disetujui</span>
+                          </button>
                         )}
                       </td>
                     </tr>
