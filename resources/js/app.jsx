@@ -10,6 +10,25 @@ import AppLayout from './Components/layout/AppLayout.jsx';
 import AuthLayout from './Layouts/AuthLayout.jsx';
 import ErrorBoundary from './Components/common/ErrorBoundary.jsx';
 
+// Proteksi DOM terhadap mutasi ekstensi browser / Google Translate agar tidak memicu error removeChild / insertBefore
+if (typeof Node === 'function' && Node.prototype) {
+    const originalRemoveChild = Node.prototype.removeChild;
+    Node.prototype.removeChild = function (child) {
+        if (child && child.parentNode !== this) {
+            return child;
+        }
+        return originalRemoveChild.apply(this, arguments);
+    };
+
+    const originalInsertBefore = Node.prototype.insertBefore;
+    Node.prototype.insertBefore = function (newNode, referenceNode) {
+        if (referenceNode && referenceNode.parentNode !== this) {
+            return newNode;
+        }
+        return originalInsertBefore.apply(this, arguments);
+    };
+}
+
 const appName = import.meta.env.VITE_APP_NAME || 'SIMONITA FASILKOM';
 
 createInertiaApp({

@@ -725,12 +725,14 @@ export default function ProfilePage() {
         {/* Action Toggle Button: Edit / Batal */}
         <div>
           {isPendingProfile ? (
-            <div className="px-3.5 py-2 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 text-xs font-bold flex items-center space-x-1.5 shadow-2xs">
+            <div key="btn-pending" className="px-3.5 py-2 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 text-xs font-bold flex items-center space-x-1.5 shadow-2xs">
               <Lock className="w-3.5 h-3.5 text-amber-600" />
               <span>Aktivasi Wajib</span>
             </div>
           ) : !isEditing ? (
             <button
+              key="btn-edit"
+              type="button"
               onClick={handleStartEdit}
               className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-600/20 transition-all flex items-center space-x-2 cursor-pointer shrink-0"
             >
@@ -739,6 +741,8 @@ export default function ProfilePage() {
             </button>
           ) : (
             <button
+              key="btn-cancel"
+              type="button"
               onClick={handleCancelEdit}
               className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-all flex items-center space-x-2 cursor-pointer shrink-0"
             >
@@ -1074,15 +1078,15 @@ export default function ProfilePage() {
                 }`}
               >
                 {isSaving ? (
-                  <>
+                  <span key="state-saving" className="inline-flex items-center space-x-2">
                     <Loader2 className="w-4 h-4 animate-spin text-white" />
                     <span>Menyimpan...</span>
-                  </>
+                  </span>
                 ) : (
-                  <>
+                  <span key="state-idle" className="inline-flex items-center space-x-2">
                     <Save className="w-4 h-4" />
                     <span>{isPendingProfile ? 'Simpan & Aktifkan Akun Mahasiswa' : 'Simpan Perubahan'}</span>
-                  </>
+                  </span>
                 )}
               </button>
             </div>
