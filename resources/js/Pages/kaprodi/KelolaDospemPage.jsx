@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useAuth } from '../../context/AuthContext.jsx';
+import { useAuth, OFFICIAL_DOSEN_HOMEBASE } from '../../context/AuthContext.jsx';
 import {
   Users,
   UserCheck,
@@ -411,6 +411,11 @@ export default function KelolaDospemPage() {
                     const percentD1 = Math.min(100, Math.round((assignedD1 / maxD1) * 100));
                     const percentD2 = Math.min(100, Math.round((assignedD2 / maxD2) * 100));
 
+                    const official = OFFICIAL_DOSEN_HOMEBASE?.[String(advisor.nip)];
+                    const rawPend = advisor.pendidikan || official?.pendidikan || '';
+                    const pend = rawPend ? (rawPend.toLowerCase().startsWith('s3') ? 'S3' : 'S2') : (/\bDr\.\s/i.test(advisor.nama || '') || /Ph\.D/i.test(advisor.nama || '') ? 'S3' : 'S2');
+                    const jabatan = advisor.jabatan_fungsional || official?.jabatan_fungsional || 'Asisten Ahli';
+
                     return (
                       <tr key={advisor.id} className="hover:bg-slate-50/70 transition-colors">
                         <td className="py-2.5 px-2 text-center text-[11px] text-slate-400 font-semibold align-middle">
@@ -422,11 +427,23 @@ export default function KelolaDospemPage() {
                               {advisor.nama.charAt(0)}
                             </div>
                             <div className="min-w-0">
-                              <div className="font-bold text-slate-900 leading-snug truncate max-w-[200px]" title={advisor.nama}>
+                              <div className="font-bold text-slate-900 leading-snug truncate max-w-[220px]" title={advisor.nama}>
                                 {advisor.nama}
                               </div>
                               <div className="text-[10px] text-slate-500 font-mono">
                                 NIP. {advisor.nip}
+                              </div>
+                              <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                                <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold border ${
+                                  pend === 'S3'
+                                    ? 'bg-violet-50 text-violet-700 border-violet-200'
+                                    : 'bg-sky-50 text-sky-700 border-sky-200'
+                                }`}>
+                                  {pend}
+                                </span>
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200/80">
+                                  {jabatan}
+                                </span>
                               </div>
                             </div>
                           </div>
