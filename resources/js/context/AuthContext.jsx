@@ -2587,11 +2587,12 @@ export function AuthProvider({ children }) {
           if (!cred || !cred.fromServer) return;
           setCurrentUserState(prev => {
             if (!prev || prev.role !== 'mahasiswa' || normalizeNim(prev.nim || prev.nip) !== studentNim) return prev;
+            const phoneVal = (cred.noHp && isValidNonDummyPhone(cred.noHp)) ? cred.noHp : ((cred.no_hp && isValidNonDummyPhone(cred.no_hp)) ? cred.no_hp : (prev.no_hp && isValidNonDummyPhone(prev.no_hp) ? prev.no_hp : ''));
             const nextUser = {
               ...prev,
               is_profile_completed: cred.isProfileCompleted === true,
               ...(cred.nama ? { nama: cred.nama } : {}),
-              ...(cred.noHp ? { no_hp: cred.noHp } : (!cred.isProfileCompleted ? { no_hp: '' } : {})),
+              ...(phoneVal ? { no_hp: phoneVal } : {}),
               ...(cred.kelas ? { kelas: cred.kelas } : {}),
               ...(cred.prodi ? { prodi: cred.prodi } : {}),
               ...(!cred.hasPassword ? { password: studentNim } : {})
@@ -4336,13 +4337,14 @@ export function AuthProvider({ children }) {
       const localCredential = localFound.role === 'mahasiswa'
         ? await getStudentCredential(normalizeNim(localFound.nim || localFound.nip), { fresh: true })
         : null;
+      const localPhone = (localCredential?.noHp && isValidNonDummyPhone(localCredential.noHp)) ? localCredential.noHp : ((localCredential?.no_hp && isValidNonDummyPhone(localCredential.no_hp)) ? localCredential.no_hp : (localFound?.no_hp && isValidNonDummyPhone(localFound.no_hp) ? localFound.no_hp : ''));
       let resolvedLocal = localCredential
         ? {
             ...localFound,
             password: inputPass,
             is_profile_completed: localCredential.isProfileCompleted === true,
             ...(localCredential.nama ? { nama: localCredential.nama } : {}),
-            ...(localCredential.noHp ? { no_hp: localCredential.noHp } : (!localCredential.isProfileCompleted ? { no_hp: '' } : {})),
+            ...(localPhone ? { no_hp: localPhone } : {}),
             ...(localCredential.kelas ? { kelas: localCredential.kelas } : {}),
             ...(localCredential.prodi ? { prodi: localCredential.prodi } : {})
           }
@@ -4488,13 +4490,14 @@ export function AuthProvider({ children }) {
       const foundCredential = foundUser.role === 'mahasiswa'
         ? await getStudentCredential(normalizeNim(foundUser.nim || foundUser.nip), { fresh: true })
         : null;
+      const foundPhone = (foundCredential?.noHp && isValidNonDummyPhone(foundCredential.noHp)) ? foundCredential.noHp : ((foundCredential?.no_hp && isValidNonDummyPhone(foundCredential.no_hp)) ? foundCredential.no_hp : (foundUser?.no_hp && isValidNonDummyPhone(foundUser.no_hp) ? foundUser.no_hp : ''));
       const resolvedUser = foundCredential
         ? {
             ...foundUser,
             password: inputPass,
             is_profile_completed: foundCredential.isProfileCompleted === true,
             ...(foundCredential.nama ? { nama: foundCredential.nama } : {}),
-            ...(foundCredential.noHp ? { no_hp: foundCredential.noHp } : (!foundCredential.isProfileCompleted ? { no_hp: '' } : {})),
+            ...(foundPhone ? { no_hp: foundPhone } : {}),
             ...(foundCredential.kelas ? { kelas: foundCredential.kelas } : {}),
             ...(foundCredential.prodi ? { prodi: foundCredential.prodi } : {})
           }
@@ -4546,6 +4549,53 @@ export function AuthProvider({ children }) {
     };
 
     saveRegisteredUser(newStudentUser);
+
+    // Sinkronisasi profil mahasiswa baru ke admin_cms dan student_advisors
+    if (isSupabaseConfigured && supabase && role === 'mahasiswa' && nim) {
+      try {
+        const cleanNim = normalizeNim(nim);
+        supabase.from('admin_cms').upsert([{
+          id: `student-profile-${cleanNim}`,
+          judul: cleanNim,
+          kategori: 'student_profile_meta',
+          isi: JSON.stringify({
+            nim: cleanNim,
+            nama: nama || '',
+            noHp: noHp || '',
+            no_hp: noHp || '',
+            kelas: kelas || '',
+            prodi: prodi || 'D3 Manajemen Informatika',
+            isProfileCompleted: true,
+            updated_at: new Date().toISOString()
+          }),
+          status: 'aktif',
+          penulis: 'Student Registration Sync',
+          updated_at: new Date().toISOString()
+        }], { onConflict: 'id' }).then(() => {});
+
+        if (noHp) {
+          supabase.from('student_advisors').update({
+            no_hp: noHp,
+            student_nama: nama || undefined,
+            kelas: kelas || undefined
+          }).eq('student_nim', cleanNim).then(() => {});
+        }
+
+        if (password) {
+          saveStudentCredential({
+            nim: cleanNim,
+            password: password,
+            isProfileCompleted: true,
+            nama: nama,
+            noHp: noHp,
+            kelas: kelas,
+            prodi: prodi
+          }).catch(() => {});
+        }
+      } catch (regSyncErr) {
+        console.warn('Gagal sinkronisasi registrasi mahasiswa ke Supabase:', regSyncErr);
+      }
+    }
 
     // 1. Try Real Supabase Auth Signup if configured
     if (isSupabaseConfigured && supabase) {
