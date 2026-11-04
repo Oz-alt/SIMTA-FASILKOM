@@ -208,24 +208,35 @@ export default function ProfilePage() {
         return;
       }
 
-      // Password requirement
-      if (isPendingProfile || newPassword.trim() || confirmPassword.trim()) {
-        if (!newPassword.trim()) {
-          setErrorMsg('Kata sandi baru wajib diisi untuk keamanan akun Anda.');
-          return;
-        }
-        if (newPassword.length < 6) {
-          setErrorMsg('Kata sandi baru minimal harus 6 karakter.');
-          return;
-        }
-        if (currentUser?.nim && newPassword.trim() === currentUser.nim.trim()) {
-          setErrorMsg('Kata sandi baru tidak boleh sama dengan NIM Anda. Gunakan kata sandi yang lebih aman.');
-          return;
-        }
-        if (newPassword !== confirmPassword) {
-          setErrorMsg('Konfirmasi kata sandi tidak cocok. Silakan periksa kembali.');
-          return;
-        }
+    }
+
+    // Password requirement for ALL roles (Mahasiswa, Dosen, Kaprodi, Admin)
+    const hasPasswordInput = Boolean(newPassword.trim() || confirmPassword.trim());
+    if (isPendingProfile || hasPasswordInput) {
+      if (!newPassword.trim()) {
+        setErrorMsg('Kata sandi baru wajib diisi untuk keamanan akun Anda.');
+        return;
+      }
+      if (newPassword.length < 6) {
+        setErrorMsg('Kata sandi baru minimal harus 6 karakter.');
+        return;
+      }
+      if (isMahasiswa && currentUser?.nim && newPassword.trim() === currentUser.nim.trim()) {
+        setErrorMsg('Kata sandi baru tidak boleh sama dengan NIM Anda. Gunakan kata sandi yang lebih aman.');
+        return;
+      }
+      const userNipVal = String(currentUser?.nip || (!isMahasiswa ? currentUser?.nim : '') || '').trim();
+      if (!isMahasiswa && userNipVal && newPassword.trim() === userNipVal) {
+        setErrorMsg('Kata sandi baru tidak boleh sama dengan NIP Anda. Gunakan kata sandi yang lebih aman.');
+        return;
+      }
+      if (currentUser?.role === 'kaprodi' && newPassword.trim().toLowerCase() === 'koprodi123') {
+        setErrorMsg('Kata sandi baru tidak boleh sama dengan kata sandi bawaan.');
+        return;
+      }
+      if (newPassword !== confirmPassword) {
+        setErrorMsg('Konfirmasi kata sandi tidak cocok. Silakan periksa kembali.');
+        return;
       }
     }
 
@@ -245,9 +256,9 @@ export default function ProfilePage() {
 
       if (isMahasiswa) {
         payload.is_profile_completed = true;
-        if (newPassword.trim()) {
-          payload.password = newPassword.trim();
-        }
+      }
+      if (newPassword.trim()) {
+        payload.password = newPassword.trim();
       }
 
       await updateUserProfile(payload);
@@ -258,7 +269,10 @@ export default function ProfilePage() {
       }
       setNewPassword('');
       setConfirmPassword('');
-      setSuccessMsg(isMahasiswa ? 'Profil dan data akun berhasil disimpan! Akun Anda kini aktif sepenuhnya.' : 'Profil berhasil diperbarui!');
+      setSuccessMsg(newPassword.trim()
+        ? (isMahasiswa ? 'Profil dan kata sandi baru berhasil disimpan! Akun Anda kini aktif sepenuhnya.' : 'Profil dan kata sandi baru akun Anda berhasil disimpan!')
+        : (isMahasiswa ? 'Profil dan data akun berhasil disimpan!' : 'Profil berhasil diperbarui!')
+      );
 
       if (isFirstLogin && isMahasiswa) {
         setTimeout(() => {
@@ -951,108 +965,110 @@ export default function ProfilePage() {
               </div>
             )}
 
-            {/* 7. Pengaturan Keamanan Kata Sandi Baru (Mahasiswa) */}
-            {isMahasiswa && (
-              <div className="col-span-1 md:col-span-2 p-5 rounded-2xl bg-gradient-to-br from-slate-50 to-blue-50/40 border border-blue-100/80 space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-blue-100/80 pb-3">
-                  <div className="flex items-center space-x-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold shrink-0">
-                      <KeyRound className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h3 className="text-xs font-bold text-slate-900">
-                        Keamanan Akun: {isPendingProfile ? 'Buat Kata Sandi Baru (Wajib Diatur)' : 'Ubah Kata Sandi Akun'}
-                      </h3>
-                      <p className="text-[11px] text-slate-500 font-medium">
-                        {isPendingProfile 
-                          ? 'Akun masih menggunakan kata sandi default NIM. Tentukan kata sandi baru untuk mengamankan akun Anda.' 
-                          : 'Kosongkan kolom ini jika Anda tidak ingin mengubah kata sandi.'}
-                      </p>
-                    </div>
+            {/* 7. Pengaturan Keamanan Kata Sandi Baru (Mahasiswa, Dosen, Kaprodi, Admin) */}
+            <div className="col-span-1 md:col-span-2 p-5 rounded-2xl bg-gradient-to-br from-slate-50 to-blue-50/40 border border-blue-100/80 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-blue-100/80 pb-3">
+                <div className="flex items-center space-x-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold shrink-0">
+                    <KeyRound className="w-4 h-4" />
                   </div>
-                  {isPendingProfile && (
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 uppercase tracking-wide shrink-0">
-                      Wajib Diisi
-                    </span>
-                  )}
+                  <div>
+                    <h3 className="text-xs font-bold text-slate-900">
+                      Keamanan Akun: {isPendingProfile ? 'Buat Kata Sandi Baru (Wajib Diatur)' : 'Ubah Kata Sandi Akun'}
+                    </h3>
+                    <p className="text-[11px] text-slate-500 font-medium">
+                      {isPendingProfile 
+                        ? 'Akun masih menggunakan kata sandi default NIM. Tentukan kata sandi baru untuk mengamankan akun Anda.' 
+                        : 'Kosongkan kolom ini jika Anda tidak ingin mengubah kata sandi.'}
+                    </p>
+                  </div>
                 </div>
-
-                {isEditing ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Input Kata Sandi Baru */}
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                        Kata Sandi Baru {isPendingProfile && <span className="text-rose-500">*</span>}
-                      </label>
-                      <div className="relative">
-                        <input
-                          type={showNewPassword ? 'text' : 'password'}
-                          value={newPassword}
-                          onChange={(e) => {
-                            setNewPassword(e.target.value);
-                            if (errorMsg) setErrorMsg('');
-                          }}
-                          placeholder={isPendingProfile ? "Minimal 6 karakter (bukan NIM)..." : "Masukkan kata sandi baru..."}
-                          className="w-full pl-9 pr-10 py-2 rounded-xl border border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 text-xs font-semibold text-slate-900 bg-white transition-all outline-none"
-                        />
-                        <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                        <button
-                          type="button"
-                          onClick={() => setShowNewPassword(!showNewPassword)}
-                          className="p-1.5 text-slate-400 hover:text-slate-600 absolute right-2.5 top-1/2 -translate-y-1/2 transition-colors cursor-pointer"
-                          tabIndex={-1}
-                        >
-                          {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Input Konfirmasi Kata Sandi Baru */}
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                        Konfirmasi Kata Sandi Baru {isPendingProfile && <span className="text-rose-500">*</span>}
-                      </label>
-                      <div className="relative">
-                        <input
-                          type={showConfirmPassword ? 'text' : 'password'}
-                          value={confirmPassword}
-                          onChange={(e) => {
-                            setConfirmPassword(e.target.value);
-                            if (errorMsg) setErrorMsg('');
-                          }}
-                          placeholder="Ulangi kata sandi baru..."
-                          className="w-full pl-9 pr-10 py-2 rounded-xl border border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 text-xs font-semibold text-slate-900 bg-white transition-all outline-none"
-                        />
-                        <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                        <button
-                          type="button"
-                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                          className="p-1.5 text-slate-400 hover:text-slate-600 absolute right-2.5 top-1/2 -translate-y-1/2 transition-colors cursor-pointer"
-                          tabIndex={-1}
-                        >
-                          {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="col-span-1 md:col-span-2 text-[11px] text-slate-500 flex items-center space-x-1.5 pt-0.5">
-                      <ShieldCheck className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                      <span>Kata sandi minimal 6 karakter dan tidak boleh menggunakan NIM Anda.</span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-between text-xs text-slate-700 bg-white/80 p-3 rounded-xl border border-slate-200">
-                    <div className="flex items-center space-x-2 font-mono">
-                      <Lock className="w-4 h-4 text-slate-400" />
-                      <span>•••••••••••• (Tersimpan Aman)</span>
-                    </div>
-                    <span className="text-[11px] text-slate-500 font-medium">
-                      Gunakan tombol "Edit Profil" untuk mengubah kata sandi.
-                    </span>
-                  </div>
+                {isPendingProfile && (
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 uppercase tracking-wide shrink-0">
+                    Wajib Diisi
+                  </span>
                 )}
               </div>
-            )}
+
+              {isEditing ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Input Kata Sandi Baru */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                      Kata Sandi Baru {isPendingProfile && <span className="text-rose-500">*</span>}
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showNewPassword ? 'text' : 'password'}
+                        value={newPassword}
+                        onChange={(e) => {
+                          setNewPassword(e.target.value);
+                          if (errorMsg) setErrorMsg('');
+                        }}
+                        placeholder={isPendingProfile ? "Minimal 6 karakter (bukan NIM)..." : (isMahasiswa ? "Minimal 6 karakter (bukan NIM)..." : (currentUser?.nip ? "Minimal 6 karakter (bukan NIP)..." : "Masukkan kata sandi baru..."))}
+                        className="w-full pl-9 pr-10 py-2 rounded-xl border border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 text-xs font-semibold text-slate-900 bg-white transition-all outline-none"
+                      />
+                      <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        className="p-1.5 text-slate-400 hover:text-slate-600 absolute right-2.5 top-1/2 -translate-y-1/2 transition-colors cursor-pointer"
+                        tabIndex={-1}
+                      >
+                        {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Input Konfirmasi Kata Sandi Baru */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                      Konfirmasi Kata Sandi Baru {isPendingProfile && <span className="text-rose-500">*</span>}
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        value={confirmPassword}
+                        onChange={(e) => {
+                          setConfirmPassword(e.target.value);
+                          if (errorMsg) setErrorMsg('');
+                        }}
+                        placeholder="Ulangi kata sandi baru..."
+                        className="w-full pl-9 pr-10 py-2 rounded-xl border border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 text-xs font-semibold text-slate-900 bg-white transition-all outline-none"
+                      />
+                      <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="p-1.5 text-slate-400 hover:text-slate-600 absolute right-2.5 top-1/2 -translate-y-1/2 transition-colors cursor-pointer"
+                        tabIndex={-1}
+                      >
+                        {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="col-span-1 md:col-span-2 text-[11px] text-slate-500 flex items-center space-x-1.5 pt-0.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                    <span>Kata sandi minimal 6 karakter {isMahasiswa ? 'dan tidak boleh menggunakan NIM Anda.' : (currentUser?.nip ? 'dan tidak boleh menggunakan NIP Anda.' : '.')}</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between text-xs text-slate-700 bg-white/80 p-3 rounded-xl border border-slate-200">
+                  <div className="flex items-center space-x-2 font-mono">
+                    <Lock className="w-4 h-4 text-slate-400" />
+                    <span>•••••••••••• (Tersimpan Aman)</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleStartEdit}
+                    className="text-[11px] text-blue-600 hover:text-blue-800 font-bold hover:underline cursor-pointer"
+                  >
+                    Ubah Kata Sandi
+                  </button>
+                </div>
+              )}
+            </div>
 
           </div>
 

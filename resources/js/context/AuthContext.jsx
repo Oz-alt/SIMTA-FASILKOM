@@ -807,6 +807,25 @@ export function AuthProvider({ children }) {
     }
   };
 
+  // Helper for SHA-256 password hashing (Web Crypto API with fallback)
+  const sha256 = async (message) => {
+    if (typeof crypto !== 'undefined' && crypto?.subtle) {
+      try {
+        const msgBuffer = new TextEncoder().encode(message);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      } catch { }
+    }
+    let hash = 0;
+    for (let i = 0; i < message.length; i++) {
+      const char = message.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash;
+    }
+    return Math.abs(hash).toString(16);
+  };
+
   // Update active user profile fields and sync locally & with Supabase
   const updateUserProfile = async (updatedFields) => {
     if (!currentUser) return;
@@ -821,21 +840,40 @@ export function AuthProvider({ children }) {
     const merged = { ...currentUser, ...toUpdate };
     setCurrentUser(merged);
 
-    // Sync admin password directly in registered users list if updating admin profile
-    if (merged.role === 'admin' && toUpdate.password) {
+    // Sync password directly in registered users list if updating password for any role
+    if (toUpdate.password) {
       try {
         const users = getRegisteredUsers();
-        const aIdx = users.findIndex(u => u.role === 'admin' || u.id === 'user-admin-simta');
-        if (aIdx >= 0) {
-          users[aIdx] = {
-            ...users[aIdx],
+        const uIdent = String(merged.nip || merged.nim || merged.username || merged.id || '').trim().toLowerCase();
+        const uEmail = String(merged.email || '').trim().toLowerCase();
+        const uRole = merged.role;
+
+        const idx = users.findIndex(u => {
+          if (uRole === 'kaprodi' && (u.role === 'kaprodi' || String(u.username).toLowerCase() === 'koprodi')) return true;
+          if (uRole === 'admin' && (u.role === 'admin' || u.id === 'user-admin-simta')) return true;
+          const uid = String(u.nip || u.nim || u.username || u.id || '').trim().toLowerCase();
+          const uem = String(u.email || '').trim().toLowerCase();
+          return (uIdent && uid === uIdent) || (uEmail && uem === uEmail);
+        });
+
+        if (idx >= 0) {
+          users[idx] = {
+            ...users[idx],
+            ...toUpdate,
             password: toUpdate.password,
             password_hash: toUpdate.password_hash || await sha256(toUpdate.password)
           };
           localStorage.setItem('simta_registered_users', JSON.stringify(users));
+        } else {
+          users.unshift({
+            ...merged,
+            password: toUpdate.password,
+            password_hash: toUpdate.password_hash || await sha256(toUpdate.password)
+          });
+          localStorage.setItem('simta_registered_users', JSON.stringify(users));
         }
       } catch (e) {
-        console.warn('Failed to update admin registered user password:', e);
+        console.warn('Failed to update registered user password:', e);
       }
     }
 
@@ -1049,12 +1087,128 @@ export function AuthProvider({ children }) {
           }
         }
 
-        // 2. Sinkronisasi kata sandi jika ada
+        // 2. Sinkronisasi kata sandi jika ada ke Supabase admin_cms & Auth
         if (password) {
           try {
             await supabase.auth.updateUser({ password });
           } catch (passErr) {
             console.warn('Supabase auth password update warning:', passErr);
+          }
+
+          try {
+            const passHashVal = toUpdate.password_hash || await sha256(password);
+            const userKey = String(merged.nip || merged.nim || merged.username || merged.id || '').trim();
+            const credRowsToUpsert = [];
+
+            if (userKey) {
+              credRowsToUpsert.push({
+                id: `auth-cred-${userKey}`,
+                judul: userKey,
+                kategori: 'account_credential',
+                isi: JSON.stringify({
+                  identifier: userKey,
+                  role: merged.role,
+                  nama: merged.nama || '',
+                  password_hash: passHashVal,
+                  password_plain: password,
+                  updated_at: new Date().toISOString()
+                }),
+                status: 'aktif',
+                penulis: 'SIMTA Auth Protocol',
+                updated_at: new Date().toISOString()
+              });
+            }
+
+            if (merged.role === 'kaprodi') {
+              credRowsToUpsert.push(
+                {
+                  id: 'auth-cred-koprodi',
+                  judul: 'koprodi',
+                  kategori: 'account_credential',
+                  isi: JSON.stringify({
+                    identifier: 'koprodi',
+                    role: 'kaprodi',
+                    nama: merged.nama || 'Dr. Abdiansah, S.Kom., M.Cs.',
+                    password_hash: passHashVal,
+                    password_plain: password,
+                    updated_at: new Date().toISOString()
+                  }),
+                  status: 'aktif',
+                  penulis: 'SIMTA Auth Protocol',
+                  updated_at: new Date().toISOString()
+                },
+                {
+                  id: 'auth-cred-kaprodi',
+                  judul: 'kaprodi',
+                  kategori: 'account_credential',
+                  isi: JSON.stringify({
+                    identifier: 'kaprodi',
+                    role: 'kaprodi',
+                    nama: merged.nama || 'Dr. Abdiansah, S.Kom., M.Cs.',
+                    password_hash: passHashVal,
+                    password_plain: password,
+                    updated_at: new Date().toISOString()
+                  }),
+                  status: 'aktif',
+                  penulis: 'SIMTA Auth Protocol',
+                  updated_at: new Date().toISOString()
+                },
+                {
+                  id: 'auth-cred-198410012009121005',
+                  judul: '198410012009121005',
+                  kategori: 'account_credential',
+                  isi: JSON.stringify({
+                    identifier: '198410012009121005',
+                    role: 'kaprodi',
+                    nama: merged.nama || 'Dr. Abdiansah, S.Kom., M.Cs.',
+                    password_hash: passHashVal,
+                    password_plain: password,
+                    updated_at: new Date().toISOString()
+                  }),
+                  status: 'aktif',
+                  penulis: 'SIMTA Auth Protocol',
+                  updated_at: new Date().toISOString()
+                }
+              );
+            }
+
+            if (merged.role === 'admin') {
+              credRowsToUpsert.push({
+                id: 'auth-cred-admin',
+                judul: 'admin',
+                kategori: 'account_credential',
+                isi: JSON.stringify({
+                  identifier: 'admin',
+                  role: 'admin',
+                  nama: merged.nama || 'Admin SIMTA',
+                  password_hash: passHashVal,
+                  password_plain: password,
+                  updated_at: new Date().toISOString()
+                }),
+                status: 'aktif',
+                penulis: 'SIMTA Auth Protocol',
+                updated_at: new Date().toISOString()
+              });
+            }
+
+            if (credRowsToUpsert.length > 0) {
+              const { error: credErr } = await supabase.from('admin_cms').upsert(credRowsToUpsert, { onConflict: 'id' });
+              if (credErr) {
+                console.warn('Supabase account_credential upsert warning:', credErr.message);
+              }
+            }
+
+            // Kompatibilitas ganda jika dosen memiliki NIP
+            if (merged.role === 'dosen' && merged.nip) {
+              try {
+                await supabase.rpc('save_student_credential', {
+                  p_nim: String(merged.nip).trim(),
+                  p_password: password
+                });
+              } catch {}
+            }
+          } catch (passSyncErr) {
+            console.warn('Failed to sync account credential to Supabase:', passSyncErr);
           }
         }
 
@@ -3047,6 +3201,45 @@ export function AuthProvider({ children }) {
             // Hidrasi metadata profil mahasiswa terverifikasi (no_hp, kelas/angkatan, nama, prodi)
             hydrateStudentProfileMeta(data);
 
+            // Sinkronkan kredensial akun Dosen / Kaprodi / Admin dari Supabase ke registry lokal
+            try {
+              const credRows = data.filter(r => r && (r.kategori === 'account_credential' || String(r.id || '').startsWith('auth-cred-')) && r.isi);
+              if (credRows.length > 0) {
+                const regUsers = getRegisteredUsers();
+                let regChanged = false;
+                credRows.forEach(row => {
+                  try {
+                    const parsed = typeof row.isi === 'string' ? JSON.parse(row.isi) : row.isi;
+                    const ident = String(parsed?.identifier || row.judul || '').trim();
+                    if (ident && (parsed?.password_hash || parsed?.password_plain)) {
+                      const matchedIdx = regUsers.findIndex(u =>
+                        String(u.nip || u.nim || u.username || u.id || '').trim().toLowerCase() === ident.toLowerCase()
+                      );
+                      if (matchedIdx >= 0) {
+                        if (parsed.password_hash) regUsers[matchedIdx].password_hash = parsed.password_hash;
+                        if (parsed.password_plain) regUsers[matchedIdx].password = parsed.password_plain;
+                        regChanged = true;
+                      } else {
+                        regUsers.push({
+                          id: `user-${ident}`,
+                          nip: ident,
+                          nim: ident,
+                          role: parsed.role || 'dosen',
+                          nama: parsed.nama || 'Dosen SIMTA',
+                          password_hash: parsed.password_hash,
+                          password: parsed.password_plain || ident
+                        });
+                        regChanged = true;
+                      }
+                    }
+                  } catch {}
+                });
+                if (regChanged) {
+                  localStorage.setItem('simta_registered_users', JSON.stringify(regUsers));
+                }
+              }
+            } catch {}
+
             // Segarkan usulan judul TA agar langsung mengikuti angkatan & nama terbaru dari profil mahasiswa
             setThesisTitles(prev => {
               if (!Array.isArray(prev) || prev.length === 0) return prev;
@@ -3060,7 +3253,9 @@ export function AuthProvider({ children }) {
             const cmsItems = data.filter(row =>
               row &&
               row.kategori !== 'student_profile_meta' &&
-              !String(row.id || '').startsWith('student-profile-')
+              row.kategori !== 'account_credential' &&
+              !String(row.id || '').startsWith('student-profile-') &&
+              !String(row.id || '').startsWith('auth-cred-')
             );
             if (cmsItems.length > 0) {
               setAdminCmsContents(cmsItems);
@@ -3581,25 +3776,6 @@ export function AuthProvider({ children }) {
     }
   }, [currentUser, consultations]);
 
-  // Helper for SHA-256 password hashing (Web Crypto API with fallback)
-  const sha256 = async (message) => {
-    if (typeof crypto !== 'undefined' && crypto?.subtle) {
-      try {
-        const msgBuffer = new TextEncoder().encode(message);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-      } catch { }
-    }
-    let hash = 0;
-    for (let i = 0; i < message.length; i++) {
-      const char = message.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash;
-    }
-    return Math.abs(hash).toString(16);
-  };
-
   // Enrich user with latest Supabase data (advisors + profiles) across all roles
   const enrichUserFromSupabase = async (user) => {
     if (!isSupabaseConfigured || !supabase || !user) return user;
@@ -3751,31 +3927,77 @@ export function AuthProvider({ children }) {
     };
 
     /**
-     * Verifikasi kata sandi mahasiswa terhadap kredensial yang tersimpan di Supabase.
-     * Sumber kebenaran: tabel `student_credentials`. Bila barisnya ada dan kata sandi valid,
-     * kembalikan true. Bila verifikasi server mengembalikan false, kata sandi salah.
-     * Bila belum ada baris di Supabase, kembalikan null agar jatuh ke validasi lokal/default NIM.
+     * Verifikasi kata sandi pengguna (Mahasiswa, Dosen, Kaprodi, Admin) terhadap kredensial di Supabase.
+     * Sumber kebenaran:
+     * - Mahasiswa: tabel `student_credentials` via RPC verify_student_password (bcrypt) & `admin_cms` (auth-cred-*)
+     * - Dosen / Kaprodi / Admin: tabel `admin_cms` (kategori: account_credential, id: auth-cred-*)
+     * Nilai kembali:
+     * - true: kata sandi cocok dengan Supabase
+     * - false: akun ditemukan di Supabase tetapi kata sandi salah
+     * - null: akun belum pernah membuat kata sandi kustom di Supabase (gunakan verifikasi default/lokal)
      */
     const checkSupabaseCredential = async (user) => {
-      if (!user || user.role !== 'mahasiswa') {
-        return null;
+      if (!user) return null;
+
+      // 1. Mahasiswa via student_credentials RPC
+      if (user.role === 'mahasiswa') {
+        const nim = normalizeNim(user.nim || user.nip);
+        if (!nim) return null;
+        const res = await verifyStudentPassword(nim, inputPass);
+        if (res === true || res === false) return res;
       }
 
-      const nim = normalizeNim(user.nim || user.nip);
-      if (!nim) {
-        return null;
+      // 2. Dosen / Kaprodi / Admin / Mahasiswa fallback via Supabase admin_cms account_credential
+      if (isSupabaseConfigured && supabase) {
+        try {
+          const keysToCheck = [];
+          const uNip = user.nip ? String(user.nip).trim() : '';
+          const uNim = user.nim ? String(user.nim).trim() : '';
+          const uUsername = user.username ? String(user.username).toLowerCase().trim() : '';
+          const uEmail = user.email ? String(user.email).toLowerCase().trim() : '';
+
+          if (uNip) keysToCheck.push(`auth-cred-${uNip}`);
+          if (uNim && uNim !== uNip) keysToCheck.push(`auth-cred-${uNim}`);
+          if (uUsername) keysToCheck.push(`auth-cred-${uUsername}`);
+          if (uEmail) keysToCheck.push(`auth-cred-${uEmail}`);
+
+          if (user.role === 'kaprodi' || uNip === '198410012009121005') {
+            keysToCheck.push('auth-cred-koprodi');
+            keysToCheck.push('auth-cred-kaprodi');
+            keysToCheck.push('auth-cred-198410012009121005');
+          }
+          if (user.role === 'admin' || user.id === 'user-admin-simta') {
+            keysToCheck.push('auth-cred-admin');
+          }
+
+          if (keysToCheck.length > 0) {
+            const { data: credRows, error: credErr } = await supabase
+              .from('admin_cms')
+              .select('*')
+              .in('id', keysToCheck)
+              .order('updated_at', { ascending: false })
+              .limit(1);
+
+            if (!credErr && credRows && credRows.length > 0 && credRows[0].isi) {
+              const parsed = typeof credRows[0].isi === 'string' ? JSON.parse(credRows[0].isi) : credRows[0].isi;
+              if (parsed?.password_hash) {
+                const matches = (passHash.toLowerCase() === String(parsed.password_hash).toLowerCase()) ||
+                                (parsed.password_plain && inputPass === parsed.password_plain) ||
+                                (parsed.password && inputPass === parsed.password);
+                return matches;
+              }
+            }
+          }
+        } catch (err) {
+          console.warn('Supabase credential check warning:', err);
+        }
       }
 
-      return verifyStudentPassword(nim, inputPass);
+      return null;
     };
 
     // 1. Akun Kaprodi (dapat login dengan username "koprodi" / "kaprodi" atau NIP/Email)
     if (termLower === 'koprodi' || termLower === 'kaprodi') {
-      if (inputPass !== 'Koprodi123') {
-        throw new Error('Kata sandi salah.');
-      }
-
-
       const kaprodiUser = {
         id: 'user-kaprodi-abdiansah',
         username: 'Koprodi',
@@ -3787,6 +4009,27 @@ export function AuthProvider({ children }) {
         kelas: 'Dosen / Kaprodi',
         prodi: 'D3 Manajemen Informatika'
       };
+
+      const supabaseCredential = await checkSupabaseCredential(kaprodiUser);
+      if (supabaseCredential === false) {
+        throw new Error('Kata sandi salah.');
+      }
+      if (supabaseCredential !== true) {
+        const regUsers = getRegisteredUsers();
+        const regKaprodi = regUsers.find(u => u.role === 'kaprodi' || String(u.username).toLowerCase() === 'koprodi');
+        const customPass = regKaprodi?.password;
+        const customHash = regKaprodi?.password_hash;
+        if (customHash && passHash.toLowerCase() === customHash.toLowerCase()) {
+          // Valid custom hash
+        } else if (customPass && inputPass === customPass) {
+          // Valid custom pass
+        } else if (inputPass === 'Koprodi123' || inputPass === '198410012009121005') {
+          // Valid default pass
+        } else {
+          throw new Error('Kata sandi salah.');
+        }
+      }
+
       setCurrentUser(kaprodiUser);
       return '/kaprodi/dashboard';
     }
@@ -3877,9 +4120,6 @@ export function AuthProvider({ children }) {
 
     // 5. Akun Dosen Dr. Abdiansah (login via NIP atau Email)
     if (term === '198410012009121005' || termLower === 'abdiansah@unsri.ac.id') {
-      if (inputPass !== '198410012009121005') {
-        throw new Error('Kata sandi salah.');
-      }
       let savedWa = 'https://chat.whatsapp.com/E8JElpcoGjPOAwz4cRg6nl';
       let savedPhone = '0895-3787-34847';
 
@@ -3910,6 +4150,27 @@ export function AuthProvider({ children }) {
         no_hp: savedPhone,
         link_wa_group: savedWa
       };
+
+      const supabaseCredential = await checkSupabaseCredential(dosenUser);
+      if (supabaseCredential === false) {
+        throw new Error('Kata sandi salah.');
+      }
+      if (supabaseCredential !== true) {
+        const regUsers = getRegisteredUsers();
+        const regDosen = regUsers.find(u => u.nip === '198410012009121005');
+        const customPass = regDosen?.password;
+        const customHash = regDosen?.password_hash;
+        if (customHash && passHash.toLowerCase() === customHash.toLowerCase()) {
+          // Valid
+        } else if (customPass && inputPass === customPass) {
+          // Valid
+        } else if (inputPass === '198410012009121005' || inputPass === 'Koprodi123') {
+          // Valid default
+        } else {
+          throw new Error('Kata sandi salah.');
+        }
+      }
+
       dosenUser = await enrichUserFromSupabase(dosenUser);
       setCurrentUser(dosenUser);
       return '/dosen/dashboard';
@@ -6873,18 +7134,50 @@ export function AuthProvider({ children }) {
   const resetDosenPassword = async (idOrNip, newPassword) => {
     const cleanKey = String(idOrNip).trim();
     const finalPass = newPassword || cleanKey;
+    let finalHash = '';
+    try { finalHash = await sha256(finalPass); } catch {}
 
     try {
       const users = getRegisteredUsers();
       const idx = users.findIndex(u => u.id === cleanKey || u.nip === cleanKey || u.email === cleanKey);
       if (idx >= 0) {
         users[idx].password = finalPass;
+        if (finalHash) users[idx].password_hash = finalHash;
         localStorage.setItem('simta_registered_users', JSON.stringify(users));
       } else {
-        users.unshift({ id: cleanKey, nip: cleanKey, password: finalPass });
+        users.unshift({ id: cleanKey, nip: cleanKey, password: finalPass, password_hash: finalHash });
         localStorage.setItem('simta_registered_users', JSON.stringify(users));
       }
     } catch (e) { }
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('admin_cms').upsert([
+          {
+            id: `auth-cred-${cleanKey}`,
+            judul: cleanKey,
+            kategori: 'account_credential',
+            isi: JSON.stringify({
+              identifier: cleanKey,
+              role: 'dosen',
+              password_hash: finalHash,
+              password_plain: finalPass,
+              updated_at: new Date().toISOString()
+            }),
+            status: 'aktif',
+            penulis: 'Admin Reset Protocol',
+            updated_at: new Date().toISOString()
+          }
+        ], { onConflict: 'id' });
+
+        await supabase.rpc('save_student_credential', {
+          p_nim: cleanKey,
+          p_password: finalPass
+        });
+      } catch (err) {
+        console.warn('Failed to sync dosen reset password to Supabase:', err);
+      }
+    }
 
     return true;
   };
@@ -7441,6 +7734,59 @@ export function AuthProvider({ children }) {
       try {
         await supabase.auth.updateUser({ password: pass });
       } catch {}
+
+      try {
+        const uRole = matchedReq?.role || 'dosen';
+        const cleanIdent = String(targetIdentifier).trim();
+        const rowsToSync = [
+          {
+            id: `auth-cred-${cleanIdent}`,
+            judul: cleanIdent,
+            kategori: 'account_credential',
+            isi: JSON.stringify({
+              identifier: cleanIdent,
+              role: uRole,
+              nama: matchedReq?.nama || '',
+              password_hash: passwordHash,
+              password_plain: pass,
+              updated_at: new Date().toISOString()
+            }),
+            status: 'aktif',
+            penulis: 'Password Reset Portal',
+            updated_at: new Date().toISOString()
+          }
+        ];
+
+        if (uRole === 'kaprodi' || cleanIdent === '198410012009121005') {
+          rowsToSync.push({
+            id: 'auth-cred-koprodi',
+            judul: 'koprodi',
+            kategori: 'account_credential',
+            isi: JSON.stringify({
+              identifier: 'koprodi',
+              role: 'kaprodi',
+              nama: matchedReq?.nama || 'Dr. Abdiansah, S.Kom., M.Cs.',
+              password_hash: passwordHash,
+              password_plain: pass,
+              updated_at: new Date().toISOString()
+            }),
+            status: 'aktif',
+            penulis: 'Password Reset Portal',
+            updated_at: new Date().toISOString()
+          });
+        }
+
+        await supabase.from('admin_cms').upsert(rowsToSync, { onConflict: 'id' });
+
+        if (uRole === 'dosen') {
+          await supabase.rpc('save_student_credential', {
+            p_nim: cleanIdent,
+            p_password: pass
+          });
+        }
+      } catch (syncErr) {
+        console.warn('Failed to sync completed reset password to Supabase:', syncErr);
+      }
     }
 
     return {
