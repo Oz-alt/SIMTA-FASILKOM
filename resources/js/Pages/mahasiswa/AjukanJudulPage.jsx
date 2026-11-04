@@ -31,9 +31,16 @@ export default function AjukanJudulPage() {
     historicalTitles, 
     thesisArchives, 
     addThesisTitle,
-    updateThesisSubmission 
+    updateThesisSubmission,
+    getStudentAdvisors
   } = useAuth();
   const navigate = (url) => router.visit(url);
+
+  // Ambil dosen pembimbing terdaftar mahasiswa jika ada
+  const assignedAdv = useMemo(() => {
+    if (!currentUser?.nim || typeof getStudentAdvisors !== 'function') return null;
+    return getStudentAdvisors(currentUser.nim);
+  }, [currentUser?.nim, getStudentAdvisors]);
 
   // Deteksi apakah mahasiswa yang login sudah memiliki pengajuan tugas akhir sebelumnya
   const existingThesis = useMemo(() => {
@@ -226,10 +233,10 @@ export default function AjukanJudulPage() {
           deskripsi: abstrak.trim(),
           judul_processed: processedText,
           skor_kemiripan_terakhir: currentScore,
-          pembimbing_1_nip: '',
-          pembimbing_1_nama: '',
-          pembimbing_2_nip: '',
-          pembimbing_2_nama: ''
+          pembimbing_1_nip: assignedAdv?.dospem1?.nip || assignedAdv?.record?.dospem1_nip || '',
+          pembimbing_1_nama: assignedAdv?.dospem1?.nama || assignedAdv?.record?.dospem1_nama || '',
+          pembimbing_2_nip: assignedAdv?.dospem2?.nip || assignedAdv?.record?.dospem2_nip || '',
+          pembimbing_2_nama: assignedAdv?.dospem2?.nama || assignedAdv?.record?.dospem2_nama || ''
         });
 
         try {

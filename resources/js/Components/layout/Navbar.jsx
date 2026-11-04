@@ -751,6 +751,20 @@ export default function Navbar() {
                               </div>
                             )}
 
+                            {/* Dosen quick action button for thesis title */}
+                            {userRole === 'dosen' && (isThesisNotif || isSimilarityNotif) && (
+                              <div className="mt-2 flex items-center justify-between pt-1">
+                                <span className="inline-flex items-center space-x-1 text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200/70">
+                                  <Sparkles className="w-3 h-3 text-blue-600" />
+                                  <span>Validasi Usulan Judul</span>
+                                </span>
+                                <span className="text-[10px] font-semibold text-blue-600 group-hover:underline flex items-center space-x-0.5">
+                                  <span>Buka Validasi Judul</span>
+                                  <ExternalLink className="w-3 h-3 ml-0.5" />
+                                </span>
+                              </div>
+                            )}
+
                             {/* Kaprodi quick action button for siap sidang */}
                             {(userRole === 'kaprodi' || userRole === 'admin') && isSiapSidangNotif && (
                               <div className="mt-2 flex items-center justify-between pt-1">

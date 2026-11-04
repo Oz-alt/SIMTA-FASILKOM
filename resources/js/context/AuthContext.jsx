@@ -191,12 +191,23 @@ const enrichThesisTitleRecord = (title, profiles = [], advisorRows = []) => {
     cred?.kelas || title.angkatan || title.mhs_kelas || profile?.kelas || advisorRow?.kelas || ''
   );
 
+  const d1Nip = title.pembimbing_1_nip || advisorRow?.dospem1_nip || '';
+  const d2Nip = title.pembimbing_2_nip || advisorRow?.dospem2_nip || '';
+  const d1Nama = title.pembimbing_1_nama || title.pembimbing_1 || advisorRow?.dospem1_nama || (d1Nip === '198410012009121005' ? 'Dr. Abdiansah, S.Kom., M.Cs.' : '');
+  const d2Nama = title.pembimbing_2_nama || title.pembimbing_2 || advisorRow?.dospem2_nama || (d2Nip === '199306042024062006' ? 'Yesinta Florencia, S.Kom., M.Kom.' : '');
+
   return {
     ...title,
     mhs_nama: mhsNama,
     mhs_nim: mhsNim,
     mhs_kelas: resolvedKelas,
     angkatan: resolvedKelas,
+    pembimbing_1_nip: d1Nip,
+    pembimbing_1_nama: d1Nama,
+    pembimbing_1: d1Nama,
+    pembimbing_2_nip: d2Nip,
+    pembimbing_2_nama: d2Nama,
+    pembimbing_2: d2Nama,
     prodi: cred?.prodi || title.prodi || profile?.prodi || advisorRow?.prodi || 'D3 Manajemen Informatika'
   };
 };
@@ -1267,6 +1278,13 @@ export function AuthProvider({ children }) {
         if (targetNotif.related_type === 'bimbingan_reminder') {
           readKeys.push(`reminder_${targetNotif.profile_id}_${new Date().toISOString().slice(0, 10)}`);
         }
+        if (targetNotif.related_type === 'thesis_title' || targetNotif.related_type === 'thesis_title_revised') {
+          if (targetNotif.related_id) {
+            readKeys.push(`notif-thesis-sub-${targetNotif.related_id}`);
+            readKeys.push(`notif-thesis-rev-${targetNotif.related_id}`);
+            readKeys.push(`notif-${targetNotif.related_id}`);
+          }
+        }
       }
       addReadNotificationIds(readKeys);
 
@@ -2083,13 +2101,126 @@ export function AuthProvider({ children }) {
     return assignments.length;
   };
 
+  const stripAcademicTitles = (str) => String(str || '').toLowerCase()
+    .replace(/dr\.|ir\.|prof\.|s\.kom\.|m\.cs\.|m\.t\.|m\.kom\.|ph\.d\.|st\.|s\.t\./gi, '')
+    .replace(/[^a-z0-9]/g, ' ')
+    .trim();
+
   const getStudentAdvisors = (studentNim) => {
-    const record = studentAdvisors.find(sa => sa.student_nim === studentNim);
+    if (!studentNim) return { dospem1: null, dospem2: null, record: null };
+    const cleanNim = String(studentNim).trim();
+    const record = (studentAdvisors || []).find(sa => String(sa.student_nim || '').trim() === cleanNim);
     if (!record) return { dospem1: null, dospem2: null, record: null };
 
-    const dospem1 = advisors.find(a => a.nip === record.dospem1_nip) || null;
-    const dospem2 = advisors.find(a => a.nip === record.dospem2_nip) || null;
+    const d1Nip = String(record.dospem1_nip || '').trim();
+    const d2Nip = String(record.dospem2_nip || '').trim();
+
+    let dospem1 = (advisors || []).find(a => String(a.nip || '').trim() === d1Nip) || null;
+    let dospem2 = (advisors || []).find(a => String(a.nip || '').trim() === d2Nip) || null;
+
+    if (!dospem1 && d1Nip) {
+      dospem1 = {
+        nip: d1Nip,
+        nama: record.dospem1_nama || (d1Nip === '198410012009121005' ? 'Dr. Abdiansah, S.Kom., M.Cs.' : ''),
+        email: d1Nip === '198410012009121005' ? 'abdiansah@unsri.ac.id' : `${d1Nip}@unsri.ac.id`
+      };
+    }
+    if (!dospem2 && d2Nip) {
+      dospem2 = {
+        nip: d2Nip,
+        nama: record.dospem2_nama || (d2Nip === '199306042024062006' ? 'Yesinta Florencia, S.Kom., M.Kom.' : ''),
+        email: d2Nip === '199306042024062006' ? 'yesinta@unsri.ac.id' : `${d2Nip}@unsri.ac.id`
+      };
+    }
+
     return { dospem1, dospem2, record };
+  };
+
+  const isLecturerForThesisTitle = (title, user) => {
+    if (!title || !user || user.role !== 'dosen') return false;
+    const userNip = String(user.nip || user.nim || '').trim();
+    const d1Nip = String(title.pembimbing_1_nip || '').trim();
+    const d2Nip = String(title.pembimbing_2_nip || '').trim();
+
+    if (userNip) {
+      if (d1Nip && d1Nip === userNip) return true;
+      if (d2Nip && d2Nip === userNip) return true;
+    }
+
+    const a = stripAcademicTitles(user.nama);
+    const d1Nama = stripAcademicTitles(title.pembimbing_1_nama || title.pembimbing_1);
+    const d2Nama = stripAcademicTitles(title.pembimbing_2_nama || title.pembimbing_2);
+
+    if (a && d1Nama && (a.includes(d1Nama) || d1Nama.includes(a))) return true;
+    if (a && d2Nama && (a.includes(d2Nama) || d2Nama.includes(a))) return true;
+
+    if (a && (d1Nama || d2Nama)) {
+      const wordsA = a.split(/\s+/).filter(w => w.length > 2);
+      if (d1Nama) {
+        const wordsD1 = d1Nama.split(/\s+/).filter(w => w.length > 2);
+        if (wordsA.some(w => wordsD1.includes(w))) return true;
+      }
+      if (d2Nama) {
+        const wordsD2 = d2Nama.split(/\s+/).filter(w => w.length > 2);
+        if (wordsA.some(w => wordsD2.includes(w))) return true;
+      }
+    }
+
+    const mhsNim = String(title.mhs_nim || '').trim();
+    if (mhsNim && typeof getStudentAdvisors === 'function') {
+      const adv = getStudentAdvisors(mhsNim);
+      if (adv) {
+        if (adv.dospem1) {
+          if (userNip && String(adv.dospem1.nip || '').trim() === userNip) return true;
+          const cleanName1 = stripAcademicTitles(adv.dospem1.nama);
+          if (cleanName1 && a && (cleanName1.includes(a) || a.includes(cleanName1))) return true;
+        }
+        if (adv.dospem2) {
+          if (userNip && String(adv.dospem2.nip || '').trim() === userNip) return true;
+          const cleanName2 = stripAcademicTitles(adv.dospem2.nama);
+          if (cleanName2 && a && (cleanName2.includes(a) || a.includes(cleanName2))) return true;
+        }
+      }
+    }
+
+    return false;
+  };
+
+  const getLecturerRoleForThesisTitle = (title, user) => {
+    if (!title || !user) return 'Pembimbing';
+    const userNip = String(user.nip || user.nim || '').trim();
+    const d1Nip = String(title.pembimbing_1_nip || '').trim();
+    const d2Nip = String(title.pembimbing_2_nip || '').trim();
+
+    if (userNip && d1Nip && d1Nip === userNip) return 'Pembimbing 1';
+    if (userNip && d2Nip && d2Nip === userNip) return 'Pembimbing 2';
+
+    const a = stripAcademicTitles(user.nama);
+    const d1Nama = stripAcademicTitles(title.pembimbing_1_nama || title.pembimbing_1);
+    const d2Nama = stripAcademicTitles(title.pembimbing_2_nama || title.pembimbing_2);
+    if (a && d1Nama && (a.includes(d1Nama) || d1Nama.includes(a))) return 'Pembimbing 1';
+    if (a && d2Nama && (a.includes(d2Nama) || d2Nama.includes(a))) return 'Pembimbing 2';
+
+    const mhsNim = String(title.mhs_nim || '').trim();
+    if (mhsNim && typeof getStudentAdvisors === 'function') {
+      const adv = getStudentAdvisors(mhsNim);
+      if (adv?.dospem1) {
+        if (userNip && String(adv.dospem1.nip || '').trim() === userNip) return 'Pembimbing 1';
+        const clean1 = stripAcademicTitles(adv.dospem1.nama);
+        if (clean1 && a && (clean1.includes(a) || a.includes(clean1))) return 'Pembimbing 1';
+      }
+      if (adv?.dospem2) {
+        if (userNip && String(adv.dospem2.nip || '').trim() === userNip) return 'Pembimbing 2';
+        const clean2 = stripAcademicTitles(adv.dospem2.nama);
+        if (clean2 && a && (clean2.includes(a) || a.includes(clean2))) return 'Pembimbing 2';
+      }
+    }
+    return 'Pembimbing';
+  };
+
+  const getLatestStudentRevision = (title) => {
+    if (!Array.isArray(title?.riwayat_revisi) || title.riwayat_revisi.length === 0) return null;
+    return title.riwayat_revisi.find(r => r.tipe === 'revisi_mahasiswa') || null;
   };
 
   // Sinkronkan otomatis alokasi dosen pembimbing ke usulan judul mahasiswa jika belum terisi
@@ -2735,13 +2866,16 @@ export function AuthProvider({ children }) {
                 });
 
                 if (payload.eventType === 'INSERT' || (payload.eventType === 'UPDATE' && payload.new.status === 'tinjauan')) {
+                  const notifCreated = incoming.created_at || new Date().toISOString();
+                  const isInsert = payload.eventType === 'INSERT';
+
                   const kaprodiNotif = {
                     id: `notif-${incoming.id}-${Date.now()}-kaprodi`,
                     profile_id: 'user-kaprodi-abdiansah',
                     recipient_role: 'kaprodi',
-                    related_type: 'thesis_title',
+                    related_type: isInsert ? 'thesis_title' : 'thesis_title_revised',
                     related_id: incoming.id,
-                    title: payload.eventType === 'INSERT'
+                    title: isInsert
                       ? 'Pengajuan Judul Baru Masuk Tahap Tinjauan'
                       : 'Pembaruan Judul Revisi Masuk Tahap Tinjauan',
                     message: `${incoming.mhs_nama || 'Mahasiswa'} (${incoming.mhs_nim || ''}) mengajukan judul: "${incoming.judul}". Otomatis masuk tahap peninjauan rapat Prodi.`,
@@ -2749,21 +2883,109 @@ export function AuthProvider({ children }) {
                     student_nim: incoming.mhs_nim || '',
                     thesis_title: incoming.judul,
                     action_url: `/kaprodi/titles/${incoming.id}`,
+                    badge_label: isInsert ? 'Judul TA' : 'Revisi Judul',
                     is_read: false,
-                    created_at: incoming.created_at || new Date().toISOString()
+                    created_at: notifCreated
                   };
 
+                  const d1Nip = incoming.pembimbing_1_nip;
+                  const d1Nama = incoming.pembimbing_1_nama || incoming.pembimbing_1;
+                  const d2Nip = incoming.pembimbing_2_nip;
+                  const d2Nama = incoming.pembimbing_2_nama || incoming.pembimbing_2;
+
+                  let dospem1Notif = null;
+                  if (d1Nip || d1Nama) {
+                    dospem1Notif = {
+                      id: `notif-${incoming.id}-${Date.now()}-dospem1`,
+                      profile_id: d1Nip || 'dospem1',
+                      recipient_nip: d1Nip,
+                      recipient_role: 'dosen',
+                      dosen_nama: d1Nama,
+                      student_name: incoming.mhs_nama || 'Mahasiswa',
+                      student_nim: incoming.mhs_nim || '',
+                      thesis_title: incoming.judul,
+                      related_type: isInsert ? 'thesis_title' : 'thesis_title_revised',
+                      related_id: incoming.id,
+                      title: isInsert
+                        ? 'Usulan Judul Baru Mahasiswa Bimbingan (Pembimbing 1)'
+                        : 'Pembaruan Judul Mahasiswa Bimbingan (Pembimbing 1)',
+                      message: isInsert
+                        ? `Mahasiswa bimbingan Anda, ${incoming.mhs_nama || 'Mahasiswa'} (${incoming.mhs_nim || ''}), mengusulkan Anda sebagai Pembimbing 1 untuk judul: "${incoming.judul}". Silakan tinjau & berikan validasi akademik di SIMTA.`
+                        : `Mahasiswa bimbingan Anda, ${incoming.mhs_nama || 'Mahasiswa'} (${incoming.mhs_nim || ''}), telah memperbarui usulan judul tugas akhir: "${incoming.judul}". Silakan tinjau di halaman Validasi Judul.`,
+                      action_url: '/dosen/validasi-judul',
+                      badge_label: isInsert ? 'Judul TA' : 'Revisi Judul',
+                      is_read: false,
+                      created_at: notifCreated
+                    };
+                  }
+
+                  let dospem2Notif = null;
+                  if (d2Nip || d2Nama) {
+                    dospem2Notif = {
+                      id: `notif-${incoming.id}-${Date.now()}-dospem2`,
+                      profile_id: d2Nip || 'dospem2',
+                      recipient_nip: d2Nip,
+                      recipient_role: 'dosen',
+                      dosen_nama: d2Nama,
+                      student_name: incoming.mhs_nama || 'Mahasiswa',
+                      student_nim: incoming.mhs_nim || '',
+                      thesis_title: incoming.judul,
+                      related_type: isInsert ? 'thesis_title' : 'thesis_title_revised',
+                      related_id: incoming.id,
+                      title: isInsert
+                        ? 'Usulan Judul Baru Mahasiswa Bimbingan (Pembimbing 2)'
+                        : 'Pembaruan Judul Mahasiswa Bimbingan (Pembimbing 2)',
+                      message: isInsert
+                        ? `Mahasiswa bimbingan Anda, ${incoming.mhs_nama || 'Mahasiswa'} (${incoming.mhs_nim || ''}), mengusulkan Anda sebagai Pembimbing 2 untuk judul: "${incoming.judul}". Silakan tinjau usulan judul di SIMTA.`
+                        : `Mahasiswa bimbingan Anda, ${incoming.mhs_nama || 'Mahasiswa'} (${incoming.mhs_nim || ''}), telah memperbarui usulan judul tugas akhir: "${incoming.judul}". Silakan tinjau di halaman Validasi Judul.`,
+                      action_url: '/dosen/validasi-judul',
+                      badge_label: isInsert ? 'Judul TA' : 'Revisi Judul',
+                      is_read: false,
+                      created_at: notifCreated
+                    };
+                  }
+
+                  const batchNotifs = [kaprodiNotif, dospem1Notif, dospem2Notif].filter(Boolean);
+
                   setNotifications(prev => {
-                    const exists = prev.some(n =>
-                      n.id === kaprodiNotif.id ||
-                      (String(n.related_id) === String(incoming.id) && String(n.recipient_role) === 'kaprodi')
-                    );
-                    if (exists) return prev;
-                    return [kaprodiNotif, ...prev];
+                    let updated = [...prev];
+                    let changed = false;
+                    batchNotifs.forEach(item => {
+                      const exists = updated.some(n =>
+                        n.id === item.id ||
+                        (String(n.related_id) === String(incoming.id) &&
+                         String(n.recipient_role) === String(item.recipient_role) &&
+                         String(n.recipient_nip || '') === String(item.recipient_nip || ''))
+                      );
+                      if (!exists) {
+                        updated.unshift(item);
+                        changed = true;
+                      }
+                    });
+                    if (changed) {
+                      try { localStorage.setItem('simta_notifications', JSON.stringify(updated)); } catch {}
+                      return updated;
+                    }
+                    return prev;
                   });
 
-                  setLatestRealtimeNotif(kaprodiNotif);
-                  playNotificationSound();
+                  const activeUser = currentUserRef.current;
+                  if (activeUser) {
+                    const match = batchNotifs.find(n => isNotificationForUser(n, activeUser));
+                    if (match) {
+                      setLatestRealtimeNotif(match);
+                      playNotificationSound();
+                      triggerRealtimeAlert({
+                        id: `alert-${Date.now()}`,
+                        title: match.title,
+                        message: match.message,
+                        mhs_nama: match.student_name || incoming.mhs_nama || 'Mahasiswa',
+                        mhs_nim: match.student_nim || incoming.mhs_nim || '',
+                        thesis_title: match.thesis_title || incoming.judul || '',
+                        action_url: match.action_url
+                      });
+                    }
+                  }
                 }
               } else if (payload.eventType === 'DELETE' && payload.old) {
                 setThesisTitles(prev => prev.filter(t => String(t.id) !== String(payload.old.id)));
@@ -2800,7 +3022,7 @@ export function AuthProvider({ children }) {
           // Baris lama hanya menyimpan profile_id; lengkapi dari profiles & student_advisors.
           const [{ data: profileRows }, { data: advisorRows }] = await Promise.all([
             supabase.from('profiles').select('id,nim,nip,nama,kelas,prodi'),
-            supabase.from('student_advisors').select('student_nim,student_nama,prodi')
+            supabase.from('student_advisors').select('*')
           ]);
 
           const enriched = rows.map(row => enrichThesisTitleRecord(row, profileRows || [], advisorRows || []));
@@ -2918,7 +3140,7 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const unsubscribe = subscribeToRealtimeNotifications((envelope) => {
       if (envelope.type === 'THESIS_TITLE_SUBMITTED' || envelope.type === 'THESIS_TITLE_REVISED') {
-        const { title, notif } = envelope.payload || {};
+        const { title, notif, kaprodiNotif, dospem1Notif, dospem2Notif } = envelope.payload || {};
         if (title) {
           setThesisTitles(prev => {
             const idx = prev.findIndex(t => String(t.id) === String(title.id) || (t.mhs_nim && title.mhs_nim && String(t.mhs_nim) === String(title.mhs_nim)));
@@ -2933,32 +3155,50 @@ export function AuthProvider({ children }) {
             return updated;
           });
         }
-        if (notif) {
+
+        const incomingNotifs = [kaprodiNotif || notif, dospem1Notif, dospem2Notif].filter(Boolean);
+        if (incomingNotifs.length > 0) {
+          const activeUser = currentUserRef.current;
           setNotifications(prev => {
-            const exists = prev.some(n =>
-              n.id === notif.id ||
-              (String(n.related_id) === String(notif.related_id) && String(n.recipient_role) === 'kaprodi')
-            );
-            if (exists) return prev;
-            const updated = [notif, ...prev];
-            try { localStorage.setItem('simta_notifications', JSON.stringify(updated)); } catch {}
-            return updated;
+            let updated = [...prev];
+            let changed = false;
+
+            incomingNotifs.forEach(inNotif => {
+              const exists = updated.some(n =>
+                n.id === inNotif.id ||
+                (String(n.related_id) === String(inNotif.related_id) &&
+                 String(n.recipient_role) === String(inNotif.recipient_role) &&
+                 String(n.recipient_nip || '') === String(inNotif.recipient_nip || ''))
+              );
+              if (!exists) {
+                updated.unshift(inNotif);
+                changed = true;
+              }
+            });
+
+            if (changed) {
+              try { localStorage.setItem('simta_notifications', JSON.stringify(updated)); } catch {}
+              return updated;
+            }
+            return prev;
           });
 
-          // Trigger popup toast dan suara hanya jika tab yang sedang terbuka adalah Kaprodi / Admin
-          const activeUser = currentUserRef.current;
-          if (activeUser?.role === 'kaprodi' || activeUser?.role === 'admin') {
-            setLatestRealtimeNotif(notif);
-            playNotificationSound();
-            triggerRealtimeAlert({
-              id: `alert-${Date.now()}`,
-              title: notif.title || 'Pengajuan Judul Baru Masuk Tahap Tinjauan',
-              message: notif.message,
-              mhs_nama: notif.student_name || title?.mhs_nama || 'Mahasiswa',
-              mhs_nim: notif.student_nim || title?.mhs_nim || '',
-              thesis_title: notif.thesis_title || title?.judul || '',
-              action_url: notif.action_url || `/kaprodi/titles/${notif.related_id || ''}`
-            });
+          // Trigger popup toast dan suara jika tab aktif adalah penerima notifikasi yang relevan
+          if (activeUser) {
+            const matchingNotif = incomingNotifs.find(n => isNotificationForUser(n, activeUser));
+            if (matchingNotif) {
+              setLatestRealtimeNotif(matchingNotif);
+              playNotificationSound();
+              triggerRealtimeAlert({
+                id: `alert-${Date.now()}`,
+                title: matchingNotif.title || 'Pengajuan Judul Tugas Akhir',
+                message: matchingNotif.message,
+                mhs_nama: matchingNotif.student_name || title?.mhs_nama || 'Mahasiswa',
+                mhs_nim: matchingNotif.student_nim || title?.mhs_nim || '',
+                thesis_title: matchingNotif.thesis_title || title?.judul || '',
+                action_url: matchingNotif.action_url || (activeUser.role === 'dosen' ? '/dosen/validasi-judul' : `/kaprodi/titles/${matchingNotif.related_id || ''}`)
+              });
+            }
           }
         }
       } else if (envelope.type === 'BIMBINGAN_STATUS_RESPONDED') {
@@ -3045,6 +3285,20 @@ export function AuthProvider({ children }) {
               playNotificationSound();
             }
           }
+        }
+      } else if (envelope.type === 'BIMBINGAN_ENTRY_UPDATED' || envelope.type === 'CONSULTATION_UPDATED') {
+        const { consultation } = envelope.payload || {};
+        if (consultation) {
+          setConsultations(prev => {
+            const updated = prev.map(c => {
+              if (String(c.id) === String(consultation.id)) {
+                return parseConsultationItem({ ...c, ...consultation });
+              }
+              return c;
+            });
+            try { localStorage.setItem('simta_consultations', JSON.stringify(updated)); } catch {}
+            return updated;
+          });
         }
       }
     });
@@ -3222,6 +3476,22 @@ export function AuthProvider({ children }) {
                   action_url: '/kaprodi/rekap-bimbingan'
                 });
               }
+            }
+          }
+
+          if (event.data?.type === 'BIMBINGAN_ENTRY_UPDATED' || event.data?.type === 'CONSULTATION_UPDATED') {
+            const { consultation } = event.data;
+            if (consultation) {
+              setConsultations(prev => {
+                const updated = prev.map(c => {
+                  if (String(c.id) === String(consultation.id)) {
+                    return parseConsultationItem({ ...c, ...consultation });
+                  }
+                  return c;
+                });
+                try { localStorage.setItem('simta_consultations', JSON.stringify(updated)); } catch {}
+                return updated;
+              });
             }
           }
         };
@@ -3998,10 +4268,11 @@ export function AuthProvider({ children }) {
     const resolvedAngkatan = normalizeStudentAngkatan(cred?.kelas || currentUser?.kelas || newTitleData.mhs_kelas || '');
 
     const createdTitle = {
+      ...newTitleData,
       id: newId,
       profile_id: currentUser?.id || 'user-mhs-aulia',
       mhs_nama: cred?.nama || currentUser?.nama || 'Aulia Azzahra',
-      mhs_nim: currentUser?.nim || '09010182428002',
+      mhs_nim: studentNim || currentUser?.nim || '09010182428002',
       mhs_kelas: resolvedAngkatan,
       angkatan: resolvedAngkatan,
       pembimbing_1_nip: d1Nip,
@@ -4014,7 +4285,6 @@ export function AuthProvider({ children }) {
       catatan_dospem: '',
       rekomendasi_oleh: '',
       catatan_kaprodi: '',
-      ...newTitleData,
       status: 'tinjauan', // Pengajuan otomatis masuk tahap tinjauan tanpa perlu ACC satu per satu
       riwayat_revisi: [initialRevisionLog],
       created_at: new Date().toISOString(),
@@ -4052,6 +4322,7 @@ export function AuthProvider({ children }) {
       student_nim: currentUser?.nim || '',
       thesis_title: newTitleData.judul,
       action_url: `/kaprodi/titles/${createdTitle.id}`,
+      badge_label: 'Judul TA',
       is_read: false,
       created_at: new Date().toISOString()
     };
@@ -4059,48 +4330,56 @@ export function AuthProvider({ children }) {
     sendEmailNotification(kaprodiUser?.email || 'koprodi@unsri.ac.id', 'Pengajuan Judul Tugas Akhir Baru', `Mahasiswa ${currentUser?.nama} mengajukan judul: "${newTitleData.judul}".`);
 
     // 2. Push notification to Dosen Pembimbing 1
+    let dospem1Notif = null;
     if (d1Nip || d1Nama) {
-      newNotifs.push({
-        id: `notif-${Date.now()}-dospem1`,
+      dospem1Notif = {
+        id: `notif-${createdTitle.id || Date.now()}-dospem1`,
         profile_id: d1Obj?.id || d1Nip,
         recipient_nip: d1Nip,
         recipient_role: 'dosen',
         dosen_nama: d1Nama,
         student_name: currentUser?.nama || 'Mahasiswa',
         student_nim: studentNim,
+        thesis_title: newTitleData.judul,
         related_type: 'thesis_title',
         related_id: createdTitle.id,
-        title: 'Usulan Pembimbing 1: Pengajuan Judul Baru',
-        message: `Mahasiswa ${currentUser?.nama || 'Mahasiswa'} (${currentUser?.nim || ''}) mengusulkan Anda sebagai Pembimbing 1 untuk judul: "${newTitleData.judul}". Silakan tinjau & berikan validasi akademik.`,
+        title: 'Usulan Judul Baru Mahasiswa Bimbingan (Pembimbing 1)',
+        message: `Mahasiswa bimbingan Anda, ${currentUser?.nama || 'Mahasiswa'} (${currentUser?.nim || ''}), mengusulkan Anda sebagai Pembimbing 1 untuk judul: "${newTitleData.judul}". Silakan tinjau & berikan validasi akademik di SIMTA.`,
         action_url: '/dosen/validasi-judul',
+        badge_label: 'Judul TA',
         is_read: false,
         created_at: new Date().toISOString()
-      });
+      };
+      newNotifs.push(dospem1Notif);
       if (d1Obj?.email) {
-        sendEmailNotification(d1Obj.email, 'Usulan Pembimbing 1 Tugas Akhir', `Mahasiswa ${currentUser?.nama} mengusulkan Anda sebagai Pembimbing 1.`);
+        sendEmailNotification(d1Obj.email, 'Usulan Judul Baru Mahasiswa Bimbingan', `Mahasiswa ${currentUser?.nama} mengusulkan Anda sebagai Pembimbing 1 untuk judul: "${newTitleData.judul}".`);
       }
     }
 
     // 3. Push notification to Dosen Pembimbing 2
+    let dospem2Notif = null;
     if (d2Nip || d2Nama) {
-      newNotifs.push({
-        id: `notif-${Date.now()}-dospem2`,
+      dospem2Notif = {
+        id: `notif-${createdTitle.id || Date.now()}-dospem2`,
         profile_id: d2Obj?.id || d2Nip,
         recipient_nip: d2Nip,
         recipient_role: 'dosen',
         dosen_nama: d2Nama,
         student_name: currentUser?.nama || 'Mahasiswa',
         student_nim: studentNim,
+        thesis_title: newTitleData.judul,
         related_type: 'thesis_title',
         related_id: createdTitle.id,
-        title: 'Usulan Pembimbing 2: Pengajuan Judul Baru',
-        message: `Mahasiswa ${currentUser?.nama || 'Mahasiswa'} (${currentUser?.nim || ''}) mengusulkan Anda sebagai Pembimbing 2 untuk judul: "${newTitleData.judul}". Silakan tinjau & berikan validasi akademik.`,
+        title: 'Usulan Judul Baru Mahasiswa Bimbingan (Pembimbing 2)',
+        message: `Mahasiswa bimbingan Anda, ${currentUser?.nama || 'Mahasiswa'} (${currentUser?.nim || ''}), mengusulkan Anda sebagai Pembimbing 2 untuk judul: "${newTitleData.judul}". Silakan tinjau usulan judul di SIMTA.`,
         action_url: '/dosen/validasi-judul',
+        badge_label: 'Judul TA',
         is_read: false,
         created_at: new Date().toISOString()
-      });
+      };
+      newNotifs.push(dospem2Notif);
       if (d2Obj?.email) {
-        sendEmailNotification(d2Obj.email, 'Usulan Pembimbing 2 Tugas Akhir', `Mahasiswa ${currentUser?.nama} mengusulkan Anda sebagai Pembimbing 2.`);
+        sendEmailNotification(d2Obj.email, 'Usulan Judul Baru Mahasiswa Bimbingan', `Mahasiswa ${currentUser?.nama} mengusulkan Anda sebagai Pembimbing 2 untuk judul: "${newTitleData.judul}".`);
       }
     }
 
@@ -4118,10 +4397,13 @@ export function AuthProvider({ children }) {
       });
     }
 
-    // Real-time broadcast to all active Kaprodi sessions across tabs and devices
+    // Real-time broadcast to all active sessions (Kaprodi & Dosen) across tabs and devices
     broadcastRealtimeNotification('THESIS_TITLE_SUBMITTED', {
       title: createdTitle,
       notif: kaprodiNotif,
+      kaprodiNotif,
+      dospem1Notif,
+      dospem2Notif,
       sender: {
         name: currentUser?.nama,
         nim: currentUser?.nim,
@@ -4228,15 +4510,13 @@ export function AuthProvider({ children }) {
     // Resolve pembimbing
     const targetNim = affectedTitle.mhs_nim || studentNim;
     const assigned = (typeof getStudentAdvisors === 'function' && targetNim) ? getStudentAdvisors(targetNim) : null;
-    let d1Nip = affectedTitle.pembimbing_1_nip || '';
-    let d2Nip = affectedTitle.pembimbing_2_nip || '';
-    if (!d1Nip && assigned?.dospem1?.nip) d1Nip = assigned.dospem1.nip;
-    if (!d2Nip && assigned?.dospem2?.nip) d2Nip = assigned.dospem2.nip;
+    let d1Nip = affectedTitle.pembimbing_1_nip || assigned?.dospem1?.nip || assigned?.record?.dospem1_nip || '';
+    let d2Nip = affectedTitle.pembimbing_2_nip || assigned?.dospem2?.nip || assigned?.record?.dospem2_nip || '';
 
-    const d1Obj = advisors.find(a => a.nip === d1Nip) || assigned?.dospem1;
-    const d2Obj = advisors.find(a => a.nip === d2Nip) || assigned?.dospem2;
-    const d1Nama = affectedTitle.pembimbing_1_nama || d1Obj?.nama || affectedTitle.pembimbing_1 || (assigned?.dospem1?.nama || '');
-    const d2Nama = affectedTitle.pembimbing_2_nama || d2Obj?.nama || affectedTitle.pembimbing_2 || (assigned?.dospem2?.nama || '');
+    const d1Obj = (advisors || []).find(a => String(a.nip || '').trim() === String(d1Nip || '').trim()) || assigned?.dospem1;
+    const d2Obj = (advisors || []).find(a => String(a.nip || '').trim() === String(d2Nip || '').trim()) || assigned?.dospem2;
+    const d1Nama = affectedTitle.pembimbing_1_nama || d1Obj?.nama || affectedTitle.pembimbing_1 || (assigned?.dospem1?.nama || assigned?.record?.dospem1_nama || '');
+    const d2Nama = affectedTitle.pembimbing_2_nama || d2Obj?.nama || affectedTitle.pembimbing_2 || (assigned?.dospem2?.nama || assigned?.record?.dospem2_nama || '');
 
     // Tentukan detail perubahan untuk notifikasi
     const isTitleChanged = affectedTitle.judul !== oldJudul && Boolean(oldJudul);
@@ -4268,6 +4548,7 @@ export function AuthProvider({ children }) {
       student_nim: targetNim,
       thesis_title: affectedTitle.judul,
       action_url: `/kaprodi/titles/${affectedTitle.id}`,
+      badge_label: 'Revisi Judul',
       is_read: false,
       created_at: nowIso
     };
@@ -4275,8 +4556,9 @@ export function AuthProvider({ children }) {
     sendEmailNotification(kaprodiUser?.email || 'koprodi@unsri.ac.id', 'Pembaruan Usulan Judul Tugas Akhir', `Mahasiswa ${studentNama} (${targetNim}) ${notifChangeDetail}.`);
 
     // 2. Notifikasi untuk Dospem 1
+    let notifDospem1 = null;
     if (d1Nip || d1Nama) {
-      newNotifs.push({
+      notifDospem1 = {
         id: `notif-${affectedTitle.id}-${Date.now()}-dospem1-update`,
         profile_id: d1Obj?.id || d1Nip,
         recipient_nip: d1Nip,
@@ -4284,22 +4566,26 @@ export function AuthProvider({ children }) {
         dosen_nama: d1Nama,
         student_name: studentNama,
         student_nim: targetNim,
+        thesis_title: affectedTitle.judul,
         related_type: 'thesis_title_revised',
         related_id: affectedTitle.id,
-        title: 'Pembaruan Judul Mahasiswa Bimbingan',
-        message: `Mahasiswa bimbingan Anda, ${studentNama} (${targetNim}), telah ${notifChangeDetail}. Skor kemiripan: ${affectedTitle.skor_kemiripan_terakhir}%. Silakan tinjau perubahan terbaru.`,
+        title: 'Pembaruan Judul Mahasiswa Bimbingan (Pembimbing 1)',
+        message: `Mahasiswa bimbingan Anda, ${studentNama} (${targetNim}), telah ${notifChangeDetail}. Skor kemiripan: ${affectedTitle.skor_kemiripan_terakhir}%. Silakan tinjau perubahan terbaru di halaman Validasi Judul.`,
         action_url: '/dosen/validasi-judul',
+        badge_label: 'Revisi Judul',
         is_read: false,
         created_at: nowIso
-      });
+      };
+      newNotifs.push(notifDospem1);
       if (d1Obj?.email) {
-        sendEmailNotification(d1Obj.email, 'Pembaruan Judul Mahasiswa Bimbingan', `Mahasiswa ${studentNama} ${notifChangeDetail}.`);
+        sendEmailNotification(d1Obj.email, 'Pembaruan Usulan Judul Mahasiswa Bimbingan', `Mahasiswa ${studentNama} (${targetNim}) ${notifChangeDetail}.`);
       }
     }
 
     // 3. Notifikasi untuk Dospem 2
+    let notifDospem2 = null;
     if (d2Nip || d2Nama) {
-      newNotifs.push({
+      notifDospem2 = {
         id: `notif-${affectedTitle.id}-${Date.now()}-dospem2-update`,
         profile_id: d2Obj?.id || d2Nip,
         recipient_nip: d2Nip,
@@ -4307,16 +4593,19 @@ export function AuthProvider({ children }) {
         dosen_nama: d2Nama,
         student_name: studentNama,
         student_nim: targetNim,
+        thesis_title: affectedTitle.judul,
         related_type: 'thesis_title_revised',
         related_id: affectedTitle.id,
-        title: 'Pembaruan Judul Mahasiswa Bimbingan',
-        message: `Mahasiswa bimbingan Anda, ${studentNama} (${targetNim}), telah ${notifChangeDetail}. Skor kemiripan: ${affectedTitle.skor_kemiripan_terakhir}%. Silakan tinjau perubahan terbaru.`,
+        title: 'Pembaruan Judul Mahasiswa Bimbingan (Pembimbing 2)',
+        message: `Mahasiswa bimbingan Anda, ${studentNama} (${targetNim}), telah ${notifChangeDetail}. Skor kemiripan: ${affectedTitle.skor_kemiripan_terakhir}%. Silakan tinjau perubahan terbaru di halaman Validasi Judul.`,
         action_url: '/dosen/validasi-judul',
+        badge_label: 'Revisi Judul',
         is_read: false,
         created_at: nowIso
-      });
+      };
+      newNotifs.push(notifDospem2);
       if (d2Obj?.email) {
-        sendEmailNotification(d2Obj.email, 'Pembaruan Judul Mahasiswa Bimbingan', `Mahasiswa ${studentNama} ${notifChangeDetail}.`);
+        sendEmailNotification(d2Obj.email, 'Pembaruan Usulan Judul Mahasiswa Bimbingan', `Mahasiswa ${studentNama} (${targetNim}) ${notifChangeDetail}.`);
       }
     }
 
@@ -4337,6 +4626,9 @@ export function AuthProvider({ children }) {
     broadcastRealtimeNotification('THESIS_TITLE_REVISED', {
       title: affectedTitle,
       notif: notifKaprodi,
+      kaprodiNotif: notifKaprodi,
+      dospem1Notif: notifDospem1,
+      dospem2Notif: notifDospem2,
       sender: {
         name: studentNama,
         nim: targetNim,
@@ -4366,6 +4658,21 @@ export function AuthProvider({ children }) {
     try {
       const legacyChannel = new BroadcastChannel('simta_bimbingan');
       legacyChannel.postMessage({ type: 'BIMBINGAN_SUBMITTED', entry, notif });
+      legacyChannel.close();
+    } catch { }
+  };
+
+  // Broadcast bimbingan edit / update across browser tabs for real-time updates
+  const broadcastBimbinganUpdate = (entry) => {
+    try {
+      const channel = new BroadcastChannel('simta_realtime_bimbingan');
+      channel.postMessage({ type: 'BIMBINGAN_ENTRY_UPDATED', consultation: entry });
+      channel.postMessage({ type: 'CONSULTATION_UPDATED', consultation: entry });
+      channel.close();
+    } catch { /* BroadcastChannel not supported */ }
+    try {
+      const legacyChannel = new BroadcastChannel('simta_bimbingan');
+      legacyChannel.postMessage({ type: 'BIMBINGAN_UPDATED', entry });
       legacyChannel.close();
     } catch { }
   };
@@ -5602,11 +5909,10 @@ export function AuthProvider({ children }) {
     let finalItem = null;
     setConsultations(prev => {
       const updated = prev.map(c => {
-        if (c.id === consultationId) {
+        if (String(c.id) === String(consultationId)) {
           finalItem = {
             ...c,
-            ...updatedFields,
-            updated_at: new Date().toISOString()
+            ...updatedFields
           };
           return finalItem;
         }
@@ -5616,17 +5922,56 @@ export function AuthProvider({ children }) {
       return updated;
     });
 
+    // Broadcast update across tabs and devices in real-time
+    if (finalItem) {
+      try {
+        broadcastBimbinganUpdate(finalItem);
+      } catch { }
+      try {
+        broadcastRealtimeNotification('BIMBINGAN_ENTRY_UPDATED', { consultation: finalItem });
+      } catch { }
+    }
+
     if (isSupabaseConfigured && supabase) {
       try {
-        const { dosen_nip, metode, ...safeFields } = updatedFields;
-        const { error } = await supabase
+        const allowedColumns = [
+          'pembimbing',
+          'dosen_nama',
+          'dosen_nip',
+          'metode',
+          'tanggal',
+          'waktu',
+          'bab_topik',
+          'catatan_mahasiswa',
+          'masukan_dosen',
+          'file_revisi_url',
+          'status'
+        ];
+        const payload = {};
+        for (const col of allowedColumns) {
+          if (updatedFields[col] !== undefined) {
+            payload[col] = updatedFields[col];
+          }
+        }
+
+        let { error } = await supabase
           .from('thesis_consultations')
-          .update({
-            ...safeFields,
-            updated_at: new Date().toISOString()
-          })
+          .update(payload)
           .eq('id', consultationId);
-        if (error) console.warn('Supabase consultation update warning:', error.message);
+
+        // Fallback if older schema is missing metode or dosen_nip
+        if (error && (error.code === '42703' || error.code === 'PGRST204' || String(error.message || '').includes('does not exist') || String(error.message || '').includes('Could not find'))) {
+          const { dosen_nip, metode, ...minimalPayload } = payload;
+          const retry = await supabase
+            .from('thesis_consultations')
+            .update(minimalPayload)
+            .eq('id', consultationId);
+          error = retry.error;
+        }
+
+        if (error) {
+          console.warn('Supabase consultation update warning:', error.message);
+        }
       } catch (err) {
         console.warn('Failed to update consultation in Supabase:', err);
       }
@@ -7219,6 +7564,106 @@ export function AuthProvider({ children }) {
       return prev;
     });
   }, [consultations, thesisTitles, studentAdvisors, advisors]);
+
+  // Auto-reconcile notifications for Thesis Title Submissions & Updates (Dosen)
+  useEffect(() => {
+    if (!thesisTitles || thesisTitles.length === 0 || !currentUser) return;
+
+    const readIds = getReadNotificationIds();
+
+    if (currentUser.role === 'dosen') {
+      const activeTitlesForDosen = thesisTitles.filter(t =>
+        t && t.judul && t.judul.trim() && t.judul !== '-' &&
+        t.status !== 'ditolak' &&
+        isLecturerForThesisTitle(t, currentUser)
+      );
+
+      if (activeTitlesForDosen.length > 0) {
+        setNotifications(currNotifs => {
+          let updatedNotifs = [...currNotifs];
+          let changed = false;
+
+          activeTitlesForDosen.forEach(title => {
+            const pembRole = getLecturerRoleForThesisTitle(title, currentUser);
+            const latestRev = getLatestStudentRevision(title);
+
+            // Jika ada revisi judul/abstrak oleh mahasiswa
+            if (latestRev) {
+              const revNotifId = `notif-thesis-rev-${title.id}-${latestRev.id || latestRev.tanggal}`;
+              if (!readIds.has(revNotifId) && !readIds.has(`notif-thesis-rev-${title.id}`)) {
+                const exists = updatedNotifs.some(n =>
+                  n.id === revNotifId ||
+                  (String(n.related_id) === String(title.id) && n.related_type === 'thesis_title_revised')
+                );
+                if (!exists) {
+                  const notifItem = {
+                    id: revNotifId,
+                    profile_id: currentUser.id || currentUser.nip,
+                    recipient_role: 'dosen',
+                    recipient_nip: String(currentUser.nip || currentUser.nim || '').trim(),
+                    dosen_nama: currentUser.nama,
+                    student_name: title.mhs_nama || 'Mahasiswa',
+                    student_nim: String(title.mhs_nim || '').trim(),
+                    thesis_title: title.judul,
+                    related_type: 'thesis_title_revised',
+                    related_id: title.id,
+                    title: `Pembaruan Judul Mahasiswa Bimbingan (${pembRole})`,
+                    message: `Mahasiswa bimbingan Anda, ${title.mhs_nama || 'Mahasiswa'} (${title.mhs_nim || ''}), telah ${latestRev.catatan || 'melakukan perubahan usulan judul tugas akhir'}: "${title.judul}". Skor kemiripan: ${title.skor_kemiripan_terakhir || 0}%. Silakan tinjau perubahan terbaru di halaman Validasi Judul.`,
+                    action_url: '/dosen/validasi-judul',
+                    badge_label: 'Revisi Judul',
+                    is_read: false,
+                    is_email_sent: true,
+                    created_at: latestRev.tanggal || title.updated_at || new Date().toISOString()
+                  };
+                  updatedNotifs.unshift(notifItem);
+                  changed = true;
+                }
+              }
+            }
+
+            // Notifikasi pengajuan awal (jika belum disetujui Pembimbing 1)
+            const subNotifId = `notif-thesis-sub-${title.id}`;
+            const isApproved = title.status === 'disetujui' || title.rekomendasi_dospem_status === 'direkomendasikan';
+            if (!isApproved && !readIds.has(subNotifId) && !readIds.has(`notif-${title.id}`)) {
+              const exists = updatedNotifs.some(n =>
+                n.id === subNotifId ||
+                (String(n.related_id) === String(title.id) && (n.related_type === 'thesis_title' || n.related_type === 'thesis_title_revised'))
+              );
+              if (!exists) {
+                const notifItem = {
+                  id: subNotifId,
+                  profile_id: currentUser.id || currentUser.nip,
+                  recipient_role: 'dosen',
+                  recipient_nip: String(currentUser.nip || currentUser.nim || '').trim(),
+                  dosen_nama: currentUser.nama,
+                  student_name: title.mhs_nama || 'Mahasiswa',
+                  student_nim: String(title.mhs_nim || '').trim(),
+                  thesis_title: title.judul,
+                  related_type: 'thesis_title',
+                  related_id: title.id,
+                  title: `Usulan Judul Baru Mahasiswa Bimbingan (${pembRole})`,
+                  message: `Mahasiswa bimbingan Anda, ${title.mhs_nama || 'Mahasiswa'} (${title.mhs_nim || ''}), mengusulkan Anda sebagai ${pembRole} untuk judul: "${title.judul}". Silakan tinjau & berikan validasi akademik di SIMTA.`,
+                  action_url: '/dosen/validasi-judul',
+                  badge_label: 'Judul TA',
+                  is_read: false,
+                  is_email_sent: true,
+                  created_at: title.created_at || new Date().toISOString()
+                };
+                updatedNotifs.unshift(notifItem);
+                changed = true;
+              }
+            }
+          });
+
+          if (changed) {
+            try { localStorage.setItem('simta_notifications', JSON.stringify(updatedNotifs)); } catch {}
+            return updatedNotifs;
+          }
+          return currNotifs;
+        });
+      }
+    }
+  }, [thesisTitles, currentUser, studentAdvisors, advisors]);
 
   return (
     <AuthContext.Provider value={{
