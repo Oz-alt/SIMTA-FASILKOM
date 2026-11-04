@@ -285,14 +285,8 @@ export const saveStudentCredential = async ({ nim, password, isProfileCompleted,
             error = retry.error;
         }
 
-        if (error) {
-            return {
-                success: false,
-                tableMissing: isMissingSchemaError(error),
-                message: error.message,
-            };
-        }
-
+        // Simpan selalu metadata profil (nama, noHp, kelas/angkatan, prodi) ke Supabase admin_cms
+        // agar lintas perangkat/browser selalu sinkron tanpa bergantung pada status RPC
         const prev = cache.get(key) || getCachedStudentCredential(key) || { hasPassword: false, isProfileCompleted: false };
         const normalizedKelas = normalizeStudentAngkatan(cleanKelas || prev.kelas) || null;
         const nextStatus = {
@@ -310,8 +304,6 @@ export const saveStudentCredential = async ({ nim, password, isProfileCompleted,
         cacheLoadedAt = Date.now();
         persistLocalCred(key, nextStatus);
 
-        // Simpan juga metadata profil non-sensitif (nama, noHp, kelas/angkatan, prodi) ke Supabase
-        // agar lintas perangkat/browser (Kaprodi, Dosen, Mahasiswa) selalu sinkron meski RPC 3-argumen.
         if (nextStatus.nama || nextStatus.noHp || nextStatus.kelas || nextStatus.prodi || typeof isProfileCompleted === 'boolean') {
             try {
                 await supabase.from('admin_cms').upsert([{
@@ -327,11 +319,21 @@ export const saveStudentCredential = async ({ nim, password, isProfileCompleted,
                         prodi: nextStatus.prodi,
                         isProfileCompleted: nextStatus.isProfileCompleted,
                     }),
-                    status: 'draf',
+                    status: 'aktif',
                     penulis: 'Student Profile Sync',
                     updated_at: new Date().toISOString(),
                 }], { onConflict: 'id' });
-            } catch {}
+            } catch (cmsErr) {
+                console.warn('admin_cms metadata fallback upsert warning:', cmsErr);
+            }
+        }
+
+        if (error) {
+            return {
+                success: false,
+                tableMissing: isMissingSchemaError(error),
+                message: error.message,
+            };
         }
 
         return { success: true };

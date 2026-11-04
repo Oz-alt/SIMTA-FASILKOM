@@ -114,6 +114,7 @@ import {
   hydrateStudentProfileMeta,
   resetCredentialCache
 } from '../services/studentCredentials.js';
+import { isValidNonDummyPhone } from '../lib/whatsappHelper.js';
 
 const generateRowId = () => {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -962,6 +963,61 @@ export function AuthProvider({ children }) {
         }
         return prev;
       });
+
+      // Sinkronkan langsung ke tabel student_advisors dan admin_cms di Supabase agar Dosen & Kaprodi langsung melihat nomor WA
+      if (isSupabaseConfigured && supabase && userNim) {
+        try {
+          const saUpdatePayload = {};
+          if (updatedFields.no_hp !== undefined || merged.no_hp) saUpdatePayload.no_hp = merged.no_hp;
+          if (updatedFields.nama || merged.nama) saUpdatePayload.student_nama = merged.nama;
+          if (updatedFields.kelas !== undefined || merged.kelas) saUpdatePayload.kelas = merged.kelas;
+          if (Object.keys(saUpdatePayload).length > 0) {
+            supabase.from('student_advisors').update(saUpdatePayload).eq('student_nim', userNim).then(() => {});
+          }
+        } catch (saErr) {
+          console.warn('Gagal sinkronisasi no_hp mahasiswa ke tabel student_advisors:', saErr);
+        }
+
+        try {
+          supabase.from('admin_cms').upsert([{
+            id: `student-profile-${userNim}`,
+            judul: userNim,
+            kategori: 'student_profile_meta',
+            isi: JSON.stringify({
+              nim: userNim,
+              nama: merged.nama || '',
+              noHp: merged.no_hp || '',
+              no_hp: merged.no_hp || '',
+              kelas: merged.kelas || '',
+              prodi: merged.prodi || 'D3 Manajemen Informatika',
+              isProfileCompleted: true,
+              updated_at: new Date().toISOString()
+            }),
+            status: 'aktif',
+            penulis: 'Student Profile Sync',
+            updated_at: new Date().toISOString()
+          }], { onConflict: 'id' }).then(() => {});
+        } catch (cmsErr) {
+          console.warn('Gagal upsert metadata mahasiswa ke admin_cms:', cmsErr);
+        }
+
+        try {
+          supabase.from('profiles').upsert([{
+            id: currentUser.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(currentUser.id) ? currentUser.id : `profile-mhs-${userNim}`,
+            nim: userNim,
+            nip: userNim,
+            nama: merged.nama || '',
+            email: merged.email || `${userNim}@student.unsri.ac.id`,
+            role: 'mahasiswa',
+            no_hp: merged.no_hp || '',
+            kelas: merged.kelas || '',
+            prodi: merged.prodi || 'D3 Manajemen Informatika',
+            updated_at: new Date().toISOString()
+          }], { onConflict: 'nim' }).then(() => {});
+        } catch (profErr) {
+          console.warn('Gagal upsert profil mahasiswa ke tabel profiles:', profErr);
+        }
+      }
 
       const studentNim = normalizeNim(merged.nim || merged.nip);
       if (studentNim) {
@@ -3200,6 +3256,76 @@ export function AuthProvider({ children }) {
           if (!error && data && data.length > 0) {
             // Hidrasi metadata profil mahasiswa terverifikasi (no_hp, kelas/angkatan, nama, prodi)
             hydrateStudentProfileMeta(data);
+
+            // Sinkronkan metadata profil mahasiswa (no_hp, kelas/angkatan, nama) ke state studentAdvisors dan registeredStudents
+            try {
+              const profileMetaRows = data.filter(r => r && (r.kategori === 'student_profile_meta' || String(r.id || '').startsWith('student-profile-')) && r.isi);
+              if (profileMetaRows.length > 0) {
+                const metaMap = new Map();
+                profileMetaRows.forEach(row => {
+                  try {
+                    const parsed = typeof row.isi === 'string' ? JSON.parse(row.isi) : row.isi;
+                    const nim = normalizeNim(parsed?.nim || row.judul || String(row.id || '').replace('student-profile-', ''));
+                    if (nim) {
+                      metaMap.set(nim, {
+                        nama: parsed.nama,
+                        no_hp: parsed.noHp || parsed.no_hp,
+                        kelas: normalizeStudentAngkatan(parsed.kelas),
+                        prodi: parsed.prodi
+                      });
+                    }
+                  } catch {}
+                });
+
+                if (metaMap.size > 0) {
+                  setStudentAdvisors(prev => {
+                    if (!Array.isArray(prev) || prev.length === 0) return prev;
+                    let changed = false;
+                    const next = prev.map(sa => {
+                      const sNim = normalizeNim(sa.student_nim);
+                      const meta = metaMap.get(sNim);
+                      if (meta && meta.no_hp && sa.no_hp !== meta.no_hp) {
+                        changed = true;
+                        return {
+                          ...sa,
+                          no_hp: meta.no_hp,
+                          ...(meta.nama ? { student_nama: meta.nama } : {}),
+                          ...(meta.kelas ? { kelas: meta.kelas } : {})
+                        };
+                      }
+                      return sa;
+                    });
+                    if (changed) {
+                      try { localStorage.setItem('simta_student_advisors', JSON.stringify(next)); } catch {}
+                      return next;
+                    }
+                    return prev;
+                  });
+
+                  setRegisteredStudents(prev => {
+                    if (!Array.isArray(prev) || prev.length === 0) return prev;
+                    let changed = false;
+                    const next = prev.map(s => {
+                      const sNim = normalizeNim(s.nim || s.nip);
+                      const meta = metaMap.get(sNim);
+                      if (meta && meta.no_hp && s.no_hp !== meta.no_hp) {
+                        changed = true;
+                        return {
+                          ...s,
+                          no_hp: meta.no_hp,
+                          ...(meta.nama ? { nama: meta.nama } : {}),
+                          ...(meta.kelas ? { kelas: meta.kelas } : {})
+                        };
+                      }
+                      return s;
+                    });
+                    return changed ? next : prev;
+                  });
+                }
+              }
+            } catch (metaErr) {
+              console.warn('Gagal sinkronisasi metadata profil mahasiswa ke state:', metaErr);
+            }
 
             // Sinkronkan kredensial akun Dosen / Kaprodi / Admin dari Supabase ke registry lokal
             try {
@@ -6389,15 +6515,16 @@ export function AuthProvider({ children }) {
         const cred = getCachedStudentCredential(nim);
         const normalizedExistingKelas = normalizeStudentAngkatan(existing.kelas);
         if (cred) {
-          const verifiedPhone = cred.noHp || cred.no_hp || '';
+          const verifiedPhone = (cred.noHp && isValidNonDummyPhone(cred.noHp)) ? cred.noHp : ((cred.no_hp && isValidNonDummyPhone(cred.no_hp)) ? cred.no_hp : '');
           const verifiedKelas = normalizeStudentAngkatan(cred.kelas) || normalizedExistingKelas;
+          const candidatePhone = verifiedPhone || (isValidNonDummyPhone(existing.no_hp) ? existing.no_hp : '');
           accountMap.set(nim, {
             ...existing,
             nama: cred.nama || existing.nama,
-            no_hp: verifiedPhone || (cred.isProfileCompleted === false ? '-' : existing.no_hp),
+            no_hp: candidatePhone || (cred.isProfileCompleted === false ? '-' : existing.no_hp),
             kelas: verifiedKelas,
             prodi: cred.prodi || existing.prodi,
-            is_profile_completed: cred.isProfileCompleted === true
+            is_profile_completed: cred.isProfileCompleted === true || Boolean(candidatePhone)
           });
         } else if (normalizedExistingKelas !== existing.kelas) {
           accountMap.set(nim, {

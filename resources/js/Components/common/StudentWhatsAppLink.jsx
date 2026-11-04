@@ -3,12 +3,14 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { 
   openStudentWhatsAppChat, 
   resolveStudentContact, 
-  normalizeWhatsAppNumber 
+  normalizeWhatsAppNumber,
+  isValidNonDummyPhone
 } from '../../lib/whatsappHelper.js';
 import {
   getStudentCredential,
   getCachedStudentCredential
 } from '../../services/studentCredentials.js';
+import { supabase, isSupabaseConfigured } from '../../services/supabase.js';
 import { MessageCircle, AlertTriangle, CheckCircle2, X } from 'lucide-react';
 
 /**
@@ -140,13 +142,25 @@ export default function StudentWhatsAppLink({
     };
   }, [targetNim]);
 
-  // Prioritaskan nomor WhatsApp dari hasil verifikasi mahasiswa di Supabase (student_credentials)
-  // Jika status dari server menyatakan mahasiswa BELUM verifikasi (isProfileCompleted === false), jangan gunakan nomor kosong/lama
-  const verifiedPhone = remoteCred?.fromServer
-    ? (remoteCred.isProfileCompleted && (remoteCred.noHp || remoteCred.no_hp) ? (remoteCred.noHp || remoteCred.no_hp) : (remoteCred.noHp || remoteCred.no_hp || ''))
-    : (remoteCred?.noHp || remoteCred?.no_hp || contact.phone || '');
+  // Kumpulkan semua sumber nomor telepon kandidat dan prioritaskan nomor asli mahasiswa yang valid
+  const candidatePhones = [
+    remoteCred?.noHp,
+    remoteCred?.no_hp,
+    student?.no_hp,
+    student?.phone,
+    student?.noHp,
+    student?.no_wa,
+    contact?.phone
+  ];
 
-  const effectivePhone = verifiedPhone || (remoteCred?.fromServer && !remoteCred?.isProfileCompleted ? '' : contact.phone);
+  let effectivePhone = '';
+  for (const p of candidatePhones) {
+    if (p && isValidNonDummyPhone(p)) {
+      effectivePhone = String(p).trim();
+      break;
+    }
+  }
+
   const validation = normalizeWhatsAppNumber(effectivePhone);
 
   const handleClick = async (e) => {
@@ -155,17 +169,61 @@ export default function StudentWhatsAppLink({
 
     let finalPhone = effectivePhone;
 
-    // Jika belum ter-load dari server atau masih kosong, cek cepat ke server
-    if (!finalPhone && targetNim && (!remoteCred || !remoteCred.fromServer)) {
+    // Jika belum ter-load atau masih kosong, lakukan pencarian langsung ke server/Supabase
+    if (!finalPhone && targetNim) {
       try {
         const freshCred = await getStudentCredential(targetNim, { fresh: true });
-        if (freshCred) {
+        if (freshCred && (freshCred.noHp || freshCred.no_hp) && isValidNonDummyPhone(freshCred.noHp || freshCred.no_hp)) {
+          finalPhone = String(freshCred.noHp || freshCred.no_hp).trim();
           setRemoteCred(freshCred);
-          if (freshCred.noHp || freshCred.no_hp) {
-            finalPhone = freshCred.noHp || freshCred.no_hp;
-          }
         }
       } catch {}
+
+      // Fallback 1: periksa admin_cms
+      if (!finalPhone && isSupabaseConfigured && supabase) {
+        try {
+          const { data: cmsRow } = await supabase
+            .from('admin_cms')
+            .select('isi')
+            .eq('id', `student-profile-${targetNim}`)
+            .maybeSingle();
+          if (cmsRow?.isi) {
+            const parsed = typeof cmsRow.isi === 'string' ? JSON.parse(cmsRow.isi) : cmsRow.isi;
+            const p = parsed?.noHp || parsed?.no_hp;
+            if (p && isValidNonDummyPhone(p)) {
+              finalPhone = String(p).trim();
+            }
+          }
+        } catch {}
+      }
+
+      // Fallback 2: periksa student_advisors
+      if (!finalPhone && isSupabaseConfigured && supabase) {
+        try {
+          const { data: saRow } = await supabase
+            .from('student_advisors')
+            .select('no_hp')
+            .eq('student_nim', targetNim)
+            .maybeSingle();
+          if (saRow?.no_hp && isValidNonDummyPhone(saRow.no_hp)) {
+            finalPhone = String(saRow.no_hp).trim();
+          }
+        } catch {}
+      }
+
+      // Fallback 3: periksa profiles
+      if (!finalPhone && isSupabaseConfigured && supabase) {
+        try {
+          const { data: profRow } = await supabase
+            .from('profiles')
+            .select('no_hp')
+            .or(`nim.eq.${targetNim},nip.eq.${targetNim}`)
+            .maybeSingle();
+          if (profRow?.no_hp && isValidNonDummyPhone(profRow.no_hp)) {
+            finalPhone = String(profRow.no_hp).trim();
+          }
+        } catch {}
+      }
     }
 
     openStudentWhatsAppChat({

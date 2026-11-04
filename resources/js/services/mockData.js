@@ -170,7 +170,7 @@ export const MOCK_USERS = [
     "tahun_angkatan": "2024",
     "prodi": "D3 Manajemen Informatika",
     "kelas": "MI 2024",
-    "no_hp": ""
+    "no_hp": "088747905153"
   },
   {
     "id": "user-mhs-09010582428076",
@@ -15041,6 +15041,7 @@ export const MOCK_STUDENT_ADVISORS = [
     "judul_ta": "",
     "dospem1_nip": "198410012009121005",
     "dospem2_nip": "198712032022031006",
+    "no_hp": "088747905153",
     "status_pembagian": "lengkap",
     "updated_at": "2026-09-24T04:21:37.033415+00:00"
   },

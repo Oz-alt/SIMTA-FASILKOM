@@ -30,7 +30,7 @@ const LEGACY_DUMMY_PHONES = new Set([
   '081273322093'
 ]);
 
-const isValidNonDummyPhone = (phone) => {
+export const isValidNonDummyPhone = (phone) => {
   if (!phone || phone === '-') return false;
   const trimmed = String(phone).trim();
   if (!trimmed) return false;
@@ -142,6 +142,11 @@ export function resolveStudentContact(studentOrNim, context = {}) {
     ).trim();
   }
 
+  // 0. Jika studentOrNim sudah memuat nomor telepon eksplisit yang valid & bukan dummy, prioritaskan langsung
+  if (isValidNonDummyPhone(explicitPhone)) {
+    return { nim, nama, phone: String(explicitPhone).trim(), isFromProfile: true };
+  }
+
   // 1. Prioritaskan data terbaru dari dbProfiles (Supabase profiles)
   if (context?.dbProfiles && Array.isArray(context.dbProfiles)) {
     const found = context.dbProfiles.find(p =>
@@ -149,7 +154,7 @@ export function resolveStudentContact(studentOrNim, context = {}) {
       (nama && String(p.nama || '').toLowerCase().trim() === nama.toLowerCase())
     );
     if (found) {
-      const p = found.no_hp || found.phone;
+      const p = found.no_hp || found.phone || found.no_wa || found.telepon;
       if (isValidNonDummyPhone(p)) {
         return { nim: found.nim || nim, nama: found.nama || nama, phone: String(p).trim(), isFromProfile: true };
       }
@@ -163,8 +168,9 @@ export function resolveStudentContact(studentOrNim, context = {}) {
       if (rawCreds && nim) {
         const credsMap = JSON.parse(rawCreds);
         const cred = credsMap?.[nim];
-        if (cred && isValidNonDummyPhone(cred.no_hp)) {
-          return { nim, nama: cred.nama || nama, phone: String(cred.no_hp).trim(), isFromProfile: true };
+        const p = cred?.no_hp || cred?.noHp || cred?.phone;
+        if (isValidNonDummyPhone(p)) {
+          return { nim, nama: cred.nama || nama, phone: String(p).trim(), isFromProfile: true };
         }
       }
     } catch {}
@@ -179,7 +185,7 @@ export function resolveStudentContact(studentOrNim, context = {}) {
             (nama && String(u.nama || '').toLowerCase().trim() === nama.toLowerCase())
           );
           if (match) {
-            const p = match.no_hp || match.phone;
+            const p = match.no_hp || match.phone || match.no_wa;
             if (isValidNonDummyPhone(p)) {
               return { nim: match.nim || nim, nama: match.nama || nama, phone: String(p).trim(), isFromProfile: true };
             }
@@ -196,7 +202,7 @@ export function resolveStudentContact(studentOrNim, context = {}) {
       (nama && String(s.nama || s.student_nama || '').toLowerCase().trim() === nama.toLowerCase())
     );
     if (found) {
-      const p = found.no_hp || found.phone || found.no_wa;
+      const p = found.no_hp || found.phone || found.no_wa || found.telepon;
       if (isValidNonDummyPhone(p)) {
         return { nim: found.nim || nim, nama: found.nama || nama, phone: String(p).trim(), isFromProfile: true };
       }
@@ -210,16 +216,16 @@ export function resolveStudentContact(studentOrNim, context = {}) {
       (nama && String(sa.student_nama || '').toLowerCase().trim() === nama.toLowerCase())
     );
     if (found) {
-      const p = found.no_hp || found.phone;
+      const p = found.no_hp || found.phone || found.no_wa || found.telepon;
       if (isValidNonDummyPhone(p)) {
         return { nim: found.student_nim || nim, nama: found.student_nama || nama, phone: String(p).trim(), isFromProfile: true };
       }
     }
   }
 
-  // 5. Terakhir cek explicitPhone dari objek jika valid & bukan nomor dummy
+  // 5. Fallback terakhir jika explicitPhone valid
   if (isValidNonDummyPhone(explicitPhone)) {
-    return { nim, nama, phone: explicitPhone, isFromProfile: true };
+    return { nim, nama, phone: String(explicitPhone).trim(), isFromProfile: true };
   }
 
   return { nim, nama, phone: '', isFromProfile: false };

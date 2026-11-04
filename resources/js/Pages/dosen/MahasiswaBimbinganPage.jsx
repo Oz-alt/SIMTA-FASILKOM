@@ -40,7 +40,7 @@ export default function MahasiswaBimbinganPage() {
     if (cleanNip === '198410012009121005' || cleanNama.includes('abdiansah')) {
       const standard16 = [
         { nim: '09010182428003', nama: 'AKHMAD LATIEF SRI BINTANG PAMUNGKAS', dospem1_nip: '198410012009121005' },
-        { nim: '09010182428002', nama: 'AULIA AZZAHRA', dospem1_nip: '198410012009121005' },
+        { nim: '09010182428002', nama: 'AULIA AZZAHRA', dospem1_nip: '198410012009121005', no_hp: '088747905153' },
         { nim: '09010582428099', nama: 'CINOIEY JULIEN RIZKY', dospem1_nip: '198410012009121005' },
         { nim: '09010282428041', nama: 'EGIR EXTRA APENA', dospem1_nip: '198410012009121005' },
         { nim: '09010282428042', nama: 'INTAN NURAINI', dospem1_nip: '198410012009121005' },
