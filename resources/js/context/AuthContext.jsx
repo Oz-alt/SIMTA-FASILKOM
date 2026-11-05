@@ -2588,14 +2588,15 @@ export function AuthProvider({ children }) {
           setCurrentUserState(prev => {
             if (!prev || prev.role !== 'mahasiswa' || normalizeNim(prev.nim || prev.nip) !== studentNim) return prev;
             const phoneVal = (cred.noHp && isValidNonDummyPhone(cred.noHp)) ? cred.noHp : ((cred.no_hp && isValidNonDummyPhone(cred.no_hp)) ? cred.no_hp : (prev.no_hp && isValidNonDummyPhone(prev.no_hp) ? prev.no_hp : ''));
+            const isCompleted = cred.isProfileCompleted === true || Boolean(phoneVal) || prev.is_profile_completed === true;
             const nextUser = {
               ...prev,
-              is_profile_completed: cred.isProfileCompleted === true,
+              is_profile_completed: isCompleted,
               ...(cred.nama ? { nama: cred.nama } : {}),
               ...(phoneVal ? { no_hp: phoneVal } : {}),
               ...(cred.kelas ? { kelas: cred.kelas } : {}),
               ...(cred.prodi ? { prodi: cred.prodi } : {}),
-              ...(!cred.hasPassword ? { password: studentNim } : {})
+              ...(!cred.hasPassword && !prev.password_hash && prev.password === studentNim ? { password: studentNim } : {})
             };
             try {
               localStorage.setItem('simta_active_user', JSON.stringify(nextUser));
@@ -2727,6 +2728,40 @@ export function AuthProvider({ children }) {
               try { localStorage.setItem('simta_student_advisors', JSON.stringify(merged)); } catch { }
               return merged;
             });
+
+            // Sinkronkan juga langsung ke currentUser jika mahasiswa yang login memiliki no_hp di student_advisors
+            try {
+              const currentMhs = currentUserRef?.current;
+              if (currentMhs && currentMhs.role === 'mahasiswa') {
+                const sNim = normalizeNim(currentMhs.nim || currentMhs.nip);
+                const matchedSa = data.find(r => normalizeNim(r.student_nim) === sNim);
+                if (matchedSa && matchedSa.no_hp && isValidNonDummyPhone(matchedSa.no_hp)) {
+                  setCurrentUserState(prev => {
+                    if (!prev || prev.role !== 'mahasiswa' || normalizeNim(prev.nim || prev.nip) !== sNim) return prev;
+                    if (prev.no_hp === matchedSa.no_hp && prev.is_profile_completed) return prev;
+                    const next = {
+                      ...prev,
+                      no_hp: matchedSa.no_hp,
+                      is_profile_completed: true,
+                      ...(matchedSa.student_nama && (!prev.nama || prev.nama === 'Mahasiswa UNSRI') ? { nama: matchedSa.student_nama } : {}),
+                      ...(matchedSa.kelas && (!prev.kelas || prev.kelas === 'MI 2024') ? { kelas: normalizeStudentAngkatan(matchedSa.kelas) } : {})
+                    };
+                    try {
+                      localStorage.setItem('simta_active_user', JSON.stringify(next));
+                      const allReg = getRegisteredUsers();
+                      const idx = allReg.findIndex(u => normalizeNim(u.nim || u.nip) === sNim);
+                      if (idx !== -1) {
+                        allReg[idx] = { ...allReg[idx], ...next };
+                        localStorage.setItem('simta_registered_users', JSON.stringify(allReg));
+                      }
+                    } catch {}
+                    return next;
+                  });
+                }
+              }
+            } catch (syncSaErr) {
+              console.warn('Sync student_advisors to currentUser warning:', syncSaErr);
+            }
           }
         });
       supabase.from('thesis_consultations').select('*')
@@ -3322,6 +3357,41 @@ export function AuthProvider({ children }) {
                     });
                     return changed ? next : prev;
                   });
+
+                  // Sinkronkan juga langsung ke currentUser aktif bila mahasiswa memiliki metadata di admin_cms
+                  try {
+                    const currentMhs = currentUserRef?.current;
+                    if (currentMhs && currentMhs.role === 'mahasiswa') {
+                      const sNim = normalizeNim(currentMhs.nim || currentMhs.nip);
+                      const meta = metaMap.get(sNim);
+                      if (meta && meta.no_hp && isValidNonDummyPhone(meta.no_hp)) {
+                        setCurrentUserState(prev => {
+                          if (!prev || prev.role !== 'mahasiswa' || normalizeNim(prev.nim || prev.nip) !== sNim) return prev;
+                          if (prev.no_hp === meta.no_hp && prev.is_profile_completed) return prev;
+                          const next = {
+                            ...prev,
+                            no_hp: meta.no_hp,
+                            is_profile_completed: true,
+                            ...(meta.nama && (!prev.nama || prev.nama === 'Mahasiswa UNSRI') ? { nama: meta.nama } : {}),
+                            ...(meta.kelas && (!prev.kelas || prev.kelas === 'MI 2024') ? { kelas: meta.kelas } : {}),
+                            ...(meta.prodi ? { prodi: meta.prodi } : {})
+                          };
+                          try {
+                            localStorage.setItem('simta_active_user', JSON.stringify(next));
+                            const allReg = getRegisteredUsers();
+                            const idx = allReg.findIndex(u => normalizeNim(u.nim || u.nip) === sNim);
+                            if (idx !== -1) {
+                              allReg[idx] = { ...allReg[idx], ...next };
+                              localStorage.setItem('simta_registered_users', JSON.stringify(allReg));
+                            }
+                          } catch {}
+                          return next;
+                        });
+                      }
+                    }
+                  } catch (syncUserErr) {
+                    console.warn('Sync admin_cms to active user warning:', syncUserErr);
+                  }
                 }
               }
             } catch (metaErr) {
@@ -3961,7 +4031,84 @@ export function AuthProvider({ children }) {
         }
       }
 
-      // 2. Cek tabel profiles untuk semua role
+      // 2. Jika mahasiswa: Periksa student_credentials, admin_cms, dan student_advisors
+      if (enriched.role === 'mahasiswa' && userNip) {
+        const sNim = normalizeNim(userNip);
+
+        // a. Periksa kredensial mahasiswa / metadata dari studentCredentials
+        try {
+          const cred = await getStudentCredential(sNim, { fresh: true });
+          if (cred) {
+            if (cred.nama && (!enriched.nama || enriched.nama === 'Mahasiswa UNSRI' || enriched.nama === 'Pengguna SIMTA')) {
+              enriched.nama = cred.nama;
+            }
+            if (cred.noHp || cred.no_hp) {
+              const p = cred.noHp || cred.no_hp;
+              if (isValidNonDummyPhone(p)) {
+                enriched.no_hp = p;
+                enriched.is_profile_completed = true;
+              }
+            }
+            if (cred.kelas && (!enriched.kelas || enriched.kelas === 'MI 2024')) {
+              enriched.kelas = normalizeStudentAngkatan(cred.kelas);
+            }
+            if (cred.prodi && !enriched.prodi) enriched.prodi = cred.prodi;
+            if (cred.isProfileCompleted) enriched.is_profile_completed = true;
+          }
+        } catch {}
+
+        // b. Periksa admin_cms (metadata student-profile-*)
+        try {
+          const { data: cmsRow } = await supabase
+            .from('admin_cms')
+            .select('isi')
+            .eq('id', `student-profile-${sNim}`)
+            .maybeSingle();
+          if (cmsRow?.isi) {
+            const parsed = typeof cmsRow.isi === 'string' ? JSON.parse(cmsRow.isi) : cmsRow.isi;
+            if (parsed?.nama && (!enriched.nama || enriched.nama === 'Mahasiswa UNSRI' || enriched.nama === 'Pengguna SIMTA')) {
+              enriched.nama = parsed.nama;
+            }
+            const phone = parsed?.noHp || parsed?.no_hp;
+            if (phone && isValidNonDummyPhone(phone)) {
+              enriched.no_hp = phone;
+              enriched.is_profile_completed = true;
+            }
+            if (parsed?.kelas && (!enriched.kelas || enriched.kelas === 'MI 2024')) {
+              enriched.kelas = normalizeStudentAngkatan(parsed.kelas);
+            }
+            if (parsed?.prodi && !enriched.prodi) {
+              enriched.prodi = parsed.prodi;
+            }
+            if (parsed?.isProfileCompleted) {
+              enriched.is_profile_completed = true;
+            }
+          }
+        } catch {}
+
+        // c. Periksa student_advisors untuk no_hp mahasiswa
+        try {
+          const { data: saRow } = await supabase
+            .from('student_advisors')
+            .select('no_hp, student_nama, kelas')
+            .eq('student_nim', sNim)
+            .maybeSingle();
+          if (saRow) {
+            if (saRow.no_hp && isValidNonDummyPhone(saRow.no_hp)) {
+              enriched.no_hp = saRow.no_hp;
+              enriched.is_profile_completed = true;
+            }
+            if (saRow.student_nama && (!enriched.nama || enriched.nama === 'Mahasiswa UNSRI')) {
+              enriched.nama = saRow.student_nama;
+            }
+            if (saRow.kelas && (!enriched.kelas || enriched.kelas === 'MI 2024')) {
+              enriched.kelas = normalizeStudentAngkatan(saRow.kelas);
+            }
+          }
+        } catch {}
+      }
+
+      // 3. Cek tabel profiles untuk semua role
       const isUuid = enriched.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(enriched.id);
       let profileQuery = null;
       if (isUuid) {
@@ -3976,7 +4123,10 @@ export function AuthProvider({ children }) {
         const { data: profData } = await profileQuery.maybeSingle();
         if (profData) {
           if (enriched.role === 'mahasiswa') {
-            if (!enriched.no_hp && profData.no_hp) enriched.no_hp = profData.no_hp;
+            if (!enriched.no_hp && profData.no_hp && isValidNonDummyPhone(profData.no_hp)) {
+              enriched.no_hp = profData.no_hp;
+              enriched.is_profile_completed = true;
+            }
             if (!enriched.kelas && profData.kelas) {
               enriched.kelas = normalizeStudentAngkatan(profData.kelas);
             }
@@ -3989,6 +4139,10 @@ export function AuthProvider({ children }) {
             }
           }
         }
+      }
+
+      if (enriched.role === 'mahasiswa' && enriched.no_hp && isValidNonDummyPhone(enriched.no_hp)) {
+        enriched.is_profile_completed = true;
       }
 
       return enriched;
@@ -4353,14 +4507,18 @@ export function AuthProvider({ children }) {
       // Ambil data terbaru dari Supabase (no_hp, link_wa_group, kelas/jabatan_fungsional, keahlian)
       resolvedLocal = await enrichUserFromSupabase(resolvedLocal);
 
+      if (resolvedLocal.no_hp && isValidNonDummyPhone(resolvedLocal.no_hp)) {
+        resolvedLocal.is_profile_completed = true;
+      }
+
       setCurrentUser(resolvedLocal);
       if (resolvedLocal.role === 'kaprodi') return '/kaprodi/dashboard';
       if (resolvedLocal.role === 'admin' || resolvedLocal.role === 'admin_sarana') return '/admin-simta/dashboard';
       if (resolvedLocal.role === 'dosen') return '/dosen/dashboard';
       if (resolvedLocal.role === 'mahasiswa') {
-        const profileDone = localCredential !== null
-          ? localCredential.isProfileCompleted === true
-          : Boolean(resolvedLocal.is_profile_completed);
+        const profileDone = resolvedLocal.is_profile_completed === true ||
+          (localCredential !== null && localCredential.isProfileCompleted === true) ||
+          Boolean(resolvedLocal.no_hp && isValidNonDummyPhone(resolvedLocal.no_hp));
         return !profileDone ? '/profile?first_login=true' : '/dashboard';
       }
       return '/dashboard';
@@ -4504,14 +4662,17 @@ export function AuthProvider({ children }) {
         : { ...foundUser, password: inputPass };
 
       const finalResolved = await enrichUserFromSupabase(resolvedUser);
+      if (finalResolved.no_hp && isValidNonDummyPhone(finalResolved.no_hp)) {
+        finalResolved.is_profile_completed = true;
+      }
       setCurrentUser(finalResolved);
-      if (resolvedUser.role === 'kaprodi') return '/kaprodi/dashboard';
-      if (resolvedUser.role === 'admin' || resolvedUser.role === 'admin_sarana') return '/admin-simta/dashboard';
-      if (resolvedUser.role === 'dosen') return '/dosen/dashboard';
-      if (resolvedUser.role === 'mahasiswa') {
-        const profileDone = foundCredential !== null
-          ? foundCredential.isProfileCompleted === true
-          : Boolean(foundUser.is_profile_completed);
+      if (finalResolved.role === 'kaprodi') return '/kaprodi/dashboard';
+      if (finalResolved.role === 'admin' || finalResolved.role === 'admin_sarana') return '/admin-simta/dashboard';
+      if (finalResolved.role === 'dosen') return '/dosen/dashboard';
+      if (finalResolved.role === 'mahasiswa') {
+        const profileDone = finalResolved.is_profile_completed === true ||
+          (foundCredential !== null && foundCredential.isProfileCompleted === true) ||
+          Boolean(finalResolved.no_hp && isValidNonDummyPhone(finalResolved.no_hp));
         return !profileDone ? '/profile?first_login=true' : '/dashboard';
       }
       return '/dashboard';

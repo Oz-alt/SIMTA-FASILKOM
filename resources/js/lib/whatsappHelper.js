@@ -2,6 +2,7 @@
  * SIMTA WhatsApp Integration Helper
  * Menyediakan utilitas normalisasi nomor, pencarian profil mahasiswa, dan pembukaan chat WhatsApp.
  */
+import { getCachedStudentCredential } from '../services/studentCredentials.js';
 
 // Tidak menggunakan nomor WhatsApp dummy; hanya nomor asli yang telah diisi/diverifikasi mahasiswa
 export const DEFAULT_STUDENT_WHATSAPP_PROFILES = {};
@@ -145,6 +146,17 @@ export function resolveStudentContact(studentOrNim, context = {}) {
   // 0. Jika studentOrNim sudah memuat nomor telepon eksplisit yang valid & bukan dummy, prioritaskan langsung
   if (isValidNonDummyPhone(explicitPhone)) {
     return { nim, nama, phone: String(explicitPhone).trim(), isFromProfile: true };
+  }
+
+  // 0b. Periksa kredensial mahasiswa via studentCredentials (in-memory cache & local storage)
+  if (nim) {
+    try {
+      const cred = getCachedStudentCredential(nim);
+      const credPhone = cred?.noHp || cred?.no_hp || cred?.phone;
+      if (isValidNonDummyPhone(credPhone)) {
+        return { nim, nama: cred?.nama || nama, phone: String(credPhone).trim(), isFromProfile: true };
+      }
+    } catch {}
   }
 
   // 1. Prioritaskan data terbaru dari dbProfiles (Supabase profiles)

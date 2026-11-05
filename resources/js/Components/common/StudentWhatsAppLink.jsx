@@ -127,12 +127,12 @@ export default function StudentWhatsAppLink({
     if (!targetNim) return;
 
     const cached = getCachedStudentCredential(targetNim);
-    if (cached) {
+    if (cached && (cached.noHp || cached.no_hp)) {
       setRemoteCred(cached);
     }
 
     getStudentCredential(targetNim).then((cred) => {
-      if (isMounted && cred) {
+      if (isMounted && cred && (cred.noHp || cred.no_hp)) {
         setRemoteCred(cred);
       }
     }).catch(() => {});

@@ -69,7 +69,8 @@ export default function RekapBimbinganPage() {
             judul_ta: '',
             dospem1_nip: std.dospem1_nip,
             dospem1_nama: 'Dr. Abdiansah, S.Kom., M.Cs.',
-            status_pembagian: 'lengkap'
+            status_pembagian: 'lengkap',
+            ...(std.no_hp ? { no_hp: std.no_hp } : {})
           });
         }
       });

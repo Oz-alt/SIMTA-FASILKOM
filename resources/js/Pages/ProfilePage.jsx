@@ -29,6 +29,8 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../services/supabase.js';
+import { getStudentCredential } from '../services/studentCredentials.js';
+import { isValidNonDummyPhone } from '../lib/whatsappHelper.js';
 
 export default function ProfilePage() {
   const { currentUser, updateUserProfile, departments, advisors } = useAuth();
@@ -117,6 +119,28 @@ export default function ProfilePage() {
       setIsEditing(true);
     }
   }, [isFirstLogin]);
+
+  // Otomatis sinkronkan profil mahasiswa dari Supabase jika nomor HP belum terisi di sesi lokal saat ini
+  useEffect(() => {
+    let isMounted = true;
+    if (isMahasiswa && currentUser?.nim && (!currentUser.no_hp || currentUser.no_hp === '-')) {
+      getStudentCredential(currentUser.nim, { fresh: true }).then(cred => {
+        if (!isMounted || !cred) return;
+        const phone = cred.noHp || cred.no_hp;
+        if (phone && isValidNonDummyPhone(phone)) {
+          updateUserProfile({
+            no_hp: phone,
+            is_profile_completed: true,
+            ...(cred.nama ? { nama: cred.nama } : {}),
+            ...(cred.kelas ? { kelas: cred.kelas } : {}),
+            ...(cred.prodi ? { prodi: cred.prodi } : {})
+          });
+          setIsEditing(false);
+        }
+      }).catch(() => {});
+    }
+    return () => { isMounted = false; };
+  }, [isMahasiswa, currentUser?.nim, currentUser?.no_hp]);
 
   // State untuk Pengelolaan Tautan WhatsApp Group Bimbingan (Khusus Dosen Pembimbing)
   const isDosen = currentUser?.role === 'dosen';

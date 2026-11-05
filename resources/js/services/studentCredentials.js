@@ -49,15 +49,21 @@ const persistLocalCred = (nim, status) => {
         const map = raw ? JSON.parse(raw) : {};
         if (map && typeof map === 'object') {
             const cleanKelas = normalizeStudentAngkatan(status.kelas);
+            const prev = map[nim] || {};
+            const incomingPhone = status.noHp || status.no_hp || null;
+            const cleanPhone = (incomingPhone && incomingPhone !== '-') ? incomingPhone : (prev.noHp || prev.no_hp || null);
+            const isCompleted = status.isProfileCompleted !== undefined
+                ? Boolean(status.isProfileCompleted)
+                : Boolean(prev.isProfileCompleted || cleanPhone);
             map[nim] = {
-                exists: Boolean(status.exists),
-                hasPassword: Boolean(status.hasPassword),
-                isProfileCompleted: Boolean(status.isProfileCompleted),
-                nama: status.nama || null,
-                noHp: status.noHp || status.no_hp || null,
-                no_hp: status.noHp || status.no_hp || null,
-                kelas: cleanKelas || null,
-                prodi: status.prodi || null,
+                exists: Boolean(status.exists !== undefined ? status.exists : prev.exists),
+                hasPassword: Boolean(status.hasPassword !== undefined ? status.hasPassword : prev.hasPassword),
+                isProfileCompleted: isCompleted,
+                nama: status.nama || prev.nama || null,
+                noHp: cleanPhone,
+                no_hp: cleanPhone,
+                kelas: cleanKelas || prev.kelas || null,
+                prodi: status.prodi || prev.prodi || null,
                 updatedAt: Date.now(),
             };
             localStorage.setItem(LOCAL_CRED_STORAGE_KEY, JSON.stringify(map));
@@ -164,14 +170,89 @@ export const getStudentCredential = async (nim, options = {}) => {
 
     const requestPromise = (async () => {
         try {
-            const { data, error } = await supabase.rpc('get_student_credential', { p_nim: key });
-
-            if (error) {
-                return cached ?? getCachedStudentCredential(key);
+            let row = null;
+            try {
+                const { data, error } = await supabase.rpc('get_student_credential', { p_nim: key });
+                if (!error && data) {
+                    row = Array.isArray(data) ? data[0] : data;
+                }
+            } catch (rpcErr) {
+                console.warn('RPC get_student_credential warning:', rpcErr);
             }
 
-            const row = Array.isArray(data) ? data[0] : data;
-            if (!row) {
+            const prev = cached || getCachedStudentCredential(key) || {};
+
+            // 1. Periksa admin_cms (metadata profil mahasiswa yang disimpan permanen lintas perangkat)
+            let remoteMeta = null;
+            try {
+                const { data: metaRow } = await supabase
+                    .from('admin_cms')
+                    .select('isi')
+                    .eq('id', `${PROFILE_META_PREFIX}${key}`)
+                    .maybeSingle();
+                if (metaRow?.isi) {
+                    remoteMeta = typeof metaRow.isi === 'string' ? JSON.parse(metaRow.isi) : metaRow.isi;
+                }
+            } catch {}
+
+            // 2. Periksa student_advisors (sinkronisasi nomor HP pembimbingan mahasiswa)
+            let saPhone = null;
+            let saNama = null;
+            let saKelas = null;
+            try {
+                const { data: saRow } = await supabase
+                    .from('student_advisors')
+                    .select('no_hp, student_nama, kelas')
+                    .eq('student_nim', key)
+                    .maybeSingle();
+                if (saRow) {
+                    if (saRow.no_hp && saRow.no_hp !== '-') saPhone = saRow.no_hp;
+                    if (saRow.student_nama) saNama = saRow.student_nama;
+                    if (saRow.kelas) saKelas = saRow.kelas;
+                }
+            } catch {}
+
+            // 3. Periksa profiles (tabel profiles umum)
+            let profPhone = null;
+            let profNama = null;
+            let profKelas = null;
+            try {
+                const { data: profRow } = await supabase
+                    .from('profiles')
+                    .select('no_hp, nama, kelas')
+                    .or(`nim.eq.${key},nip.eq.${key}`)
+                    .maybeSingle();
+                if (profRow) {
+                    if (profRow.no_hp && profRow.no_hp !== '-') profPhone = profRow.no_hp;
+                    if (profRow.nama) profNama = profRow.nama;
+                    if (profRow.kelas) profKelas = profRow.kelas;
+                }
+            } catch {}
+
+            const resolvedNama = row?.nama || remoteMeta?.nama || saNama || profNama || prev.nama || null;
+            const rawPhone = row?.no_hp || remoteMeta?.noHp || remoteMeta?.no_hp || saPhone || profPhone || prev.noHp || prev.no_hp || null;
+            const resolvedNoHp = (rawPhone && rawPhone !== '-') ? String(rawPhone).trim() : null;
+            const resolvedKelas = normalizeStudentAngkatan(
+                row?.kelas || remoteMeta?.kelas || saKelas || profKelas || prev.kelas
+            ) || null;
+            const resolvedProdi = row?.prodi || remoteMeta?.prodi || prev.prodi || null;
+
+            // Indikasi profil telah selesai/lengkap:
+            // - row.is_profile_completed dari student_credentials
+            // - remoteMeta.isProfileCompleted dari admin_cms
+            // - Ada nomor HP valid yang tersimpan di server
+            // - prev.isProfileCompleted sebelumnya
+            const hasPhone = Boolean(resolvedNoHp);
+            const isCompleted = Boolean(
+                row?.is_profile_completed === true ||
+                remoteMeta?.isProfileCompleted === true ||
+                hasPhone ||
+                prev.isProfileCompleted === true
+            );
+
+            const existsOnServer = Boolean(row || remoteMeta || saPhone || profPhone);
+
+            if (!existsOnServer && !prev.exists) {
                 const emptyStatus = {
                     exists: false,
                     hasPassword: false,
@@ -189,33 +270,9 @@ export const getStudentCredential = async (nim, options = {}) => {
                 return emptyStatus;
             }
 
-            const prev = cached || getCachedStudentCredential(key) || {};
-            const isCompleted = row.is_profile_completed === true;
-
-            let remoteMeta = null;
-            if (isCompleted && (!row.no_hp || !row.kelas)) {
-                try {
-                    const { data: metaRow } = await supabase
-                        .from('admin_cms')
-                        .select('isi')
-                        .eq('id', `${PROFILE_META_PREFIX}${key}`)
-                        .maybeSingle();
-                    if (metaRow?.isi) {
-                        remoteMeta = typeof metaRow.isi === 'string' ? JSON.parse(metaRow.isi) : metaRow.isi;
-                    }
-                } catch {}
-            }
-
-            const resolvedNama = row.nama || remoteMeta?.nama || (isCompleted ? prev.nama : null) || null;
-            const resolvedNoHp = row.no_hp || remoteMeta?.noHp || remoteMeta?.no_hp || (isCompleted ? (prev.noHp || prev.no_hp) : null) || null;
-            const resolvedKelas = normalizeStudentAngkatan(
-                row.kelas || remoteMeta?.kelas || (isCompleted ? prev.kelas : null)
-            ) || null;
-            const resolvedProdi = row.prodi || remoteMeta?.prodi || (isCompleted ? prev.prodi : null) || null;
-
             const status = {
                 exists: true,
-                hasPassword: row.has_password === true,
+                hasPassword: row?.has_password === true || Boolean(prev.hasPassword),
                 isProfileCompleted: isCompleted,
                 nama: resolvedNama,
                 noHp: resolvedNoHp,
