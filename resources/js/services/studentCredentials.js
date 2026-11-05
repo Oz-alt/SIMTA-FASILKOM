@@ -52,6 +52,8 @@ const persistLocalCred = (nim, status) => {
             const prev = map[nim] || {};
             const incomingPhone = status.noHp || status.no_hp || null;
             const cleanPhone = (incomingPhone && incomingPhone !== '-') ? incomingPhone : (prev.noHp || prev.no_hp || null);
+            const incomingAvatar = status.avatar_url !== undefined ? status.avatar_url : status.avatarUrl;
+            const cleanAvatar = incomingAvatar !== undefined ? incomingAvatar : (prev.avatar_url || prev.avatarUrl || null);
             const isCompleted = status.isProfileCompleted !== undefined
                 ? Boolean(status.isProfileCompleted)
                 : Boolean(prev.isProfileCompleted || cleanPhone);
@@ -64,6 +66,8 @@ const persistLocalCred = (nim, status) => {
                 no_hp: cleanPhone,
                 kelas: cleanKelas || prev.kelas || null,
                 prodi: status.prodi || prev.prodi || null,
+                avatar_url: cleanAvatar,
+                avatarUrl: cleanAvatar,
                 updatedAt: Date.now(),
             };
             localStorage.setItem(LOCAL_CRED_STORAGE_KEY, JSON.stringify(map));
@@ -90,6 +94,8 @@ export const hydrateStudentProfileMeta = (rows = []) => {
             if (!nim) return;
             const prev = cache.get(nim) || getCachedStudentCredential(nim) || {};
             const cleanKelas = normalizeStudentAngkatan(parsed?.kelas || prev.kelas);
+            const incomingAvatar = parsed?.avatar_url !== undefined ? parsed.avatar_url : parsed?.avatarUrl;
+            const resolvedAvatar = incomingAvatar !== undefined ? incomingAvatar : (prev.avatar_url || prev.avatarUrl || null);
             const merged = {
                 exists: true,
                 hasPassword: Boolean(prev.hasPassword ?? true),
@@ -99,6 +105,8 @@ export const hydrateStudentProfileMeta = (rows = []) => {
                 no_hp: parsed?.noHp || parsed?.no_hp || prev.noHp || prev.no_hp || null,
                 kelas: cleanKelas || null,
                 prodi: parsed?.prodi || prev.prodi || null,
+                avatar_url: resolvedAvatar,
+                avatarUrl: resolvedAvatar,
                 fromServer: true,
             };
             cache.set(nim, merged);
@@ -195,20 +203,21 @@ export const getStudentCredential = async (nim, options = {}) => {
                 }
             } catch {}
 
-            // 2. Periksa student_advisors (sinkronisasi nomor HP pembimbingan mahasiswa)
-            let saPhone = null;
-            let saNama = null;
-            let saKelas = null;
+            // 2. Periksa thesis_titles untuk fallback nama, kelas/angkatan, dan prodi
+            let ttNama = null;
+            let ttKelas = null;
+            let ttProdi = null;
             try {
-                const { data: saRow } = await supabase
-                    .from('student_advisors')
-                    .select('no_hp, student_nama, kelas')
-                    .eq('student_nim', key)
-                    .maybeSingle();
-                if (saRow) {
-                    if (saRow.no_hp && saRow.no_hp !== '-') saPhone = saRow.no_hp;
-                    if (saRow.student_nama) saNama = saRow.student_nama;
-                    if (saRow.kelas) saKelas = saRow.kelas;
+                const { data: ttRows } = await supabase
+                    .from('thesis_titles')
+                    .select('mhs_nama, mhs_kelas, angkatan, prodi')
+                    .eq('mhs_nim', key)
+                    .limit(1);
+                const ttRow = Array.isArray(ttRows) ? ttRows[0] : ttRows;
+                if (ttRow) {
+                    if (ttRow.mhs_nama) ttNama = ttRow.mhs_nama;
+                    if (ttRow.angkatan || ttRow.mhs_kelas) ttKelas = ttRow.angkatan || ttRow.mhs_kelas;
+                    if (ttRow.prodi) ttProdi = ttRow.prodi;
                 }
             } catch {}
 
@@ -229,13 +238,15 @@ export const getStudentCredential = async (nim, options = {}) => {
                 }
             } catch {}
 
-            const resolvedNama = row?.nama || remoteMeta?.nama || saNama || profNama || prev.nama || null;
-            const rawPhone = row?.no_hp || remoteMeta?.noHp || remoteMeta?.no_hp || saPhone || profPhone || prev.noHp || prev.no_hp || null;
+            const resolvedNama = row?.nama || remoteMeta?.nama || ttNama || profNama || prev.nama || null;
+            const rawPhone = row?.no_hp || remoteMeta?.noHp || remoteMeta?.no_hp || profPhone || prev.noHp || prev.no_hp || null;
             const resolvedNoHp = (rawPhone && rawPhone !== '-') ? String(rawPhone).trim() : null;
             const resolvedKelas = normalizeStudentAngkatan(
-                row?.kelas || remoteMeta?.kelas || saKelas || profKelas || prev.kelas
+                row?.kelas || remoteMeta?.kelas || ttKelas || profKelas || prev.kelas
             ) || null;
-            const resolvedProdi = row?.prodi || remoteMeta?.prodi || prev.prodi || null;
+            const resolvedProdi = row?.prodi || remoteMeta?.prodi || ttProdi || prev.prodi || null;
+            const remoteAvatar = remoteMeta?.avatar_url !== undefined ? remoteMeta.avatar_url : remoteMeta?.avatarUrl;
+            const resolvedAvatar = remoteAvatar !== undefined ? remoteAvatar : (prev.avatar_url || prev.avatarUrl || null);
 
             // Indikasi profil telah selesai/lengkap:
             // - row.is_profile_completed dari student_credentials
@@ -250,7 +261,7 @@ export const getStudentCredential = async (nim, options = {}) => {
                 prev.isProfileCompleted === true
             );
 
-            const existsOnServer = Boolean(row || remoteMeta || saPhone || profPhone);
+            const existsOnServer = Boolean(row || remoteMeta || profPhone || ttNama);
 
             if (!existsOnServer && !prev.exists) {
                 const emptyStatus = {
@@ -262,6 +273,8 @@ export const getStudentCredential = async (nim, options = {}) => {
                     no_hp: null,
                     kelas: null,
                     prodi: null,
+                    avatar_url: null,
+                    avatarUrl: null,
                     fromServer: true,
                 };
                 cache.set(key, emptyStatus);
@@ -279,6 +292,8 @@ export const getStudentCredential = async (nim, options = {}) => {
                 no_hp: resolvedNoHp,
                 kelas: resolvedKelas,
                 prodi: resolvedProdi,
+                avatar_url: resolvedAvatar,
+                avatarUrl: resolvedAvatar,
                 fromServer: true,
             };
             cache.set(key, status);
@@ -299,10 +314,10 @@ export const getStudentCredential = async (nim, options = {}) => {
 /**
  * Simpan kata sandi dan/atau status profil lengkap ke server.
  *
- * @param {{ nim: string, password?: string, isProfileCompleted?: boolean, nama?: string, noHp?: string, kelas?: string, prodi?: string }} params
+ * @param {{ nim: string, password?: string, isProfileCompleted?: boolean, nama?: string, noHp?: string, kelas?: string, prodi?: string, avatarUrl?: string, avatar_url?: string }} params
  * @returns {Promise<{ success: boolean, tableMissing?: boolean, message?: string }>}
  */
-export const saveStudentCredential = async ({ nim, password, isProfileCompleted, nama, noHp, kelas, prodi }) => {
+export const saveStudentCredential = async ({ nim, password, isProfileCompleted, nama, noHp, kelas, prodi, avatarUrl, avatar_url }) => {
     const key = normalizeNim(nim);
     if (!key) {
         return { success: false, message: 'NIM tidak valid.' };
@@ -313,55 +328,71 @@ export const saveStudentCredential = async ({ nim, password, isProfileCompleted,
 
     const plainPassword = typeof password === 'string' && password.trim() ? password.trim() : null;
     const cleanNama = typeof nama === 'string' && nama.trim() ? nama.trim() : null;
-    const cleanNoHp = typeof noHp === 'string' && noHp.trim() ? noHp.trim() : null;
+    const cleanNoHp = typeof noHp === 'string' && noHp.trim() && noHp.trim() !== '-' ? noHp.trim() : null;
     const cleanKelas = typeof kelas === 'string' && kelas.trim() ? kelas.trim() : null;
     const cleanProdi = typeof prodi === 'string' && prodi.trim() ? prodi.trim() : null;
+    const hasAvatarUpdate = avatar_url !== undefined || avatarUrl !== undefined;
+    const cleanAvatar = avatar_url !== undefined ? avatar_url : avatarUrl;
 
-    if (!plainPassword && typeof isProfileCompleted !== 'boolean' && !cleanNama && !cleanNoHp && !cleanKelas) {
+    if (!plainPassword && typeof isProfileCompleted !== 'boolean' && !cleanNama && !cleanNoHp && !cleanKelas && !hasAvatarUpdate) {
         return { success: true };
     }
 
     try {
-        let { error } = await supabase.rpc('save_student_credential', {
-            p_nim: key,
-            p_password: plainPassword,
-            p_is_profile_completed: typeof isProfileCompleted === 'boolean' ? isProfileCompleted : null,
-            p_nama: cleanNama,
-            p_no_hp: cleanNoHp,
-            p_kelas: cleanKelas,
-            p_prodi: cleanProdi,
-        });
-
-        // Fallback ke signature 3 argumen bila SQL versi terbaru belum dijalankan
-        if (error && (String(error.code) === 'PGRST202' || String(error.code) === '42883')) {
-            const retry = await supabase.rpc('save_student_credential', {
+        let error = null;
+        if (plainPassword || typeof isProfileCompleted === 'boolean') {
+            const rpcRes = await supabase.rpc('save_student_credential', {
                 p_nim: key,
                 p_password: plainPassword,
                 p_is_profile_completed: typeof isProfileCompleted === 'boolean' ? isProfileCompleted : null,
             });
-            error = retry.error;
+            error = rpcRes.error;
         }
 
-        // Simpan selalu metadata profil (nama, noHp, kelas/angkatan, prodi) ke Supabase admin_cms
+        // Ambil metadata yang sudah ada di admin_cms terlebih dahulu agar update parsial
+        // (misal ganti foto atau ganti password dari perangkat lain) TIDAK PERNAH menghapus noHp / avatar_url yang sudah ada
+        let existingRemote = {};
+        try {
+            const { data: existingRow } = await supabase
+                .from('admin_cms')
+                .select('isi')
+                .eq('id', `${PROFILE_META_PREFIX}${key}`)
+                .maybeSingle();
+            if (existingRow?.isi) {
+                existingRemote = typeof existingRow.isi === 'string' ? JSON.parse(existingRow.isi) : existingRow.isi;
+            }
+        } catch {}
+
+        // Simpan selalu metadata profil (nama, noHp, kelas/angkatan, prodi, avatar_url) ke Supabase admin_cms
         // agar lintas perangkat/browser selalu sinkron tanpa bergantung pada status RPC
         const prev = cache.get(key) || getCachedStudentCredential(key) || { hasPassword: false, isProfileCompleted: false };
-        const normalizedKelas = normalizeStudentAngkatan(cleanKelas || prev.kelas) || null;
+        const normalizedKelas = normalizeStudentAngkatan(cleanKelas || existingRemote?.kelas || prev.kelas) || null;
+        const mergedNoHp = cleanNoHp || existingRemote?.noHp || existingRemote?.no_hp || prev.noHp || prev.no_hp || null;
+        const mergedAvatar = hasAvatarUpdate
+            ? (cleanAvatar || '')
+            : (existingRemote?.avatar_url ?? existingRemote?.avatarUrl ?? prev.avatar_url ?? prev.avatarUrl ?? null);
+        const mergedCompleted = typeof isProfileCompleted === 'boolean'
+            ? isProfileCompleted
+            : Boolean(existingRemote?.isProfileCompleted || prev.isProfileCompleted || mergedNoHp);
+
         const nextStatus = {
             exists: true,
             hasPassword: prev.hasPassword || Boolean(plainPassword),
-            isProfileCompleted: typeof isProfileCompleted === 'boolean' ? isProfileCompleted : prev.isProfileCompleted,
-            nama: cleanNama || prev.nama || null,
-            noHp: cleanNoHp || prev.noHp || prev.no_hp || null,
-            no_hp: cleanNoHp || prev.noHp || prev.no_hp || null,
+            isProfileCompleted: mergedCompleted,
+            nama: cleanNama || existingRemote?.nama || prev.nama || null,
+            noHp: mergedNoHp,
+            no_hp: mergedNoHp,
             kelas: normalizedKelas,
-            prodi: cleanProdi || prev.prodi || null,
+            prodi: cleanProdi || existingRemote?.prodi || prev.prodi || null,
+            avatar_url: mergedAvatar,
+            avatarUrl: mergedAvatar,
             fromServer: true,
         };
         cache.set(key, nextStatus);
         cacheLoadedAt = Date.now();
         persistLocalCred(key, nextStatus);
 
-        if (nextStatus.nama || nextStatus.noHp || nextStatus.kelas || nextStatus.prodi || typeof isProfileCompleted === 'boolean') {
+        if (nextStatus.nama || nextStatus.noHp || nextStatus.kelas || nextStatus.prodi || hasAvatarUpdate || typeof isProfileCompleted === 'boolean') {
             try {
                 await supabase.from('admin_cms').upsert([{
                     id: `${PROFILE_META_PREFIX}${key}`,
@@ -374,7 +405,10 @@ export const saveStudentCredential = async ({ nim, password, isProfileCompleted,
                         no_hp: nextStatus.no_hp,
                         kelas: nextStatus.kelas,
                         prodi: nextStatus.prodi,
+                        avatar_url: nextStatus.avatar_url,
+                        avatarUrl: nextStatus.avatarUrl,
                         isProfileCompleted: nextStatus.isProfileCompleted,
+                        updated_at: new Date().toISOString(),
                     }),
                     status: 'aktif',
                     penulis: 'Student Profile Sync',

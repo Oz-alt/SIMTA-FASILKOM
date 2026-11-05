@@ -120,27 +120,43 @@ export default function ProfilePage() {
     }
   }, [isFirstLogin]);
 
-  // Otomatis sinkronkan profil mahasiswa dari Supabase jika nomor HP belum terisi di sesi lokal saat ini
+  // Otomatis sinkronkan profil mahasiswa dari Supabase (no_hp, avatar_url, kelas, prodi) lintas perangkat
   useEffect(() => {
     let isMounted = true;
-    if (isMahasiswa && currentUser?.nim && (!currentUser.no_hp || currentUser.no_hp === '-')) {
-      getStudentCredential(currentUser.nim, { fresh: true }).then(cred => {
-        if (!isMounted || !cred) return;
-        const phone = cred.noHp || cred.no_hp;
-        if (phone && isValidNonDummyPhone(phone)) {
-          updateUserProfile({
-            no_hp: phone,
-            is_profile_completed: true,
-            ...(cred.nama ? { nama: cred.nama } : {}),
-            ...(cred.kelas ? { kelas: cred.kelas } : {}),
-            ...(cred.prodi ? { prodi: cred.prodi } : {})
-          });
-          setIsEditing(false);
-        }
-      }).catch(() => {});
+    if (isMahasiswa && currentUser?.nim) {
+      const missingPhone = !currentUser.no_hp || currentUser.no_hp === '-';
+      const missingAvatar = !currentUser.avatar_url;
+      const missingKelas = !currentUser.kelas || currentUser.kelas === 'MI 2024';
+
+      if (missingPhone || missingAvatar || missingKelas) {
+        getStudentCredential(currentUser.nim, { fresh: true }).then(cred => {
+          if (!isMounted || !cred) return;
+          const phone = cred.noHp || cred.no_hp;
+          const avatar = cred.avatar_url || cred.avatarUrl;
+          const hasPhone = phone && isValidNonDummyPhone(phone);
+          const hasAvatar = Boolean(avatar);
+
+          const needsPhone = missingPhone && hasPhone;
+          const needsAvatar = missingAvatar && hasAvatar;
+          const needsKelas = missingKelas && Boolean(cred.kelas);
+
+          if (needsPhone || needsAvatar || needsKelas) {
+            updateUserProfile({
+              ...(needsPhone ? { no_hp: phone, is_profile_completed: true } : {}),
+              ...(needsAvatar ? { avatar_url: avatar } : {}),
+              ...(needsKelas ? { kelas: cred.kelas } : {}),
+              ...(cred.nama && (!currentUser.nama || currentUser.nama === 'Mahasiswa UNSRI') ? { nama: cred.nama } : {}),
+              ...(cred.prodi && !currentUser.prodi ? { prodi: cred.prodi } : {})
+            });
+            if (needsPhone) {
+              setIsEditing(false);
+            }
+          }
+        }).catch(() => {});
+      }
     }
     return () => { isMounted = false; };
-  }, [isMahasiswa, currentUser?.nim, currentUser?.no_hp]);
+  }, [isMahasiswa, currentUser?.nim, currentUser?.no_hp, currentUser?.avatar_url, currentUser?.kelas]);
 
   // State untuk Pengelolaan Tautan WhatsApp Group Bimbingan (Khusus Dosen Pembimbing)
   const isDosen = currentUser?.role === 'dosen';
