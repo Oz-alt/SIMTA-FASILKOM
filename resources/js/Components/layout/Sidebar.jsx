@@ -122,7 +122,6 @@ export default function Sidebar() {
               icon: GraduationCap,
               items: [
                 { to: '/kaprodi/titles', label: 'Monitoring', icon: CheckSquare },
-                { to: '/kaprodi/advisors', label: 'Pembagian Dosen Pembimbing', icon: UserCheck },
                 { to: '/kaprodi/defense-schedules', label: 'Manajemen Jadwal Sidang', icon: CalendarDays }
               ]
             },
