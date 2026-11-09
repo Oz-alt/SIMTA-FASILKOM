@@ -2,7 +2,10 @@ import React, { useState, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { Link } from '@inertiajs/react';
 import {
-  calculateBimbinganDashboardStats
+  calculateBimbinganDashboardStats,
+  buildStudentInfoMap,
+  resolveStudentAngkatan,
+  getAvailableAngkatans
 } from '../../lib/bimbinganDashboardData.js';
 import {
   Users,
@@ -28,7 +31,8 @@ import {
   FileText,
   Edit3,
   ArrowRight,
-  Database
+  Database,
+  Filter
 } from 'lucide-react';
 
 /**
@@ -165,18 +169,87 @@ export default function DashboardKaprodi() {
     registeredUsers = []
   } = useAuth();
 
+  // Filter Angkatan state ('all' atau tahun spesifik seperti '2025', '2024', '2023', '2022')
+  const [selectedAngkatan, setSelectedAngkatan] = useState('all');
+
+  // Peta identitas mahasiswa untuk normalisasi & pelacakan angkatan
+  const studentInfoMap = useMemo(() => {
+    return buildStudentInfoMap(thesisTitles, registeredUsers);
+  }, [thesisTitles, registeredUsers]);
+
+  // Daftar angkatan yang tersedia dan jumlah mahasiswanya
+  const availableAngkatans = useMemo(() => {
+    return getAvailableAngkatans(studentAdvisors, thesisTitles, registeredUsers);
+  }, [studentAdvisors, thesisTitles, registeredUsers]);
+
+  // Dataset yang telah difilter berdasarkan angkatan yang dipilih
+  const filteredData = useMemo(() => {
+    if (selectedAngkatan === 'all') {
+      return {
+        students: studentAdvisors,
+        consultations: consultations,
+        titles: thesisTitles,
+        users: registeredUsers
+      };
+    }
+
+    // 1. Mahasiswa pembimbingan yang sesuai angkatan
+    const students = (studentAdvisors || []).filter(sa => {
+      const angkatan = resolveStudentAngkatan(sa, studentInfoMap);
+      return angkatan === selectedAngkatan;
+    });
+
+    const studentNimSet = new Set(
+      students.map(s => String(s.student_nim || '').trim()).filter(Boolean)
+    );
+
+    // 2. Konsultasi mahasiswa dari angkatan ini
+    const filteredCons = (consultations || []).filter(c => {
+      const nim = String(c.mhs_nim || '').trim();
+      if (!nim) return false;
+      if (studentNimSet.has(nim)) return true;
+      const cAngkatan = resolveStudentAngkatan({ mhs_nim: nim, mhs_kelas: c.mhs_kelas }, studentInfoMap);
+      return cAngkatan === selectedAngkatan;
+    });
+
+    // 3. Judul TA dari angkatan ini
+    const titles = (thesisTitles || []).filter(t => {
+      const nim = String(t.mhs_nim || '').trim();
+      if (nim && studentNimSet.has(nim)) return true;
+      const tAngkatan = resolveStudentAngkatan(t, studentInfoMap);
+      return tAngkatan === selectedAngkatan;
+    });
+
+    // 4. Akun terdaftar dari angkatan ini (role mahasiswa)
+    const users = (registeredUsers || []).filter(u => {
+      if (u.role !== 'mahasiswa') return true;
+      const nim = String(u.nim || u.nip || '').trim();
+      if (nim && studentNimSet.has(nim)) return true;
+      const uAngkatan = resolveStudentAngkatan(u, studentInfoMap);
+      return uAngkatan === selectedAngkatan;
+    });
+
+    return {
+      students,
+      consultations: filteredCons,
+      titles,
+      users
+    };
+  }, [selectedAngkatan, studentAdvisors, consultations, thesisTitles, registeredUsers, studentInfoMap]);
+
   // =========================================================================
   // 1. DATA COMPUTATION FOR RINGKASAN KONDISI BIMBINGAN SELURUH PRODI
   // =========================================================================
   const dashboardStats = useMemo(() => {
     return calculateBimbinganDashboardStats(
       advisors,
-      studentAdvisors,
-      consultations,
-      thesisTitles,
-      registeredUsers
+      filteredData.students,
+      filteredData.consultations,
+      filteredData.titles,
+      filteredData.users,
+      selectedAngkatan
     );
-  }, [advisors, studentAdvisors, consultations, thesisTitles, registeredUsers]);
+  }, [advisors, filteredData, selectedAngkatan]);
 
   // Sorting state for Beban Bimbingan per Dosen
   const [workloadSortBy, setWorkloadSortBy] = useState('total_desc'); // 'total_desc' | 'disparity_desc' | 'balanced' | 'name'
@@ -309,7 +382,8 @@ export default function DashboardKaprodi() {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Rekap_Bimbingan_${selectedMonthModal.monthData.short}_${selectedMonthModal.monthData.year}.csv`);
+    const angkatanSuffix = selectedAngkatan !== 'all' ? `_Angkatan_${selectedAngkatan}` : '';
+    link.setAttribute('download', `Rekap_Bimbingan_${selectedMonthModal.monthData.short}_${selectedMonthModal.monthData.year}${angkatanSuffix}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -373,16 +447,99 @@ export default function DashboardKaprodi() {
         </div>
       </div>
 
-      {/* Header periode akademik */}
-      <div className="bg-white border border-slate-200 rounded-2xl px-3 py-2 shadow-2xs flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <BarChart3 className="w-4 h-4 text-indigo-600" />
-          <span className="text-xs font-bold text-slate-800">Ringkasan Kondisi Bimbingan Seluruh Prodi</span>
+      {/* Header toolbar: Periode Akademik & Filter Angkatan */}
+      <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs flex flex-col lg:flex-row lg:items-center justify-between gap-3.5">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200/70 flex items-center justify-center shrink-0">
+            <BarChart3 className="w-5 h-5 text-indigo-600" />
+          </div>
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-bold text-slate-800">Ringkasan Kondisi Bimbingan Seluruh Prodi</span>
+              {selectedAngkatan !== 'all' && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-blue-50 text-blue-700 border border-blue-200 animate-in fade-in">
+                  <GraduationCap className="w-3.5 h-3.5 text-blue-600" />
+                  Angkatan {selectedAngkatan}
+                </span>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 font-medium mt-0.5">
+              <span className="flex items-center gap-1.5">
+                <CalendarDays className="w-3.5 h-3.5 text-slate-400" />
+                <span>{dashboardStats.academicPeriod.full}</span>
+              </span>
+              <span className="hidden sm:inline text-slate-300">•</span>
+              <span className="text-slate-600 font-semibold">
+                {selectedAngkatan === 'all'
+                  ? `Menampilkan seluruh angkatan (${dashboardStats.summary.totalMahasiswa} Mahasiswa)`
+                  : `Menampilkan ${dashboardStats.summary.totalMahasiswa} Mahasiswa Angkatan ${selectedAngkatan}`}
+              </span>
+            </div>
+          </div>
         </div>
 
-        <div className="hidden md:flex items-center gap-2 pr-2 text-xs text-slate-500 font-medium">
-          <CalendarDays className="w-3.5 h-3.5 text-slate-400" />
-          <span>{dashboardStats.academicPeriod.full}</span>
+        {/* Filter Toolbar: Quick Pills + Dropdown Selector */}
+        <div className="flex flex-wrap items-center gap-2 self-start lg:self-auto">
+          {/* Quick Pill Buttons */}
+          <div className="inline-flex items-center rounded-xl bg-slate-100 p-1 border border-slate-200 text-xs font-semibold">
+            <button
+              type="button"
+              onClick={() => setSelectedAngkatan('all')}
+              className={`px-3 py-1.5 rounded-lg transition-all text-xs cursor-pointer ${
+                selectedAngkatan === 'all'
+                  ? 'bg-white text-indigo-700 font-bold shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Semua
+            </button>
+            {availableAngkatans.slice(0, 3).map(a => (
+              <button
+                key={a.year}
+                type="button"
+                onClick={() => setSelectedAngkatan(a.year)}
+                className={`px-2.5 py-1.5 rounded-lg transition-all text-xs cursor-pointer ${
+                  selectedAngkatan === a.year
+                    ? 'bg-indigo-600 text-white font-bold shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                {a.year}
+              </button>
+            ))}
+          </div>
+
+          {/* Select Dropdown (for full selection of cohorts) */}
+          <div className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs">
+            <Filter className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+            <select
+              aria-label="Filter berdasarkan Angkatan Mahasiswa"
+              value={selectedAngkatan}
+              onChange={(e) => setSelectedAngkatan(e.target.value)}
+              className="bg-white border border-slate-200 rounded-lg py-1 px-2 text-xs font-bold text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 cursor-pointer shadow-2xs"
+            >
+              <option value="all">
+                Semua Angkatan ({studentAdvisors.length} Mhs)
+              </option>
+              {availableAngkatans.map(a => (
+                <option key={a.year} value={a.year}>
+                  {a.label} ({a.count} Mhs)
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {selectedAngkatan !== 'all' && (
+            <button
+              type="button"
+              onClick={() => setSelectedAngkatan('all')}
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-700 border border-slate-200 hover:border-rose-200 transition-colors cursor-pointer"
+              title="Reset ke Semua Angkatan"
+            >
+              <X className="w-3.5 h-3.5" />
+              <span>Reset</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -590,6 +747,11 @@ export default function DashboardKaprodi() {
                   </div>
                   <p className="text-xs text-slate-500">
                     Grouped bar: Pembimbing 1 (Biru) vs Pembimbing 2 (Oranye) tiap dosen
+                    {selectedAngkatan !== 'all' && (
+                      <span className="ml-1.5 inline-flex items-center text-[10px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
+                        Angkatan {selectedAngkatan}
+                      </span>
+                    )}
                   </p>
                 </div>
 
@@ -719,6 +881,11 @@ export default function DashboardKaprodi() {
                   </div>
                   <p className="text-xs text-slate-500">
                     Bar hijau dengan label MM/YYYY &bull; Klik bar untuk membuka rincian log
+                    {selectedAngkatan !== 'all' && (
+                      <span className="ml-1.5 inline-flex items-center text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                        Angkatan {selectedAngkatan}
+                      </span>
+                    )}
                   </p>
                 </div>
 
@@ -825,6 +992,11 @@ export default function DashboardKaprodi() {
                     </div>
                     <p className="text-xs text-slate-500 mt-0.5">
                       Daftar keaktifan dan rasio bimbingan seluruh dosen pembimbing tugas akhir
+                      {selectedAngkatan !== 'all' && (
+                        <span className="ml-1.5 inline-flex items-center text-[10px] font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200">
+                          Membimbing Mhs Angkatan {selectedAngkatan}
+                        </span>
+                      )}
                     </p>
                   </div>
                 </div>
@@ -926,6 +1098,11 @@ export default function DashboardKaprodi() {
                     </div>
                     <p className="text-xs text-slate-500 mt-0.5">
                       Daftar mahasiswa dengan frekuensi pertemuan bimbingan tugas akhir paling aktif
+                      {selectedAngkatan !== 'all' && (
+                        <span className="ml-1.5 inline-flex items-center text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                          Khusus Angkatan {selectedAngkatan}
+                        </span>
+                      )}
                     </p>
                   </div>
                 </div>
