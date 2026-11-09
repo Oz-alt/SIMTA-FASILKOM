@@ -52,6 +52,7 @@ export default function ProfilePage() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isCompletedSuccess, setIsCompletedSuccess] = useState(false);
+  const [needsPhoneResync, setNeedsPhoneResync] = useState(false);
 
   const JABATAN_FUNGSIONAL_OPTIONS = [
     'Lektor Kepala',
@@ -76,6 +77,7 @@ export default function ProfilePage() {
     if (!user || !user.is_profile_completed) return '';
     const val = String(user.kelas || '').trim();
     if (!val || val === '-' || val === 'MI 5A' || val === 'MI 5B') return '';
+    if (/^0901\d{8,}$/.test(val)) return '2024';
     return val.replace(/^MI\s+/i, '').trim();
   };
 
@@ -124,39 +126,41 @@ export default function ProfilePage() {
   useEffect(() => {
     let isMounted = true;
     if (isMahasiswa && currentUser?.nim) {
-      const missingPhone = !currentUser.no_hp || currentUser.no_hp === '-';
-      const missingAvatar = !currentUser.avatar_url;
-      const missingKelas = !currentUser.kelas || currentUser.kelas === 'MI 2024';
+      getStudentCredential(currentUser.nim, { fresh: true }).then(cred => {
+        if (!isMounted || !cred) return;
+        const phone = cred.noHp || cred.no_hp;
+        const avatar = cred.avatar_url || cred.avatarUrl;
+        const hasRemotePhone = Boolean(phone && isValidNonDummyPhone(phone));
+        const hasRemoteAvatar = Boolean(avatar);
+        const hasLocalPhone = Boolean(currentUser.no_hp && isValidNonDummyPhone(currentUser.no_hp));
 
-      if (missingPhone || missingAvatar || missingKelas) {
-        getStudentCredential(currentUser.nim, { fresh: true }).then(cred => {
-          if (!isMounted || !cred) return;
-          const phone = cred.noHp || cred.no_hp;
-          const avatar = cred.avatar_url || cred.avatarUrl;
-          const hasPhone = phone && isValidNonDummyPhone(phone);
-          const hasAvatar = Boolean(avatar);
+        const needsPhoneUpdate = hasRemotePhone && phone !== currentUser.no_hp;
+        const needsAvatarUpdate = hasRemoteAvatar && avatar !== currentUser.avatar_url;
+        const needsKelasUpdate = Boolean(cred.kelas && cred.kelas !== currentUser.kelas && (!currentUser.kelas || currentUser.kelas === 'MI 2024' || /^0901\d{8,}$/.test(currentUser.kelas)));
 
-          const needsPhone = missingPhone && hasPhone;
-          const needsAvatar = missingAvatar && hasAvatar;
-          const needsKelas = missingKelas && Boolean(cred.kelas);
-
-          if (needsPhone || needsAvatar || needsKelas) {
-            updateUserProfile({
-              ...(needsPhone ? { no_hp: phone, is_profile_completed: true } : {}),
-              ...(needsAvatar ? { avatar_url: avatar } : {}),
-              ...(needsKelas ? { kelas: cred.kelas } : {}),
-              ...(cred.nama && (!currentUser.nama || currentUser.nama === 'Mahasiswa UNSRI') ? { nama: cred.nama } : {}),
-              ...(cred.prodi && !currentUser.prodi ? { prodi: cred.prodi } : {})
-            });
-            if (needsPhone) {
-              setIsEditing(false);
-            }
+        if (needsPhoneUpdate || needsAvatarUpdate || needsKelasUpdate) {
+          updateUserProfile({
+            ...(needsPhoneUpdate ? { no_hp: phone, is_profile_completed: true } : {}),
+            ...(needsAvatarUpdate ? { avatar_url: avatar } : {}),
+            ...(needsKelasUpdate ? { kelas: cred.kelas } : {}),
+            ...(cred.nama && (!currentUser.nama || currentUser.nama === 'Mahasiswa UNSRI') ? { nama: cred.nama } : {}),
+            ...(cred.prodi && !currentUser.prodi ? { prodi: cred.prodi } : {})
+          });
+          if (needsPhoneUpdate) {
+            setNeedsPhoneResync(false);
+            if (!isFirstLogin) setIsEditing(false);
           }
-        }).catch(() => {});
-      }
+        } else if (!hasRemotePhone && !hasLocalPhone && (currentUser.is_profile_completed || cred.isProfileCompleted)) {
+          // Akun yang sudah aktivasi sebelum fitur cloud sync admin_cms aktif dan belum memiliki no_hp di server
+          setNeedsPhoneResync(true);
+          setIsEditing(true);
+        } else if (hasLocalPhone || hasRemotePhone) {
+          setNeedsPhoneResync(false);
+        }
+      }).catch(() => {});
     }
     return () => { isMounted = false; };
-  }, [isMahasiswa, currentUser?.nim, currentUser?.no_hp, currentUser?.avatar_url, currentUser?.kelas]);
+  }, [isMahasiswa, currentUser?.nim]);
 
   // State untuk Pengelolaan Tautan WhatsApp Group Bimbingan (Khusus Dosen Pembimbing)
   const isDosen = currentUser?.role === 'dosen';
@@ -304,6 +308,7 @@ export default function ProfilePage() {
       await updateUserProfile(payload);
       setIsSaving(false);
       setIsEditing(false);
+      setNeedsPhoneResync(false);
       if (isMahasiswa) {
         setIsCompletedSuccess(true);
       }
@@ -629,7 +634,7 @@ export default function ProfilePage() {
   const handleRemovePhoto = async () => {
     setIsUploadingPhoto(true);
     try {
-      await updateUserProfile({ avatar_url: '' });
+      await updateUserProfile({ avatar_url: '', _clearAvatar: true });
       setIsUploadingPhoto(false);
       setIsPhotoModalOpen(false);
       setSuccessMsg('Foto profil berhasil dihapus.');
@@ -642,6 +647,30 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
+
+      {/* Banner Sinkronisasi Nomor WhatsApp untuk akun yang aktivasi awal sebelum Cloud Sync */}
+      {isMahasiswa && !isPendingProfile && needsPhoneResync && !isCompletedSuccess && (
+        <div className="p-5 rounded-2xl bg-blue-50 border-2 border-blue-200 text-blue-950 shadow-sm animate-in fade-in space-y-2">
+          <div className="flex items-start space-x-3.5">
+            <div className="p-2.5 rounded-xl bg-blue-600 text-white shrink-0 mt-0.5 shadow-xs">
+              <Phone className="w-5 h-5" />
+            </div>
+            <div className="space-y-1 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-extrabold text-sm text-blue-950">
+                  Sinkronisasi Nomor WhatsApp Lintas Perangkat
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-200 text-blue-900 uppercase tracking-wide border border-blue-300">
+                  Cloud Sync
+                </span>
+              </div>
+              <p className="text-xs text-blue-900/90 leading-relaxed">
+                Akun Anda sudah aktif, namun Nomor HP / WhatsApp Anda belum tercatat di server cloud karena diaktivasi sebelum pembaruan sinkronisasi lintas perangkat. Silakan isi kembali <strong>No. HP / WhatsApp</strong> Anda di bawah ini lalu klik <strong>Simpan Perubahan</strong> (tanpa perlu mengubah kata sandi) agar langsung tersinkron permanen di semua perangkat.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* First-Time Setup Required Banner for Mahasiswa */}
       {isMahasiswa && (isPendingProfile || (isFirstLogin && !isCompletedSuccess)) && (

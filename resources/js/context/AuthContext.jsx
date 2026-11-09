@@ -63,38 +63,9 @@ const runCleanDeploymentMigration = () => {
       } catch {}
     }
 
-    // Reset seluruh akun mahasiswa di simta_registered_users kembali ke default sebelum aktivasi
-    const regRaw = localStorage.getItem('simta_registered_users');
-    if (regRaw) {
-      try {
-        const parsedReg = JSON.parse(regRaw);
-        if (Array.isArray(parsedReg)) {
-          const resetReg = parsedReg.map(u => {
-            if (!u || u.role !== 'mahasiswa') return u;
-            const nim = String(u.nim || u.nip || '').trim();
-            const { password_hash: _ph, ...rest } = u;
-            return {
-              ...rest,
-              password: nim,
-              no_hp: '',
-              is_profile_completed: false
-            };
-          });
-          localStorage.setItem('simta_registered_users', JSON.stringify(resetReg));
-        }
-      } catch {}
-    }
-
-    // Jika sesi aktif adalah mahasiswa, reset juga agar wajib aktivasi ulang
-    const activeRaw = localStorage.getItem('simta_active_user');
-    if (activeRaw) {
-      try {
-        const parsedActive = JSON.parse(activeRaw);
-        if (parsedActive && parsedActive.role === 'mahasiswa') {
-          localStorage.removeItem('simta_active_user');
-        }
-      } catch {}
-    }
+    // Catatan: Jangan pernah mereset no_hp, avatar_url, atau is_profile_completed mahasiswa
+    // di simta_registered_users maupun simta_active_user agar data profil lokal tidak hilang
+    // dan dapat disinkronkan otomatis (Auto-Heal) ke Supabase admin_cms.
 
     localStorage.setItem(FLAG, '1');
   } catch {}
@@ -669,11 +640,30 @@ export function AuthProvider({ children }) {
             return clean;
           }).filter(Boolean);
 
-          // Deduplicate entries by unique role + identifier
+          // Deduplicate entries by unique role + identifier without losing non-empty profile fields
           const uniqueMap = new Map();
           sanitizedList.forEach(u => {
             const key = u.role === 'mahasiswa' ? `mhs-${u.nim || u.nama || u.id}` : (u.id || `${u.role}-${u.nip}`);
-            uniqueMap.set(key, u);
+            if (!uniqueMap.has(key)) {
+              uniqueMap.set(key, u);
+            } else {
+              const first = uniqueMap.get(key);
+              const keepPhone = (first.no_hp && isValidNonDummyPhone(first.no_hp))
+                ? first.no_hp
+                : ((u.no_hp && isValidNonDummyPhone(u.no_hp)) ? u.no_hp : (first.no_hp || u.no_hp || ''));
+              const keepAvatar = first.avatar_url || u.avatar_url || '';
+              const keepKelas = u.role === 'mahasiswa'
+                ? (normalizeStudentAngkatan(first.kelas) || normalizeStudentAngkatan(u.kelas) || first.kelas || u.kelas)
+                : (first.kelas || u.kelas);
+              uniqueMap.set(key, {
+                ...u,
+                ...first,
+                no_hp: keepPhone,
+                ...(keepAvatar ? { avatar_url: keepAvatar } : {}),
+                ...(keepKelas ? { kelas: keepKelas } : {}),
+                is_profile_completed: Boolean(first.is_profile_completed || u.is_profile_completed || (u.role === 'mahasiswa' && keepPhone && isValidNonDummyPhone(keepPhone))),
+              });
+            }
           });
 
           const deduplicated = Array.from(uniqueMap.values());
@@ -793,10 +783,32 @@ export function AuthProvider({ children }) {
         u.id === user.id ||
         (u.role === user.role && ((u.username && user.username && u.username.toLowerCase() === user.username.toLowerCase()) || u.email === user.email || (u.nim && u.nim === user.nim)))
       );
+      const { _clearAvatar, ...cleanIncoming } = user || {};
       if (existingIdx >= 0) {
-        users[existingIdx] = { ...users[existingIdx], ...user };
+        const prev = users[existingIdx] || {};
+        const isMhs = (cleanIncoming.role || prev.role) === 'mahasiswa';
+        const mergedPhone = (cleanIncoming.no_hp && isValidNonDummyPhone(cleanIncoming.no_hp))
+          ? cleanIncoming.no_hp
+          : ((prev.no_hp && isValidNonDummyPhone(prev.no_hp)) ? prev.no_hp : (cleanIncoming.no_hp ?? prev.no_hp ?? ''));
+        const mergedAvatar = _clearAvatar
+          ? ''
+          : (cleanIncoming.avatar_url || prev.avatar_url || '');
+        const mergedKelas = isMhs
+          ? (normalizeStudentAngkatan(cleanIncoming.kelas) || normalizeStudentAngkatan(prev.kelas) || cleanIncoming.kelas || prev.kelas)
+          : (cleanIncoming.kelas || prev.kelas);
+        const mergedCompleted = isMhs
+          ? Boolean(cleanIncoming.is_profile_completed || prev.is_profile_completed || (mergedPhone && isValidNonDummyPhone(mergedPhone)))
+          : (cleanIncoming.is_profile_completed ?? prev.is_profile_completed);
+        users[existingIdx] = {
+          ...prev,
+          ...cleanIncoming,
+          no_hp: mergedPhone,
+          avatar_url: mergedAvatar,
+          ...(mergedKelas ? { kelas: mergedKelas } : {}),
+          ...(mergedCompleted !== undefined ? { is_profile_completed: mergedCompleted } : {}),
+        };
       } else {
-        users.unshift(user);
+        users.unshift(cleanIncoming);
       }
       localStorage.setItem('simta_registered_users', JSON.stringify(users));
       if (mhsAccountsCacheRef?.current) {
@@ -2633,12 +2645,14 @@ export function AuthProvider({ children }) {
           setCurrentUserState(prev => {
             if (!prev || prev.role !== 'mahasiswa' || normalizeNim(prev.nim || prev.nip) !== studentNim) return prev;
             const phoneVal = (cred.noHp && isValidNonDummyPhone(cred.noHp)) ? cred.noHp : ((cred.no_hp && isValidNonDummyPhone(cred.no_hp)) ? cred.no_hp : (prev.no_hp && isValidNonDummyPhone(prev.no_hp) ? prev.no_hp : ''));
+            const avatarVal = cred.avatar_url || cred.avatarUrl || prev.avatar_url || '';
             const isCompleted = cred.isProfileCompleted === true || Boolean(phoneVal) || prev.is_profile_completed === true;
             const nextUser = {
               ...prev,
               is_profile_completed: isCompleted,
               ...(cred.nama ? { nama: cred.nama } : {}),
               ...(phoneVal ? { no_hp: phoneVal } : {}),
+              ...(avatarVal ? { avatar_url: avatarVal } : {}),
               ...(cred.kelas ? { kelas: cred.kelas } : {}),
               ...(cred.prodi ? { prodi: cred.prodi } : {}),
               ...(!cred.hasPassword && !prev.password_hash && prev.password === studentNim ? { password: studentNim } : {})
@@ -2751,16 +2765,26 @@ export function AuthProvider({ children }) {
               const merged = data.map(remoteItem => {
                 const nim = String(remoteItem.student_nim).trim();
                 const local = localMap.get(nim);
+                const cachedCred = getCachedStudentCredential(nim);
                 const d1 = remoteItem.dospem1_nip || local?.dospem1_nip || null;
                 const d2 = remoteItem.dospem2_nip || local?.dospem2_nip || null;
                 let st = 'belum';
                 if (d1 && d2) st = 'lengkap';
                 else if (d1 || d2) st = 'partial';
+                const preservedPhone = (remoteItem.no_hp && isValidNonDummyPhone(remoteItem.no_hp))
+                  ? remoteItem.no_hp
+                  : ((cachedCred?.noHp && isValidNonDummyPhone(cachedCred.noHp))
+                      ? cachedCred.noHp
+                      : ((local?.no_hp && isValidNonDummyPhone(local.no_hp)) ? local.no_hp : ''));
+                const preservedKelas = normalizeStudentAngkatan(remoteItem.kelas || cachedCred?.kelas || local?.kelas) || local?.kelas || '';
                 return {
+                  ...local,
                   ...remoteItem,
                   dospem1_nip: d1,
                   dospem2_nip: d2,
-                  status_pembagian: st
+                  status_pembagian: st,
+                  ...(preservedPhone ? { no_hp: preservedPhone } : {}),
+                  ...(preservedKelas ? { kelas: preservedKelas } : {}),
                 };
               });
 
@@ -3509,6 +3533,25 @@ export function AuthProvider({ children }) {
                     if (parsedCredMap && typeof parsedCredMap === 'object') {
                       Object.entries(parsedCredMap).forEach(([k, v]) => {
                         if (v && typeof v === 'object') collectLocalStudent({ ...v, nim: k, role: 'mahasiswa' });
+                      });
+                    }
+                  }
+                } catch {}
+                try {
+                  const rawAdv = localStorage.getItem('simta_student_advisors');
+                  if (rawAdv) {
+                    const parsedAdv = JSON.parse(rawAdv);
+                    if (Array.isArray(parsedAdv)) {
+                      parsedAdv.forEach(a => {
+                        if (a && a.student_nim) {
+                          collectLocalStudent({
+                            nim: a.student_nim,
+                            nama: a.student_nama,
+                            no_hp: a.no_hp,
+                            kelas: a.kelas,
+                            role: 'mahasiswa'
+                          });
+                        }
                       });
                     }
                   }
@@ -4751,6 +4794,7 @@ export function AuthProvider({ children }) {
         ? await getStudentCredential(normalizeNim(localFound.nim || localFound.nip), { fresh: true })
         : null;
       const localPhone = (localCredential?.noHp && isValidNonDummyPhone(localCredential.noHp)) ? localCredential.noHp : ((localCredential?.no_hp && isValidNonDummyPhone(localCredential.no_hp)) ? localCredential.no_hp : (localFound?.no_hp && isValidNonDummyPhone(localFound.no_hp) ? localFound.no_hp : ''));
+      const localAvatar = localCredential?.avatar_url || localCredential?.avatarUrl || localFound?.avatar_url || '';
       let resolvedLocal = localCredential
         ? {
             ...localFound,
@@ -4758,7 +4802,7 @@ export function AuthProvider({ children }) {
             is_profile_completed: localCredential.isProfileCompleted === true,
             ...(localCredential.nama ? { nama: localCredential.nama } : {}),
             ...(localPhone ? { no_hp: localPhone } : {}),
-            ...(localCredential.avatar_url ? { avatar_url: localCredential.avatar_url } : {}),
+            ...(localAvatar ? { avatar_url: localAvatar } : {}),
             ...(localCredential.kelas ? { kelas: localCredential.kelas } : {}),
             ...(localCredential.prodi ? { prodi: localCredential.prodi } : {})
           }
@@ -4769,6 +4813,18 @@ export function AuthProvider({ children }) {
 
       if (resolvedLocal.no_hp && isValidNonDummyPhone(resolvedLocal.no_hp)) {
         resolvedLocal.is_profile_completed = true;
+      }
+
+      if (resolvedLocal.role === 'mahasiswa' && ((resolvedLocal.no_hp && isValidNonDummyPhone(resolvedLocal.no_hp)) || resolvedLocal.avatar_url)) {
+        saveStudentCredential({
+          nim: normalizeNim(resolvedLocal.nim || resolvedLocal.nip),
+          nama: resolvedLocal.nama,
+          noHp: resolvedLocal.no_hp,
+          kelas: resolvedLocal.kelas,
+          prodi: resolvedLocal.prodi,
+          avatar_url: resolvedLocal.avatar_url,
+          isProfileCompleted: Boolean(resolvedLocal.is_profile_completed),
+        }).catch(() => {});
       }
 
       setCurrentUser(resolvedLocal);
@@ -4909,6 +4965,7 @@ export function AuthProvider({ children }) {
         ? await getStudentCredential(normalizeNim(foundUser.nim || foundUser.nip), { fresh: true })
         : null;
       const foundPhone = (foundCredential?.noHp && isValidNonDummyPhone(foundCredential.noHp)) ? foundCredential.noHp : ((foundCredential?.no_hp && isValidNonDummyPhone(foundCredential.no_hp)) ? foundCredential.no_hp : (foundUser?.no_hp && isValidNonDummyPhone(foundUser.no_hp) ? foundUser.no_hp : ''));
+      const foundAvatar = foundCredential?.avatar_url || foundCredential?.avatarUrl || foundUser?.avatar_url || '';
       const resolvedUser = foundCredential
         ? {
             ...foundUser,
@@ -4916,7 +4973,7 @@ export function AuthProvider({ children }) {
             is_profile_completed: foundCredential.isProfileCompleted === true,
             ...(foundCredential.nama ? { nama: foundCredential.nama } : {}),
             ...(foundPhone ? { no_hp: foundPhone } : {}),
-            ...(foundCredential.avatar_url ? { avatar_url: foundCredential.avatar_url } : {}),
+            ...(foundAvatar ? { avatar_url: foundAvatar } : {}),
             ...(foundCredential.kelas ? { kelas: foundCredential.kelas } : {}),
             ...(foundCredential.prodi ? { prodi: foundCredential.prodi } : {})
           }
@@ -4925,6 +4982,17 @@ export function AuthProvider({ children }) {
       const finalResolved = await enrichUserFromSupabase(resolvedUser);
       if (finalResolved.no_hp && isValidNonDummyPhone(finalResolved.no_hp)) {
         finalResolved.is_profile_completed = true;
+      }
+      if (finalResolved.role === 'mahasiswa' && ((finalResolved.no_hp && isValidNonDummyPhone(finalResolved.no_hp)) || finalResolved.avatar_url)) {
+        saveStudentCredential({
+          nim: normalizeNim(finalResolved.nim || finalResolved.nip),
+          nama: finalResolved.nama,
+          noHp: finalResolved.no_hp,
+          kelas: finalResolved.kelas,
+          prodi: finalResolved.prodi,
+          avatar_url: finalResolved.avatar_url,
+          isProfileCompleted: Boolean(finalResolved.is_profile_completed),
+        }).catch(() => {});
       }
       setCurrentUser(finalResolved);
       if (finalResolved.role === 'kaprodi') return '/kaprodi/dashboard';

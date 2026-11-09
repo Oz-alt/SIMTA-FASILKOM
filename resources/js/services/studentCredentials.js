@@ -35,11 +35,97 @@ let cacheLoadedAt = 0;
 /** Normalisasi NIM agar konsisten sebagai kunci. */
 export const normalizeNim = (value) => String(value ?? '').trim();
 
+const isValidStudentPhone = (val) => {
+    const s = String(val ?? '').trim();
+    if (!s || s === '-') return false;
+    if (s.startsWith('08123000') || s.startsWith('08123456') || s === '0812999999') return false;
+    return true;
+};
+
 /** Normalisasi nilai angkatan/kelas agar konsisten mengikuti input profil mahasiswa (mis. "MI 2024" -> "2024"). */
 export const normalizeStudentAngkatan = (value) => {
     const raw = String(value ?? '').trim();
     if (!raw || raw === '-' || raw === 'MI 5A' || raw === 'MI 5B') return '';
+    if (/^0901\d{8,}$/.test(raw)) {
+        const yr = raw.slice(6, 8);
+        return yr && /^\d{2}$/.test(yr) ? `20${yr}` : '2024';
+    }
     return raw.replace(/^MI\s+/i, '').trim();
+};
+
+/**
+ * Cari cadangan data profil mahasiswa (no_hp, avatar_url, kelas, nama, prodi)
+ * dari seluruh key localStorage yang mungkin masih menyimpannya di browser ini.
+ */
+const scanLocalStudentFallback = (nim) => {
+    const key = normalizeNim(nim);
+    if (typeof window === 'undefined' || !key) return {};
+    const result = {
+        nama: null,
+        noHp: null,
+        kelas: null,
+        prodi: null,
+        avatar_url: null,
+        isProfileCompleted: false,
+        hasPassword: false,
+    };
+    try {
+        // 1. Cek simta_active_user
+        const rawActive = localStorage.getItem('simta_active_user');
+        if (rawActive) {
+            const active = JSON.parse(rawActive);
+            if (active && normalizeNim(active.nim || active.nip) === key) {
+                if (isValidStudentPhone(active.no_hp || active.noHp)) result.noHp = String(active.no_hp || active.noHp).trim();
+                if (active.avatar_url || active.avatarUrl) result.avatar_url = active.avatar_url || active.avatarUrl;
+                const k = normalizeStudentAngkatan(active.kelas);
+                if (k) result.kelas = k;
+                if (active.nama) result.nama = active.nama;
+                if (active.prodi) result.prodi = active.prodi;
+                if (active.is_profile_completed) result.isProfileCompleted = true;
+            }
+        }
+    } catch {}
+    try {
+        // 2. Cek simta_registered_users
+        const rawReg = localStorage.getItem('simta_registered_users');
+        if (rawReg) {
+            const list = JSON.parse(rawReg);
+            if (Array.isArray(list)) {
+                list.forEach((u) => {
+                    if (!u || normalizeNim(u.nim || u.nip) !== key) return;
+                    if (!result.noHp && isValidStudentPhone(u.no_hp || u.noHp)) result.noHp = String(u.no_hp || u.noHp).trim();
+                    if (!result.avatar_url && (u.avatar_url || u.avatarUrl)) result.avatar_url = u.avatar_url || u.avatarUrl;
+                    const k = normalizeStudentAngkatan(u.kelas);
+                    if (!result.kelas && k) result.kelas = k;
+                    if (!result.nama && u.nama) result.nama = u.nama;
+                    if (!result.prodi && u.prodi) result.prodi = u.prodi;
+                    if (u.is_profile_completed) result.isProfileCompleted = true;
+                    if (u.password_hash && String(u.password_hash).trim().toLowerCase() !== key.toLowerCase()) {
+                        result.hasPassword = true;
+                    }
+                });
+            }
+        }
+    } catch {}
+    try {
+        // 3. Cek simta_student_advisors
+        const rawAdv = localStorage.getItem('simta_student_advisors');
+        if (rawAdv) {
+            const advList = JSON.parse(rawAdv);
+            if (Array.isArray(advList)) {
+                const foundAdv = advList.find((a) => a && normalizeNim(a.student_nim) === key);
+                if (foundAdv) {
+                    if (!result.noHp && isValidStudentPhone(foundAdv.no_hp || foundAdv.noHp)) {
+                        result.noHp = String(foundAdv.no_hp || foundAdv.noHp).trim();
+                    }
+                    const k = normalizeStudentAngkatan(foundAdv.kelas);
+                    if (!result.kelas && k) result.kelas = k;
+                    if (!result.nama && foundAdv.student_nama) result.nama = foundAdv.student_nama;
+                }
+            }
+        }
+    } catch {}
+    return result;
 };
 
 const persistLocalCred = (nim, status) => {
@@ -120,15 +206,35 @@ export const getCachedStudentCredential = (nim) => {
     if (!key) return null;
     if (cache.has(key)) return cache.get(key);
     if (typeof window !== 'undefined') {
+        let credEntry = null;
         try {
             const raw = localStorage.getItem(LOCAL_CRED_STORAGE_KEY);
             if (raw) {
                 const map = JSON.parse(raw);
                 if (map && typeof map === 'object' && map[key]) {
-                    return map[key];
+                    credEntry = map[key];
                 }
             }
         } catch { }
+        const localFallback = scanLocalStudentFallback(key);
+        if (credEntry || localFallback.noHp || localFallback.avatar_url || localFallback.isProfileCompleted) {
+            const base = credEntry || {};
+            const resolvedPhone = (isValidStudentPhone(base.noHp || base.no_hp) ? (base.noHp || base.no_hp) : null) || localFallback.noHp || null;
+            const resolvedAvatar = (base.avatar_url !== undefined ? base.avatar_url : base.avatarUrl) || localFallback.avatar_url || null;
+            return {
+                ...base,
+                exists: Boolean(base.exists || resolvedPhone || localFallback.isProfileCompleted),
+                hasPassword: Boolean(base.hasPassword || localFallback.hasPassword),
+                isProfileCompleted: Boolean(base.isProfileCompleted || localFallback.isProfileCompleted || resolvedPhone),
+                nama: base.nama || localFallback.nama || null,
+                noHp: resolvedPhone,
+                no_hp: resolvedPhone,
+                kelas: normalizeStudentAngkatan(base.kelas || localFallback.kelas) || null,
+                prodi: base.prodi || localFallback.prodi || null,
+                avatar_url: resolvedAvatar,
+                avatarUrl: resolvedAvatar,
+            };
+        }
     }
     return null;
 };
@@ -238,28 +344,65 @@ export const getStudentCredential = async (nim, options = {}) => {
                 }
             } catch {}
 
-            const resolvedNama = row?.nama || remoteMeta?.nama || ttNama || profNama || prev.nama || null;
-            const rawPhone = row?.no_hp || remoteMeta?.noHp || remoteMeta?.no_hp || profPhone || prev.noHp || prev.no_hp || null;
+            const localFallback = scanLocalStudentFallback(key);
+            const resolvedNama = row?.nama || remoteMeta?.nama || ttNama || profNama || prev.nama || localFallback.nama || null;
+            const rawPhone = (isValidStudentPhone(row?.no_hp) ? row.no_hp : null)
+                || (isValidStudentPhone(remoteMeta?.noHp || remoteMeta?.no_hp) ? (remoteMeta.noHp || remoteMeta.no_hp) : null)
+                || (isValidStudentPhone(profPhone) ? profPhone : null)
+                || (isValidStudentPhone(prev.noHp || prev.no_hp) ? (prev.noHp || prev.no_hp) : null)
+                || localFallback.noHp
+                || null;
             const resolvedNoHp = (rawPhone && rawPhone !== '-') ? String(rawPhone).trim() : null;
             const resolvedKelas = normalizeStudentAngkatan(
-                row?.kelas || remoteMeta?.kelas || ttKelas || profKelas || prev.kelas
+                row?.kelas || remoteMeta?.kelas || ttKelas || profKelas || prev.kelas || localFallback.kelas
             ) || null;
-            const resolvedProdi = row?.prodi || remoteMeta?.prodi || ttProdi || prev.prodi || null;
+            const resolvedProdi = row?.prodi || remoteMeta?.prodi || ttProdi || prev.prodi || localFallback.prodi || null;
             const remoteAvatar = remoteMeta?.avatar_url !== undefined ? remoteMeta.avatar_url : remoteMeta?.avatarUrl;
-            const resolvedAvatar = remoteAvatar !== undefined ? remoteAvatar : (prev.avatar_url || prev.avatarUrl || null);
+            const resolvedAvatar = remoteAvatar !== undefined
+                ? (remoteAvatar || prev.avatar_url || prev.avatarUrl || localFallback.avatar_url || null)
+                : (prev.avatar_url || prev.avatarUrl || localFallback.avatar_url || null);
 
             // Indikasi profil telah selesai/lengkap:
             // - row.is_profile_completed dari student_credentials
             // - remoteMeta.isProfileCompleted dari admin_cms
-            // - Ada nomor HP valid yang tersimpan di server
-            // - prev.isProfileCompleted sebelumnya
+            // - Ada nomor HP valid yang tersimpan di server / lokal
+            // - prev.isProfileCompleted / localFallback.isProfileCompleted sebelumnya
             const hasPhone = Boolean(resolvedNoHp);
             const isCompleted = Boolean(
                 row?.is_profile_completed === true ||
                 remoteMeta?.isProfileCompleted === true ||
                 hasPhone ||
-                prev.isProfileCompleted === true
+                prev.isProfileCompleted === true ||
+                localFallback.isProfileCompleted === true
             );
+
+            // Auto-Heal ke admin_cms jika browser ini punya no_hp atau avatar_url yang belum ada di remoteMeta
+            const remoteHasPhone = isValidStudentPhone(remoteMeta?.noHp || remoteMeta?.no_hp);
+            const remoteHasAvatar = Boolean(remoteMeta?.avatar_url || remoteMeta?.avatarUrl);
+            const needsAdminCmsHeal = (resolvedNoHp && !remoteHasPhone) || (resolvedAvatar && !remoteHasAvatar);
+            if (needsAdminCmsHeal) {
+                supabase.from('admin_cms').upsert([{
+                    id: `${PROFILE_META_PREFIX}${key}`,
+                    judul: key,
+                    kategori: PROFILE_META_CATEGORY,
+                    isi: JSON.stringify({
+                        ...(remoteMeta || {}),
+                        nim: key,
+                        nama: resolvedNama,
+                        noHp: resolvedNoHp,
+                        no_hp: resolvedNoHp,
+                        kelas: resolvedKelas || '2024',
+                        prodi: resolvedProdi || 'D3 Manajemen Informatika',
+                        avatar_url: resolvedAvatar || '',
+                        avatarUrl: resolvedAvatar || '',
+                        isProfileCompleted: isCompleted,
+                        updated_at: new Date().toISOString(),
+                    }),
+                    status: 'aktif',
+                    penulis: 'Student Profile Auto-Heal',
+                    updated_at: new Date().toISOString(),
+                }], { onConflict: 'id' }).then(() => {}).catch(() => {});
+            }
 
             const existsOnServer = Boolean(row || remoteMeta || profPhone || ttNama);
 
