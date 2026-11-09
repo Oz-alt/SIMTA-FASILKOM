@@ -820,256 +820,217 @@ export default function DashboardKaprodi() {
           </div>
 
           {/* ===================================================================== */}
-          {/* BARIS 3: 4 ELEMEN                                                     */}
-          {/* 1. Donut Status: Menunggu Validasi, Revisi Mayor, Revisi Minor        */}
-          {/* 2. Donut Jenis: Daring dan Luring                                     */}
-          {/* 3. Tabel Peringkat Keaktifan Dosen (bisa di-scroll)                   */}
-          {/* 4. Tabel Peringkat Keaktifan Mahasiswa Top 10 (bisa di-scroll)        */}
+          {/* TABEL PERINGKAT KEAKTIFAN DOSEN & MAHASISWA (FULL-WIDTH ATAS-BAWAH)   */}
           {/* ===================================================================== */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 items-stretch">
+          <div className="space-y-6">
             
-            {/* 3.1 DONUT STATUS */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs flex flex-col justify-between">
-              <div className="border-b border-slate-100 pb-2.5 mb-2">
-                <div className="flex items-center gap-2">
-                  <PieChart className="w-4 h-4 text-amber-500" />
-                  <h3 className="text-sm font-bold text-slate-900">
-                    Donut Status
-                  </h3>
-                </div>
-                <p className="text-[11px] text-slate-500 mt-0.5">
-                  Diterima, Revisi Minor, Revisi Mayor, Menunggu
-                </p>
-              </div>
-
-              <div className="py-2 flex-1 flex flex-col justify-center">
-                <DonutChart
-                  items={dashboardStats.statusAndMethodStats.statusDonutItems}
-                  total={dashboardStats.statusAndMethodStats.totalStatusThree}
-                  totalLabel="Total Sesi"
-                  size={165}
-                  strokeWidth={20}
-                  innerRadius={55}
-                />
-              </div>
-
-              <div className="pt-2 border-t border-slate-100 space-y-1">
-                <div className="flex items-center justify-between text-[11px] text-slate-400">
-                  <span>Total Bimbingan (diluar Menunggu):</span>
-                  <span className="font-mono font-bold text-emerald-700">
-                    {dashboardStats.summary.totalBimbingan.toLocaleString('id-ID')} Sesi
-                  </span>
-                </div>
-                {dashboardStats.statusAndMethodStats?.totalMenunggu > 0 && (
-                  <div className="flex items-center justify-between text-[11px] text-amber-600">
-                    <span>Menunggu Tanggapan Dospem:</span>
-                    <span className="font-mono font-bold">
-                      {dashboardStats.statusAndMethodStats.totalMenunggu} Sesi
-                    </span>
+            {/* 1. TABEL PERINGKAT KEAKTIFAN DOSEN (MEMANJANG FULL WIDTH) */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3.5">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-200/80 flex items-center justify-center shrink-0">
+                    <Award className="w-5 h-5 text-indigo-600" />
                   </div>
-                )}
-              </div>
-            </div>
-
-            {/* 3.2 DONUT JENIS */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs flex flex-col justify-between">
-              <div className="border-b border-slate-100 pb-2.5 mb-2">
-                <div className="flex items-center gap-2">
-                  <Globe className="w-4 h-4 text-blue-600" />
-                  <h3 className="text-sm font-bold text-slate-900">
-                    Donut Jenis
-                  </h3>
-                </div>
-                <p className="text-[11px] text-slate-500 mt-0.5">
-                  Distribusi metode bimbingan Daring dan Luring
-                </p>
-              </div>
-
-              <div className="py-2 flex-1 flex flex-col justify-center">
-                <DonutChart
-                  items={dashboardStats.statusAndMethodStats.jenisDonutItems}
-                  total={dashboardStats.statusAndMethodStats.totalMetode}
-                  totalLabel="Total Sesi"
-                  size={165}
-                  strokeWidth={20}
-                  innerRadius={55}
-                />
-              </div>
-
-              <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
-                <span>Total Metode:</span>
-                <span className="font-mono font-bold text-slate-800">
-                  {dashboardStats.statusAndMethodStats.totalMetode.toLocaleString('id-ID')} Sesi
-                </span>
-              </div>
-            </div>
-
-            {/* 3.3 TABEL PERINGKAT KEAKTIFAN DOSEN */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs flex flex-col justify-between">
-              <div className="border-b border-slate-100 pb-2.5 mb-2">
-                <div className="flex items-center justify-between gap-1">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <Award className="w-4 h-4 text-indigo-600 shrink-0" />
-                    <h3 className="text-sm font-bold text-slate-900 truncate">
-                      Peringkat Keaktifan Dosen
-                    </h3>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-bold text-slate-900 tracking-tight">
+                        Peringkat Keaktifan Dosen
+                      </h3>
+                      <span className="text-[10px] font-extrabold bg-indigo-50 text-indigo-700 px-2.5 py-0.5 rounded-full border border-indigo-200 shrink-0">
+                        {dashboardStats.advisorRankings.length} Dosen Pembimbing
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Daftar keaktifan dan rasio bimbingan seluruh dosen pembimbing tugas akhir
+                    </p>
                   </div>
-                  <span className="text-[10px] font-bold bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full border border-indigo-200 shrink-0">
-                    {dashboardStats.advisorRankings.length} Dosen
-                  </span>
                 </div>
-                <p className="text-[11px] text-slate-500 mt-0.5 truncate">
-                  Kolom #, Dosen, Bimbingan, Mahasiswa, Rasio
-                </p>
-              </div>
 
-              {/* Search bar inside card */}
-              <div className="relative mb-2">
-                <Search className="w-3 h-3 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={advisorSearch}
-                  onChange={(e) => setAdvisorSearch(e.target.value)}
-                  placeholder="Cari dosen / NIP..."
-                  className="w-full pl-7 pr-2 py-1 text-[11px] rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
-                />
+                {/* Search & Filter Controls */}
+                <div className="flex items-center gap-2 self-stretch sm:self-auto">
+                  <div className="relative flex-1 sm:w-64">
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={advisorSearch}
+                      onChange={(e) => setAdvisorSearch(e.target.value)}
+                      placeholder="Cari nama dosen / NIP..."
+                      className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 transition-all font-medium"
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* Scrollable Table Container */}
-              <div data-lenis-prevent className="overflow-y-auto overflow-x-auto max-h-[290px] rounded-xl border border-slate-200 text-xs flex-1">
-                <table className="w-full text-left border-collapse text-[11px]">
-                  <thead className="sticky top-0 bg-slate-50 z-10 border-b border-slate-200 font-bold text-slate-600 uppercase text-[9px] tracking-wider">
+              <div data-lenis-prevent className="overflow-y-auto overflow-x-auto max-h-[360px] rounded-xl border border-slate-200 text-xs">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead className="sticky top-0 bg-slate-50/95 backdrop-blur-xs z-10 border-b border-slate-200 font-bold text-slate-600 uppercase text-[10px] tracking-wider">
                     <tr>
-                      <th className="py-2 px-2 text-center w-8">#</th>
-                      <th className="py-2 px-2.5 min-w-[110px]">Dosen</th>
-                      <th className="py-2 px-1.5 text-center">Bimbingan</th>
-                      <th className="py-2 px-1.5 text-center">Mahasiswa</th>
-                      <th className="py-2 px-2 text-center">Rasio</th>
+                      <th className="py-3 px-3 text-center w-12">#</th>
+                      <th className="py-3 px-4 min-w-[200px]">Dosen Pembimbing</th>
+                      <th className="py-3 px-3 text-center">Total Bimbingan</th>
+                      <th className="py-3 px-3 text-center">Mahasiswa Bimbingan</th>
+                      <th className="py-3 px-3 text-center">Rasio (Sesi / Mhs)</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {filteredAdvisorRankings.map((adv, idx) => {
-                      const rank = idx + 1;
-                      return (
-                        <tr key={adv.nip} className="hover:bg-slate-50/70 transition-colors">
-                          <td className="py-2 px-1 text-center align-middle">
-                            {rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`}
-                          </td>
-                          <td className="py-2 px-2 align-middle">
-                            <div className="font-bold text-slate-900 text-[11px] line-clamp-1" title={adv.nama}>
-                              {adv.nama.replace(/^(Dr\.|Prof\.|Ir\.)\s*/i, '').split(',')[0]}
-                            </div>
-                            <div className="text-[9px] text-slate-400 font-mono">
-                              NIP. {adv.nip.slice(-4)}
-                            </div>
-                          </td>
-                          <td className="py-2 px-1.5 text-center align-middle font-bold text-indigo-700 font-mono">
-                            {adv.totalBimbingan}
-                          </td>
-                          <td className="py-2 px-1.5 text-center align-middle text-slate-700 font-medium">
-                            {adv.totalMahasiswa}
-                          </td>
-                          <td className="py-2 px-2 text-center align-middle">
-                            <span className="font-black text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded text-[10px] border border-slate-200/60 font-mono">
-                              {adv.rasioFormatted}x
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="pt-2 mt-2 border-t border-slate-100 text-[10px] text-slate-400 flex items-center justify-between">
-                <span>Tabel bisa di-scroll ke bawah</span>
-                <span className="font-medium text-slate-600">Rasio: Sesi / Mahasiswa</span>
-              </div>
-            </div>
-
-            {/* 3.4 TABEL PERINGKAT KEAKTIFAN MAHASISWA TOP 10 */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs flex flex-col justify-between">
-              <div className="border-b border-slate-100 pb-2.5 mb-2">
-                <div className="flex items-center justify-between gap-1">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <GraduationCap className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <h3 className="text-sm font-bold text-slate-900 truncate">
-                      Peringkat Mahasiswa Top 10
-                    </h3>
-                  </div>
-                  <span className="text-[10px] font-bold bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-200 shrink-0">
-                    Top 10
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-500 mt-0.5 truncate">
-                  Tabel keaktifan mahasiswa paling sering bimbingan
-                </p>
-              </div>
-
-              {/* Search bar inside card */}
-              <div className="relative mb-2">
-                <Search className="w-3 h-3 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={studentSearch}
-                  onChange={(e) => setStudentSearch(e.target.value)}
-                  placeholder="Cari mahasiswa / NIM..."
-                  className="w-full pl-7 pr-2 py-1 text-[11px] rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
-                />
-              </div>
-
-              {/* Scrollable Table Container */}
-              <div data-lenis-prevent className="overflow-y-auto overflow-x-auto max-h-[290px] rounded-xl border border-slate-200 text-xs flex-1">
-                <table className="w-full text-left border-collapse text-[11px]">
-                  <thead className="sticky top-0 bg-slate-50 z-10 border-b border-slate-200 font-bold text-slate-600 uppercase text-[9px] tracking-wider">
-                    <tr>
-                      <th className="py-2 px-2 text-center w-8">#</th>
-                      <th className="py-2 px-2.5 min-w-[110px]">Mahasiswa</th>
-                      <th className="py-2 px-1.5 text-center">Bulan Ini</th>
-                      <th className="py-2 px-1.5 text-center">Total</th>
-                      <th className="py-2 px-2 text-center">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {filteredTopStudents.map((st) => (
-                      <tr key={st.mhs_nim} className="hover:bg-slate-50/70 transition-colors">
-                        <td className="py-2 px-1 text-center align-middle">
-                          {st.rank === 1 ? '🥇' : st.rank === 2 ? '🥈' : st.rank === 3 ? '🥉' : `#${st.rank}`}
-                        </td>
-                        <td className="py-2 px-2 align-middle">
-                          <div className="font-bold text-slate-900 text-[11px] line-clamp-1" title={st.mhs_nama}>
-                            {st.mhs_nama}
-                          </div>
-                          <div className="text-[9px] text-slate-400 font-mono">
-                            NIM. {st.mhs_nim}
-                          </div>
-                        </td>
-                        <td className="py-2 px-1.5 text-center align-middle font-bold text-emerald-700 font-mono">
-                          {st.bimbinganBulanIni}x
-                        </td>
-                        <td className="py-2 px-1.5 text-center align-middle font-bold text-indigo-700 font-mono">
-                          {st.totalBimbingan}
-                        </td>
-                        <td className="py-2 px-2 text-center align-middle">
-                          {st.isMemenuhi24 ? (
-                            <span className="inline-flex items-center text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">
-                              &ge;24x
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700">
-                              Proses
-                            </span>
-                          )}
+                    {filteredAdvisorRankings.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="py-8 text-center text-slate-400 italic">
+                          Tidak ada data dosen yang sesuai dengan pencarian "{advisorSearch}"
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      filteredAdvisorRankings.map((adv, idx) => {
+                        const rank = idx + 1;
+                        return (
+                          <tr key={adv.nip} className="hover:bg-slate-50/80 transition-colors">
+                            <td className="py-3 px-3 text-center align-middle font-bold">
+                              {rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : (
+                                <span className="text-slate-500 font-mono text-xs">#{rank}</span>
+                              )}
+                            </td>
+                            <td className="py-3 px-4 align-middle">
+                              <div className="font-bold text-slate-900 text-xs hover:text-indigo-600 transition-colors" title={adv.nama}>
+                                {adv.nama}
+                              </div>
+                              <div className="text-[11px] text-slate-500 font-mono mt-0.5">
+                                NIP. {adv.nip}
+                              </div>
+                            </td>
+                            <td className="py-3 px-3 text-center align-middle">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-bold text-xs border border-indigo-200/70 font-mono">
+                                {adv.totalBimbingan} Sesi
+                              </span>
+                            </td>
+                            <td className="py-3 px-3 text-center align-middle font-semibold text-slate-700">
+                              {adv.totalMahasiswa} Mahasiswa
+                            </td>
+                            <td className="py-3 px-3 text-center align-middle">
+                              <span className="font-mono font-bold text-slate-900 bg-slate-100 px-2 py-1 rounded-md text-xs border border-slate-200">
+                                {adv.rasioFormatted}x
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
                   </tbody>
                 </table>
               </div>
 
-              <div className="pt-2 mt-2 border-t border-slate-100 text-[10px] text-slate-400 flex items-center justify-between">
-                <span>Tabel bisa di-scroll ke bawah</span>
-                <span className="font-medium text-emerald-700">Top 10 Keaktifan Mhs</span>
+              <div className="pt-2 border-t border-slate-100 text-xs text-slate-400 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                <span>Tabel interaktif: bisa di-scroll ke bawah untuk melihat seluruh dosen</span>
+                <span className="font-medium text-slate-600">Rumus Rasio: Total Sesi Bimbingan ÷ Jumlah Mahasiswa Bimbingan</span>
+              </div>
+            </div>
+
+            {/* 2. TABEL PERINGKAT KEAKTIFAN MAHASISWA TOP 10 (MEMANJANG FULL WIDTH) */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3.5">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200/80 flex items-center justify-center shrink-0">
+                    <GraduationCap className="w-5 h-5 text-emerald-600" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-bold text-slate-900 tracking-tight">
+                        Peringkat Mahasiswa Top 10
+                      </h3>
+                      <span className="text-[10px] font-extrabold bg-emerald-50 text-emerald-800 px-2.5 py-0.5 rounded-full border border-emerald-200 shrink-0">
+                        Top 10 Keaktifan
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Daftar mahasiswa dengan frekuensi pertemuan bimbingan tugas akhir paling aktif
+                    </p>
+                  </div>
+                </div>
+
+                {/* Search Box */}
+                <div className="flex items-center gap-2 self-stretch sm:self-auto">
+                  <div className="relative flex-1 sm:w-64">
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={studentSearch}
+                      onChange={(e) => setStudentSearch(e.target.value)}
+                      placeholder="Cari nama mahasiswa / NIM..."
+                      className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500 transition-all font-medium"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Scrollable Table Container */}
+              <div data-lenis-prevent className="overflow-y-auto overflow-x-auto max-h-[360px] rounded-xl border border-slate-200 text-xs">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead className="sticky top-0 bg-slate-50/95 backdrop-blur-xs z-10 border-b border-slate-200 font-bold text-slate-600 uppercase text-[10px] tracking-wider">
+                    <tr>
+                      <th className="py-3 px-3 text-center w-12">#</th>
+                      <th className="py-3 px-4 min-w-[180px]">Mahasiswa</th>
+                      <th className="py-3 px-4 min-w-[200px]">Dosen Pembimbing (P1 / P2)</th>
+                      <th className="py-3 px-3 text-center">Bulan Ini</th>
+                      <th className="py-3 px-3 text-center">Total Bimbingan</th>
+                      <th className="py-3 px-3 text-center">Kelayakan Sidang</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredTopStudents.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-8 text-center text-slate-400 italic">
+                          Tidak ada mahasiswa yang sesuai dengan pencarian "{studentSearch}"
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredTopStudents.map((st) => (
+                        <tr key={st.mhs_nim} className="hover:bg-slate-50/80 transition-colors">
+                          <td className="py-3 px-3 text-center align-middle font-bold">
+                            {st.rank === 1 ? '🥇' : st.rank === 2 ? '🥈' : st.rank === 3 ? '🥉' : (
+                              <span className="text-slate-500 font-mono text-xs">#{st.rank}</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 align-middle">
+                            <div className="font-bold text-slate-900 text-xs hover:text-emerald-700 transition-colors" title={st.mhs_nama}>
+                              {st.mhs_nama}
+                            </div>
+                            <div className="text-[11px] text-slate-500 font-mono mt-0.5">
+                              NIM. {st.mhs_nim}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 align-middle text-[11px] text-slate-600 leading-relaxed">
+                            <div><strong className="text-slate-800">P1:</strong> {st.p1_nama || '-'}</div>
+                            <div><strong className="text-slate-800">P2:</strong> {st.p2_nama || '-'}</div>
+                          </td>
+                          <td className="py-3 px-3 text-center align-middle font-bold text-emerald-700 font-mono">
+                            {st.bimbinganBulanIni}x
+                          </td>
+                          <td className="py-3 px-3 text-center align-middle">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-bold text-xs border border-indigo-200/70 font-mono">
+                              {st.totalBimbingan} Sesi
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 text-center align-middle">
+                            {st.isMemenuhi24 ? (
+                              <span className="inline-flex items-center text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                ✓ &ge; 24 Sesi (Layak)
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center text-[11px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                                Proses ({st.totalBimbingan}/24)
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="pt-2 border-t border-slate-100 text-xs text-slate-400 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                <span>Tabel interaktif: menampilkan 10 mahasiswa paling aktif dalam bimbingan</span>
+                <span className="font-medium text-emerald-700">Syarat minimal pendaftaran sidang: 24 sesi bimbingan</span>
               </div>
             </div>
 
