@@ -115,6 +115,7 @@ export default function ProfilePage() {
 
   const [formData, setFormData] = useState({
     nama: currentUser?.nama || '',
+    email: currentUser?.email || (currentUser?.nim ? `${currentUser.nim}@student.unsri.ac.id` : ''),
     no_hp: currentUser?.no_hp && currentUser?.no_hp !== '-' ? currentUser.no_hp : '',
     prodi: currentUser?.prodi || 'D3 Manajemen Informatika',
     kelas: isMahasiswa ? resolveStudentAngkatan(currentUser) : resolvedJabatan,
@@ -190,6 +191,7 @@ export default function ProfilePage() {
       }
       setFormData({
         nama: currentUser.nama || '',
+        email: currentUser.email || (currentUser.nim ? `${currentUser.nim}@student.unsri.ac.id` : ''),
         no_hp: currentUser.no_hp && currentUser.no_hp !== '-' ? currentUser.no_hp : '',
         prodi: currentUser.prodi || 'D3 Manajemen Informatika',
         kelas: isMahasiswa ? resolveStudentAngkatan(currentUser) : resolvedJabatan,
@@ -216,6 +218,7 @@ export default function ProfilePage() {
   const handleStartEdit = () => {
     setFormData({
       nama: currentUser?.nama || '',
+      email: currentUser?.email || (currentUser?.nim ? `${currentUser.nim}@student.unsri.ac.id` : ''),
       no_hp: currentUser?.no_hp && currentUser?.no_hp !== '-' ? currentUser.no_hp : '',
       prodi: currentUser?.prodi || 'D3 Manajemen Informatika',
       kelas: isMahasiswa ? resolveStudentAngkatan(currentUser) : resolvedJabatan,
@@ -240,6 +243,11 @@ export default function ProfilePage() {
     e.preventDefault();
     if (!formData.nama.trim()) {
       setErrorMsg('Nama lengkap tidak boleh kosong.');
+      return;
+    }
+
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+      setErrorMsg('Format email resmi tidak valid.');
       return;
     }
 
@@ -297,6 +305,7 @@ export default function ProfilePage() {
     try {
       const payload = {
         nama: formData.nama.trim(),
+        email: formData.email ? formData.email.trim() : undefined,
         no_hp: formData.no_hp.trim(),
         prodi: formData.prodi,
         kelas: isMahasiswa ? formData.kelas.trim() : (formData.jabatan_fungsional || formData.kelas || '').trim(),
@@ -950,19 +959,29 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* 3. Email (Read-Only Identity Key) */}
+            {/* 3. Email Resmi (Bisa diedit oleh mahasiswa maupun role lain) */}
             <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Email Resmi</span>
-                <span className="text-[10px] text-slate-400 font-medium flex items-center space-x-1">
-                  <Lock className="w-3 h-3 text-slate-400" />
-                  <span>Terkunci</span>
-                </span>
-              </div>
-              <div className="flex items-center space-x-2 text-slate-700 font-semibold pt-0.5">
-                <Mail className="w-4 h-4 text-slate-400" />
-                <span>{currentUser?.email || (currentUser?.nim ? `${currentUser.nim}@student.unsri.ac.id` : '-')}</span>
-              </div>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                Email Resmi {isEditing && <span className="text-rose-500">*</span>}
+              </span>
+              {isEditing ? (
+                <div className="relative">
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 text-xs font-semibold text-slate-900 bg-white transition-all outline-none"
+                    placeholder="nama@student.unsri.ac.id"
+                  />
+                  <Mail className="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                </div>
+              ) : (
+                <div className="flex items-center space-x-2 text-slate-900 font-semibold pt-0.5">
+                  <Mail className="w-4 h-4 text-slate-400" />
+                  <span>{currentUser?.email || (currentUser?.nim ? `${currentUser.nim}@student.unsri.ac.id` : '-')}</span>
+                </div>
+              )}
             </div>
 
             {/* 4. No. WhatsApp */}

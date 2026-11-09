@@ -79,6 +79,7 @@ const scanLocalStudentFallback = (nim) => {
     if (typeof window === 'undefined' || !key) return {};
     const result = {
         nama: null,
+        email: null,
         noHp: null,
         kelas: null,
         prodi: null,
@@ -92,6 +93,7 @@ const scanLocalStudentFallback = (nim) => {
         if (rawActive) {
             const active = JSON.parse(rawActive);
             if (active && normalizeNim(active.nim || active.nip) === key) {
+                if (active.email && String(active.email).includes('@')) result.email = String(active.email).trim();
                 if (isValidStudentPhone(active.no_hp || active.noHp)) result.noHp = String(active.no_hp || active.noHp).trim();
                 const av = sanitizeStudentAvatarUrl(active.avatar_url || active.avatarUrl);
                 if (av) result.avatar_url = av;
@@ -111,6 +113,7 @@ const scanLocalStudentFallback = (nim) => {
             if (Array.isArray(list)) {
                 list.forEach((u) => {
                     if (!u || normalizeNim(u.nim || u.nip) !== key) return;
+                    if (!result.email && u.email && String(u.email).includes('@')) result.email = String(u.email).trim();
                     if (!result.noHp && isValidStudentPhone(u.no_hp || u.noHp)) result.noHp = String(u.no_hp || u.noHp).trim();
                     const av = sanitizeStudentAvatarUrl(u.avatar_url || u.avatarUrl);
                     if (!result.avatar_url && av) result.avatar_url = av;
@@ -169,6 +172,7 @@ const persistLocalCred = (nim, status) => {
                 hasPassword: Boolean(status.hasPassword !== undefined ? status.hasPassword : prev.hasPassword),
                 isProfileCompleted: isCompleted,
                 nama: status.nama || prev.nama || null,
+                email: status.email || prev.email || null,
                 noHp: cleanPhone,
                 no_hp: cleanPhone,
                 kelas: cleanKelas || prev.kelas || null,
@@ -209,6 +213,7 @@ export const hydrateStudentProfileMeta = (rows = []) => {
                 hasPassword: Boolean(prev.hasPassword ?? true),
                 isProfileCompleted: parsed?.isProfileCompleted !== undefined ? Boolean(parsed.isProfileCompleted) : Boolean(prev.isProfileCompleted ?? true),
                 nama: parsed?.nama || prev.nama || null,
+                email: parsed?.email || prev.email || null,
                 noHp: parsed?.noHp || parsed?.no_hp || prev.noHp || prev.no_hp || null,
                 no_hp: parsed?.noHp || parsed?.no_hp || prev.noHp || prev.no_hp || null,
                 kelas: cleanKelas || null,
@@ -249,6 +254,7 @@ export const getCachedStudentCredential = (nim) => {
                 hasPassword: Boolean(base.hasPassword || localFallback.hasPassword),
                 isProfileCompleted: Boolean(base.isProfileCompleted || localFallback.isProfileCompleted || resolvedPhone),
                 nama: base.nama || localFallback.nama || null,
+                email: base.email || localFallback.email || null,
                 noHp: resolvedPhone,
                 no_hp: resolvedPhone,
                 kelas: normalizeStudentAngkatan(base.kelas || localFallback.kelas) || null,
@@ -353,21 +359,24 @@ export const getStudentCredential = async (nim, options = {}) => {
             let profPhone = null;
             let profNama = null;
             let profKelas = null;
+            let profEmail = null;
             try {
                 const { data: profRow } = await supabase
                     .from('profiles')
-                    .select('no_hp, nama, kelas')
+                    .select('no_hp, nama, kelas, email')
                     .or(`nim.eq.${key},nip.eq.${key}`)
                     .maybeSingle();
                 if (profRow) {
                     if (profRow.no_hp && profRow.no_hp !== '-') profPhone = profRow.no_hp;
                     if (profRow.nama) profNama = profRow.nama;
                     if (profRow.kelas) profKelas = profRow.kelas;
+                    if (profRow.email) profEmail = profRow.email;
                 }
             } catch {}
 
             const localFallback = scanLocalStudentFallback(key);
             const resolvedNama = row?.nama || remoteMeta?.nama || ttNama || profNama || prev.nama || localFallback.nama || null;
+            const resolvedEmail = remoteMeta?.email || profEmail || prev.email || localFallback.email || `${key}@student.unsri.ac.id`;
             const rawPhone = (isValidStudentPhone(row?.no_hp) ? row.no_hp : null)
                 || (isValidStudentPhone(remoteMeta?.noHp || remoteMeta?.no_hp) ? (remoteMeta.noHp || remoteMeta.no_hp) : null)
                 || (isValidStudentPhone(profPhone) ? profPhone : null)
@@ -410,6 +419,7 @@ export const getStudentCredential = async (nim, options = {}) => {
                         ...(remoteMeta || {}),
                         nim: key,
                         nama: resolvedNama,
+                        email: resolvedEmail,
                         noHp: resolvedNoHp,
                         no_hp: resolvedNoHp,
                         kelas: resolvedKelas || '2024',
@@ -452,6 +462,7 @@ export const getStudentCredential = async (nim, options = {}) => {
                 hasPassword: row?.has_password === true || Boolean(prev.hasPassword),
                 isProfileCompleted: isCompleted,
                 nama: resolvedNama,
+                email: resolvedEmail,
                 noHp: resolvedNoHp,
                 no_hp: resolvedNoHp,
                 kelas: resolvedKelas,
@@ -478,10 +489,10 @@ export const getStudentCredential = async (nim, options = {}) => {
 /**
  * Simpan kata sandi dan/atau status profil lengkap ke server.
  *
- * @param {{ nim: string, password?: string, isProfileCompleted?: boolean, nama?: string, noHp?: string, kelas?: string, prodi?: string, avatarUrl?: string, avatar_url?: string }} params
+ * @param {{ nim: string, password?: string, isProfileCompleted?: boolean, nama?: string, email?: string, noHp?: string, kelas?: string, prodi?: string, avatarUrl?: string, avatar_url?: string }} params
  * @returns {Promise<{ success: boolean, tableMissing?: boolean, message?: string }>}
  */
-export const saveStudentCredential = async ({ nim, password, isProfileCompleted, nama, noHp, kelas, prodi, avatarUrl, avatar_url }) => {
+export const saveStudentCredential = async ({ nim, password, isProfileCompleted, nama, email, noHp, kelas, prodi, avatarUrl, avatar_url }) => {
     const key = normalizeNim(nim);
     if (!key) {
         return { success: false, message: 'NIM tidak valid.' };
@@ -492,13 +503,14 @@ export const saveStudentCredential = async ({ nim, password, isProfileCompleted,
 
     const plainPassword = typeof password === 'string' && password.trim() ? password.trim() : null;
     const cleanNama = typeof nama === 'string' && nama.trim() ? nama.trim() : null;
+    const cleanEmail = typeof email === 'string' && email.trim() ? email.trim() : null;
     const cleanNoHp = typeof noHp === 'string' && noHp.trim() && noHp.trim() !== '-' ? noHp.trim() : null;
     const cleanKelas = typeof kelas === 'string' && kelas.trim() ? kelas.trim() : null;
     const cleanProdi = typeof prodi === 'string' && prodi.trim() ? prodi.trim() : null;
     const hasAvatarUpdate = avatar_url !== undefined || avatarUrl !== undefined;
     const cleanAvatar = sanitizeStudentAvatarUrl(avatar_url !== undefined ? avatar_url : avatarUrl);
 
-    if (!plainPassword && typeof isProfileCompleted !== 'boolean' && !cleanNama && !cleanNoHp && !cleanKelas && !hasAvatarUpdate) {
+    if (!plainPassword && typeof isProfileCompleted !== 'boolean' && !cleanNama && !cleanEmail && !cleanNoHp && !cleanKelas && !hasAvatarUpdate) {
         return { success: true };
     }
 
@@ -544,6 +556,7 @@ export const saveStudentCredential = async ({ nim, password, isProfileCompleted,
             hasPassword: prev.hasPassword || Boolean(plainPassword),
             isProfileCompleted: mergedCompleted,
             nama: cleanNama || existingRemote?.nama || prev.nama || null,
+            email: cleanEmail || existingRemote?.email || prev.email || null,
             noHp: mergedNoHp,
             no_hp: mergedNoHp,
             kelas: normalizedKelas,
@@ -556,7 +569,7 @@ export const saveStudentCredential = async ({ nim, password, isProfileCompleted,
         cacheLoadedAt = Date.now();
         persistLocalCred(key, nextStatus);
 
-        if (nextStatus.nama || nextStatus.noHp || nextStatus.kelas || nextStatus.prodi || hasAvatarUpdate || typeof isProfileCompleted === 'boolean') {
+        if (nextStatus.nama || nextStatus.email || nextStatus.noHp || nextStatus.kelas || nextStatus.prodi || hasAvatarUpdate || typeof isProfileCompleted === 'boolean') {
             try {
                 await supabase.from('admin_cms').upsert([{
                     id: `${PROFILE_META_PREFIX}${key}`,
@@ -565,6 +578,7 @@ export const saveStudentCredential = async ({ nim, password, isProfileCompleted,
                     isi: JSON.stringify({
                         nim: key,
                         nama: nextStatus.nama,
+                        email: nextStatus.email,
                         noHp: nextStatus.noHp,
                         no_hp: nextStatus.no_hp,
                         kelas: nextStatus.kelas,

@@ -512,16 +512,13 @@ export function AuthProvider({ children }) {
     }
 
     let cleanNim = user.nim || '09010182428002';
-    if (cleanNim === '090108148002') {
+            if (cleanNim === '090108148002') {
       cleanNim = '09010182428002';
     }
 
     let cleanEmail = user.email;
-    // Ensure student email matches their actual NIM
-    if (user.role === 'mahasiswa' || !user.role) {
-      if (!cleanEmail || cleanEmail.includes('@student.unsri.ac.id')) {
-        cleanEmail = `${cleanNim}@student.unsri.ac.id`;
-      }
+    if (!cleanEmail) {
+      cleanEmail = `${cleanNim}@student.unsri.ac.id`;
     }
 
     const isProfileCompleted = user.is_profile_completed === true;
@@ -1037,13 +1034,14 @@ export function AuthProvider({ children }) {
         const shouldMarkCompleted = updatedFields.is_profile_completed === true || merged.is_profile_completed === true;
         const hasAvatarChange = Object.prototype.hasOwnProperty.call(updatedFields, 'avatar_url');
 
-        if (passwordToStore || shouldMarkCompleted || updatedFields.nama || updatedFields.no_hp || updatedFields.kelas || updatedFields.prodi || hasAvatarChange) {
+        if (passwordToStore || shouldMarkCompleted || updatedFields.nama || updatedFields.email || updatedFields.no_hp || updatedFields.kelas || updatedFields.prodi || hasAvatarChange) {
           try {
             const credSaved = await saveStudentCredential({
               nim: studentNim,
               password: passwordToStore || undefined,
               isProfileCompleted: shouldMarkCompleted ? true : undefined,
               nama: merged.nama || undefined,
+              email: merged.email || undefined,
               noHp: (merged.no_hp && isValidNonDummyPhone(merged.no_hp)) ? merged.no_hp : undefined,
               kelas: merged.kelas || undefined,
               prodi: merged.prodi || undefined,
@@ -4318,6 +4316,9 @@ export function AuthProvider({ children }) {
             if (cred.nama && (!enriched.nama || enriched.nama === 'Mahasiswa UNSRI' || enriched.nama === 'Pengguna SIMTA')) {
               enriched.nama = cred.nama;
             }
+            if (cred.email) {
+              enriched.email = cred.email;
+            }
             if (cred.noHp || cred.no_hp) {
               const p = cred.noHp || cred.no_hp;
               if (isValidNonDummyPhone(p)) {
@@ -4346,6 +4347,9 @@ export function AuthProvider({ children }) {
             const parsed = typeof cmsRow.isi === 'string' ? JSON.parse(cmsRow.isi) : cmsRow.isi;
             if (parsed?.nama && (!enriched.nama || enriched.nama === 'Mahasiswa UNSRI' || enriched.nama === 'Pengguna SIMTA')) {
               enriched.nama = parsed.nama;
+            }
+            if (parsed?.email) {
+              enriched.email = parsed.email;
             }
             const phone = parsed?.noHp || parsed?.no_hp;
             if (phone && isValidNonDummyPhone(phone)) {
