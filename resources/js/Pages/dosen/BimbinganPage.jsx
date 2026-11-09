@@ -1,11 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { usePage, router } from '@inertiajs/react';
-import { useAuth } from '../../context/AuthContext.jsx';
+import { useAuth, isTargetAdvisorForConsultation, isGenericDosenPlaceholder } from '../../context/AuthContext.jsx';
 import StudentWhatsAppLink from '../../Components/common/StudentWhatsAppLink.jsx';
 import { sortConsultationsChronologically } from '../../lib/consultationUtils.js';
 
 export default function BimbinganPage() {
-  const { currentUser, studentAdvisors, consultations, thesisTitles, reviewConsultation } = useAuth();
+  const { currentUser, studentAdvisors, advisors, consultations, thesisTitles, reviewConsultation } = useAuth();
   const { url } = usePage();
 
   const [feedbackState, setFeedbackState] = useState({});
@@ -185,18 +185,24 @@ export default function BimbinganPage() {
     }
 
     let namaDosen = activeDetailCons.dosen_nama;
-    if (!namaDosen || namaDosen === 'Dosen Pembimbing' || namaDosen.trim() === '') {
+    if (!namaDosen || isGenericDosenPlaceholder(namaDosen)) {
       if (role === 'Pembimbing 2' && currentStudent?.dospem2_nama) {
         namaDosen = currentStudent.dospem2_nama;
       } else if (currentStudent?.dospem1_nama) {
         namaDosen = currentStudent.dospem1_nama;
       } else {
-        namaDosen = currentUser?.nama || 'Dosen Pembimbing';
+        namaDosen = role === 'Pembimbing 2' ? 'Dosen Pembimbing 2' : 'Dosen Pembimbing 1';
       }
     }
 
     return { role, namaDosen };
-  }, [activeDetailCons, currentStudent, currentUser]);
+  }, [activeDetailCons, currentStudent]);
+
+  // Hak akses validasi bimbingan: HANYA dosen pembimbing yang dituju yang berhak merespons
+  const canValidate = useMemo(() => {
+    if (!activeDetailCons || !currentUser) return false;
+    return isTargetAdvisorForConsultation(activeDetailCons, currentUser, studentAdvisors, advisors, thesisTitles);
+  }, [activeDetailCons, currentUser, studentAdvisors, advisors, thesisTitles]);
 
   // Format tanggal Bahasa Indonesia yang rapi
   const formatDateIndo = (rawDate) => {
@@ -295,6 +301,14 @@ export default function BimbinganPage() {
 
   const handleSaveFeedback = async (consId) => {
     const targetCons = studentConsultations.find(sc => String(sc.id) === String(consId));
+    if (!targetCons) return;
+
+    if (!isTargetAdvisorForConsultation(targetCons, currentUser, studentAdvisors, advisors, thesisTitles)) {
+      setToastMsg(`Akses Ditolak: Hanya ${pembimbingInfo.role} (${pembimbingInfo.namaDosen}) yang berhak memvalidasi sesi bimbingan ini.`);
+      setTimeout(() => setToastMsg(''), 4500);
+      return;
+    }
+
     const feedback = feedbackState[consId] || {};
     
     const chosenJenis = feedback.jenis !== undefined 
@@ -664,11 +678,23 @@ export default function BimbinganPage() {
                   : (c.masukan_dosen || '');
                 const currentCatatan = String(rawCatatan).replace(/^\[(Revisi Mayor|Revisi Minor|Mayor|Minor|Menunggu|Diterima|Disetujui|Ditolak)\]\s*/i, '');
 
-                const isDiterimaDisabled = isCompleted || !isEligibleForDiterima;
+                const isDiterimaDisabled = isCompleted || !isEligibleForDiterima || !canValidate;
 
                 return (
                   <div className="pt-4 space-y-4">
                     
+                    {/* Notice Akses Terbatas jika bukan dosen pembimbing yang dituju */}
+                    {!canValidate && (
+                      <div className="p-4 rounded-2xl bg-amber-50/90 border border-amber-200 text-amber-900 text-xs space-y-1">
+                        <div className="font-bold text-amber-800">
+                          Hak Akses Terbatas (Hanya Lihat)
+                        </div>
+                        <p className="leading-relaxed text-amber-700 font-normal">
+                          Sesi bimbingan ini diajukan ke <strong>{pembimbingInfo.role} ({pembimbingInfo.namaDosen})</strong>. Anda dapat melihat riwayat dan berkas mahasiswa, namun hak untuk memberikan tanggapan atau memvalidasi sesi ini hanya dimiliki oleh {pembimbingInfo.role}.
+                        </p>
+                      </div>
+                    )}
+
                     {/* Header Seksi: Label & Tanggal Respon */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
@@ -691,7 +717,7 @@ export default function BimbinganPage() {
                     {/* SATU STATUS BIMBINGAN */}
                     <div>
                       <label className="text-xs font-semibold text-slate-700 block mb-2">
-                        {isCompleted ? 'Status Hasil Evaluasi:' : 'Pilihan Status Evaluasi:'}
+                        {isCompleted ? 'Status Hasil Evaluasi:' : canValidate ? 'Pilihan Status Evaluasi:' : 'Status Bimbingan:'}
                       </label>
 
                       {isCompleted ? (
@@ -711,6 +737,12 @@ export default function BimbinganPage() {
                             <span>
                               {currentJenis === 'Mayor' ? 'Revisi Mayor' : currentJenis === 'Minor' ? 'Revisi Minor' : currentJenis}
                             </span>
+                          </span>
+                        </div>
+                      ) : !canValidate ? (
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                            Menunggu Tanggapan dari {pembimbingInfo.role}
                           </span>
                         </div>
                       ) : (
@@ -798,13 +830,19 @@ export default function BimbinganPage() {
                       </label>
                       <textarea
                         rows={3}
-                        readOnly={isCompleted}
-                        disabled={isCompleted}
+                        readOnly={isCompleted || !canValidate}
+                        disabled={isCompleted || !canValidate}
                         value={currentCatatan}
-                        onChange={(e) => !isCompleted && handleCatatanChange(c.id, e.target.value)}
-                        placeholder={isCompleted ? "Tidak ada arahan tambahan." : "Tuliskan arahan revisi, evaluasi naskah, atau catatan perbaikan untuk mahasiswa..."}
+                        onChange={(e) => canValidate && !isCompleted && handleCatatanChange(c.id, e.target.value)}
+                        placeholder={
+                          isCompleted 
+                            ? "Tidak ada arahan tambahan." 
+                            : !canValidate 
+                              ? `Belum ada arahan / tanggapan bimbingan dari ${pembimbingInfo.namaDosen}.`
+                              : "Tuliskan arahan revisi, evaluasi naskah, atau catatan perbaikan untuk mahasiswa..."
+                        }
                         className={`w-full text-sm p-3.5 rounded-2xl border transition-all leading-relaxed ${
-                          isCompleted
+                          isCompleted || !canValidate
                             ? 'bg-slate-50 text-slate-700 border-slate-200 cursor-default select-text'
                             : 'bg-white text-slate-800 border-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                         }`}
@@ -842,6 +880,10 @@ export default function BimbinganPage() {
                     {isCompleted ? (
                       <div className="px-4 py-2 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold select-none">
                         <span>Selesai</span>
+                      </div>
+                    ) : !canValidate ? (
+                      <div className="px-4 py-2 rounded-xl bg-slate-100 text-slate-500 border border-slate-200 text-xs font-medium select-none">
+                        <span>Hanya {pembimbingInfo.role} yang dapat merespon</span>
                       </div>
                     ) : (
                       <button

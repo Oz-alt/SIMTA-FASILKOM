@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Link } from '@inertiajs/react';
-import { useAuth } from '../../context/AuthContext.jsx';
+import { useAuth, isTargetAdvisorForConsultation } from '../../context/AuthContext.jsx';
 import { 
   BookOpen, 
   PlusCircle, 
@@ -30,7 +30,7 @@ import { calculateBimbinganReminder } from '../../lib/bimbinganReminder.js';
 import { calculateBimbinganEligibility, isConsultationEvaluated } from '../../lib/consultationUtils.js';
 
 export default function BimbinganTAPage() {
-  const { currentUser, consultations, reviewConsultation } = useAuth();
+  const { currentUser, consultations, reviewConsultation, studentAdvisors, advisors, thesisTitles } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingConsultation, setEditingConsultation] = useState(null);
   const [toastMsg, setToastMsg] = useState('');
@@ -99,6 +99,12 @@ export default function BimbinganTAPage() {
   } = bimbinganStats;
 
   const handleFeedbackSubmit = (consId, newStatus) => {
+    const item = studentConsultations.find(sc => String(sc.id) === String(consId));
+    if (!isTargetAdvisorForConsultation(item, currentUser, studentAdvisors, advisors, thesisTitles)) {
+      setToastMsg('Akses ditolak: Anda tidak memiliki hak akses untuk memvalidasi sesi bimbingan ini.');
+      setTimeout(() => setToastMsg(''), 4000);
+      return;
+    }
     const notes = feedbackInput[consId] || 'Telah diverifikasi pembimbing.';
     reviewConsultation(consId, newStatus, notes);
     setFeedbackInput(prev => ({ ...prev, [consId]: '' }));
@@ -518,8 +524,8 @@ export default function BimbinganTAPage() {
                   </div>
                 </div>
 
-                {/* PANEL RESPONS DOSEN (Tampil jika Login Sebagai Dosen/Kaprodi dan Status Menunggu Tanggapan) */}
-                {!isStudentRole && item.status === 'menunggu_tanggapan' && (
+                {/* PANEL RESPONS DOSEN (Tampil jika Login Sebagai Dosen/Kaprodi yang Dituju dan Status Menunggu Tanggapan) */}
+                {!isStudentRole && item.status === 'menunggu_tanggapan' && isTargetAdvisorForConsultation(item, currentUser, studentAdvisors, advisors, thesisTitles) && (
                   <div className="mt-3 p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
                     <span className="font-bold text-slate-800 text-xs block">Form Validasi / Masukan Dosen Pembimbing:</span>
                     <input

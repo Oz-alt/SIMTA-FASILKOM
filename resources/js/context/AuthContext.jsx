@@ -279,6 +279,89 @@ export const isGenericDosenPlaceholder = (name) => {
 };
 
 /**
+ * Memeriksa apakah user (dosen) yang aktif merupakan target dosen pembimbing
+ * yang berhak merespons / memvalidasi sesi bimbingan tertentu.
+ */
+export const isTargetAdvisorForConsultation = (cons, user, studentAdvisors = [], advisors = [], thesisTitles = []) => {
+  if (!cons || !user) return false;
+  if (user.role === 'mahasiswa') return false;
+
+  const userNip = String(user.nip || user.nim || '').trim();
+  const userCleanNama = stripAcademicTitles(user.nama);
+
+  // 1. Tentukan peran pembimbing tujuan sesi ini (Pembimbing 1 atau Pembimbing 2)
+  const isPemb2 = String(cons.pembimbing || '').includes('2');
+
+  // 2. Ambil data alokasi pembimbing 1 & 2 dari studentAdvisors / thesisTitles
+  const mhsNim = String(cons.mhs_nim || '').trim();
+  let assignedDospem1 = null;
+  let assignedDospem2 = null;
+
+  if (mhsNim) {
+    const sa = (studentAdvisors || []).find(s => String(s.student_nim || '').trim() === mhsNim);
+    const tt = (thesisTitles || []).find(t => String(t.mhs_nim || '').trim() === mhsNim && t.status !== 'ditolak');
+
+    const d1Nip = String(sa?.dospem1_nip || tt?.pembimbing_1_nip || '').trim();
+    const d2Nip = String(sa?.dospem2_nip || tt?.pembimbing_2_nip || '').trim();
+    const d1Nama = String(sa?.dospem1_nama || tt?.pembimbing_1_nama || tt?.pembimbing_1 || '').trim();
+    const d2Nama = String(sa?.dospem2_nama || tt?.pembimbing_2_nama || tt?.pembimbing_2 || '').trim();
+
+    assignedDospem1 = { nip: d1Nip, nama: d1Nama };
+    assignedDospem2 = { nip: d2Nip, nama: d2Nama };
+  }
+
+  const targetAdvisor = isPemb2 ? assignedDospem2 : assignedDospem1;
+  const otherAdvisor = isPemb2 ? assignedDospem1 : assignedDospem2;
+
+  // 3. PENTING: Cek eksklusi terhadap pembimbing LAINNYA.
+  // Jika pengguna saat ini cocok dengan pembimbing lawannya, maka mutlak TIDAK BOLEH memvalidasi!
+  if (otherAdvisor) {
+    const otherNip = String(otherAdvisor.nip || '').trim();
+    const otherCleanNama = stripAcademicTitles(otherAdvisor.nama);
+
+    if (userNip && otherNip && userNip === otherNip) {
+      return false;
+    }
+    if (userCleanNama && otherCleanNama && !isGenericDosenPlaceholder(otherAdvisor.nama)) {
+      if (userCleanNama === otherCleanNama || userCleanNama.includes(otherCleanNama) || otherCleanNama.includes(userCleanNama)) {
+        return false;
+      }
+    }
+  }
+
+  // 4. Cek kecocokan pengguna dengan TARGET pembimbing yang dituju
+  // 4a. Dari data alokasi mahasiswa
+  if (targetAdvisor) {
+    const targetNip = String(targetAdvisor.nip || '').trim();
+    const targetCleanNama = stripAcademicTitles(targetAdvisor.nama);
+
+    if (userNip && targetNip && userNip === targetNip) {
+      return true;
+    }
+    if (userCleanNama && targetCleanNama && !isGenericDosenPlaceholder(targetAdvisor.nama)) {
+      if (userCleanNama === targetCleanNama || userCleanNama.includes(targetCleanNama) || targetCleanNama.includes(userCleanNama)) {
+        return true;
+      }
+    }
+  }
+
+  // 4b. Dari record konsultasi itu sendiri (cons.dosen_nip / cons.dosen_nama)
+  const consNip = String(cons.dosen_nip || '').trim();
+  const consCleanNama = stripAcademicTitles(cons.dosen_nama);
+
+  if (userNip && consNip && userNip === consNip) {
+    return true;
+  }
+  if (userCleanNama && consCleanNama && !isGenericDosenPlaceholder(cons.dosen_nama)) {
+    if (userCleanNama === consCleanNama || userCleanNama.includes(consCleanNama) || consCleanNama.includes(userCleanNama)) {
+      return true;
+    }
+  }
+
+  return false;
+};
+
+/**
  * Daftar ID notifikasi yang telah ditandai sudah dibaca atau dihapus pengguna
  * Disimpan di localStorage agar tidak kembali muncul setelah reload / sync Supabase
  */
@@ -2611,43 +2694,7 @@ export function AuthProvider({ children }) {
 
   // Helper pencocokan dosen pembimbing untuk bimbingan
   const isLecturerForConsultation = (cons, user) => {
-    if (!user || user.role !== 'dosen' || !cons) return false;
-    const userNip = String(user.nip || user.nim || '').trim();
-    const consNip = String(cons.dosen_nip || '').trim();
-    const a = stripAcademicTitles(user.nama);
-    const hasSpecificDosenNama = !isGenericDosenPlaceholder(cons.dosen_nama);
-    const b = hasSpecificDosenNama ? stripAcademicTitles(cons.dosen_nama) : '';
-
-    // 1. Jika ada nama dosen spesifik pada konsultasi, cek kesesuaian nama terlebih dahulu
-    if (a && b) {
-      if (a === b || a.includes(b) || b.includes(a)) return true;
-      const wordsA = a.split(/\s+/).filter(w => w.length > 2);
-      const wordsB = b.split(/\s+/).filter(w => w.length > 2);
-      if (wordsA.length > 0 && wordsA.some(w => wordsB.includes(w))) return true;
-    }
-
-    // 2. Cek berdasarkan NIP pada konsultasi (jika nama pada konsultasi tidak merujuk ke dosen lain)
-    if (consNip && userNip && consNip === userNip) {
-      if (!b || (a && (a.includes(b) || b.includes(a)))) {
-        return true;
-      }
-    }
-
-    // 3. Cek dari alokasi dosen pembimbing mahasiswa berdasarkan label Pembimbing 1 / Pembimbing 2
-    const mhsNim = String(cons.mhs_nim || '').trim();
-    if (mhsNim && typeof getStudentAdvisors === 'function') {
-      const adv = getStudentAdvisors(mhsNim);
-      if (adv) {
-        const isPemb2 = String(cons.pembimbing || '').includes('2');
-        const assigned = isPemb2 ? adv.dospem2 : adv.dospem1;
-        if (assigned) {
-          if (assigned.nip && userNip && String(assigned.nip).trim() === userNip) return true;
-          const cleanAssigned = stripAcademicTitles(assigned.nama);
-          if (cleanAssigned && a && (cleanAssigned === a || cleanAssigned.includes(a) || a.includes(cleanAssigned))) return true;
-        }
-      }
-    }
-    return false;
+    return isTargetAdvisorForConsultation(cons, user, studentAdvisors, advisors, thesisTitles);
   };
 
   const createConsultationNotificationForDosen = (cons, activeUser) => {
@@ -6762,6 +6809,15 @@ export function AuthProvider({ children }) {
       } catch { }
     }
 
+    // Validasi Hak Akses: Hanya dosen pembimbing yang dituju yang berhak merespons / memvalidasi sesi ini!
+    if (existingCons && currentUser && currentUser.role !== 'admin') {
+      const isTarget = isTargetAdvisorForConsultation(existingCons, currentUser, studentAdvisors, advisors, thesisTitles);
+      if (!isTarget) {
+        console.warn('Akses ditolak: Dosen bukan pembimbing yang dituju untuk sesi ini.', { currentUser, existingCons });
+        throw new Error('Anda tidak memiliki hak akses untuk memvalidasi sesi bimbingan yang ditujukan untuk pembimbing lain.');
+      }
+    }
+
     const activeLecturerName = (currentUser?.role === 'dosen' || currentUser?.role === 'kaprodi') ? currentUser.nama : '';
     const activeLecturerNip = (currentUser?.role === 'dosen' || currentUser?.role === 'kaprodi') ? String(currentUser.nip || currentUser.nim || '').trim() : '';
 
@@ -6770,8 +6826,8 @@ export function AuthProvider({ children }) {
       status: status,
       jenis_revisi: resolvedJenisRevisi,
       masukan_dosen: noteWithTag,
-      dosen_nama: (!isGenericDosenPlaceholder(existingCons?.dosen_nama) ? existingCons?.dosen_nama : activeLecturerName) || existingCons?.dosen_nama || 'Dosen Pembimbing',
-      dosen_nip: existingCons?.dosen_nip || activeLecturerNip || '',
+      dosen_nama: activeLecturerName || (!isGenericDosenPlaceholder(existingCons?.dosen_nama) ? existingCons?.dosen_nama : '') || 'Dosen Pembimbing',
+      dosen_nip: activeLecturerNip || existingCons?.dosen_nip || '',
       reviewed_at: new Date().toISOString()
     };
 
@@ -9076,6 +9132,7 @@ export function AuthProvider({ children }) {
       assignStudentAdvisors,
       bulkAssignStudentAdvisors,
       getStudentAdvisors,
+      isTargetAdvisorForConsultation,
       addThesisTitle,
       updateThesisSubmission,
       cancelThesisTitle,

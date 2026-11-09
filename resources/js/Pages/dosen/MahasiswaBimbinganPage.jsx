@@ -1,20 +1,20 @@
 import React, { useState, useMemo } from 'react';
-import { useAuth } from '../../context/AuthContext.jsx';
+import { useAuth, isTargetAdvisorForConsultation } from '../../context/AuthContext.jsx';
 import { Link } from '@inertiajs/react';
 import StudentWhatsAppLink from '../../Components/common/StudentWhatsAppLink.jsx';
 import { isConsultationEvaluated } from '../../lib/consultationUtils.js';
-import { 
-  Users, 
-  Search, 
-  MessageSquare, 
-  CheckCircle2, 
-  Clock, 
-  AlertTriangle, 
-  Send 
+import {
+  Users,
+  Search,
+  MessageSquare,
+  CheckCircle2,
+  Clock,
+  AlertTriangle,
+  Send
 } from 'lucide-react';
 
 export default function MahasiswaBimbinganPage() {
-  const { currentUser, studentAdvisors, thesisTitles, consultations } = useAuth();
+  const { currentUser, studentAdvisors, thesisTitles, consultations, advisors } = useAuth();
 
   const userNip = currentUser?.nip || currentUser?.nim || '';
   const userNama = currentUser?.nama || '';
@@ -30,9 +30,9 @@ export default function MahasiswaBimbinganPage() {
 
     const matched = studentAdvisors.filter(sa => {
       const isDospem1 = (cleanNip && String(sa.dospem1_nip || '').trim() === cleanNip) ||
-                        (cleanNama && sa.dospem1_nama && sa.dospem1_nama.toLowerCase().includes(cleanNama));
+        (cleanNama && sa.dospem1_nama && sa.dospem1_nama.toLowerCase().includes(cleanNama));
       const isDospem2 = (cleanNip && String(sa.dospem2_nip || '').trim() === cleanNip) ||
-                        (cleanNama && sa.dospem2_nama && sa.dospem2_nama.toLowerCase().includes(cleanNama));
+        (cleanNama && sa.dospem2_nama && sa.dospem2_nama.toLowerCase().includes(cleanNama));
       return isDospem1 || isDospem2;
     });
 
@@ -99,24 +99,25 @@ export default function MahasiswaBimbinganPage() {
       // Konsultasi milik mahasiswa ini
       const mhsConsultations = consultations.filter(c => String(c.mhs_nim || c.nim).trim() === String(student.student_nim).trim());
       const approvedConsultations = mhsConsultations.filter(c => isConsultationEvaluated(c));
-      
-      // Pengajuan bimbingan baru yang belum diperiksa (status menunggu tanggapan)
-      const pendingConsultations = mhsConsultations.filter(c => 
-        !c.status || 
-        c.status === 'menunggu' || 
-        c.status === 'menunggu_tanggapan' || 
-        c.status === 'menunggu_validasi' || 
-        c.status === 'pending' || 
-        c.jenis_revisi === 'Menunggu'
+
+      // Pengajuan bimbingan baru yang belum diperiksa (status menunggu tanggapan) khusus yang ditujukan ke dosen ini
+      const pendingConsultations = mhsConsultations.filter(c =>
+        (!c.status ||
+          c.status === 'menunggu' ||
+          c.status === 'menunggu_tanggapan' ||
+          c.status === 'menunggu_validasi' ||
+          c.status === 'pending' ||
+          c.jenis_revisi === 'Menunggu') &&
+        isTargetAdvisorForConsultation(c, currentUser, studentAdvisors, advisors, thesisTitles)
       );
-      
+
       const totalCount = mhsConsultations.length;
       const progressPercent = Math.min(100, Math.round((totalCount / 24) * 100));
       const pendingCount = pendingConsultations.length;
       const hasNewSubmission = pendingCount > 0;
 
       // Ambil waktu pengajuan bimbingan terbaru untuk keperluan pengurutan
-      const latestPendingDate = hasNewSubmission 
+      const latestPendingDate = hasNewSubmission
         ? (pendingConsultations[0]?.tanggal || pendingConsultations[0]?.created_at || '2026-10-28')
         : null;
 
@@ -161,7 +162,7 @@ export default function MahasiswaBimbinganPage() {
         s.student_nim.toLowerCase().includes(q) ||
         s.thesisTitle.toLowerCase().includes(q);
 
-      const matchHealth = 
+      const matchHealth =
         filterHealth === 'all' ||
         (filterHealth === 'new' && s.hasNewSubmission) ||
         (filterHealth === 'warning' && s.isInactive) ||
@@ -201,7 +202,7 @@ export default function MahasiswaBimbinganPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      
+
       {/* ── 1. HEADER BANNER ── */}
       <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-900 rounded-2xl p-6 sm:p-8 text-white shadow-lg relative overflow-hidden">
         <div className="relative z-10 space-y-2">
@@ -232,7 +233,7 @@ export default function MahasiswaBimbinganPage() {
             className="w-full h-10 pl-10 pr-9 bg-slate-50/70 hover:bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors"
           />
           {searchQuery && (
-            <button 
+            <button
               onClick={() => setSearchQuery('')}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600 cursor-pointer p-0.5"
             >
@@ -244,21 +245,19 @@ export default function MahasiswaBimbinganPage() {
         <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
           <button
             onClick={() => setFilterHealth('all')}
-            className={`h-10 inline-flex items-center justify-center px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-              filterHealth === 'all' 
-                ? 'bg-slate-900 text-white shadow-xs' 
+            className={`h-10 inline-flex items-center justify-center px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${filterHealth === 'all'
+                ? 'bg-slate-900 text-white shadow-xs'
                 : 'bg-slate-100/80 text-slate-600 hover:bg-slate-200/70'
-            }`}
+              }`}
           >
             Semua ({enrichedStudents.length})
           </button>
           <button
             onClick={() => setFilterHealth('new')}
-            className={`h-10 inline-flex items-center justify-center px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer space-x-1.5 ${
-              filterHealth === 'new' 
-                ? 'bg-rose-600 text-white shadow-xs ring-2 ring-rose-200/70' 
+            className={`h-10 inline-flex items-center justify-center px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer space-x-1.5 ${filterHealth === 'new'
+                ? 'bg-rose-600 text-white shadow-xs ring-2 ring-rose-200/70'
                 : 'bg-rose-50 text-rose-700 hover:bg-rose-100/80 border border-rose-200/80'
-            }`}
+              }`}
           >
             <span className="relative flex h-2 w-2 shrink-0">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
@@ -268,21 +267,19 @@ export default function MahasiswaBimbinganPage() {
           </button>
           <button
             onClick={() => setFilterHealth('active')}
-            className={`h-10 inline-flex items-center justify-center px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-              filterHealth === 'active' 
-                ? 'bg-emerald-600 text-white shadow-xs' 
+            className={`h-10 inline-flex items-center justify-center px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${filterHealth === 'active'
+                ? 'bg-emerald-600 text-white shadow-xs'
                 : 'bg-slate-100/80 text-slate-600 hover:bg-slate-200/70'
-            }`}
+              }`}
           >
             Aktif Lancar ({countActive})
           </button>
           <button
             onClick={() => setFilterHealth('warning')}
-            className={`h-10 inline-flex items-center justify-center px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-              filterHealth === 'warning' 
-                ? 'bg-amber-500 text-white shadow-xs' 
+            className={`h-10 inline-flex items-center justify-center px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${filterHealth === 'warning'
+                ? 'bg-amber-500 text-white shadow-xs'
                 : 'bg-slate-100/80 text-slate-600 hover:bg-slate-200/70'
-            }`}
+              }`}
           >
             Perlu Pengingat ({countWarning})
           </button>
@@ -301,15 +298,14 @@ export default function MahasiswaBimbinganPage() {
           </div>
         ) : (
           filteredStudents.map((student) => (
-            <div 
-              key={student.id} 
-              className={`bg-white rounded-2xl p-5 sm:p-6 transition-all space-y-3.5 shadow-xs hover:shadow-sm ${
-                student.hasNewSubmission 
-                  ? 'border border-rose-300/90 ring-1 ring-rose-200/60 hover:border-rose-400' 
+            <div
+              key={student.id}
+              className={`bg-white rounded-2xl p-5 sm:p-6 transition-all space-y-3.5 shadow-xs hover:shadow-sm ${student.hasNewSubmission
+                  ? 'border border-rose-300/90 ring-1 ring-rose-200/60 hover:border-rose-400'
                   : 'border border-slate-200/80 hover:border-slate-300'
-              }`}
+                }`}
             >
-              
+
               {/* Row Atas: Indikator Titik Merah + Identitas Mahasiswa + Status Keaktifan */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-slate-100 pb-3">
                 <div className="flex items-center space-x-2.5 flex-wrap gap-y-1.5">
@@ -362,7 +358,7 @@ export default function MahasiswaBimbinganPage() {
 
               {/* Row Bawah: Judul TA Langsung (Kiri), Progres Bimbingan (Tengah), Aksi (Kanan) */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center pt-0.5">
-                
+
                 {/* Judul Tugas Akhir ditampilkan LANGSUNG tanpa label tambahan */}
                 <div className="lg:col-span-5 space-y-1">
                   <p className="text-sm font-medium text-slate-700 leading-relaxed line-clamp-2" title={student.thesisTitle}>
@@ -379,10 +375,9 @@ export default function MahasiswaBimbinganPage() {
                     </span>
                   </div>
                   <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                    <div 
-                      className={`h-full rounded-full transition-all duration-500 ${
-                        student.isReadyForDefense ? 'bg-emerald-500' : 'bg-indigo-600'
-                      }`}
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${student.isReadyForDefense ? 'bg-emerald-500' : 'bg-indigo-600'
+                        }`}
                       style={{ width: `${student.progressPercent > 0 ? Math.max(student.progressPercent, 4) : 0}%` }}
                     />
                   </div>
@@ -392,11 +387,10 @@ export default function MahasiswaBimbinganPage() {
                 <div className="lg:col-span-4 flex items-center lg:justify-end space-x-2 shrink-0">
                   <Link
                     href={`/dosen/validasi?nim=${student.student_nim}`}
-                    className={`inline-flex items-center justify-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all shadow-xs cursor-pointer ${
-                      student.hasNewSubmission
+                    className={`inline-flex items-center justify-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all shadow-xs cursor-pointer ${student.hasNewSubmission
                         ? 'bg-rose-600 hover:bg-rose-700 text-white ring-2 ring-rose-200/80'
                         : 'bg-indigo-600 hover:bg-indigo-700 text-white'
-                    }`}
+                      }`}
                   >
                     <MessageSquare className="w-3.5 h-3.5 shrink-0" />
                     <span>Buka Log Bimbingan</span>
