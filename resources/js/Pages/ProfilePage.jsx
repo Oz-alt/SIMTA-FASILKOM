@@ -53,6 +53,12 @@ export default function ProfilePage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isCompletedSuccess, setIsCompletedSuccess] = useState(false);
   const [needsPhoneResync, setNeedsPhoneResync] = useState(false);
+  const [avatarLoadError, setAvatarLoadError] = useState(false);
+  const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    setAvatarLoadError(false);
+  }, [currentUser?.avatar_url]);
 
   const JABATAN_FUNGSIONAL_OPTIONS = [
     'Lektor Kepala',
@@ -465,7 +471,9 @@ export default function ProfilePage() {
 
   const handleOpenPhotoModal = () => {
     setPhotoModalError('');
-    const existingUrl = currentUser?.avatar_url && !currentUser.avatar_url.startsWith('data:image/')
+    const existingUrl = currentUser?.avatar_url &&
+      !currentUser.avatar_url.startsWith('data:image/') &&
+      !currentUser.avatar_url.includes('1gcriQMAWb7tlHZwvH2UXHuvL_WlpPwsz')
       ? currentUser.avatar_url
       : '';
     setPhotoLinkInput(existingUrl);
@@ -473,6 +481,43 @@ export default function ProfilePage() {
     setCropZoom(1);
     setCropOffset({ x: 0, y: 0 });
     setIsPhotoModalOpen(true);
+  };
+
+  const handleSelectPhotoFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhotoModalError('');
+    if (!file.type.startsWith('image/')) {
+      setPhotoModalError('Pilih file gambar yang valid (.jpg, .png, .webp).');
+      return;
+    }
+    setIsProcessingLink(true);
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = String(ev.target?.result || '');
+      const img = new Image();
+      img.onload = () => {
+        setNaturalImgSize({
+          width: img.naturalWidth || 300,
+          height: img.naturalHeight || 300
+        });
+        setCropZoom(1);
+        setCropOffset({ x: 0, y: 0 });
+        setProcessedPhotoUrl(dataUrl);
+        setIsProcessingLink(false);
+      };
+      img.onerror = () => {
+        setIsProcessingLink(false);
+        setPhotoModalError('Gagal membaca file gambar tersebut.');
+      };
+      img.src = dataUrl;
+    };
+    reader.onerror = () => {
+      setIsProcessingLink(false);
+      setPhotoModalError('Gagal membaca file dari perangkat.');
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
   };
 
   const handleProcessPhotoLink = (e) => {
@@ -498,7 +543,9 @@ export default function ProfilePage() {
     setCropZoom(1);
     setCropOffset({ x: 0, y: 0 });
 
-    // Gunakan proxy CORS agar gambar dari domain mana pun bisa dimuat dan di-crop ke Canvas
+    const isGoogleDriveUrl = normalized.includes('lh3.googleusercontent.com/d/') || photoLinkInput.includes('drive.google.com');
+
+    // Gunakan proxy CORS agar gambar dari domain mana pun bisa dimuat dan di-crop ke Canvas (menghasilkan base64 permanen lintas perangkat)
     const proxyUrl = normalized.startsWith('data:image/')
       ? normalized
       : `https://images.weserv.nl/?url=${encodeURIComponent(normalized.replace(/^https?:\/\//, ''))}&w=1200&output=jpg`;
@@ -514,7 +561,12 @@ export default function ProfilePage() {
       setIsProcessingLink(false);
     };
     testImg.onerror = () => {
-      // Fallback: coba load URL asli secara langsung jika proxy gagal
+      if (isGoogleDriveUrl) {
+        setIsProcessingLink(false);
+        setPhotoModalError('Link Google Drive ini masih bersifat Privat / Dibatasi (hanya tampil di akun Google pemilik). Ubah akses di Google Drive menjadi "Siapa saja yang memiliki link", atau gunakan tombol "Pilih File dari Perangkat" di bawah agar foto tampil di semua perangkat.');
+        return;
+      }
+      // Fallback untuk link non-Google Drive: coba load URL asli secara langsung jika proxy gagal
       const directImg = new Image();
       directImg.onload = () => {
         setNaturalImgSize({
@@ -526,7 +578,7 @@ export default function ProfilePage() {
       };
       directImg.onerror = () => {
         setIsProcessingLink(false);
-        setPhotoModalError('Gagal memuat gambar dari link tersebut. Pastikan link foto bersifat publik dan dapat diakses.');
+        setPhotoModalError('Gagal memuat gambar dari link tersebut. Pastikan link foto bersifat publik atau gunakan tombol Pilih File dari Perangkat.');
       };
       directImg.src = normalized;
     };
@@ -753,10 +805,12 @@ export default function ProfilePage() {
               className="w-24 h-24 rounded-2xl bg-gradient-to-br from-blue-900 via-indigo-900 to-slate-900 text-white font-extrabold text-3xl flex items-center justify-center shadow-md overflow-hidden border-2 border-white cursor-pointer"
               title="Klik untuk mengubah foto profil via Link & Crop"
             >
-              {currentUser?.avatar_url ? (
+              {currentUser?.avatar_url && !avatarLoadError ? (
                 <img 
                   src={currentUser.avatar_url} 
                   alt={currentUser.nama} 
+                  referrerPolicy="no-referrer"
+                  onError={() => setAvatarLoadError(true)}
                   className="w-full h-full object-cover"
                 />
               ) : (
@@ -1478,6 +1532,23 @@ export default function ProfilePage() {
                 <p className="text-[10px] text-slate-400">
                   Mendukung link gambar langsung (.jpg, .png, .webp), Imgur, Postimages, maupun link Google Drive (akses publik).
                 </p>
+                <div className="pt-1 flex items-center justify-between gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleSelectPhotoFile}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full py-2 px-3 rounded-xl border border-dashed border-blue-300 bg-blue-50/60 hover:bg-blue-100/70 text-blue-700 font-bold text-xs transition-all cursor-pointer flex items-center justify-center space-x-2"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Atau Pilih File Foto Langsung dari Perangkat (Pasti Sinkron)</span>
+                  </button>
+                </div>
               </form>
 
               {/* Step 2: Area Preview & Interactive Crop */}

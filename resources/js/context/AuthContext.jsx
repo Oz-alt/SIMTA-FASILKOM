@@ -82,6 +82,7 @@ import {
   verifyStudentPassword,
   normalizeNim,
   normalizeStudentAngkatan,
+  sanitizeStudentAvatarUrl,
   hydrateStudentProfileMeta,
   resetCredentialCache
 } from '../services/studentCredentials.js';
@@ -524,12 +525,14 @@ export function AuthProvider({ children }) {
     }
 
     const isProfileCompleted = user.is_profile_completed === true;
+    const cleanAvatar = sanitizeStudentAvatarUrl(user.avatar_url || user.avatarUrl);
 
     return {
       ...user,
       nama: cleanNama,
       nim: cleanNim,
       email: cleanEmail,
+      avatar_url: cleanAvatar,
       is_profile_completed: isProfileCompleted
     };
   };
@@ -831,6 +834,7 @@ export function AuthProvider({ children }) {
 
   // Setter helper that syncs state with localStorage
   const setCurrentUser = (user) => {
+    currentUserRef.current = user;
     setCurrentUserState(user);
     if (user) {
       localStorage.setItem('simta_active_user', JSON.stringify(user));
@@ -863,7 +867,8 @@ export function AuthProvider({ children }) {
 
   // Update active user profile fields and sync locally & with Supabase
   const updateUserProfile = async (updatedFields) => {
-    if (!currentUser) return;
+    const baseUser = currentUserRef.current || currentUser;
+    if (!baseUser) return;
     const toUpdate = { ...updatedFields };
     if (toUpdate.password) {
       try {
@@ -872,7 +877,7 @@ export function AuthProvider({ children }) {
         console.warn('Failed to compute sha256 for password update:', err);
       }
     }
-    const merged = { ...currentUser, ...toUpdate };
+    const merged = { ...baseUser, ...toUpdate };
     setCurrentUser(merged);
 
     // Sync password directly in registered users list if updating password for any role
@@ -3376,7 +3381,7 @@ export function AuthProvider({ children }) {
                       no_hp: parsed.noHp || parsed.no_hp,
                       kelas: normalizeStudentAngkatan(parsed.kelas),
                       prodi: parsed.prodi,
-                      avatar_url: parsed.avatar_url !== undefined ? parsed.avatar_url : parsed.avatarUrl,
+                      avatar_url: sanitizeStudentAvatarUrl(parsed.avatar_url !== undefined ? parsed.avatar_url : parsed.avatarUrl),
                       isProfileCompleted: Boolean(parsed.isProfileCompleted)
                     });
                   }
@@ -3497,7 +3502,7 @@ export function AuthProvider({ children }) {
                   if (rawPhone && isValidNonDummyPhone(rawPhone) && !existing.no_hp) {
                     existing.no_hp = String(rawPhone).trim();
                   }
-                  const rawAvatar = obj.avatar_url || obj.avatarUrl || '';
+                  const rawAvatar = sanitizeStudentAvatarUrl(obj.avatar_url || obj.avatarUrl || '');
                   if (rawAvatar && !existing.avatar_url) {
                     existing.avatar_url = rawAvatar;
                   }

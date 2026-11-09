@@ -84,8 +84,13 @@ export default function Navbar() {
   } = useAuth();
   const [showNotif, setShowNotif] = useState(false);
   const [showRoleMenu, setShowRoleMenu] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
   const [currentTime, setCurrentTime] = useState(() => new Date());
   const notifRef = useRef(null);
+
+  useEffect(() => {
+    setAvatarError(false);
+  }, [currentUser?.avatar_url]);
 
   // Status baca persisten untuk notifikasi sistem & admin
   const [readNotifIds, setReadNotifIds] = useState(() => {
@@ -806,10 +811,12 @@ export default function Navbar() {
             {currentUser ? (
               <div className="flex items-center space-x-2 pl-2 border-l border-slate-200">
                 <div className="w-8 h-8 rounded-full bg-slate-900 text-white font-bold text-xs flex items-center justify-center overflow-hidden border border-slate-200 shadow-2xs shrink-0">
-                  {currentUser.avatar_url ? (
+                  {currentUser.avatar_url && !avatarError ? (
                     <img 
                       src={currentUser.avatar_url} 
                       alt={currentUser.nama} 
+                      referrerPolicy="no-referrer"
+                      onError={() => setAvatarError(true)}
                       className="w-full h-full object-cover"
                     />
                   ) : (

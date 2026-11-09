@@ -42,6 +42,14 @@ const isValidStudentPhone = (val) => {
     return true;
 };
 
+/** Bersihkan URL avatar yang rusak/terkunci (seperti link Google Drive privat lama). */
+export const sanitizeStudentAvatarUrl = (val) => {
+    const s = String(val ?? '').trim();
+    if (!s || s === '-') return '';
+    if (s.includes('1gcriQMAWb7tlHZwvH2UXHuvL_WlpPwsz')) return '';
+    return s;
+};
+
 /** Normalisasi nilai angkatan/kelas agar konsisten mengikuti input profil mahasiswa (mis. "MI 2024" -> "2024"). */
 export const normalizeStudentAngkatan = (value) => {
     const raw = String(value ?? '').trim();
@@ -76,7 +84,8 @@ const scanLocalStudentFallback = (nim) => {
             const active = JSON.parse(rawActive);
             if (active && normalizeNim(active.nim || active.nip) === key) {
                 if (isValidStudentPhone(active.no_hp || active.noHp)) result.noHp = String(active.no_hp || active.noHp).trim();
-                if (active.avatar_url || active.avatarUrl) result.avatar_url = active.avatar_url || active.avatarUrl;
+                const av = sanitizeStudentAvatarUrl(active.avatar_url || active.avatarUrl);
+                if (av) result.avatar_url = av;
                 const k = normalizeStudentAngkatan(active.kelas);
                 if (k) result.kelas = k;
                 if (active.nama) result.nama = active.nama;
@@ -94,7 +103,8 @@ const scanLocalStudentFallback = (nim) => {
                 list.forEach((u) => {
                     if (!u || normalizeNim(u.nim || u.nip) !== key) return;
                     if (!result.noHp && isValidStudentPhone(u.no_hp || u.noHp)) result.noHp = String(u.no_hp || u.noHp).trim();
-                    if (!result.avatar_url && (u.avatar_url || u.avatarUrl)) result.avatar_url = u.avatar_url || u.avatarUrl;
+                    const av = sanitizeStudentAvatarUrl(u.avatar_url || u.avatarUrl);
+                    if (!result.avatar_url && av) result.avatar_url = av;
                     const k = normalizeStudentAngkatan(u.kelas);
                     if (!result.kelas && k) result.kelas = k;
                     if (!result.nama && u.nama) result.nama = u.nama;
@@ -139,7 +149,9 @@ const persistLocalCred = (nim, status) => {
             const incomingPhone = status.noHp || status.no_hp || null;
             const cleanPhone = (incomingPhone && incomingPhone !== '-') ? incomingPhone : (prev.noHp || prev.no_hp || null);
             const incomingAvatar = status.avatar_url !== undefined ? status.avatar_url : status.avatarUrl;
-            const cleanAvatar = incomingAvatar !== undefined ? incomingAvatar : (prev.avatar_url || prev.avatarUrl || null);
+            const cleanAvatar = incomingAvatar !== undefined
+                ? (sanitizeStudentAvatarUrl(incomingAvatar) || null)
+                : (sanitizeStudentAvatarUrl(prev.avatar_url || prev.avatarUrl) || null);
             const isCompleted = status.isProfileCompleted !== undefined
                 ? Boolean(status.isProfileCompleted)
                 : Boolean(prev.isProfileCompleted || cleanPhone);
@@ -181,7 +193,8 @@ export const hydrateStudentProfileMeta = (rows = []) => {
             const prev = cache.get(nim) || getCachedStudentCredential(nim) || {};
             const cleanKelas = normalizeStudentAngkatan(parsed?.kelas || prev.kelas);
             const incomingAvatar = parsed?.avatar_url !== undefined ? parsed.avatar_url : parsed?.avatarUrl;
-            const resolvedAvatar = incomingAvatar !== undefined ? incomingAvatar : (prev.avatar_url || prev.avatarUrl || null);
+            const cleanRemoteAvatar = sanitizeStudentAvatarUrl(incomingAvatar);
+            const resolvedAvatar = cleanRemoteAvatar || sanitizeStudentAvatarUrl(prev.avatar_url || prev.avatarUrl) || null;
             const merged = {
                 exists: true,
                 hasPassword: Boolean(prev.hasPassword ?? true),
@@ -357,10 +370,9 @@ export const getStudentCredential = async (nim, options = {}) => {
                 row?.kelas || remoteMeta?.kelas || ttKelas || profKelas || prev.kelas || localFallback.kelas
             ) || null;
             const resolvedProdi = row?.prodi || remoteMeta?.prodi || ttProdi || prev.prodi || localFallback.prodi || null;
-            const remoteAvatar = remoteMeta?.avatar_url !== undefined ? remoteMeta.avatar_url : remoteMeta?.avatarUrl;
-            const resolvedAvatar = remoteAvatar !== undefined
-                ? (remoteAvatar || prev.avatar_url || prev.avatarUrl || localFallback.avatar_url || null)
-                : (prev.avatar_url || prev.avatarUrl || localFallback.avatar_url || null);
+            const remoteAvatar = sanitizeStudentAvatarUrl(remoteMeta?.avatar_url !== undefined ? remoteMeta.avatar_url : remoteMeta?.avatarUrl);
+            const localAvatar = sanitizeStudentAvatarUrl(prev.avatar_url || prev.avatarUrl || localFallback.avatar_url);
+            const resolvedAvatar = remoteAvatar || localAvatar || null;
 
             // Indikasi profil telah selesai/lengkap:
             // - row.is_profile_completed dari student_credentials
@@ -378,7 +390,7 @@ export const getStudentCredential = async (nim, options = {}) => {
 
             // Auto-Heal ke admin_cms jika browser ini punya no_hp atau avatar_url yang belum ada di remoteMeta
             const remoteHasPhone = isValidStudentPhone(remoteMeta?.noHp || remoteMeta?.no_hp);
-            const remoteHasAvatar = Boolean(remoteMeta?.avatar_url || remoteMeta?.avatarUrl);
+            const remoteHasAvatar = Boolean(remoteAvatar);
             const needsAdminCmsHeal = (resolvedNoHp && !remoteHasPhone) || (resolvedAvatar && !remoteHasAvatar);
             if (needsAdminCmsHeal) {
                 supabase.from('admin_cms').upsert([{
@@ -475,7 +487,7 @@ export const saveStudentCredential = async ({ nim, password, isProfileCompleted,
     const cleanKelas = typeof kelas === 'string' && kelas.trim() ? kelas.trim() : null;
     const cleanProdi = typeof prodi === 'string' && prodi.trim() ? prodi.trim() : null;
     const hasAvatarUpdate = avatar_url !== undefined || avatarUrl !== undefined;
-    const cleanAvatar = avatar_url !== undefined ? avatar_url : avatarUrl;
+    const cleanAvatar = sanitizeStudentAvatarUrl(avatar_url !== undefined ? avatar_url : avatarUrl);
 
     if (!plainPassword && typeof isProfileCompleted !== 'boolean' && !cleanNama && !cleanNoHp && !cleanKelas && !hasAvatarUpdate) {
         return { success: true };
@@ -513,7 +525,7 @@ export const saveStudentCredential = async ({ nim, password, isProfileCompleted,
         const mergedNoHp = cleanNoHp || existingRemote?.noHp || existingRemote?.no_hp || prev.noHp || prev.no_hp || null;
         const mergedAvatar = hasAvatarUpdate
             ? (cleanAvatar || '')
-            : (existingRemote?.avatar_url ?? existingRemote?.avatarUrl ?? prev.avatar_url ?? prev.avatarUrl ?? null);
+            : (sanitizeStudentAvatarUrl(existingRemote?.avatar_url ?? existingRemote?.avatarUrl ?? prev.avatar_url ?? prev.avatarUrl) || null);
         const mergedCompleted = typeof isProfileCompleted === 'boolean'
             ? isProfileCompleted
             : Boolean(existingRemote?.isProfileCompleted || prev.isProfileCompleted || mergedNoHp);
