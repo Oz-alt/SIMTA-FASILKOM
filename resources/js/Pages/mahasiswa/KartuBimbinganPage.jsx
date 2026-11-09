@@ -267,15 +267,17 @@ export default function KartuBimbinganPage() {
             <p><span className="w-28 inline-block font-bold">Nama</span>: {currentUser?.nama || '-'}</p>
             <p><span className="w-28 inline-block font-bold">NIM</span>: {studentNim || '-'}</p>
             <p><span className="w-28 inline-block font-bold">Program Studi</span>: {currentUser?.prodi || 'D3 Manajemen Informatika'}</p>
-            <p className="flex items-start">
-              <span className="w-28 inline-block font-bold shrink-0">Judul TA</span>
-              <span className="mr-1">:</span>
-              <span className="flex-1 font-semibold leading-relaxed">{judulTa}</span>
-            </p>
           </div>
           <div className="space-y-1">
             <p><span className="w-28 inline-block font-bold">Pembimbing 1</span>: {dospem1Nama}</p>
             <p><span className="w-28 inline-block font-bold">Pembimbing 2</span>: {dospem2Nama}</p>
+          </div>
+          <div className="col-span-2 pt-1">
+            <p className="flex items-start">
+              <span className="w-28 inline-block font-bold shrink-0">Judul TA</span>
+              <span className="mr-1.5">:</span>
+              <span className="flex-1 font-semibold leading-relaxed">{judulTa}</span>
+            </p>
           </div>
         </div>
 
