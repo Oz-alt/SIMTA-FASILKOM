@@ -345,7 +345,9 @@ export default function Sidebar() {
               }`}
             >
               <div className="flex items-center space-x-3">
+                {DashboardIcon && (
                 <DashboardIcon className={`w-4 h-4 ${isRouteActive(menuData.dashboard.to) ? 'text-indigo-600' : 'text-slate-500'}`} />
+              )}
                 <span>{menuData.dashboard.label}</span>
               </div>
               {menuData.dashboard.isLocked && (
@@ -372,7 +374,7 @@ export default function Sidebar() {
                 }`}
               >
                 <div className="flex items-center space-x-3">
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-indigo-600' : 'text-slate-500'}`} />
+                  {Icon && <Icon className={`w-4 h-4 ${isActive ? 'text-indigo-600' : 'text-slate-500'}`} />}
                   <span>{item.label}</span>
                 </div>
                 {item.isLocked && (
@@ -402,7 +404,7 @@ export default function Sidebar() {
                     className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-bold text-slate-700 hover:bg-slate-100/70 transition-colors cursor-pointer group"
                   >
                     <div className="flex items-center space-x-2.5">
-                      <GroupIcon className="w-4 h-4 text-slate-500 group-hover:text-indigo-600 transition-colors" />
+                      {GroupIcon && <GroupIcon className="w-4 h-4 text-slate-500 group-hover:text-indigo-600 transition-colors" />}
                       <span className="tracking-wide uppercase text-[11px] text-slate-600 font-extrabold">{group.label}</span>
                     </div>
                     <ChevronDown 
@@ -432,7 +434,7 @@ export default function Sidebar() {
                                 : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                             }`}
                           >
-                            <Icon className="w-3.5 h-3.5" />
+                            {Icon && <Icon className="w-3.5 h-3.5 shrink-0" />}
                             <span>{item.label}</span>
                           </Link>
                         );
