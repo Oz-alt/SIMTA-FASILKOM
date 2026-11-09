@@ -179,11 +179,6 @@ export default function KartuBimbinganPage() {
   // Filter consultations for current student in strict chronological order (oldest to newest: Bimbingan 1, 2, 3...)
   const studentConsultations = useMemo(() => {
     if (!studentNim) return [];
-    
-    const parseIdNum = (idStr) => {
-      const match = String(idStr).match(/\d+/);
-      return match ? Number(match[0]) : 0;
-    };
 
     return consultations
       .filter(c => String(c.mhs_nim).trim() === String(studentNim).trim())
@@ -195,28 +190,28 @@ export default function KartuBimbinganPage() {
           return dateA.localeCompare(dateB);
         }
 
-        // 2. Secondary: Compare waktu (HH:MM) for consultations on same day
-        const waktuA = a.waktu || '';
-        const waktuB = b.waktu || '';
-        if (waktuA !== waktuB) {
-          return waktuA.localeCompare(waktuB);
-        }
-
-        // 3. Tertiary: Compare creation timestamp (created_at)
+        // 2. Secondary: Waktu input pembuatan (created_at kronologis) - yang diinput lebih dulu tampil di nomor urut lebih awal
         const createdA = a.created_at ? new Date(a.created_at).getTime() : 0;
         const createdB = b.created_at ? new Date(b.created_at).getTime() : 0;
         if (createdA !== 0 && createdB !== 0 && createdA !== createdB) {
           return createdA - createdB;
         }
 
-        // 4. Quaternary: Compare numeric ID timestamp (cons-1, cons-2, cons-174028...)
-        const numA = parseIdNum(a.id);
-        const numB = parseIdNum(b.id);
-        if (numA !== 0 && numB !== 0 && numA !== numB) {
-          return numA - numB;
+        // 3. Tertiary: Jika tanggal dan created_at sama/tidak membedakan, Pembimbing 1 (Utama) SELALU didahulukan sebelum Pembimbing 2 (Pendamping)
+        const isPemb2A = String(a.pembimbing || '').includes('2');
+        const isPemb2B = String(b.pembimbing || '').includes('2');
+        if (isPemb2A !== isPemb2B) {
+          return isPemb2A ? 1 : -1;
         }
 
-        return String(a.id).localeCompare(String(b.id));
+        // 4. Quaternary: Compare waktu sesi (HH:MM)
+        const waktuA = a.waktu || '';
+        const waktuB = b.waktu || '';
+        if (waktuA !== waktuB) {
+          return waktuA.localeCompare(waktuB);
+        }
+
+        return String(a.id || '').localeCompare(String(b.id || ''));
       });
   }, [consultations, studentNim]);
 

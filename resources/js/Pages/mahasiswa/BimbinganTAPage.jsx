@@ -53,6 +53,13 @@ export default function BimbinganTAPage() {
         .sort((a, b) => {
           const dateDiff = (b.tanggal || '').localeCompare(a.tanggal || '');
           if (dateDiff !== 0) return dateDiff;
+
+          const createdA = a.created_at ? new Date(a.created_at).getTime() : 0;
+          const createdB = b.created_at ? new Date(b.created_at).getTime() : 0;
+          if (createdA !== 0 && createdB !== 0 && createdA !== createdB) {
+            return createdB - createdA;
+          }
+
           return (b.waktu || '').localeCompare(a.waktu || '');
         });
     }

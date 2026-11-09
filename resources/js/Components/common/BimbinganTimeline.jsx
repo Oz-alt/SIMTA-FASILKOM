@@ -52,6 +52,25 @@ export default function BimbinganTimeline({ consultations = [], currentUser }) {
       const dateA = a.tanggal || '';
       const dateB = b.tanggal || '';
       if (dateA !== dateB) return dateA.localeCompare(dateB);
+
+      const createdA = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const createdB = b.created_at ? new Date(b.created_at).getTime() : 0;
+      if (createdA !== 0 && createdB !== 0 && createdA !== createdB) {
+        return createdA - createdB;
+      }
+
+      const isPemb2A = String(a.pembimbing || '').includes('2');
+      const isPemb2B = String(b.pembimbing || '').includes('2');
+      if (isPemb2A !== isPemb2B) {
+        return isPemb2A ? 1 : -1;
+      }
+
+      const waktuA = a.waktu || '';
+      const waktuB = b.waktu || '';
+      if (waktuA !== waktuB) {
+        return waktuA.localeCompare(waktuB);
+      }
+
       return String(a.id || '').localeCompare(String(b.id || ''));
     });
     const map = new Map();
