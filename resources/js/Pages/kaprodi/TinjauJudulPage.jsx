@@ -113,18 +113,11 @@ export default function TinjauJudulPage() {
       {/* Header Banner */}
       <div className="relative rounded-3xl bg-gradient-to-r from-blue-900 via-blue-800 to-blue-950 text-white p-6 sm:p-8 overflow-hidden shadow-xl border border-blue-700/40">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="max-w-3xl space-y-3">
+          <div className="max-w-4xl space-y-3">
             <div className="flex flex-wrap items-center gap-2">
               <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-200 border border-blue-400/30 text-xs font-bold uppercase tracking-wider">
                 <GraduationCap className="w-3.5 h-3.5 text-blue-300" />
                 <span>Portal Kaprodi FASILKOM UNSRI</span>
-              </div>
-              <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-xs font-bold">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
-                </span>
-                <span>Sinkronisasi Real-Time Aktif</span>
               </div>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
@@ -133,11 +126,6 @@ export default function TinjauJudulPage() {
             <p className="text-xs sm:text-sm text-blue-100/90 leading-relaxed font-normal">
               Pengajuan judul mahasiswa otomatis masuk ke tahap peninjauan secara real-time. Berikan catatan jika terdapat revisi dari rapat Prodi, lacak riwayat perubahan bersama dosen pembimbing, dan tetapkan judul yang sudah fix.
             </p>
-          </div>
-
-          <div className="shrink-0 flex items-center space-x-2 px-3.5 py-2 rounded-2xl bg-emerald-500/20 text-emerald-200 text-xs font-semibold border border-emerald-400/30 backdrop-blur-md shadow-sm">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span>Sinkronisasi Otomatis Real-Time</span>
           </div>
         </div>
       </div>
