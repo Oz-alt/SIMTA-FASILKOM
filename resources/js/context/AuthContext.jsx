@@ -264,18 +264,39 @@ export const OFFICIAL_DOSEN_HOMEBASE = {
 };
 
 /**
+ * Helper pembersih gelar akademik dosen untuk perbandingan nama yang akurat
+ */
+export const stripAcademicTitles = (str) => String(str || '')
+  .toLowerCase()
+  .replace(/\b(prof|dr|ir|drs|dra|s\s*\.?\s*kom|s\s*\.?\s*t|s\s*\.?\s*si|m\s*\.?\s*kom|m\s*\.?\s*cs|m\s*\.?\s*t|m\s*\.?\s*si|m\s*\.?\s*sc|ph\s*\.?\s*d|mt|st)\b\.?/gi, ' ')
+  .replace(/[^a-z0-9]/g, ' ')
+  .replace(/\s+/g, ' ')
+  .trim();
+
+export const isGenericDosenPlaceholder = (name) => {
+  const s = String(name || '').trim().toLowerCase();
+  return !s || s === '-' || s === 'dosen pembimbing' || s === 'dosen pembimbing 1' || s === 'dosen pembimbing 2' || s === 'pembimbing 1' || s === 'pembimbing 2' || s === 'pembimbing';
+};
+
+/**
  * Daftar ID notifikasi yang telah ditandai sudah dibaca atau dihapus pengguna
  * Disimpan di localStorage agar tidak kembali muncul setelah reload / sync Supabase
  */
 export const getReadNotificationIds = () => {
+  const combined = new Set();
   try {
-    const saved = localStorage.getItem('simta_read_notification_ids');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed)) return new Set(parsed);
+    const saved1 = localStorage.getItem('simta_read_notification_ids');
+    if (saved1) {
+      const parsed1 = JSON.parse(saved1);
+      if (Array.isArray(parsed1)) parsed1.forEach(id => combined.add(String(id)));
+    }
+    const saved2 = localStorage.getItem('simta_read_notif_ids');
+    if (saved2) {
+      const parsed2 = JSON.parse(saved2);
+      if (Array.isArray(parsed2)) parsed2.forEach(id => combined.add(String(id)));
     }
   } catch { }
-  return new Set();
+  return combined;
 };
 
 export const addReadNotificationIds = (idsToAdd = []) => {
@@ -286,7 +307,28 @@ export const addReadNotificationIds = (idsToAdd = []) => {
         current.add(String(id).trim());
       }
     });
-    localStorage.setItem('simta_read_notification_ids', JSON.stringify(Array.from(current)));
+    const serialized = JSON.stringify(Array.from(current));
+    localStorage.setItem('simta_read_notification_ids', serialized);
+    localStorage.setItem('simta_read_notif_ids', serialized);
+  } catch { }
+};
+
+export const removeReadNotificationIds = (idsToRemove = []) => {
+  try {
+    const current = getReadNotificationIds();
+    let changed = false;
+    idsToRemove.forEach(id => {
+      const key = String(id || '').trim();
+      if (key && current.has(key)) {
+        current.delete(key);
+        changed = true;
+      }
+    });
+    if (changed) {
+      const serialized = JSON.stringify(Array.from(current));
+      localStorage.setItem('simta_read_notification_ids', serialized);
+      localStorage.setItem('simta_read_notif_ids', serialized);
+    }
   } catch { }
 };
 
@@ -337,31 +379,43 @@ export const isNotificationForUser = (n, currentUser) => {
 
   if (currentUser.role === 'mahasiswa') {
     if (n.recipient_role && n.recipient_role !== 'mahasiswa' && n.recipient_role !== 'all') return false;
-    if (n.recipient_nim && currentUser.nim) {
-      return String(n.recipient_nim).trim() === String(currentUser.nim).trim();
+    const myNim = String(currentUser.nim || '').trim();
+    const myId = String(currentUser.id || '').trim();
+    if (n.recipient_nim && myNim) {
+      return String(n.recipient_nim).trim() === myNim;
     }
-    if (n.profile_id && (String(n.profile_id) === String(currentUser.id) || String(n.profile_id) === String(currentUser.nim))) {
+    if (n.mhs_nim && myNim && n.recipient_role === 'mahasiswa') {
+      return String(n.mhs_nim).trim() === myNim;
+    }
+    if (n.student_nim && myNim) {
+      return String(n.student_nim).trim() === myNim;
+    }
+    if (n.profile_id && (String(n.profile_id) === myId || String(n.profile_id) === myNim || String(n.profile_id) === `user-${myNim}`)) {
       return true;
     }
-    return !n.recipient_role || n.recipient_role === 'mahasiswa';
+    return false;
   }
 
   if (currentUser.role === 'dosen') {
     if (n.recipient_role === 'mahasiswa' || n.recipient_role === 'kaprodi') return false;
     const cleanNip = String(currentUser.nip || currentUser.nim || '').trim();
-    const cleanNama = (currentUser.nama || '').toLowerCase().replace(/dr\.|ir\.|prof\.|s\.kom\.|m\.cs\.|m\.t\.|m\.kom\.|ph\.d\.|st\.|s\.t\./gi, '').trim();
+    const cleanNama = stripAcademicTitles(currentUser.nama);
 
     if (n.recipient_nip && cleanNip && String(n.recipient_nip).trim() === cleanNip) {
       return true;
     }
-    if (n.dosen_nama && cleanNama) {
-      const cleanNotifNama = n.dosen_nama.toLowerCase().replace(/dr\.|ir\.|prof\.|s\.kom\.|m\.cs\.|m\.t\.|m\.kom\.|ph\.d\.|st\.|s\.t\./gi, '').trim();
-      if (cleanNotifNama.includes(cleanNama) || cleanNama.includes(cleanNotifNama)) {
+    if (n.dosen_nip && cleanNip && String(n.dosen_nip).trim() === cleanNip) {
+      return true;
+    }
+    const rawNotifDosen = n.dosen_nama || n.recipient_nama || '';
+    if (rawNotifDosen && !isGenericDosenPlaceholder(rawNotifDosen) && cleanNama) {
+      const cleanNotifNama = stripAcademicTitles(rawNotifDosen);
+      if (cleanNotifNama && (cleanNotifNama.includes(cleanNama) || cleanNama.includes(cleanNotifNama))) {
         return true;
       }
     }
     if (n.recipient_role === 'dosen') {
-      return !n.recipient_nip || (cleanNip && String(n.recipient_nip).trim() === cleanNip);
+      return !n.recipient_nip && isGenericDosenPlaceholder(rawNotifDosen);
     }
     return false;
   }
@@ -1541,9 +1595,15 @@ export function AuthProvider({ children }) {
       const readKeys = [String(notifId)];
       if (targetNotif) {
         if (targetNotif.consultation_id) {
-          readKeys.push(`consultation_${targetNotif.consultation_id}_${targetNotif.status}`);
-          readKeys.push(`notif-sync-${targetNotif.consultation_id}-${targetNotif.status}`);
-          readKeys.push(String(targetNotif.consultation_id));
+          if (targetNotif.related_type === 'bimbingan_masuk' || targetNotif.recipient_role === 'dosen') {
+            readKeys.push(`notif-cons-${targetNotif.consultation_id}`);
+            readKeys.push(`consultation_dosen_${targetNotif.consultation_id}`);
+          } else {
+            const jRev = targetNotif.jenis_revisi || '';
+            readKeys.push(`notif-mhs-cons-${targetNotif.consultation_id}-${targetNotif.status}-${jRev}`);
+            readKeys.push(`consultation_mhs_${targetNotif.consultation_id}_${targetNotif.status}_${jRev}`);
+            readKeys.push(`notif-mhs-cons-${targetNotif.consultation_id}-${targetNotif.status}`);
+          }
         }
         if (targetNotif.related_type === 'bimbingan_reminder') {
           readKeys.push(`reminder_${targetNotif.profile_id}_${new Date().toISOString().slice(0, 10)}`);
@@ -2371,39 +2431,51 @@ export function AuthProvider({ children }) {
     return assignments.length;
   };
 
-  const stripAcademicTitles = (str) => String(str || '').toLowerCase()
-    .replace(/dr\.|ir\.|prof\.|s\.kom\.|m\.cs\.|m\.t\.|m\.kom\.|ph\.d\.|st\.|s\.t\./gi, '')
-    .replace(/[^a-z0-9]/g, ' ')
-    .trim();
-
   const getStudentAdvisors = (studentNim) => {
     if (!studentNim) return { dospem1: null, dospem2: null, record: null };
     const cleanNim = String(studentNim).trim();
-    const record = (studentAdvisors || []).find(sa => String(sa.student_nim || '').trim() === cleanNim);
-    if (!record) return { dospem1: null, dospem2: null, record: null };
+    const record = (studentAdvisors || []).find(sa => String(sa.student_nim || '').trim() === cleanNim) || null;
+    const titleRec = (thesisTitles || []).find(t => String(t.mhs_nim || '').trim() === cleanNim && t.status !== 'ditolak') || null;
+    if (!record && !titleRec) return { dospem1: null, dospem2: null, record: null };
 
-    const d1Nip = String(record.dospem1_nip || '').trim();
-    const d2Nip = String(record.dospem2_nip || '').trim();
+    const d1Nip = String(record?.dospem1_nip || titleRec?.pembimbing_1_nip || '').trim();
+    const d2Nip = String(record?.dospem2_nip || titleRec?.pembimbing_2_nip || '').trim();
+    const rawD1Nama = String(record?.dospem1_nama || titleRec?.pembimbing_1_nama || titleRec?.pembimbing_1 || '').trim();
+    const rawD2Nama = String(record?.dospem2_nama || titleRec?.pembimbing_2_nama || titleRec?.pembimbing_2 || '').trim();
+    const d1Nama = isGenericDosenPlaceholder(rawD1Nama) ? '' : rawD1Nama;
+    const d2Nama = isGenericDosenPlaceholder(rawD2Nama) ? '' : rawD2Nama;
 
-    let dospem1 = (advisors || []).find(a => String(a.nip || '').trim() === d1Nip) || null;
-    let dospem2 = (advisors || []).find(a => String(a.nip || '').trim() === d2Nip) || null;
+    const allKnownAdvisors = [...(advisors || []), ...MOCK_ADVISORS];
 
-    if (!dospem1 && d1Nip) {
-      dospem1 = {
-        nip: d1Nip,
-        nama: record.dospem1_nama || (d1Nip === '198410012009121005' ? 'Dr. Abdiansah, S.Kom., M.Cs.' : ''),
-        email: d1Nip === '198410012009121005' ? 'abdiansah@unsri.ac.id' : `${d1Nip}@unsri.ac.id`
-      };
-    }
-    if (!dospem2 && d2Nip) {
-      dospem2 = {
-        nip: d2Nip,
-        nama: record.dospem2_nama || (d2Nip === '199306042024062006' ? 'Yesinta Florencia, S.Kom., M.Kom.' : ''),
-        email: d2Nip === '199306042024062006' ? 'yesinta@unsri.ac.id' : `${d2Nip}@unsri.ac.id`
-      };
-    }
+    const resolveOneAdvisor = (nip, nama) => {
+      if (nip) {
+        const byNip = allKnownAdvisors.find(a => String(a.nip || '').trim() === nip);
+        if (byNip) return byNip;
+      }
+      if (nama) {
+        const cleanTarget = stripAcademicTitles(nama);
+        if (cleanTarget) {
+          const byName = allKnownAdvisors.find(a => {
+            const cleanA = stripAcademicTitles(a.nama);
+            return cleanA && (cleanA === cleanTarget || cleanA.includes(cleanTarget) || cleanTarget.includes(cleanA));
+          });
+          if (byName) return byName;
+        }
+      }
+      if (nip || nama) {
+        return {
+          nip: nip || '',
+          nama: nama || (nip === '198410012009121005' ? 'Dr. Abdiansah, S.Kom., M.Cs.' : ''),
+          email: nip === '198410012009121005' ? 'abdiansah@unsri.ac.id' : (nip ? `${nip}@unsri.ac.id` : '')
+        };
+      }
+      return null;
+    };
 
-    return { dospem1, dospem2, record };
+    const dospem1 = resolveOneAdvisor(d1Nip, d1Nama);
+    const dospem2 = resolveOneAdvisor(d2Nip, d2Nama);
+
+    return { dospem1, dospem2, record: record || titleRec };
   };
 
   const isLecturerForThesisTitle = (title, user) => {
@@ -2542,22 +2614,26 @@ export function AuthProvider({ children }) {
     if (!user || user.role !== 'dosen' || !cons) return false;
     const userNip = String(user.nip || user.nim || '').trim();
     const consNip = String(cons.dosen_nip || '').trim();
-    if (consNip && userNip && consNip === userNip) return true;
+    const a = stripAcademicTitles(user.nama);
+    const hasSpecificDosenNama = !isGenericDosenPlaceholder(cons.dosen_nama);
+    const b = hasSpecificDosenNama ? stripAcademicTitles(cons.dosen_nama) : '';
 
-    const stripTitles = (str) => String(str || '').toLowerCase()
-      .replace(/dr\.|ir\.|prof\.|s\.kom\.|m\.cs\.|m\.t\.|m\.kom\.|ph\.d\.|st\.|s\.t\./gi, '')
-      .replace(/[^a-z0-9]/g, ' ')
-      .trim();
-    const a = stripTitles(user.nama);
-    const b = stripTitles(cons.dosen_nama);
-    if (a && b && (a.includes(b) || b.includes(a))) return true;
-
+    // 1. Jika ada nama dosen spesifik pada konsultasi, cek kesesuaian nama terlebih dahulu
     if (a && b) {
+      if (a === b || a.includes(b) || b.includes(a)) return true;
       const wordsA = a.split(/\s+/).filter(w => w.length > 2);
       const wordsB = b.split(/\s+/).filter(w => w.length > 2);
-      if (wordsA.some(w => wordsB.includes(w))) return true;
+      if (wordsA.length > 0 && wordsA.some(w => wordsB.includes(w))) return true;
     }
 
+    // 2. Cek berdasarkan NIP pada konsultasi (jika nama pada konsultasi tidak merujuk ke dosen lain)
+    if (consNip && userNip && consNip === userNip) {
+      if (!b || (a && (a.includes(b) || b.includes(a)))) {
+        return true;
+      }
+    }
+
+    // 3. Cek dari alokasi dosen pembimbing mahasiswa berdasarkan label Pembimbing 1 / Pembimbing 2
     const mhsNim = String(cons.mhs_nim || '').trim();
     if (mhsNim && typeof getStudentAdvisors === 'function') {
       const adv = getStudentAdvisors(mhsNim);
@@ -2566,8 +2642,8 @@ export function AuthProvider({ children }) {
         const assigned = isPemb2 ? adv.dospem2 : adv.dospem1;
         if (assigned) {
           if (assigned.nip && userNip && String(assigned.nip).trim() === userNip) return true;
-          const cleanAssigned = stripTitles(assigned.nama);
-          if (cleanAssigned && a && (cleanAssigned.includes(a) || a.includes(cleanAssigned))) return true;
+          const cleanAssigned = stripAcademicTitles(assigned.nama);
+          if (cleanAssigned && a && (cleanAssigned === a || cleanAssigned.includes(a) || a.includes(cleanAssigned))) return true;
         }
       }
     }
@@ -2853,115 +2929,26 @@ export function AuthProvider({ children }) {
               });
               return;
             }
-            const parsedList = data.map(remoteItem => parseConsultationItem(remoteItem));
+            let localById = new Map();
+            try {
+              const savedLocal = JSON.parse(localStorage.getItem('simta_consultations') || '[]');
+              if (Array.isArray(savedLocal)) {
+                localById = new Map(savedLocal.map(item => [String(item.id), item]));
+              }
+            } catch { }
+
+            const parsedList = data.map(remoteItem => {
+              const localRow = localById.get(String(remoteItem.id));
+              return parseConsultationItem({
+                ...(localRow || {}),
+                ...remoteItem,
+                dosen_nip: remoteItem.dosen_nip || localRow?.dosen_nip || '',
+                dosen_nama: (!isGenericDosenPlaceholder(remoteItem.dosen_nama) ? remoteItem.dosen_nama : localRow?.dosen_nama) || remoteItem.dosen_nama || '',
+                metode: remoteItem.metode || localRow?.metode || 'luring'
+              });
+            });
             setConsultations(parsedList);
             try { localStorage.setItem('simta_consultations', JSON.stringify(parsedList)); } catch { }
-
-            // Reconcile notifications for responded consultations so they appear in student notification bell
-            const activeUser = currentUserRef.current;
-            if (activeUser?.role === 'mahasiswa') {
-              const cleanNim = String(activeUser.nim || '').trim();
-              const respondedForStudent = parsedList.filter(item =>
-                (!cleanNim || String(item.mhs_nim).trim() === cleanNim) &&
-                item.status && item.status !== 'menunggu_tanggapan'
-              );
-
-              if (respondedForStudent.length > 0) {
-                const readIds = getReadNotificationIds();
-                setNotifications(currNotifs => {
-                  let updatedNotifs = [...currNotifs];
-                  let changed = false;
-
-                  respondedForStudent.forEach(item => {
-                    const notifSyncId = `notif-sync-${item.id}-${item.status}`;
-                    const consultKey = `consultation_${item.id}_${item.status}`;
-
-                    // Cek apakah sudah pernah dibaca atau dihapus pengguna
-                    if (readIds.has(notifSyncId) || readIds.has(consultKey) || readIds.has(String(item.id))) {
-                      return;
-                    }
-
-                    const alreadyExists = updatedNotifs.some(n =>
-                      (String(n.consultation_id) === String(item.id) && n.status === item.status) ||
-                      String(n.id) === notifSyncId
-                    );
-
-                    if (!alreadyExists) {
-                      const studentNim = String(item.mhs_nim || cleanNim || '').trim();
-                      const resolvedJenisRevisi = item.jenis_revisi || (
-                        item.status === 'disetujui' ? 'Diterima' :
-                          item.status === 'ditolak' ? 'Ditolak' : 'Minor'
-                      );
-                      const notifTitle = item.status === 'disetujui'
-                        ? `Bimbingan Disetujui (${resolvedJenisRevisi})`
-                        : `Tanggapan Bimbingan: ${resolvedJenisRevisi === 'Ditolak' ? 'Ditolak' : `Revisi ${resolvedJenisRevisi}`}`;
-                      const cleanNote = String(item.masukan_dosen || '').replace(/^\[.*?\]\s*/, '').trim();
-                      const notifMessage = `${item.dosen_nama || 'Dosen Pembimbing'} telah memvalidasi sesi bimbingan "${item.bab_topik || 'Tugas Akhir'}": "${cleanNote || 'Silakan cek kartu dan catatan bimbingan Anda.'}"`;
-
-                      const notifItem = {
-                        id: `notif-sync-${item.id}-${item.status}`,
-                        profile_id: studentNim || 'user-mhs-aulia',
-                        recipient_role: 'mahasiswa',
-                        recipient_nim: studentNim,
-                        recipient_nama: item.mhs_nama || '',
-                        related_type: 'bimbingan_status',
-                        consultation_id: item.id,
-                        status: item.status,
-                        jenis_revisi: resolvedJenisRevisi,
-                        dosen_nama: item.dosen_nama || 'Dosen Pembimbing',
-                        bab_topik: item.bab_topik || '',
-                        title: notifTitle,
-                        message: notifMessage,
-                        is_read: false,
-                        is_email_sent: true,
-                        created_at: item.reviewed_at || item.created_at || new Date().toISOString()
-                      };
-
-                      updatedNotifs.unshift(notifItem);
-                      changed = true;
-                    }
-                  });
-
-                  if (changed) {
-                    try { localStorage.setItem('simta_notifications', JSON.stringify(updatedNotifs)); } catch {}
-                    return updatedNotifs;
-                  }
-                  return currNotifs;
-                });
-              }
-            }
-
-            if (activeUser?.role === 'dosen') {
-              const pendingForLecturer = parsedList.filter(item =>
-                item.status === 'menunggu_tanggapan' && isLecturerForConsultation(item, activeUser)
-              );
-
-              if (pendingForLecturer.length > 0) {
-                setNotifications(currNotifs => {
-                  let updatedNotifs = [...currNotifs];
-                  let changed = false;
-
-                  pendingForLecturer.forEach(item => {
-                    const alreadyExists = updatedNotifs.some(n =>
-                      String(n.consultation_id) === String(item.id) &&
-                      n.related_type === 'bimbingan_masuk'
-                    );
-
-                    if (!alreadyExists) {
-                      const notifItem = createConsultationNotificationForDosen(item, activeUser);
-                      updatedNotifs.unshift(notifItem);
-                      changed = true;
-                    }
-                  });
-
-                  if (changed) {
-                    try { localStorage.setItem('simta_notifications', JSON.stringify(updatedNotifs)); } catch {}
-                    return updatedNotifs;
-                  }
-                  return currNotifs;
-                });
-              }
-            }
           }
         });
 
@@ -6284,9 +6271,15 @@ export function AuthProvider({ children }) {
         if (isBelongToUser) {
           readKeys.push(String(n.id));
           if (n.consultation_id) {
-            readKeys.push(`consultation_${n.consultation_id}_${n.status}`);
-            readKeys.push(`notif-sync-${n.consultation_id}-${n.status}`);
-            readKeys.push(String(n.consultation_id));
+            if (n.related_type === 'bimbingan_masuk' || n.recipient_role === 'dosen') {
+              readKeys.push(`notif-cons-${n.consultation_id}`);
+              readKeys.push(`consultation_dosen_${n.consultation_id}`);
+            } else {
+              const jRev = n.jenis_revisi || '';
+              readKeys.push(`notif-mhs-cons-${n.consultation_id}-${n.status}-${jRev}`);
+              readKeys.push(`consultation_mhs_${n.consultation_id}_${n.status}_${jRev}`);
+              readKeys.push(`notif-mhs-cons-${n.consultation_id}-${n.status}`);
+            }
           }
           if (n.related_type === 'bimbingan_reminder') {
             readKeys.push(`reminder_${n.profile_id}_${new Date().toISOString().slice(0, 10)}`);
@@ -6591,35 +6584,44 @@ export function AuthProvider({ children }) {
     const assigned = (getStudentAdvisors && mhsNim) ? getStudentAdvisors(mhsNim) : null;
     const targetAdvisor = isPemb2 ? assigned?.dospem2 : assigned?.dospem1;
 
-    let targetNip = consData.dosen_nip || targetAdvisor?.nip || '';
-    let targetNama = consData.dosen_nama || targetAdvisor?.nama || '';
+    let targetNip = String(consData.dosen_nip || targetAdvisor?.nip || '').trim();
+    const rawConsNama = isGenericDosenPlaceholder(consData.dosen_nama) ? '' : String(consData.dosen_nama || '').trim();
+    let targetNama = rawConsNama || String(targetAdvisor?.nama || '').trim();
 
     if (!targetNip || !targetNama) {
-      const matchAdv = (advisors && advisors.find(a => 
-        (targetNama && a.nama === targetNama) || 
-        (targetNip && a.nip === targetNip)
-      )) || MOCK_ADVISORS.find(m => 
-        (targetNama && m.nama === targetNama) || 
-        (targetNip && m.nip === targetNip)
-      );
+      const cleanTargetNama = stripAcademicTitles(targetNama);
+      const allKnownAdvisors = [
+        ...(advisors || []),
+        ...MOCK_ADVISORS,
+        ...MOCK_USERS.filter(u => u.role === 'dosen' || u.role === 'kaprodi')
+      ];
+      const matchAdv = allKnownAdvisors.find(a => {
+        if (targetNip && String(a.nip || '').trim() === targetNip) return true;
+        if (cleanTargetNama) {
+          const cleanA = stripAcademicTitles(a.nama);
+          if (cleanA && (cleanA === cleanTargetNama || cleanA.includes(cleanTargetNama) || cleanTargetNama.includes(cleanA))) return true;
+        }
+        return false;
+      });
       if (matchAdv) {
-        if (!targetNip) targetNip = matchAdv.nip;
-        if (!targetNama) targetNama = matchAdv.nama;
+        if (!targetNip && matchAdv.nip) targetNip = String(matchAdv.nip).trim();
+        if (!targetNama && matchAdv.nama) targetNama = matchAdv.nama;
       }
     }
 
     if (!targetNama) {
-      targetNama = isPemb2 ? 'M. Qurhanul Rizkie, Ph.D' : 'Dr. Abdiansah, S.Kom., M.Cs.';
-    }
-    if (!targetNip) {
-      targetNip = isPemb2 ? '198712032022031006' : '198410012009121005';
+      targetNama = isPemb2 ? 'Dosen Pembimbing 2' : 'Dosen Pembimbing 1';
     }
 
-    const advisorAccount = (advisors && advisors.find(a => a.nip === targetNip)) ||
-                          MOCK_USERS.find(u => u.nip === targetNip || u.nama === targetNama) ||
-                          MOCK_ADVISORS.find(m => m.nip === targetNip);
+    const advisorAccount = (advisors && advisors.find(a => targetNip && String(a.nip || '').trim() === targetNip)) ||
+                          MOCK_USERS.find(u => (targetNip && String(u.nip || '').trim() === targetNip) || (targetNama && stripAcademicTitles(u.nama) === stripAcademicTitles(targetNama))) ||
+                          MOCK_ADVISORS.find(m => (targetNip && String(m.nip || '').trim() === targetNip) || (targetNama && stripAcademicTitles(m.nama) === stripAcademicTitles(targetNama)));
 
-    const targetEmail = advisorAccount?.email || `${targetNip}@unsri.ac.id`;
+    if (!targetNip && advisorAccount?.nip) {
+      targetNip = String(advisorAccount.nip).trim();
+    }
+
+    const targetEmail = advisorAccount?.email || (targetNip ? `${targetNip}@unsri.ac.id` : 'dosen@unsri.ac.id');
     const targetProfileId = advisorAccount?.id || (targetNip ? `user-dosen-${targetNip}` : 'user-dosen');
 
     const newEntry = {
@@ -6651,7 +6653,7 @@ export function AuthProvider({ children }) {
     const notifMessage = `Mahasiswa ${mhsNama} (${mhsNim}) mengajukan sesi bimbingan baru ke ${pembimbingLabel}: "${consData.bab_topik || 'Konsultasi Tugas Akhir'}" pada tanggal ${newEntry.tanggal} pukul ${newEntry.waktu} WIB (${newEntry.metode === 'daring' ? 'Daring' : 'Luring'}). Silakan review dan berikan arahan/tanggapan bimbingan.`;
 
     const notifDosen = {
-      id: `notif-entry-${Date.now()}-${newEntry.id}`,
+      id: `notif-cons-${newEntry.id}`,
       profile_id: targetProfileId,
       recipient_role: 'dosen',
       recipient_nip: targetNip,
@@ -6676,7 +6678,8 @@ export function AuthProvider({ children }) {
     };
 
     setNotifications(prev => {
-      const next = [notifDosen, ...prev];
+      const filtered = prev.filter(n => String(n.id) !== String(notifDosen.id));
+      const next = [notifDosen, ...filtered];
       try { localStorage.setItem('simta_notifications', JSON.stringify(next)); } catch {}
       return next;
     });
@@ -6734,7 +6737,6 @@ export function AuthProvider({ children }) {
 
   // Review consultation / feedback (Dosen / Kaprodi)
   const reviewConsultation = async (consultationId, status, feedbackNotes, jenisRevisi) => {
-    let targetCons = null;
     const resolvedJenisRevisi = jenisRevisi || (
       status === 'disetujui' ? 'Diterima' :
         status === 'ditolak' ? 'Ditolak' :
@@ -6749,17 +6751,37 @@ export function AuthProvider({ children }) {
       noteWithTag = `[${tagLabel}] ${cleanNote}`.trim();
     }
 
+    // Cari sesi konsultasi secara sinkron sebelum setConsultations agar tidak terkena penundaan batching React 18
+    let existingCons = (consultations || []).find(c => String(c.id) === String(consultationId)) || null;
+    if (!existingCons) {
+      try {
+        const savedCons = JSON.parse(localStorage.getItem('simta_consultations') || '[]');
+        if (Array.isArray(savedCons)) {
+          existingCons = savedCons.find(c => String(c.id) === String(consultationId)) || null;
+        }
+      } catch { }
+    }
+
+    const activeLecturerName = (currentUser?.role === 'dosen' || currentUser?.role === 'kaprodi') ? currentUser.nama : '';
+    const activeLecturerNip = (currentUser?.role === 'dosen' || currentUser?.role === 'kaprodi') ? String(currentUser.nip || currentUser.nim || '').trim() : '';
+
+    const targetCons = {
+      ...(existingCons || { id: consultationId }),
+      status: status,
+      jenis_revisi: resolvedJenisRevisi,
+      masukan_dosen: noteWithTag,
+      dosen_nama: (!isGenericDosenPlaceholder(existingCons?.dosen_nama) ? existingCons?.dosen_nama : activeLecturerName) || existingCons?.dosen_nama || 'Dosen Pembimbing',
+      dosen_nip: existingCons?.dosen_nip || activeLecturerNip || '',
+      reviewed_at: new Date().toISOString()
+    };
+
     setConsultations(prev => {
       const updated = prev.map(c => {
         if (String(c.id) === String(consultationId)) {
-          targetCons = {
+          return {
             ...c,
-            status: status,
-            jenis_revisi: resolvedJenisRevisi,
-            masukan_dosen: noteWithTag,
-            reviewed_at: new Date().toISOString()
+            ...targetCons
           };
-          return targetCons;
         }
         return c;
       });
@@ -6767,28 +6789,41 @@ export function AuthProvider({ children }) {
       return updated;
     });
 
-    if (targetCons) {
+    if (targetCons && status !== 'menunggu_tanggapan') {
       const studentNim = String(targetCons.mhs_nim || '').trim();
-      const studentUser = MOCK_USERS.find(u => u.nim === studentNim);
+      const studentUser = MOCK_USERS.find(u => String(u.nim || '').trim() === studentNim);
       const studentEmail = studentUser?.email || (studentNim ? `${studentNim}@student.unsri.ac.id` : '09010182428002@student.unsri.ac.id');
       const notifTitle = status === 'disetujui'
         ? `Bimbingan Disetujui (${resolvedJenisRevisi})`
         : `Tanggapan Bimbingan: ${resolvedJenisRevisi === 'Ditolak' ? 'Ditolak' : `Revisi ${resolvedJenisRevisi}`}`;
       const cleanFeedback = feedbackNotes ? String(feedbackNotes).replace(/^\[.*?\]\s*/, '').trim() : '';
-      const notifMessage = `${currentUser?.nama || targetCons.dosen_nama || 'Dosen Pembimbing'} telah memvalidasi bimbingan "${targetCons.bab_topik || 'Tugas Akhir'}" dengan status "${status === 'disetujui' ? 'Disetujui' : 'Perlu Revisi'}": "${cleanFeedback || 'Silakan periksa catatan dan kartu bimbingan Anda.'}"`;
+      const resolvedDosenNama = targetCons.dosen_nama || currentUser?.nama || 'Dosen Pembimbing';
+      const notifMessage = `${resolvedDosenNama} telah memvalidasi bimbingan "${targetCons.bab_topik || 'Tugas Akhir'}" dengan status "${status === 'disetujui' ? 'Disetujui' : `Revisi ${resolvedJenisRevisi}`}": "${cleanFeedback || 'Silakan periksa catatan dan kartu bimbingan Anda.'}"`;
+
+      const notifSyncId = `notif-mhs-cons-${targetCons.id}-${status}-${resolvedJenisRevisi}`;
+      const consultReadKey = `consultation_mhs_${targetCons.id}_${status}_${resolvedJenisRevisi}`;
+
+      // Pastikan status baca lama pada kombinasi ini dibersihkan agar tanggapan baru dosen pasti masuk ke lonceng mahasiswa
+      removeReadNotificationIds([
+        notifSyncId,
+        consultReadKey,
+        `notif-mhs-cons-${targetCons.id}-${status}`
+      ]);
 
       const notif = {
-        id: `notif-${Date.now()}-cons`,
+        id: notifSyncId,
         profile_id: studentUser?.id || studentNim || 'user-mhs-aulia',
         recipient_role: 'mahasiswa',
         recipient_nim: studentNim,
+        mhs_nim: studentNim,
         recipient_nama: targetCons.mhs_nama || '',
         related_type: 'bimbingan_status',
         consultation_id: targetCons.id,
         status: status,
         jenis_revisi: resolvedJenisRevisi,
-        dosen_nama: currentUser?.nama || targetCons.dosen_nama || 'Dosen Pembimbing',
+        dosen_nama: resolvedDosenNama,
         bab_topik: targetCons.bab_topik || '',
+        action_url: '/mahasiswa/bimbingan',
         title: notifTitle,
         message: notifMessage,
         is_read: false,
@@ -6797,8 +6832,18 @@ export function AuthProvider({ children }) {
         email_sent_at: new Date().toISOString(),
         created_at: new Date().toISOString()
       };
+
       setNotifications(prev => {
-        const next = [notif, ...prev];
+        // Hapus notifikasi bimbingan_masuk dosen untuk sesi ini (karena sudah direspon) serta duplikat bimbingan_status lama untuk sesi yang sama
+        const cleaned = prev.filter(n => {
+          if (String(n.consultation_id) === String(targetCons.id)) {
+            if (n.related_type === 'bimbingan_masuk' || n.related_type === 'bimbingan_status') {
+              return false;
+            }
+          }
+          return String(n.id) !== notifSyncId;
+        });
+        const next = [notif, ...cleaned];
         try { localStorage.setItem('simta_notifications', JSON.stringify(next)); } catch { }
         return next;
       });
@@ -6814,7 +6859,7 @@ export function AuthProvider({ children }) {
           id: `alert-${Date.now()}`,
           title: notifTitle,
           message: cleanFeedback || notifMessage,
-          dosen_nama: currentUser?.nama || targetCons.dosen_nama || 'Dosen Pembimbing',
+          dosen_nama: resolvedDosenNama,
           status: status,
           jenis_revisi: resolvedJenisRevisi,
           bab_topik: targetCons.bab_topik || ''
@@ -8686,6 +8731,276 @@ export function AuthProvider({ children }) {
       }
     }
   }, [thesisTitles, currentUser, studentAdvisors, advisors]);
+
+  // Sinkronisasi berkala & saat berganti akun / fokus tab untuk tabel thesis_consultations
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase || !currentUser) return;
+
+    const syncConsultationsFromRemote = () => {
+      supabase
+        .from('thesis_consultations')
+        .select('*')
+        .then(({ data, error }) => {
+          if (error || !Array.isArray(data)) return;
+          setConsultations(prev => {
+            const localById = new Map((prev || []).map(item => [String(item.id), item]));
+            const nextList = data.map(remoteRow => {
+              const localRow = localById.get(String(remoteRow.id));
+              const mergedRow = {
+                ...(localRow || {}),
+                ...remoteRow,
+                dosen_nip: remoteRow.dosen_nip || localRow?.dosen_nip || '',
+                dosen_nama: (!isGenericDosenPlaceholder(remoteRow.dosen_nama) ? remoteRow.dosen_nama : localRow?.dosen_nama) || remoteRow.dosen_nama || '',
+                metode: remoteRow.metode || localRow?.metode || 'luring'
+              };
+              return parseConsultationItem(mergedRow);
+            });
+
+            const prevSerialized = JSON.stringify(prev || []);
+            const nextSerialized = JSON.stringify(nextList);
+            if (prevSerialized === nextSerialized) return prev;
+
+            try { localStorage.setItem('simta_consultations', nextSerialized); } catch { }
+            return nextList;
+          });
+        })
+        .catch(() => {});
+    };
+
+    syncConsultationsFromRemote();
+
+    const handleFocus = () => syncConsultationsFromRemote();
+    if (typeof window !== 'undefined') {
+      window.addEventListener('focus', handleFocus);
+    }
+    const intervalId = setInterval(syncConsultationsFromRemote, 12000);
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('focus', handleFocus);
+      }
+      clearInterval(intervalId);
+    };
+  }, [currentUser?.id, currentUser?.role, currentUser?.nim, currentUser?.nip]);
+
+  // Lengkapi otomatis dosen_nip & dosen_nama pada sesi konsultasi dari data pembimbing mahasiswa
+  useEffect(() => {
+    if (!consultations || consultations.length === 0) return;
+
+    let hasChange = false;
+    const enriched = consultations.map(c => {
+      const mhsNim = String(c.mhs_nim || '').trim();
+      if (!mhsNim) return c;
+
+      const adv = getStudentAdvisors(mhsNim);
+      if (!adv) return c;
+
+      const isPemb2 = String(c.pembimbing || '').includes('2');
+      const targetAdv = isPemb2 ? adv.dospem2 : adv.dospem1;
+      if (!targetAdv) return c;
+
+      const currentNip = String(c.dosen_nip || '').trim();
+      const currentNama = String(c.dosen_nama || '').trim();
+      const needNip = !currentNip && targetAdv.nip;
+      const needNama = isGenericDosenPlaceholder(currentNama) && targetAdv.nama;
+
+      if (needNip || needNama) {
+        hasChange = true;
+        return {
+          ...c,
+          dosen_nip: needNip ? String(targetAdv.nip).trim() : currentNip,
+          dosen_nama: needNama ? targetAdv.nama : currentNama
+        };
+      }
+      return c;
+    });
+
+    if (hasChange) {
+      setConsultations(enriched);
+      try { localStorage.setItem('simta_consultations', JSON.stringify(enriched)); } catch { }
+    }
+  }, [consultations, studentAdvisors, advisors, thesisTitles]);
+
+  // Reconcile secara reaktif notifikasi Entry Bimbingan (Mahasiswa -> Dosen) & Respon Bimbingan (Dosen -> Mahasiswa)
+  useEffect(() => {
+    if (!currentUser || !Array.isArray(consultations)) return;
+
+    const readIds = getReadNotificationIds();
+
+    setNotifications(currNotifs => {
+      let updatedNotifs = [...currNotifs];
+      let changed = false;
+
+      // 1. Bersihkan notifikasi bimbingan_masuk yang sesinya sudah direspon/divalidasi dosen
+      const respondedIds = new Set(
+        consultations
+          .filter(c => c && c.status && c.status !== 'menunggu_tanggapan' && c.status !== 'menunggu')
+          .map(c => String(c.id))
+      );
+
+      if (respondedIds.size > 0) {
+        const beforeLen = updatedNotifs.length;
+        updatedNotifs = updatedNotifs.filter(n => {
+          if (n.related_type === 'bimbingan_masuk' && n.consultation_id && respondedIds.has(String(n.consultation_id))) {
+            return false;
+          }
+          return true;
+        });
+        if (updatedNotifs.length !== beforeLen) {
+          changed = true;
+        }
+      }
+
+      // 2. Rekonsiliasi notifikasi masuk untuk Dosen Pembimbing (Pembimbing 1 / Pembimbing 2)
+      if (currentUser.role === 'dosen') {
+        const cleanUserNip = String(currentUser.nip || currentUser.nim || '').trim();
+        const pendingForLecturer = consultations.filter(item =>
+          item &&
+          (!item.status || item.status === 'menunggu_tanggapan' || item.status === 'menunggu') &&
+          isLecturerForConsultation(item, currentUser)
+        );
+
+        pendingForLecturer.forEach(item => {
+          const notifId = `notif-cons-${item.id}`;
+          const dosenReadKey = `consultation_dosen_${item.id}`;
+          if (readIds.has(notifId) || readIds.has(dosenReadKey)) {
+            return;
+          }
+
+          const existingIdx = updatedNotifs.findIndex(n =>
+            (String(n.consultation_id) === String(item.id) && n.related_type === 'bimbingan_masuk') ||
+            String(n.id) === notifId
+          );
+
+          if (existingIdx >= 0) {
+            const existing = updatedNotifs[existingIdx];
+            if (readIds.has(String(existing.id))) {
+              return;
+            }
+            // Pastikan recipient_nip dan dosen_nama sinkron dengan dosen pembimbing aktif agar tampil di lonceng Navbar
+            if (
+              (cleanUserNip && String(existing.recipient_nip || '').trim() !== cleanUserNip) ||
+              isGenericDosenPlaceholder(existing.dosen_nama)
+            ) {
+              updatedNotifs[existingIdx] = {
+                ...existing,
+                recipient_role: 'dosen',
+                recipient_nip: cleanUserNip || existing.recipient_nip,
+                recipient_nama: currentUser.nama || existing.recipient_nama,
+                dosen_nip: cleanUserNip || existing.dosen_nip,
+                dosen_nama: currentUser.nama || existing.dosen_nama,
+                action_url: `/dosen/validasi?nim=${item.mhs_nim}`
+              };
+              changed = true;
+            }
+          } else {
+            const notifItem = createConsultationNotificationForDosen(item, currentUser);
+            updatedNotifs.unshift(notifItem);
+            changed = true;
+          }
+        });
+      }
+
+      // 3. Rekonsiliasi notifikasi tanggapan bimbingan untuk Mahasiswa
+      if (currentUser.role === 'mahasiswa') {
+        const cleanNim = String(currentUser.nim || '').trim();
+        const respondedForStudent = consultations.filter(item =>
+          item &&
+          cleanNim &&
+          String(item.mhs_nim || '').trim() === cleanNim &&
+          item.status &&
+          item.status !== 'menunggu_tanggapan' &&
+          item.status !== 'menunggu'
+        );
+
+        respondedForStudent.forEach(item => {
+          const resolvedJenisRevisi = item.jenis_revisi || (
+            item.status === 'disetujui' ? 'Diterima' :
+              item.status === 'ditolak' ? 'Ditolak' : 'Minor'
+          );
+          const notifSyncId = `notif-mhs-cons-${item.id}-${item.status}-${resolvedJenisRevisi}`;
+          const consultKey = `consultation_mhs_${item.id}_${item.status}_${resolvedJenisRevisi}`;
+          const legacySyncId = `notif-mhs-cons-${item.id}-${item.status}`;
+
+          if (readIds.has(notifSyncId) || readIds.has(consultKey) || readIds.has(legacySyncId)) {
+            return;
+          }
+
+          const adv = getStudentAdvisors(cleanNim);
+          const isPemb2 = String(item.pembimbing || '').includes('2');
+          const assignedAdv = isPemb2 ? adv?.dospem2 : adv?.dospem1;
+          const resolvedDosenNama = (!isGenericDosenPlaceholder(item.dosen_nama) ? item.dosen_nama : assignedAdv?.nama) || item.dosen_nama || 'Dosen Pembimbing';
+
+          const existingIdx = updatedNotifs.findIndex(n =>
+            String(n.id) === notifSyncId ||
+            (String(n.consultation_id) === String(item.id) &&
+             n.related_type === 'bimbingan_status' &&
+             n.status === item.status &&
+             (n.jenis_revisi || resolvedJenisRevisi) === resolvedJenisRevisi)
+          );
+
+          if (existingIdx >= 0) {
+            const existing = updatedNotifs[existingIdx];
+            if (readIds.has(String(existing.id))) {
+              return;
+            }
+            if (String(existing.recipient_nim || '').trim() !== cleanNim) {
+              updatedNotifs[existingIdx] = {
+                ...existing,
+                recipient_role: 'mahasiswa',
+                recipient_nim: cleanNim,
+                mhs_nim: cleanNim,
+                profile_id: currentUser.id || cleanNim,
+                action_url: '/mahasiswa/bimbingan'
+              };
+              changed = true;
+            }
+          } else {
+            // Hapus notifikasi status lama untuk sesi bimbingan yang sama bila statusnya telah berubah
+            updatedNotifs = updatedNotifs.filter(n =>
+              !(String(n.consultation_id) === String(item.id) && n.related_type === 'bimbingan_status')
+            );
+
+            const notifTitle = item.status === 'disetujui'
+              ? `Bimbingan Disetujui (${resolvedJenisRevisi})`
+              : `Tanggapan Bimbingan: ${resolvedJenisRevisi === 'Ditolak' ? 'Ditolak' : `Revisi ${resolvedJenisRevisi}`}`;
+            const cleanNote = String(item.masukan_dosen || '').replace(/^\[.*?\]\s*/, '').trim();
+            const notifMessage = `${resolvedDosenNama} telah memvalidasi sesi bimbingan "${item.bab_topik || 'Tugas Akhir'}" dengan status "${item.status === 'disetujui' ? 'Disetujui' : `Revisi ${resolvedJenisRevisi}`}": "${cleanNote || 'Silakan cek kartu dan catatan bimbingan Anda.'}"`;
+
+            const notifItem = {
+              id: notifSyncId,
+              profile_id: currentUser.id || cleanNim,
+              recipient_role: 'mahasiswa',
+              recipient_nim: cleanNim,
+              mhs_nim: cleanNim,
+              recipient_nama: item.mhs_nama || currentUser.nama || '',
+              related_type: 'bimbingan_status',
+              consultation_id: item.id,
+              status: item.status,
+              jenis_revisi: resolvedJenisRevisi,
+              dosen_nama: resolvedDosenNama,
+              bab_topik: item.bab_topik || '',
+              action_url: '/mahasiswa/bimbingan',
+              title: notifTitle,
+              message: notifMessage,
+              is_read: false,
+              is_email_sent: true,
+              created_at: item.reviewed_at || item.created_at || new Date().toISOString()
+            };
+
+            updatedNotifs.unshift(notifItem);
+            changed = true;
+          }
+        });
+      }
+
+      if (changed) {
+        try { localStorage.setItem('simta_notifications', JSON.stringify(updatedNotifs)); } catch {}
+        return updatedNotifs;
+      }
+      return currNotifs;
+    });
+  }, [consultations, currentUser, studentAdvisors, advisors, thesisTitles]);
 
   return (
     <AuthContext.Provider value={{

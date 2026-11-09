@@ -47,7 +47,7 @@ function formatIndoDate(dateStr) {
 }
 
 export default function ModalAjukanBimbingan({ isOpen, onClose }) {
-  const { currentUser, studentAdvisors, advisors, consultations, addConsultation } = useAuth();
+  const { currentUser, studentAdvisors, advisors, thesisTitles, getStudentAdvisors, consultations, addConsultation } = useAuth();
 
   const studentNim = String(currentUser?.nim || '').trim();
 
@@ -72,11 +72,25 @@ export default function ModalAjukanBimbingan({ isOpen, onClose }) {
     return studentAdvisors?.find(s => currentUser?.nim && String(s.student_nim).trim() === String(currentUser.nim).trim());
   }, [studentAdvisors, currentUser]);
 
-  const dospem1 = useMemo(() => sa ? advisors?.find(a => a.nip === sa.dospem1_nip) : null, [advisors, sa]);
-  const dospem2 = useMemo(() => sa ? advisors?.find(a => a.nip === sa.dospem2_nip) : null, [advisors, sa]);
+  const resolvedAdvisors = useMemo(() => {
+    if (typeof getStudentAdvisors === 'function' && studentNim) {
+      return getStudentAdvisors(studentNim);
+    }
+    return { dospem1: null, dospem2: null };
+  }, [getStudentAdvisors, studentNim, studentAdvisors, advisors, thesisTitles]);
 
-  const dospem1Nama = dospem1?.nama || 'Dosen Pembimbing 1';
-  const dospem2Nama = dospem2?.nama || 'Dosen Pembimbing 2';
+  const dospem1 = useMemo(() => {
+    if (resolvedAdvisors?.dospem1) return resolvedAdvisors.dospem1;
+    return sa ? advisors?.find(a => String(a.nip || '').trim() === String(sa.dospem1_nip || '').trim()) : null;
+  }, [resolvedAdvisors, advisors, sa]);
+
+  const dospem2 = useMemo(() => {
+    if (resolvedAdvisors?.dospem2) return resolvedAdvisors.dospem2;
+    return sa ? advisors?.find(a => String(a.nip || '').trim() === String(sa.dospem2_nip || '').trim()) : null;
+  }, [resolvedAdvisors, advisors, sa]);
+
+  const dospem1Nama = dospem1?.nama || sa?.dospem1_nama || 'Dosen Pembimbing 1';
+  const dospem2Nama = dospem2?.nama || sa?.dospem2_nama || 'Dosen Pembimbing 2';
 
   // Cek sesi bimbingan yang masih berstatus menunggu tanggapan per pembimbing
   const pendingPemb1 = useMemo(() => {

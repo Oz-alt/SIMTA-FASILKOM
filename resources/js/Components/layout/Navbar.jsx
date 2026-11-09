@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Link, router } from '@inertiajs/react';
-import { useAuth } from '../../context/AuthContext.jsx';
+import { useAuth, stripAcademicTitles, isGenericDosenPlaceholder } from '../../context/AuthContext.jsx';
 import { 
   GraduationCap, 
   Bell, 
@@ -261,15 +261,18 @@ export default function Navbar() {
         if (n.recipient_nim && myNim) {
           return String(n.recipient_nim).trim() === myNim;
         }
+        if (n.mhs_nim && myNim && (!n.recipient_role || n.recipient_role === 'mahasiswa')) {
+          return String(n.mhs_nim).trim() === myNim;
+        }
+        if (n.student_nim && myNim) {
+          return String(n.student_nim).trim() === myNim;
+        }
         if (n.profile_id) {
           if (String(n.profile_id) === myId || String(n.profile_id) === myNim || String(n.profile_id) === `user-${myNim}`) {
             return true;
           }
           // Jika profile_id terisi tapi milik mahasiswa lain, jangan tampilkan
           return false;
-        }
-        if (n.student_nim && myNim) {
-          return String(n.student_nim).trim() === myNim;
         }
 
         // Jangan tampilkan notifikasi tanpa sasaran mahasiswa yang spesifik
@@ -279,19 +282,23 @@ export default function Navbar() {
       if (currentUser.role === 'dosen') {
         if (n.recipient_role === 'mahasiswa' || n.recipient_role === 'kaprodi') return false;
         const cleanNip = String(currentUser.nip || currentUser.nim || '').trim();
-        const cleanNama = (currentUser.nama || '').toLowerCase().replace(/dr\.|ir\.|prof\.|s\.kom\.|m\.cs\.|m\.t\.|m\.kom\.|ph\.d\.|st\.|s\.t\./gi, '').trim();
+        const cleanNama = stripAcademicTitles(currentUser.nama);
 
         if (n.recipient_nip && cleanNip && String(n.recipient_nip).trim() === cleanNip) {
           return true;
         }
-        if (n.dosen_nama && cleanNama) {
-          const cleanNotifNama = n.dosen_nama.toLowerCase().replace(/dr\.|ir\.|prof\.|s\.kom\.|m\.cs\.|m\.t\.|m\.kom\.|ph\.d\.|st\.|s\.t\./gi, '').trim();
-          if (cleanNotifNama.includes(cleanNama) || cleanNama.includes(cleanNotifNama)) {
+        if (n.dosen_nip && cleanNip && String(n.dosen_nip).trim() === cleanNip) {
+          return true;
+        }
+        const rawNotifDosen = n.dosen_nama || n.recipient_nama || '';
+        if (rawNotifDosen && !isGenericDosenPlaceholder(rawNotifDosen) && cleanNama) {
+          const cleanNotifNama = stripAcademicTitles(rawNotifDosen);
+          if (cleanNotifNama && (cleanNotifNama.includes(cleanNama) || cleanNama.includes(cleanNotifNama))) {
             return true;
           }
         }
         if (n.recipient_role === 'dosen') {
-          return !n.recipient_nip || (cleanNip && String(n.recipient_nip).trim() === cleanNip);
+          return !n.recipient_nip && isGenericDosenPlaceholder(rawNotifDosen);
         }
         return false;
       }
