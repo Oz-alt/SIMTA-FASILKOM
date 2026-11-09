@@ -340,23 +340,6 @@ export default function DashboardKaprodi() {
               <BarChart3 className="w-3.5 h-3.5 text-blue-300" />
               <span>Pusat Kendali &amp; Analitik Bimbingan Prodi D3 Manajemen Informatika</span>
             </div>
-
-            <div className="flex items-center gap-2">
-              <Link
-                href="/kaprodi/advisors"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-800/80 hover:bg-blue-700 text-white text-xs font-bold rounded-xl border border-blue-600/40 transition-colors shadow-2xs"
-              >
-                <UserCheck className="w-3.5 h-3.5 text-blue-200" />
-                <span>Kelola Dospem</span>
-              </Link>
-              <Link
-                href="/kaprodi/monitoring-mahasiswa"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-2xs transition-colors"
-              >
-                <Users className="w-3.5 h-3.5" />
-                <span>Monitoring Mahasiswa</span>
-              </Link>
-            </div>
           </div>
 
           <div className="space-y-1">
