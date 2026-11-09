@@ -67,25 +67,6 @@ export default function ModalAjukanBimbingan({ isOpen, onClose }) {
       });
   }, [consultations, studentNim]);
 
-  // Sesi bimbingan terakhir
-  const lastBimbingan = useMemo(() => {
-    if (studentConsultations.length === 0) return null;
-    return studentConsultations[studentConsultations.length - 1];
-  }, [studentConsultations]);
-
-  const lastBimbinganDate = lastBimbingan?.tanggal || null;
-
-  // Tanggal minimal yang diizinkan adalah tanggal bimbingan terakhir (boleh sama)
-  const minAllowedDate = lastBimbinganDate || '';
-
-  // Sesi bimbingan pada tanggal terakhir (untuk info helper)
-  const consOnLastDate = useMemo(() => {
-    if (!lastBimbinganDate || studentConsultations.length === 0) return [];
-    return studentConsultations.filter(c => c.tanggal === lastBimbinganDate);
-  }, [studentConsultations, lastBimbinganDate]);
-
-  const firstConsOnLastDate = consOnLastDate.length > 0 ? consOnLastDate[0] : null;
-
   // Dynamic Dospem 1 & 2 assigned for current logged-in student
   const sa = useMemo(() => {
     return studentAdvisors?.find(s => currentUser?.nim && String(s.student_nim).trim() === String(currentUser.nim).trim());
@@ -97,9 +78,34 @@ export default function ModalAjukanBimbingan({ isOpen, onClose }) {
   const dospem1Nama = dospem1?.nama || 'Dosen Pembimbing 1';
   const dospem2Nama = dospem2?.nama || 'Dosen Pembimbing 2';
 
+  // Cek sesi bimbingan yang masih berstatus menunggu tanggapan per pembimbing
+  const pendingPemb1 = useMemo(() => {
+    return (studentConsultations || []).find(c => {
+      const isPemb1 = !String(c.pembimbing || '').includes('2');
+      const isPending = c.status === 'menunggu_tanggapan' || c.status === 'menunggu' || c.status === 'menunggu_validasi';
+      const hasFeedback = Boolean(c.masukan_dosen && c.masukan_dosen.trim() && !c.masukan_dosen.includes('[Menunggu]'));
+      return isPemb1 && isPending && !hasFeedback;
+    });
+  }, [studentConsultations]);
+
+  const pendingPemb2 = useMemo(() => {
+    return (studentConsultations || []).find(c => {
+      const isPemb2 = String(c.pembimbing || '').includes('2');
+      const isPending = c.status === 'menunggu_tanggapan' || c.status === 'menunggu' || c.status === 'menunggu_validasi';
+      const hasFeedback = Boolean(c.masukan_dosen && c.masukan_dosen.trim() && !c.masukan_dosen.includes('[Menunggu]'));
+      return isPemb2 && isPending && !hasFeedback;
+    });
+  }, [studentConsultations]);
+
+  const isBothPending = Boolean(pendingPemb1 && pendingPemb2);
+
+  // Inisialisasi awal form: Jika Pembimbing 1 pending respon dosen, otomatis arahkan ke Pembimbing 2
+  const initialPembimbingChoice = (pendingPemb1 && !pendingPemb2) ? 'Pembimbing 2' : 'Pembimbing 1';
+  const initialDosenChoice = initialPembimbingChoice === 'Pembimbing 2' ? dospem2Nama : dospem1Nama;
+
   const [formData, setFormData] = useState({
-    pembimbing: 'Pembimbing 1',
-    dosen_nama: dospem1Nama,
+    pembimbing: initialPembimbingChoice,
+    dosen_nama: initialDosenChoice,
     metode: 'luring',
     tanggal: new Date().toISOString().split('T')[0],
     waktu: '09:00',
@@ -111,38 +117,74 @@ export default function ModalAjukanBimbingan({ isOpen, onClose }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Cek apakah mahasiswa memiliki sesi bimbingan yang masih berstatus menunggu tanggapan
-  const pendingConsultation = useMemo(() => {
-    return studentConsultations.find(c => 
-      c.status === 'menunggu_tanggapan' || c.status === 'menunggu' || c.status === 'menunggu_validasi'
-    );
-  }, [studentConsultations]);
+  // Cek apakah pembimbing yang sedang dipilih saat ini sedang menunggu tanggapan
+  const isSelectedPembimbingPending = useMemo(() => {
+    if (formData.pembimbing === 'Pembimbing 2') return Boolean(pendingPemb2);
+    return Boolean(pendingPemb1);
+  }, [formData.pembimbing, pendingPemb1, pendingPemb2]);
 
-  const hasPendingConsultation = Boolean(pendingConsultation);
+  // Sesi bimbingan terakhir khusus pembimbing yang sedang dipilih
+  const lastBimbingan = useMemo(() => {
+    const isTargetPemb2 = formData.pembimbing === 'Pembimbing 2';
+    const forPemb = studentConsultations.filter(c => {
+      const isC2 = String(c.pembimbing || '').includes('2');
+      return isTargetPemb2 ? isC2 : !isC2;
+    });
+    if (forPemb.length === 0) return null;
+    return forPemb[forPemb.length - 1];
+  }, [studentConsultations, formData.pembimbing]);
 
-  // Sesi bimbingan yang sudah ada pada tanggal yang dipilih
+  const lastBimbinganDate = lastBimbingan?.tanggal || null;
+
+  // Tanggal minimal yang diizinkan adalah tanggal bimbingan terakhir pembimbing ini (boleh sama)
+  const minAllowedDate = lastBimbinganDate || '';
+
+  // Sesi bimbingan pada tanggal terakhir untuk pembimbing ini (untuk info helper)
+  const consOnLastDate = useMemo(() => {
+    if (!lastBimbinganDate || studentConsultations.length === 0) return [];
+    const isTargetPemb2 = formData.pembimbing === 'Pembimbing 2';
+    return studentConsultations.filter(c => {
+      const isC2 = String(c.pembimbing || '').includes('2');
+      const matchPemb = isTargetPemb2 ? isC2 : !isC2;
+      return matchPemb && c.tanggal === lastBimbinganDate;
+    });
+  }, [studentConsultations, lastBimbinganDate, formData.pembimbing]);
+
+  const firstConsOnLastDate = consOnLastDate.length > 0 ? consOnLastDate[0] : null;
+
+  // Sesi bimbingan yang sudah ada pada tanggal yang dipilih untuk pembimbing terpilih
   const existingConsOnSelectedDate = useMemo(() => {
     if (!formData.tanggal || studentConsultations.length === 0) return [];
-    return studentConsultations.filter(c => c.tanggal === formData.tanggal);
-  }, [studentConsultations, formData.tanggal]);
+    const isTargetPemb2 = formData.pembimbing === 'Pembimbing 2';
+    return studentConsultations.filter(c => {
+      const isC2 = String(c.pembimbing || '').includes('2');
+      const matchPemb = isTargetPemb2 ? isC2 : !isC2;
+      return matchPemb && c.tanggal === formData.tanggal;
+    });
+  }, [studentConsultations, formData.tanggal, formData.pembimbing]);
 
   const firstConsOnDate = existingConsOnSelectedDate.length > 0 ? existingConsOnSelectedDate[0] : null;
-  const latestConsOnDate = existingConsOnSelectedDate.length > 0 
-    ? existingConsOnSelectedDate[existingConsOnSelectedDate.length - 1] 
-    : null;
 
-  // Validasi tanggal & waktu bimbingan
-  const validateDateTime = (tanggal, waktu) => {
+  // Validasi tanggal & waktu bimbingan untuk pembimbing spesifik
+  const validateDateTime = (tanggal, waktu, pembimbing = formData.pembimbing) => {
     if (!tanggal) {
       return 'Tanggal bimbingan wajib diisi.';
     }
 
-    if (lastBimbinganDate && tanggal < lastBimbinganDate) {
-      return `Tanggal bimbingan tidak boleh lebih awal dari tanggal bimbingan terakhir (${formatIndoDate(lastBimbinganDate)}).`;
+    const isTargetPemb2 = pembimbing === 'Pembimbing 2';
+    const forPemb = studentConsultations.filter(c => {
+      const isC2 = String(c.pembimbing || '').includes('2');
+      return isTargetPemb2 ? isC2 : !isC2;
+    });
+    const lastForPemb = forPemb.length > 0 ? forPemb[forPemb.length - 1] : null;
+    const lastDateForPemb = lastForPemb?.tanggal || null;
+
+    if (lastDateForPemb && tanggal < lastDateForPemb) {
+      return `Tanggal bimbingan tidak boleh lebih awal dari bimbingan terakhir dengan ${pembimbing} (${formatIndoDate(lastDateForPemb)}).`;
     }
 
-    // Jika pada tanggal yang dipilih sudah ada sesi bimbingan sebelumnya
-    const consOnDate = studentConsultations.filter(c => c.tanggal === tanggal);
+    // Jika pada tanggal yang dipilih sudah ada sesi bimbingan sebelumnya dengan pembimbing yang sama
+    const consOnDate = forPemb.filter(c => c.tanggal === tanggal);
     if (consOnDate.length > 0) {
       const firstSession = consOnDate[0];
       const lastSession = consOnDate[consOnDate.length - 1];
@@ -156,11 +198,11 @@ export default function ModalAjukanBimbingan({ isOpen, onClose }) {
 
       // Jam harus lebih besar dari yang pertama kali bimbingan pada hari tersebut
       if (selectedMinutes <= firstMinutes) {
-        return `Untuk tanggal yang sama (${formatIndoDate(tanggal)}), jam bimbingan harus lebih besar dari bimbingan pertama (${firstSession.waktu}).`;
+        return `Untuk tanggal yang sama (${formatIndoDate(tanggal)}), jam bimbingan harus lebih besar dari sesi pertama (${firstSession.waktu}).`;
       }
 
       if (consOnDate.length > 1 && selectedMinutes <= lastMinutes) {
-        return `Untuk tanggal yang sama (${formatIndoDate(tanggal)}), jam bimbingan harus lebih besar dari bimbingan sebelumnya (${lastSession.waktu}).`;
+        return `Untuk tanggal yang sama (${formatIndoDate(tanggal)}), jam bimbingan harus lebih besar dari sesi sebelumnya (${lastSession.waktu}).`;
       }
     }
 
@@ -168,17 +210,35 @@ export default function ModalAjukanBimbingan({ isOpen, onClose }) {
   };
 
   // Sinkronisasi tanggal & waktu awal saat modal dibuka:
-  // Tanggal boleh sama dengan bimbingan terakhir, dan jam otomatis disesuaikan > bimbingan yang ada
+  // Jika Pembimbing 1 pending respon, otomatis pilih Pembimbing 2
   useEffect(() => {
     if (isOpen) {
+      let initialPemb = 'Pembimbing 1';
+      let initialDosenNama = dospem1Nama;
+      if (pendingPemb1 && !pendingPemb2) {
+        initialPemb = 'Pembimbing 2';
+        initialDosenNama = dospem2Nama;
+      } else if (pendingPemb2 && !pendingPemb1) {
+        initialPemb = 'Pembimbing 1';
+        initialDosenNama = dospem1Nama;
+      }
+
+      const isTargetPemb2 = initialPemb === 'Pembimbing 2';
+      const forPemb = (studentConsultations || []).filter(c => {
+        const isC2 = String(c.pembimbing || '').includes('2');
+        return isTargetPemb2 ? isC2 : !isC2;
+      });
+      const lastForPemb = forPemb.length > 0 ? forPemb[forPemb.length - 1] : null;
+      const lastDate = lastForPemb?.tanggal || null;
+
       const today = new Date().toISOString().split('T')[0];
       let initialDate = today;
-      if (lastBimbinganDate && today < lastBimbinganDate) {
-        initialDate = lastBimbinganDate;
+      if (lastDate && today < lastDate) {
+        initialDate = lastDate;
       }
 
       let initialWaktu = '09:00';
-      const consOnInitialDate = (studentConsultations || []).filter(c => c.tanggal === initialDate);
+      const consOnInitialDate = forPemb.filter(c => c.tanggal === initialDate);
       if (consOnInitialDate.length > 0) {
         const lastSession = consOnInitialDate[consOnInitialDate.length - 1];
         initialWaktu = getSuggestedNextTime(lastSession.waktu);
@@ -186,6 +246,8 @@ export default function ModalAjukanBimbingan({ isOpen, onClose }) {
 
       setFormData(prev => ({
         ...prev,
+        pembimbing: initialPemb,
+        dosen_nama: initialDosenNama,
         tanggal: initialDate,
         waktu: initialWaktu,
         catatan_mahasiswa: '',
@@ -193,7 +255,7 @@ export default function ModalAjukanBimbingan({ isOpen, onClose }) {
       }));
       setErrorMsg('');
     }
-  }, [isOpen, lastBimbinganDate, studentConsultations]);
+  }, [isOpen, pendingPemb1, pendingPemb2, dospem1Nama, dospem2Nama, studentConsultations]);
 
   // Synchronize dynamic advisor names when student changes selection or state updates
   useEffect(() => {
@@ -221,16 +283,29 @@ export default function ModalAjukanBimbingan({ isOpen, onClose }) {
     const { name, value } = e.target;
     if (name === 'pembimbing') {
       const isPemb2 = value === 'Pembimbing 2';
-      setFormData(prev => ({
-        ...prev,
-        pembimbing: value,
-        dosen_nama: isPemb2 ? dospem2Nama : dospem1Nama
-      }));
+      const newDosenNama = isPemb2 ? dospem2Nama : dospem1Nama;
+      const isBlocked = (isPemb2 && pendingPemb2) || (!isPemb2 && pendingPemb1);
+      
+      setFormData(prev => {
+        const next = {
+          ...prev,
+          pembimbing: value,
+          dosen_nama: newDosenNama
+        };
+        const err = isBlocked 
+          ? `Sesi bimbingan untuk ${value} masih menunggu tanggapan dosen.` 
+          : validateDateTime(next.tanggal, next.waktu, value);
+        setErrorMsg(err);
+        return next;
+      });
     } else {
       setFormData(prev => {
         const next = { ...prev, [name]: value };
         if (name === 'tanggal' || name === 'waktu') {
-          const err = validateDateTime(next.tanggal, next.waktu);
+          const isBlocked = (next.pembimbing === 'Pembimbing 2' && pendingPemb2) || (next.pembimbing === 'Pembimbing 1' && pendingPemb1);
+          const err = isBlocked 
+            ? `Sesi bimbingan untuk ${next.pembimbing} masih menunggu tanggapan dosen.` 
+            : validateDateTime(next.tanggal, next.waktu, next.pembimbing);
           setErrorMsg(err);
         }
         return next;
@@ -241,8 +316,13 @@ export default function ModalAjukanBimbingan({ isOpen, onClose }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (hasPendingConsultation) {
-      setErrorMsg(`Tidak dapat mencatat sesi baru karena sesi tanggal ${pendingConsultation?.tanggal} masih menunggu tanggapan dosen.`);
+    if (formData.pembimbing === 'Pembimbing 1' && pendingPemb1) {
+      setErrorMsg(`Tidak dapat mencatat sesi ke Pembimbing 1 karena sesi tanggal ${pendingPemb1.tanggal} masih menunggu tanggapan dosen. Silakan pilih Pembimbing 2.`);
+      return;
+    }
+
+    if (formData.pembimbing === 'Pembimbing 2' && pendingPemb2) {
+      setErrorMsg(`Tidak dapat mencatat sesi ke Pembimbing 2 karena sesi tanggal ${pendingPemb2.tanggal} masih menunggu tanggapan dosen. Silakan pilih Pembimbing 1.`);
       return;
     }
 
@@ -251,7 +331,7 @@ export default function ModalAjukanBimbingan({ isOpen, onClose }) {
       return;
     }
 
-    const dateTimeError = validateDateTime(formData.tanggal, formData.waktu);
+    const dateTimeError = validateDateTime(formData.tanggal, formData.waktu, formData.pembimbing);
     if (dateTimeError) {
       setErrorMsg(dateTimeError);
       return;
@@ -330,6 +410,24 @@ export default function ModalAjukanBimbingan({ isOpen, onClose }) {
           </div>
         )}
 
+        {/* Info jika salah satu pembimbing sedang menunggu respon */}
+        {!isBothPending && (pendingPemb1 || pendingPemb2) && (
+          <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-xs flex items-start space-x-2.5 animate-in fade-in">
+            <Info className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+            <div className="space-y-0.5 leading-relaxed">
+              <span className="font-bold block">
+                {pendingPemb1 ? 'Sesi Pembimbing 1 Menunggu Tanggapan' : 'Sesi Pembimbing 2 Menunggu Tanggapan'}
+              </span>
+              <p className="text-[11px] text-blue-800">
+                {pendingPemb1 
+                  ? `Sesi bimbingan ke Pembimbing 1 (${pendingPemb1.dosen_nama}) tanggal ${pendingPemb1.tanggal} masih menunggu respon dosen. Opsi Pembimbing 1 dikunci sementara, Anda dapat mengajukan sesi ke Pembimbing 2.`
+                  : `Sesi bimbingan ke Pembimbing 2 (${pendingPemb2.dosen_nama}) tanggal ${pendingPemb2.tanggal} masih menunggu respon dosen. Opsi Pembimbing 2 dikunci sementara, Anda dapat mengajukan sesi ke Pembimbing 1.`
+                }
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           
@@ -343,8 +441,12 @@ export default function ModalAjukanBimbingan({ isOpen, onClose }) {
                 onChange={handleChange}
                 className="w-full px-3 py-2 rounded-xl border border-slate-300 font-semibold text-slate-900 bg-white"
               >
-                <option value="Pembimbing 1">Pembimbing 1 (Utama)</option>
-                <option value="Pembimbing 2">Pembimbing 2 (Pendamping)</option>
+                <option value="Pembimbing 1" disabled={Boolean(pendingPemb1)}>
+                  Pembimbing 1 (Utama){pendingPemb1 ? ' — Menunggu Respon (Terkunci)' : ''}
+                </option>
+                <option value="Pembimbing 2" disabled={Boolean(pendingPemb2)}>
+                  Pembimbing 2 (Pendamping){pendingPemb2 ? ' — Menunggu Respon (Terkunci)' : ''}
+                </option>
               </select>
             </div>
 
@@ -539,9 +641,9 @@ export default function ModalAjukanBimbingan({ isOpen, onClose }) {
 
             <button
               type="submit"
-              disabled={isSubmitting || hasPendingConsultation}
+              disabled={isSubmitting || isSelectedPembimbingPending || isBothPending}
               className={`px-5 py-2 rounded-xl font-bold flex items-center space-x-2 transition-all ${
-                hasPendingConsultation
+                isSelectedPembimbingPending || isBothPending
                   ? 'bg-slate-200 text-slate-400 border border-slate-300 cursor-not-allowed shadow-none'
                   : 'bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/30 cursor-pointer disabled:opacity-75'
               }`}
@@ -551,10 +653,10 @@ export default function ModalAjukanBimbingan({ isOpen, onClose }) {
                   <Loader2 className="w-4 h-4 animate-spin text-white" />
                   <span>Menyimpan...</span>
                 </>
-              ) : hasPendingConsultation ? (
+              ) : (isSelectedPembimbingPending || isBothPending) ? (
                 <>
                   <Clock className="w-4 h-4 text-slate-400" />
-                  <span>Menunggu Tanggapan Dosen</span>
+                  <span>Menunggu Tanggapan {formData.pembimbing}</span>
                 </>
               ) : (
                 <>
