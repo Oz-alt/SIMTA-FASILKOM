@@ -452,13 +452,15 @@ export default function ProfilePage() {
       url = 'https://' + url;
     }
 
-    // Konversi Google Drive share link menjadi direct image link
+    // Konversi Google Drive share link menjadi endpoint thumbnail resmi yang mendukung proxy CORS & lintas browser
     const gdriveMatch =
       url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/) ||
       url.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/) ||
-      url.match(/drive\.google\.com\/uc\?.*id=([a-zA-Z0-9_-]+)/);
+      url.match(/drive\.google\.com\/uc\?.*id=([a-zA-Z0-9_-]+)/) ||
+      url.match(/drive\.google\.com\/thumbnail\?.*id=([a-zA-Z0-9_-]+)/) ||
+      url.match(/lh3\.googleusercontent\.com\/d\/([a-zA-Z0-9_-]+)/);
     if (gdriveMatch && gdriveMatch[1]) {
-      return `https://lh3.googleusercontent.com/d/${gdriveMatch[1]}=w1000`;
+      return `https://drive.google.com/thumbnail?id=${gdriveMatch[1]}&sz=w1000`;
     }
 
     // Konversi Dropbox link
@@ -471,9 +473,7 @@ export default function ProfilePage() {
 
   const handleOpenPhotoModal = () => {
     setPhotoModalError('');
-    const existingUrl = currentUser?.avatar_url &&
-      !currentUser.avatar_url.startsWith('data:image/') &&
-      !currentUser.avatar_url.includes('1gcriQMAWb7tlHZwvH2UXHuvL_WlpPwsz')
+    const existingUrl = currentUser?.avatar_url && !currentUser.avatar_url.startsWith('data:image/')
       ? currentUser.avatar_url
       : '';
     setPhotoLinkInput(existingUrl);

@@ -42,11 +42,20 @@ const isValidStudentPhone = (val) => {
     return true;
 };
 
-/** Bersihkan URL avatar yang rusak/terkunci (seperti link Google Drive privat lama). */
+/** Normalisasi URL avatar (konversi otomatis link Google Drive / lh3.googleusercontent.com/d/ID ke endpoint thumbnail + proxy yang stabil lintas perangkat). */
 export const sanitizeStudentAvatarUrl = (val) => {
     const s = String(val ?? '').trim();
     if (!s || s === '-') return '';
-    if (s.includes('1gcriQMAWb7tlHZwvH2UXHuvL_WlpPwsz')) return '';
+    if (s.startsWith('data:image/') || s.includes('images.weserv.nl')) return s;
+    const gdriveMatch =
+        s.match(/lh3\.googleusercontent\.com\/d\/([a-zA-Z0-9_-]+)/) ||
+        s.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/) ||
+        s.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/) ||
+        s.match(/drive\.google\.com\/uc\?.*id=([a-zA-Z0-9_-]+)/) ||
+        s.match(/drive\.google\.com\/thumbnail\?.*id=([a-zA-Z0-9_-]+)/);
+    if (gdriveMatch && gdriveMatch[1]) {
+        return `https://images.weserv.nl/?url=${encodeURIComponent(`drive.google.com/thumbnail?id=${gdriveMatch[1]}&sz=w1000`)}&w=600&output=jpg`;
+    }
     return s;
 };
 
