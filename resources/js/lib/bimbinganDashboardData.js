@@ -6,8 +6,6 @@
  * Tidak ada angka dummy / generator acak / fallback karangan.
  */
 
-import { normalizeStudentAngkatan } from '../services/studentCredentials.js';
-
 const MONTH_SHORT_ID = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
 const MONTH_FULL_ID = [
   'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -123,18 +121,13 @@ export function bucketConsultationsByMonth(liveConsultations = [], months = MONT
 }
 
 /** Peta NIM -> identitas & status akademik mahasiswa. */
-export const buildStudentInfoMap = (thesisTitles = [], registeredUsers = []) => {
+const buildStudentInfoMap = (thesisTitles = [], registeredUsers = []) => {
   const map = new Map();
 
   (Array.isArray(registeredUsers) ? registeredUsers : []).forEach(u => {
     const nim = String(u.nim || u.nip || '').trim();
     if (!nim) return;
-    map.set(nim, { 
-      nama: u.nama || '', 
-      kelas: u.kelas || '', 
-      angkatan: u.angkatan || u.kelas || '',
-      prodi: u.prodi || '' 
-    });
+    map.set(nim, { nama: u.nama || '', kelas: u.kelas || '', prodi: u.prodi || '' });
   });
 
   (Array.isArray(thesisTitles) ? thesisTitles : []).forEach(t => {
@@ -145,7 +138,6 @@ export const buildStudentInfoMap = (thesisTitles = [], registeredUsers = []) => 
       ...existing,
       nama: existing.nama || t.mhs_nama || '',
       kelas: t.mhs_kelas || existing.kelas || '',
-      angkatan: t.angkatan || t.tahun_angkatan || existing.angkatan || t.mhs_kelas || existing.kelas || '',
       prodi: t.prodi || existing.prodi || '',
       judul: t.judul || existing.judul || '',
       status_kelulusan: t.status_kelulusan || existing.status_kelulusan || '',
@@ -156,102 +148,10 @@ export const buildStudentInfoMap = (thesisTitles = [], registeredUsers = []) => 
   return map;
 };
 
-/** Ambil angkatan seorang mahasiswa berdasarkan prioritas data yang tersedia. */
-export const resolveStudentAngkatan = (student, studentInfoMap = null) => {
-  if (!student) return '';
-  const nim = String(student.student_nim || student.nim || student.mhs_nim || '').trim();
-
-  // 1. Cek langsung dari properti student
-  const rawAngkatan = student.angkatan || student.tahun_angkatan;
-  if (rawAngkatan) {
-    const norm = normalizeStudentAngkatan(rawAngkatan);
-    if (norm) return norm;
-  }
-
-  const rawKelas = student.kelas || student.mhs_kelas;
-  if (rawKelas) {
-    const norm = normalizeStudentAngkatan(rawKelas);
-    if (norm) return norm;
-  }
-
-  // 2. Cek dari studentInfoMap
-  if (nim && studentInfoMap && studentInfoMap.has(nim)) {
-    const info = studentInfoMap.get(nim);
-    if (info?.angkatan) {
-      const norm = normalizeStudentAngkatan(info.angkatan);
-      if (norm) return norm;
-    }
-    if (info?.kelas) {
-      const norm = normalizeStudentAngkatan(info.kelas);
-      if (norm) return norm;
-    }
-  }
-
-  // 3. Fallback pola NIM (misal 09010282428031 -> 2024)
-  if (nim) {
-    const norm = normalizeStudentAngkatan(nim);
-    if (norm) return norm;
-  }
-
-  return '';
-};
-
-/** Ambil daftar angkatan yang tersedia beserta jumlah mahasiswa masing-masing. */
-export const getAvailableAngkatans = (studentAdvisors = [], thesisTitles = [], registeredUsers = []) => {
-  const studentInfoMap = buildStudentInfoMap(thesisTitles, registeredUsers);
-  const angkatanCounts = {};
-
-  (Array.isArray(studentAdvisors) ? studentAdvisors : []).forEach(sa => {
-    const angkatan = resolveStudentAngkatan(sa, studentInfoMap);
-    if (angkatan) {
-      angkatanCounts[angkatan] = (angkatanCounts[angkatan] || 0) + 1;
-    }
-  });
-
-  (Array.isArray(thesisTitles) ? thesisTitles : []).forEach(t => {
-    const nim = String(t.mhs_nim || '').trim();
-    if (!nim) return;
-    const angkatan = resolveStudentAngkatan(t, studentInfoMap);
-    if (angkatan && angkatanCounts[angkatan] === undefined) {
-      angkatanCounts[angkatan] = 0;
-    }
-  });
-
-  (Array.isArray(registeredUsers) ? registeredUsers : []).forEach(u => {
-    if (u?.role === 'mahasiswa') {
-      const angkatan = resolveStudentAngkatan(u, studentInfoMap);
-      if (angkatan && angkatanCounts[angkatan] === undefined) {
-        angkatanCounts[angkatan] = 0;
-      }
-    }
-  });
-
-  // Pastikan angkatan umum (2025, 2024, 2023) selalu ada dalam opsi
-  ['2025', '2024', '2023'].forEach(yr => {
-    if (angkatanCounts[yr] === undefined) {
-      angkatanCounts[yr] = 0;
-    }
-  });
-
-  const sortedYears = Object.keys(angkatanCounts).sort((a, b) => b.localeCompare(a));
-  return sortedYears.map(year => ({
-    year,
-    count: angkatanCounts[year] || 0,
-    label: `Angkatan ${year}`
-  }));
-};
-
 /**
  * Calculates all summary stats for Kaprodi Dashboard
  */
-export function calculateBimbinganDashboardStats(
-  advisors = [], 
-  studentAdvisors = [], 
-  liveConsultations = [], 
-  thesisTitles = [], 
-  registeredUsers = [],
-  selectedAngkatan = 'all'
-) {
+export function calculateBimbinganDashboardStats(advisors = [], studentAdvisors = [], liveConsultations = [], thesisTitles = [], registeredUsers = []) {
   const safeAdvisors = Array.isArray(advisors) ? advisors : [];
   const safeStudents = Array.isArray(studentAdvisors) ? studentAdvisors : [];
   const safeConsultations = Array.isArray(liveConsultations) ? liveConsultations : [];
@@ -794,7 +694,6 @@ export function calculateBimbinganDashboardStats(
     statusAndMethodStats,
     advisorRankings,
     top10ActiveStudents,
-    academicPeriod,
-    selectedAngkatan
+    academicPeriod
   };
 }

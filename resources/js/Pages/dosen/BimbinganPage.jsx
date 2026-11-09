@@ -1,11 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { usePage, router } from '@inertiajs/react';
-import { useAuth, isTargetAdvisorForConsultation, isGenericDosenPlaceholder } from '../../context/AuthContext.jsx';
+import { useAuth } from '../../context/AuthContext.jsx';
 import StudentWhatsAppLink from '../../Components/common/StudentWhatsAppLink.jsx';
 import { sortConsultationsChronologically } from '../../lib/consultationUtils.js';
 
 export default function BimbinganPage() {
-  const { currentUser, studentAdvisors, advisors, consultations, thesisTitles, reviewConsultation } = useAuth();
+  const { currentUser, studentAdvisors, consultations, thesisTitles, reviewConsultation } = useAuth();
   const { url } = usePage();
 
   const [feedbackState, setFeedbackState] = useState({});
@@ -185,24 +185,18 @@ export default function BimbinganPage() {
     }
 
     let namaDosen = activeDetailCons.dosen_nama;
-    if (!namaDosen || isGenericDosenPlaceholder(namaDosen)) {
+    if (!namaDosen || namaDosen === 'Dosen Pembimbing' || namaDosen.trim() === '') {
       if (role === 'Pembimbing 2' && currentStudent?.dospem2_nama) {
         namaDosen = currentStudent.dospem2_nama;
       } else if (currentStudent?.dospem1_nama) {
         namaDosen = currentStudent.dospem1_nama;
       } else {
-        namaDosen = role === 'Pembimbing 2' ? 'Dosen Pembimbing 2' : 'Dosen Pembimbing 1';
+        namaDosen = currentUser?.nama || 'Dosen Pembimbing';
       }
     }
 
     return { role, namaDosen };
-  }, [activeDetailCons, currentStudent]);
-
-  // Hak akses validasi bimbingan: HANYA dosen pembimbing yang dituju yang berhak merespons
-  const canValidate = useMemo(() => {
-    if (!activeDetailCons || !currentUser) return false;
-    return isTargetAdvisorForConsultation(activeDetailCons, currentUser, studentAdvisors, advisors, thesisTitles);
-  }, [activeDetailCons, currentUser, studentAdvisors, advisors, thesisTitles]);
+  }, [activeDetailCons, currentStudent, currentUser]);
 
   // Format tanggal Bahasa Indonesia yang rapi
   const formatDateIndo = (rawDate) => {
@@ -238,34 +232,34 @@ export default function BimbinganPage() {
 
     if (isApproved) {
       return (
-        <span className="inline-block px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium text-xs">
+        <span className="inline-block px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium text-[11px]">
           Diterima
         </span>
       );
     }
     if (isMinor) {
       return (
-        <span className="inline-block px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 font-medium text-xs">
+        <span className="inline-block px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 font-medium text-[11px]">
           Revisi Minor
         </span>
       );
     }
     if (isMayor) {
       return (
-        <span className="inline-block px-3 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-200 font-medium text-xs">
+        <span className="inline-block px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 font-medium text-[11px]">
           Revisi Mayor
         </span>
       );
     }
     if (isMenunggu) {
       return (
-        <span className="inline-block px-3 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-medium text-xs">
+        <span className="inline-block px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-medium text-[11px]">
           Menunggu
         </span>
       );
     }
     return (
-      <span className="inline-block px-3 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200 font-medium text-xs">
+      <span className="inline-block px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 font-medium text-[11px]">
         -
       </span>
     );
@@ -301,14 +295,6 @@ export default function BimbinganPage() {
 
   const handleSaveFeedback = async (consId) => {
     const targetCons = studentConsultations.find(sc => String(sc.id) === String(consId));
-    if (!targetCons) return;
-
-    if (!isTargetAdvisorForConsultation(targetCons, currentUser, studentAdvisors, advisors, thesisTitles)) {
-      setToastMsg(`Akses Ditolak: Hanya ${pembimbingInfo.role} (${pembimbingInfo.namaDosen}) yang berhak memvalidasi sesi bimbingan ini.`);
-      setTimeout(() => setToastMsg(''), 4500);
-      return;
-    }
-
     const feedback = feedbackState[consId] || {};
     
     const chosenJenis = feedback.jenis !== undefined 
@@ -355,25 +341,25 @@ export default function BimbinganPage() {
       )}
 
       {/* Header Banner Ringkas & Elegan */}
-      <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 rounded-2xl p-6 text-white shadow-lg">
-        <h1 className="text-2xl font-bold tracking-tight text-white">
-          Log Bimbingan Mahasiswa
-        </h1>
-        <p className="text-sm text-indigo-100/90 mt-1 max-w-2xl leading-relaxed font-normal">
-          Rekap riwayat catatan sesi bimbingan konsultasi dan progres naskah Tugas Akhir mahasiswa yang dipilih.
-        </p>
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-900 rounded-2xl py-8 sm:py-9 px-6 sm:px-8 text-white shadow-md relative overflow-hidden">
+        <div className="absolute right-0 top-0 translate-x-12 -translate-y-12 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="relative z-10">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
+            Log Bimbingan Mahasiswa
+          </h1>
+        </div>
       </div>
 
       {/* Main Container */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
         
         {/* Top Bar: Navigasi Kembali & Info Mahasiswa (NIM langsung tanpa label, tanpa ikon, tanpa total sesi/tervalidasi/menunggu/kelayakan) */}
-        <div className="p-6 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="p-4 sm:px-6 sm:py-3.5 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center space-x-3 min-w-0">
             <button
               type="button"
               onClick={handleGoBack}
-              className="inline-flex items-center px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 text-xs font-semibold transition-all cursor-pointer shrink-0 shadow-2xs"
+              className="inline-flex items-center px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 text-xs font-semibold transition-all cursor-pointer shrink-0 shadow-2xs"
               title="Kembali ke halaman sebelumnya"
             >
               <span>Kembali</span>
@@ -386,7 +372,7 @@ export default function BimbinganPage() {
                     <StudentWhatsAppLink
                       nim={currentStudent.nim}
                       nama={currentStudent.nama}
-                      className="text-slate-900 hover:text-emerald-700 font-medium"
+                      className="text-slate-900 hover:text-emerald-700 font-medium text-xs sm:text-sm"
                       showIcon={false}
                     >
                       {currentStudent.nama}
@@ -396,7 +382,7 @@ export default function BimbinganPage() {
                   )}
                 </h2>
                 {currentStudent && (
-                  <span className="text-xs font-mono font-normal px-2.5 py-0.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200">
+                  <span className="text-[11px] font-mono font-medium px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200">
                     {currentStudent.nim}
                   </span>
                 )}
@@ -407,31 +393,28 @@ export default function BimbinganPage() {
 
         {/* REKAP LOG BIMBINGAN: TABEL BERSIH (Desktop) & DAFTAR KARTU (Mobile) */}
         {studentConsultations.length === 0 ? (
-          <div className="text-center py-16 px-6 bg-slate-50/50 space-y-2">
+          <div className="text-center py-16 px-6 bg-slate-50/50">
             <h3 className="text-sm font-semibold text-slate-800">
               Belum Ada Log Bimbingan
             </h3>
-            <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed font-normal">
-              Mahasiswa <StudentWhatsAppLink nim={selectedNim} nama={currentStudent?.nama} className="font-semibold text-slate-800 hover:text-emerald-700 underline" showIcon={false}>{currentStudent?.nama || selectedNim}</StudentWhatsAppLink> ({selectedNim}) belum pernah mengajukan atau mencatat sesi bimbingan konsultasi Tugas Akhir.
-            </p>
           </div>
         ) : (
           <div>
             {/* Desktop Table View */}
             <div className="hidden md:block overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+              <table className="w-full text-left border-collapse text-[11px]">
                 <thead>
-                  <tr className="bg-slate-50/80 border-b border-slate-200 text-xs font-semibold uppercase tracking-wider text-slate-500">
-                    <th className="py-3.5 px-4 w-32">Pertemuan</th>
-                    <th className="py-3.5 px-4 w-36">Tanggal</th>
-                    <th className="py-3.5 px-4 w-32">Waktu</th>
-                    <th className="py-3.5 px-4 w-36">Pembimbing</th>
-                    <th className="py-3.5 px-4 w-28">Metode</th>
-                    <th className="py-3.5 px-4 w-36 text-center">Status Tanggapan</th>
-                    <th className="py-3.5 px-4 w-28 text-center">Aksi</th>
+                  <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                    <th className="py-2.5 px-3.5 w-28">Pertemuan</th>
+                    <th className="py-2.5 px-3.5 w-32">Tanggal</th>
+                    <th className="py-2.5 px-3.5 w-28">Waktu</th>
+                    <th className="py-2.5 px-3.5 w-32">Pembimbing</th>
+                    <th className="py-2.5 px-3.5 w-24">Metode</th>
+                    <th className="py-2.5 px-3.5 w-32 text-center">Status Tanggapan</th>
+                    <th className="py-2.5 px-3.5 w-24 text-center">Aksi</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
+                <tbody className="divide-y divide-slate-100 text-[11px] text-slate-700">
                   {studentConsultations.map((c, idx) => {
                     const sessionNum = idx + 1;
                     return (
@@ -440,25 +423,25 @@ export default function BimbinganPage() {
                         className="hover:bg-blue-50/40 transition-colors"
                       >
                         {/* Pertemuan (tanpa #) */}
-                        <td className="py-4 px-4 font-semibold text-blue-900 whitespace-nowrap">
-                          <span className="px-3 py-1 rounded-lg bg-blue-50 text-blue-800 border border-blue-200 text-xs font-semibold">
+                        <td className="py-2.5 px-3.5 font-semibold text-blue-900 whitespace-nowrap">
+                          <span className="px-2.5 py-0.5 rounded-md bg-blue-50 text-blue-800 border border-blue-200 text-[11px] font-semibold">
                             Pertemuan {sessionNum}
                           </span>
                         </td>
 
                         {/* Tanggal (Terpisah) */}
-                        <td className="py-4 px-4 whitespace-nowrap font-medium text-slate-900">
+                        <td className="py-2.5 px-3.5 whitespace-nowrap font-medium text-slate-900 text-[11px]">
                           {c.tanggal || '-'}
                         </td>
 
                         {/* Waktu (Terpisah & tanpa icon) */}
-                        <td className="py-4 px-4 whitespace-nowrap font-medium text-slate-600">
+                        <td className="py-2.5 px-3.5 whitespace-nowrap font-medium text-slate-600 text-[11px]">
                           {c.waktu ? (String(c.waktu).includes('WIB') ? c.waktu : `${c.waktu} WIB`) : '10:00 WIB'}
                         </td>
 
                         {/* Pembimbing */}
-                        <td className="py-4 px-4 whitespace-nowrap">
-                          <span className={`text-xs font-medium px-2.5 py-1 rounded-lg border ${
+                        <td className="py-2.5 px-3.5 whitespace-nowrap">
+                          <span className={`text-[11px] font-medium px-2 py-0.5 rounded-md border ${
                             c.pembimbing === 'Pembimbing 1'
                               ? 'bg-indigo-50 text-indigo-800 border-indigo-200'
                               : 'bg-purple-50 text-purple-800 border-purple-200'
@@ -468,8 +451,8 @@ export default function BimbinganPage() {
                         </td>
 
                         {/* Metode (tanpa icon) */}
-                        <td className="py-4 px-4 whitespace-nowrap">
-                          <span className={`px-2.5 py-1 rounded-lg text-xs font-medium border ${
+                        <td className="py-2.5 px-3.5 whitespace-nowrap">
+                          <span className={`px-2 py-0.5 rounded-md text-[11px] font-medium border ${
                             c.metode === 'daring'
                               ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                               : 'bg-slate-100 text-slate-700 border-slate-200'
@@ -479,16 +462,16 @@ export default function BimbinganPage() {
                         </td>
 
                         {/* Status Tanggapan (tanpa icon) */}
-                        <td className="py-4 px-4 text-center whitespace-nowrap">
+                        <td className="py-2.5 px-3.5 text-center whitespace-nowrap">
                           {renderStatusBadge(c)}
                         </td>
 
                         {/* Tombol Detail (tanpa icon) */}
-                        <td className="py-4 px-4 text-center whitespace-nowrap">
+                        <td className="py-2.5 px-3.5 text-center whitespace-nowrap">
                           <button
                             type="button"
                             onClick={() => setDetailModalCons(c)}
-                            className="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs transition-all shadow-xs hover:shadow cursor-pointer"
+                            className="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-[11px] transition-all shadow-xs hover:shadow cursor-pointer"
                             title="Buka Detail & Tanggapan Dosen"
                           >
                             Detail
@@ -552,33 +535,31 @@ export default function BimbinganPage() {
           onClick={() => setDetailModalCons(null)}
         >
           <div 
-            className="relative bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-2xl w-full overflow-hidden my-6 animate-in zoom-in-95 duration-200"
+            className="relative bg-white rounded-2xl shadow-xl border border-slate-200/90 max-w-2xl w-full overflow-hidden my-6 animate-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header Modal Detail (tanpa icon) */}
-            <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 px-6 py-4.5 text-white flex items-center justify-between">
+            <div className="px-5 sm:px-6 py-3 border-b border-slate-200/80 flex items-center justify-between bg-white">
               <div>
-                <h3 className="font-bold text-base text-white tracking-tight">
-                  Detail Log Bimbingan - Pertemuan {activeDetailIndex}
-                </h3>
-                <div className="text-xs text-blue-200/90 font-medium flex items-center space-x-1 mt-0.5">
+                <h3 className="text-xs text-slate-900 flex items-center space-x-1.5 font-medium">
                   <StudentWhatsAppLink
                     nim={currentStudent?.nim}
                     nama={currentStudent?.nama}
-                    className="text-blue-100 hover:text-white font-medium underline-offset-2"
+                    className="text-slate-900 hover:text-emerald-700 font-medium text-xs"
                     showIcon={false}
                   >
                     {currentStudent?.nama}
                   </StudentWhatsAppLink>
-                  <span>({currentStudent?.nim})</span>
-                </div>
+                  <span className="text-slate-300">·</span>
+                  <span className="text-slate-500 font-medium text-xs">({currentStudent?.nim})</span>
+                </h3>
               </div>
 
               <div>
                 <button
                   type="button"
                   onClick={() => setDetailModalCons(null)}
-                  className="px-3.5 py-1.5 rounded-xl text-blue-200 hover:text-white hover:bg-white/10 transition-colors cursor-pointer text-xs font-semibold"
+                  className="px-3 py-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer text-xs font-semibold"
                   title="Tutup Modal"
                 >
                   Tutup
@@ -587,70 +568,64 @@ export default function BimbinganPage() {
             </div>
 
             {/* Modal Body */}
-            <div className="p-6 space-y-5 max-h-[78vh] overflow-y-auto divide-y divide-slate-100">
+            <div className="p-6 space-y-5 max-h-[78vh] overflow-y-auto">
               
-              {/* Seksi 1: Metadata Pertemuan (Tanggal & Jam Terpisah, Pembimbing Lengkap, tanpa icon) */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                {/* 1. Tanggal */}
-                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/70">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 block mb-1">
+              {/* Seksi 1: Metadata Pertemuan (Tanggal, Jam, Metode & Pembimbing Bold di Label, Nilai Bawah Normal) */}
+              <div className="bg-slate-50/70 border border-slate-200/80 rounded-xl p-3 sm:p-3.5 grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 text-xs">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600 block">
                     Tanggal
                   </span>
-                  <div className="font-semibold text-slate-900 text-sm">
+                  <span className="text-xs font-normal text-slate-700 block mt-0.5">
                     {formatDateIndo(activeDetailCons.tanggal)}
-                  </div>
+                  </span>
                 </div>
 
-                {/* 2. Jam */}
-                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/70">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 block mb-1">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600 block">
                     Jam
                   </span>
-                  <div className="font-semibold text-slate-900 text-sm font-mono">
+                  <span className="text-xs font-normal text-slate-700 block mt-0.5 font-mono">
                     {activeDetailCons.waktu ? (String(activeDetailCons.waktu).includes('WIB') ? activeDetailCons.waktu : `${activeDetailCons.waktu} WIB`) : '10:00 WIB'}
-                  </div>
+                  </span>
                 </div>
 
-                {/* 3. Metode */}
-                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/70">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 block mb-1">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600 block">
                     Metode
                   </span>
-                  <div className="font-semibold text-slate-900 text-sm">
-                    {activeDetailCons.metode === 'daring' ? 'Daring (Online)' : 'Luring (Tatap Muka)'}
-                  </div>
+                  <span className="text-xs font-normal text-slate-700 block mt-0.5">
+                    {String(activeDetailCons.metode || '').toLowerCase().includes('daring') ? 'Daring' : 'Luring'}
+                  </span>
                 </div>
 
-                {/* 4. Pembimbing */}
-                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/70">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-indigo-700 block mb-1">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-700 block">
                     {pembimbingInfo.role}
                   </span>
-                  <div className="font-semibold text-slate-900 text-sm leading-snug break-words">
+                  <span className="text-xs font-normal text-slate-700 block mt-0.5 leading-snug break-words">
                     {pembimbingInfo.namaDosen}
-                  </div>
+                  </span>
                 </div>
               </div>
 
               {/* Seksi 2: Catatan Progres Mahasiswa */}
-              <div className="pt-4 space-y-3">
-                <div>
-                  <span className="text-xs font-medium text-slate-600 block mb-2">
-                    Catatan progres mahasiswa
-                  </span>
-                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 text-sm text-slate-700 leading-relaxed font-normal whitespace-pre-wrap">
-                    {activeDetailCons.catatan_mahasiswa || 'Tidak ada rincian catatan progres dari mahasiswa.'}
-                  </div>
+              <div className="space-y-1.5 pt-1">
+                <label className="text-xs font-medium text-slate-600 block">
+                  Catatan progres mahasiswa
+                </label>
+                <div className="p-3.5 rounded-xl bg-slate-50/70 border border-slate-200/80 text-sm text-slate-700 leading-relaxed font-normal whitespace-pre-wrap">
+                  {activeDetailCons.catatan_mahasiswa || 'Tidak ada rincian catatan progres dari mahasiswa.'}
                 </div>
-
+                
                 {/* Lampiran Dokumen Mahasiswa (tanpa icon) */}
                 {activeDetailCons.file_revisi_url && (
-                  <div>
+                  <div className="pt-1.5">
                     <a
                       href={activeDetailCons.file_revisi_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-block px-4 py-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-semibold transition-all shadow-xs"
+                      className="inline-block px-3.5 py-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-semibold transition-all"
                     >
                       Buka Berkas Dokumen / Naskah Revisi Mahasiswa
                     </a>
@@ -678,35 +653,16 @@ export default function BimbinganPage() {
                   : (c.masukan_dosen || '');
                 const currentCatatan = String(rawCatatan).replace(/^\[(Revisi Mayor|Revisi Minor|Mayor|Minor|Menunggu|Diterima|Disetujui|Ditolak)\]\s*/i, '');
 
-                const isDiterimaDisabled = isCompleted || !isEligibleForDiterima || !canValidate;
+                const isDiterimaDisabled = isCompleted || !isEligibleForDiterima;
 
                 return (
-                  <div className="pt-4 space-y-4">
+                  <div className="pt-2 border-t border-slate-100 space-y-4">
                     
-                    {/* Notice Akses Terbatas jika bukan dosen pembimbing yang dituju */}
-                    {!canValidate && (
-                      <div className="p-4 rounded-2xl bg-amber-50/90 border border-amber-200 text-amber-900 text-xs space-y-1">
-                        <div className="font-bold text-amber-800">
-                          Hak Akses Terbatas (Hanya Lihat)
-                        </div>
-                        <p className="leading-relaxed text-amber-700 font-normal">
-                          Sesi bimbingan ini diajukan ke <strong>{pembimbingInfo.role} ({pembimbingInfo.namaDosen})</strong>. Anda dapat melihat riwayat dan berkas mahasiswa, namun hak untuk memberikan tanggapan atau memvalidasi sesi ini hanya dimiliki oleh {pembimbingInfo.role}.
-                        </p>
-                      </div>
-                    )}
-
                     {/* Header Seksi: Label & Tanggal Respon */}
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <h4 className="font-medium text-xs text-slate-600">
-                          Evaluasi dan tanggapan bimbingan
-                        </h4>
-                        {isCompleted && (
-                          <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            Selesai
-                          </span>
-                        )}
-                      </div>
+                      <h4 className="text-xs font-medium text-slate-600 block">
+                        Evaluasi dan tanggapan bimbingan
+                      </h4>
                       {c.reviewed_at && (
                         <span className="text-xs text-slate-400 font-normal">
                           Respon: {new Date(c.reviewed_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -716,16 +672,9 @@ export default function BimbinganPage() {
 
                     {/* SATU STATUS BIMBINGAN */}
                     <div>
-                      <label className="text-xs font-semibold text-slate-700 block mb-2">
-                        {isCompleted ? 'Status Hasil Evaluasi:' : canValidate ? 'Pilihan Status Evaluasi:' : 'Status Bimbingan:'}
-                      </label>
-
                       {isCompleted ? (
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            Selesai
-                          </span>
-                          <span className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold border ${
+                          <span className={`px-3 py-1 rounded-lg text-xs font-semibold border ${
                             currentJenis === 'Diterima'
                               ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
                               : currentJenis === 'Mayor'
@@ -739,24 +688,18 @@ export default function BimbinganPage() {
                             </span>
                           </span>
                         </div>
-                      ) : !canValidate ? (
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
-                            Menunggu Tanggapan dari {pembimbingInfo.role}
-                          </span>
-                        </div>
                       ) : (
-                        <div className="space-y-2">
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                        <div>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                             
                             {/* 1. Menunggu */}
                             <button
                               type="button"
                               onClick={() => handleSelectJenis(c.id, 'Menunggu')}
-                              className={`px-3.5 py-2.5 rounded-xl text-xs font-semibold border transition-all text-center cursor-pointer ${
+                              className={`px-3 py-2.5 rounded-xl text-xs font-semibold border transition-all text-center cursor-pointer ${
                                 currentJenis === 'Menunggu'
-                                  ? 'bg-amber-500 text-white border-amber-500 shadow-sm ring-2 ring-amber-200'
-                                  : 'bg-white hover:bg-amber-50 text-amber-700 border-amber-200 hover:border-amber-300'
+                                  ? 'bg-amber-500 text-white border-amber-500 shadow-xs'
+                                  : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-300'
                               }`}
                             >
                               <span>Menunggu</span>
@@ -766,10 +709,10 @@ export default function BimbinganPage() {
                             <button
                               type="button"
                               onClick={() => handleSelectJenis(c.id, 'Mayor')}
-                              className={`px-3.5 py-2.5 rounded-xl text-xs font-semibold border transition-all text-center cursor-pointer ${
+                              className={`px-3 py-2.5 rounded-xl text-xs font-semibold border transition-all text-center cursor-pointer ${
                                 currentJenis === 'Mayor'
-                                  ? 'bg-rose-600 text-white border-rose-600 shadow-sm ring-2 ring-rose-200'
-                                  : 'bg-white hover:bg-rose-50 text-rose-700 border-rose-200 hover:border-rose-300'
+                                  ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
+                                  : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-300'
                               }`}
                             >
                               <span>Revisi Mayor</span>
@@ -779,10 +722,10 @@ export default function BimbinganPage() {
                             <button
                               type="button"
                               onClick={() => handleSelectJenis(c.id, 'Minor')}
-                              className={`px-3.5 py-2.5 rounded-xl text-xs font-semibold border transition-all text-center cursor-pointer ${
+                              className={`px-3 py-2.5 rounded-xl text-xs font-semibold border transition-all text-center cursor-pointer ${
                                 currentJenis === 'Minor'
-                                  ? 'bg-blue-600 text-white border-blue-600 shadow-sm ring-2 ring-blue-200'
-                                  : 'bg-white hover:bg-blue-50 text-blue-700 border-blue-200 hover:border-blue-300'
+                                  ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                                  : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-300'
                               }`}
                             >
                               <span>Revisi Minor</span>
@@ -798,51 +741,36 @@ export default function BimbinganPage() {
                                   ? `Tombol Diterima baru aktif setelah mahasiswa menyelesaikan minimal 12 kali bimbingan (saat ini: ${totalBimbinganCount}/12 kali).`
                                   : 'Beri status Diterima'
                               }
-                              className={`px-3.5 py-2.5 rounded-xl text-xs font-semibold border transition-all text-center ${
+                              className={`px-3 py-2.5 rounded-xl text-xs font-semibold border transition-all text-center ${
                                 currentJenis === 'Diterima'
-                                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm ring-2 ring-emerald-200 cursor-pointer'
+                                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs cursor-pointer'
                                   : isDiterimaDisabled
-                                    ? 'bg-slate-100 text-slate-400 border-slate-200 opacity-60 cursor-not-allowed'
-                                    : 'bg-white hover:bg-emerald-50 text-emerald-700 border-emerald-200 hover:border-emerald-300 cursor-pointer'
+                                    ? 'bg-slate-100 text-slate-400 border-slate-200/80 cursor-not-allowed opacity-60'
+                                    : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-300 cursor-pointer'
                               }`}
                             >
                               <span>Diterima</span>
                             </button>
 
                           </div>
-
-                          {/* Keterangan Tombol Diterima Jika Belum Memenuhi 12x */}
-                          {!isEligibleForDiterima && (
-                            <div className="text-xs font-medium text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3.5 py-2 leading-relaxed">
-                              <span>
-                                Tombol <strong>Diterima</strong> tidak aktif karena jumlah bimbingan mahasiswa belum mencapai 12 kali (Progres saat ini: <strong>{totalBimbinganCount}/12 kali</strong>).
-                              </span>
-                            </div>
-                          )}
                         </div>
                       )}
                     </div>
 
-                    {/* Arahan Dosen Pembimbing */}
+                    {/* Catatan perbaikan untuk mahasiswa */}
                     <div className="space-y-1.5">
                       <label className="text-xs font-medium text-slate-600 block">
                         Catatan perbaikan untuk mahasiswa
                       </label>
                       <textarea
                         rows={3}
-                        readOnly={isCompleted || !canValidate}
-                        disabled={isCompleted || !canValidate}
+                        readOnly={isCompleted}
+                        disabled={isCompleted}
                         value={currentCatatan}
-                        onChange={(e) => canValidate && !isCompleted && handleCatatanChange(c.id, e.target.value)}
-                        placeholder={
-                          isCompleted 
-                            ? "Tidak ada arahan tambahan." 
-                            : !canValidate 
-                              ? `Belum ada arahan / tanggapan bimbingan dari ${pembimbingInfo.namaDosen}.`
-                              : "Tuliskan arahan revisi, evaluasi naskah, atau catatan perbaikan untuk mahasiswa..."
-                        }
-                        className={`w-full text-sm p-3.5 rounded-2xl border transition-all leading-relaxed ${
-                          isCompleted || !canValidate
+                        onChange={(e) => !isCompleted && handleCatatanChange(c.id, e.target.value)}
+                        placeholder={isCompleted ? "Tidak ada catatan perbaikan." : "Tuliskan catatan perbaikan untuk mahasiswa..."}
+                        className={`w-full text-sm p-3.5 rounded-xl border transition-all leading-relaxed ${
+                          isCompleted
                             ? 'bg-slate-50 text-slate-700 border-slate-200 cursor-default select-text'
                             : 'bg-white text-slate-800 border-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                         }`}
@@ -855,7 +783,7 @@ export default function BimbinganPage() {
 
             </div>
 
-            {/* Footer Modal: Tombol Tutup & Simpan (tanpa icon) */}
+            {/* Footer Modal: Tombol Simpan jika belum selesai (tanpa tombol Tutup bawah & tanpa label Selesai) */}
             {(() => {
               const c = activeDetailCons;
               const isCompleted = Boolean(
@@ -866,36 +794,18 @@ export default function BimbinganPage() {
                 (c.masukan_dosen && c.status !== 'menunggu_tanggapan' && c.status !== 'menunggu')
               );
 
+              if (isCompleted) return null;
+
               return (
-                <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-3">
+                <div className="px-6 py-4 bg-slate-50/80 border-t border-slate-200/80 flex items-center justify-end">
                   <button
                     type="button"
-                    onClick={() => setDetailModalCons(null)}
-                    className="px-4 py-2 rounded-xl text-slate-700 hover:bg-slate-200 text-xs font-semibold transition-colors cursor-pointer"
+                    disabled={savingId === c.id}
+                    onClick={() => handleSaveFeedback(c.id)}
+                    className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-xs font-semibold shadow-xs transition-all cursor-pointer disabled:opacity-50"
                   >
-                    Tutup
+                    <span>{savingId === c.id ? 'Menyimpan...' : 'Simpan Tanggapan'}</span>
                   </button>
-
-                  <div>
-                    {isCompleted ? (
-                      <div className="px-4 py-2 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold select-none">
-                        <span>Selesai</span>
-                      </div>
-                    ) : !canValidate ? (
-                      <div className="px-4 py-2 rounded-xl bg-slate-100 text-slate-500 border border-slate-200 text-xs font-medium select-none">
-                        <span>Hanya {pembimbingInfo.role} yang dapat merespon</span>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        disabled={savingId === c.id}
-                        onClick={() => handleSaveFeedback(c.id)}
-                        className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-xs font-semibold shadow-sm transition-all cursor-pointer disabled:opacity-50"
-                      >
-                        <span>{savingId === c.id ? 'Menyimpan...' : 'Simpan Tanggapan'}</span>
-                      </button>
-                    )}
-                  </div>
                 </div>
               );
             })()}

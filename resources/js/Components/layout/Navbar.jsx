@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Link, router } from '@inertiajs/react';
-import { useAuth, stripAcademicTitles, isGenericDosenPlaceholder } from '../../context/AuthContext.jsx';
+import { useAuth } from '../../context/AuthContext.jsx';
 import { 
   GraduationCap, 
   Bell, 
@@ -252,18 +252,15 @@ export default function Navbar() {
         if (n.recipient_nim && myNim) {
           return String(n.recipient_nim).trim() === myNim;
         }
-        if (n.mhs_nim && myNim && (!n.recipient_role || n.recipient_role === 'mahasiswa')) {
-          return String(n.mhs_nim).trim() === myNim;
-        }
-        if (n.student_nim && myNim) {
-          return String(n.student_nim).trim() === myNim;
-        }
         if (n.profile_id) {
           if (String(n.profile_id) === myId || String(n.profile_id) === myNim || String(n.profile_id) === `user-${myNim}`) {
             return true;
           }
           // Jika profile_id terisi tapi milik mahasiswa lain, jangan tampilkan
           return false;
+        }
+        if (n.student_nim && myNim) {
+          return String(n.student_nim).trim() === myNim;
         }
 
         // Jangan tampilkan notifikasi tanpa sasaran mahasiswa yang spesifik
@@ -273,23 +270,19 @@ export default function Navbar() {
       if (currentUser.role === 'dosen') {
         if (n.recipient_role === 'mahasiswa' || n.recipient_role === 'kaprodi') return false;
         const cleanNip = String(currentUser.nip || currentUser.nim || '').trim();
-        const cleanNama = stripAcademicTitles(currentUser.nama);
+        const cleanNama = (currentUser.nama || '').toLowerCase().replace(/dr\.|ir\.|prof\.|s\.kom\.|m\.cs\.|m\.t\.|m\.kom\.|ph\.d\.|st\.|s\.t\./gi, '').trim();
 
         if (n.recipient_nip && cleanNip && String(n.recipient_nip).trim() === cleanNip) {
           return true;
         }
-        if (n.dosen_nip && cleanNip && String(n.dosen_nip).trim() === cleanNip) {
-          return true;
-        }
-        const rawNotifDosen = n.dosen_nama || n.recipient_nama || '';
-        if (rawNotifDosen && !isGenericDosenPlaceholder(rawNotifDosen) && cleanNama) {
-          const cleanNotifNama = stripAcademicTitles(rawNotifDosen);
-          if (cleanNotifNama && (cleanNotifNama.includes(cleanNama) || cleanNama.includes(cleanNotifNama))) {
+        if (n.dosen_nama && cleanNama) {
+          const cleanNotifNama = n.dosen_nama.toLowerCase().replace(/dr\.|ir\.|prof\.|s\.kom\.|m\.cs\.|m\.t\.|m\.kom\.|ph\.d\.|st\.|s\.t\./gi, '').trim();
+          if (cleanNotifNama.includes(cleanNama) || cleanNama.includes(cleanNotifNama)) {
             return true;
           }
         }
         if (n.recipient_role === 'dosen') {
-          return !n.recipient_nip && isGenericDosenPlaceholder(rawNotifDosen);
+          return !n.recipient_nip || (cleanNip && String(n.recipient_nip).trim() === cleanNip);
         }
         return false;
       }
@@ -466,29 +459,20 @@ export default function Navbar() {
 
               {showNotif && (
                 <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-white shadow-2xl border border-slate-200 py-2 z-50 animate-in fade-in">
-                  <div className="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between">
+                  <div className="px-3.5 py-2 border-b border-slate-100 flex items-center justify-between">
                     <div className="flex items-center space-x-2">
-                      <span className="font-bold text-sm text-slate-800">
+                      <span className="font-bold text-xs text-slate-800">
                         {userRole === 'admin' ? 'Notifikasi Admin' : 'Notifikasi'}
                       </span>
-                      {unreadCount > 0 ? (
-                        <span className="px-1.5 py-0.5 rounded-full bg-rose-50 text-rose-600 font-bold text-[10px] border border-rose-200">
-                          {unreadCount} baru
-                        </span>
-                      ) : (
-                        <span className="px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium text-[10px]">
-                          Semua dibaca
-                        </span>
-                      )}
                     </div>
                     {userNotifications.length > 0 && (
                       <button 
                         type="button"
                         onClick={handleMarkAllAsRead}
-                        className="inline-flex items-center space-x-1 text-[11px] text-indigo-600 hover:text-indigo-800 font-semibold cursor-pointer transition-colors hover:underline"
+                        className="inline-flex items-center space-x-1 text-[10px] text-indigo-600 hover:text-indigo-800 font-semibold cursor-pointer transition-colors hover:underline"
                         title="Tandai seluruh notifikasi sebagai sudah dibaca dan bersihkan"
                       >
-                        <CheckCheck className="w-3.5 h-3.5" />
+                        <CheckCheck className="w-3 h-3" />
                         <span>Tandai sudah dibaca</span>
                       </button>
                     )}
@@ -500,7 +484,8 @@ export default function Navbar() {
                         {userRole === 'admin' ? 'Tidak ada notifikasi baru untuk Admin' : 'Tidak ada notifikasi baru'}
                       </div>
                     ) : (
-                      userNotifications.map(n => {
+                      userNotifications.map((n, index) => {
+                        const isNewest = index === 0;
                         // ==========================================
                         // RENDER KHUSUS NOTIFIKASI ROLE ADMIN
                         // ==========================================
@@ -509,7 +494,7 @@ export default function Navbar() {
                             <div 
                               key={n.id} 
                               onClick={() => handleNotificationItemClick(n)}
-                              className={`p-3.5 hover:bg-slate-50 transition-colors cursor-pointer group relative ${
+                              className={`p-2.5 sm:p-3 hover:bg-slate-50 transition-colors cursor-pointer group relative ${
                                 !n.is_read 
                                   ? (n.source_type === 'password_reset' 
                                       ? 'border-l-4 border-l-amber-500 bg-amber-50/25' 
@@ -517,17 +502,17 @@ export default function Navbar() {
                                   : 'border-l-4 border-l-transparent bg-white hover:bg-slate-50 opacity-80'
                               }`}
                             >
-                              <div className="flex items-start gap-3">
+                              <div className="flex items-start gap-2.5">
                                 {/* Category Icon Capsule */}
-                                <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
+                                <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
                                   n.icon_type === 'key' 
                                     ? 'bg-amber-100 text-amber-700 border border-amber-200/80 shadow-2xs' 
                                     : 'bg-indigo-100 text-indigo-700 border border-indigo-200/80 shadow-2xs'
                                 }`}>
                                   {n.icon_type === 'key' ? (
-                                    <KeyRound className="w-4 h-4" />
+                                    <KeyRound className="w-3.5 h-3.5" />
                                   ) : (
-                                    <Building2 className="w-4 h-4" />
+                                    <Building2 className="w-3.5 h-3.5" />
                                   )}
                                 </div>
 
@@ -536,19 +521,19 @@ export default function Navbar() {
                                   <div className="flex items-center justify-between gap-1">
                                     <div className="flex items-center space-x-1.5 min-w-0">
                                       {!n.is_read && (
-                                        <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" title="Belum dibaca"></span>
+                                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" title="Belum dibaca"></span>
                                       )}
-                                      <h4 className={`text-xs truncate ${!n.is_read ? 'font-extrabold text-slate-900 group-hover:text-blue-600' : 'font-semibold text-slate-700'}`}>
+                                      <h4 className={`text-[11px] truncate ${!n.is_read ? 'font-extrabold text-slate-900 group-hover:text-blue-600' : 'font-semibold text-slate-700'}`}>
                                         {n.title}
                                       </h4>
                                     </div>
 
-                                    <div className="flex items-center space-x-1.5 shrink-0">
-                                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold border ${n.badge_color || 'bg-slate-100 text-slate-700 border-slate-200'}`}>
+                                    <div className="flex items-center space-x-1 shrink-0">
+                                      <span className={`px-1.5 py-0.5 rounded text-[8.5px] font-extrabold border ${n.badge_color || 'bg-slate-100 text-slate-700 border-slate-200'}`}>
                                         {n.badge_label || 'Pemberitahuan'}
                                       </span>
                                       {!n.is_read && (
-                                        <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-rose-100 text-rose-700">
+                                        <span className="px-1.5 py-0.5 rounded text-[8.5px] font-black bg-rose-100 text-rose-700">
                                           Baru
                                         </span>
                                       )}
@@ -559,29 +544,29 @@ export default function Navbar() {
                                             e.stopPropagation();
                                             handleMarkSingleAsRead(n.id);
                                           }}
-                                          className="p-1 rounded text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
+                                          className="p-0.5 rounded text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
                                           title="Tandai sudah dibaca"
                                         >
-                                          <Check className="w-3.5 h-3.5" />
+                                          <Check className="w-3 h-3" />
                                         </button>
                                       )}
                                     </div>
                                   </div>
 
-                                  <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
+                                  <p className="text-[10px] text-slate-600 mt-0.5 leading-normal">
                                     {n.message}
                                   </p>
 
                                   {/* Footer: Clock relative time & Action Button */}
-                                  <div className="mt-2.5 flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-100/80">
+                                  <div className="mt-2 flex items-center justify-between text-[9px] text-slate-400 pt-1 border-t border-slate-100/80">
                                     <span className="flex items-center space-x-1">
-                                      <Clock className="w-3 h-3 text-slate-400" />
+                                      <Clock className="w-2.5 h-2.5 text-slate-400" />
                                       <span>{formatRelativeTime(n.created_at, currentTime)}</span>
                                     </span>
 
-                                    <span className="text-indigo-600 font-bold inline-flex items-center space-x-1 group-hover:translate-x-0.5 transition-transform">
+                                    <span className="text-indigo-600 font-bold inline-flex items-center space-x-0.5 group-hover:translate-x-0.5 transition-transform text-[9px]">
                                       <span>{n.action_label || 'Lihat Permintaan'}</span>
-                                      <ArrowRight className="w-3 h-3" />
+                                      <ArrowRight className="w-2.5 h-2.5" />
                                     </span>
                                   </div>
                                 </div>
@@ -604,68 +589,99 @@ export default function Navbar() {
                         const isMayor = n.jenis_revisi === 'Mayor';
                         const isDitolak = n.status === 'ditolak' || n.jenis_revisi === 'Ditolak';
 
+                        let displayTitle = n.title;
+                        let displayMessage = n.message || '';
+
+                        if (isBimbinganMasuk) {
+                          displayTitle = 'Pengajuan Bimbingan Baru';
+                          displayMessage = displayMessage
+                            .replace(/mengajukan sesi bimbingan baru ke/i, 'mengajukan bimbingan baru ke')
+                            .replace(/:\s*".*$/s, '.')
+                            .replace(/\.\s*\.$/, '.');
+                        } else if (userRole === 'dosen' && (isThesisNotif || isSimilarityNotif || n.related_type === 'thesis_title' || n.related_type === 'thesis_title_revised')) {
+                          const isRevised = n.related_type === 'thesis_title_revised' || /pembaruan|revisi/i.test(n.title || '');
+                          displayTitle = isRevised ? 'Pembaruan Judul Mahasiswa' : 'Pengajuan Judul Mahasiswa';
+                          
+                          // Ambil nama dan NIM mahasiswa dari properti atau teks pesan
+                          let mhsNama = n.student_name || '';
+                          let mhsNim = n.student_nim || '';
+                          if (!mhsNama || !mhsNim) {
+                            const match = (n.message || '').match(/Mahasiswa(?:\s+bimbingan\s+Anda,)?\s+([^()]+?)\s*\(([^)]+)\)/i);
+                            if (match) {
+                              mhsNama = match[1].trim();
+                              mhsNim = match[2].trim();
+                            }
+                          }
+
+                          if (mhsNama && mhsNim) {
+                            displayMessage = isRevised
+                              ? `Mahasiswa bimbingan Anda, ${mhsNama} (${mhsNim}) telah melakukan perubahan usulan pada judul tugas akhir.`
+                              : `Mahasiswa bimbingan Anda, ${mhsNama} (${mhsNim}) telah melakukan pengajuan usulan pada judul tugas akhir.`;
+                          } else {
+                            displayMessage = isRevised
+                              ? 'Mahasiswa bimbingan Anda telah melakukan perubahan usulan pada judul tugas akhir.'
+                              : 'Mahasiswa bimbingan Anda telah melakukan pengajuan usulan pada judul tugas akhir.';
+                          }
+                        }
+
+                        // Bersihkan tanda koma setelah kurung NIM bila ada
+                        displayMessage = (displayMessage || '').replace(/\(([0-9]+)\),\s*telah/i, '($1) telah');
+
+                        // Warna border samping & latar belakang hanya untuk notifikasi paling baru (isNewest)
                         let borderClass = '';
-                        if (isInactivityNotif) borderClass = 'border-l-4 border-l-amber-500 bg-amber-50/20';
-                        else if (isSimilarityNotif) borderClass = 'border-l-4 border-l-rose-500 bg-rose-50/20';
-                        else if (isSiapSidangNotif) borderClass = 'border-l-4 border-l-emerald-500 bg-emerald-50/20';
-                        else if (isThesisNotif) borderClass = 'border-l-4 border-l-blue-500 bg-blue-50/20';
-                        else if (isBimbingan) {
-                          borderClass = isBimbinganMasuk
-                            ? 'border-l-3 border-l-indigo-600'
-                            : isApproved ? 'border-l-3 border-l-emerald-500' : isMayor || isDitolak ? 'border-l-3 border-l-rose-500' : 'border-l-3 border-l-blue-500';
+                        if (isNewest) {
+                          if (isInactivityNotif) borderClass = 'border-l-4 border-l-amber-500 bg-amber-50/20';
+                          else if (isSimilarityNotif) borderClass = 'border-l-4 border-l-rose-500 bg-rose-50/20';
+                          else if (isSiapSidangNotif) borderClass = 'border-l-4 border-l-emerald-500 bg-emerald-50/20';
+                          else if (isBimbinganMasuk) borderClass = 'border-l-3 border-l-indigo-600 bg-indigo-50/20';
                         }
 
                         return (
                           <div 
                             key={n.id} 
                             onClick={() => handleNotificationItemClick(n)}
-                            className={`p-3.5 hover:bg-slate-50 transition-colors cursor-pointer group ${borderClass} ${!n.is_read ? 'bg-indigo-50/30' : ''}`}
+                            className={`p-2.5 sm:p-3 hover:bg-slate-50 transition-colors cursor-pointer group ${borderClass} ${isNewest && !n.is_read ? 'bg-slate-50/70' : 'bg-white'}`}
                           >
                             <div className="flex items-start justify-between gap-2">
                               <div className="flex items-center space-x-1.5 flex-1 min-w-0">
-                                {isInactivityNotif && (
-                                  <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                {/* Titik indikator berwarna HANYA untuk notifikasi paling baru (isNewest) yang belum dibaca */}
+                                {isNewest && !n.is_read && (
+                                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" title="Notifikasi terbaru"></span>
                                 )}
-                                {isThesisNotif && (
-                                  <span className="w-2 h-2 rounded-full bg-blue-600 shrink-0"></span>
+                                {isNewest && isInactivityNotif && (
+                                  <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
                                 )}
-                                {isSiapSidangNotif && (
-                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                {isNewest && isSiapSidangNotif && (
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
                                 )}
-                                {isSimilarityNotif && (
-                                  <span className="w-2 h-2 rounded-full bg-rose-600 shrink-0"></span>
-                                )}
-                                <p className="text-xs font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate">
-                                  {n.title}
+                                {/* Judul selalu hitam biasa (text-slate-900), tidak berwarna biru */}
+                                <p className="text-[11px] font-bold text-slate-900 transition-colors truncate">
+                                  {displayTitle}
                                 </p>
                               </div>
                               <div className="flex items-center space-x-1 shrink-0 mt-0.5">
                                 {isInactivityNotif && (
-                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300">
+                                  <span className="px-1.5 py-0.5 rounded text-[8.5px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300">
                                     {n.badge_label || '>14 Hari Pasif'}
                                   </span>
                                 )}
                                 {isSiapSidangNotif && (
-                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-emerald-100 text-emerald-900 border border-emerald-300">
+                                  <span className="px-1.5 py-0.5 rounded text-[8.5px] font-extrabold bg-emerald-100 text-emerald-900 border border-emerald-300">
                                     {n.badge_label || 'Siap Sidang'}
                                   </span>
                                 )}
                                 {isSimilarityNotif && (
-                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-rose-100 text-rose-900 border border-rose-300">
+                                  <span className="px-1.5 py-0.5 rounded text-[8.5px] font-extrabold bg-rose-100 text-rose-900 border border-rose-300">
                                     {n.badge_label || 'Similarity'}
                                   </span>
                                 )}
-                                {isThesisNotif && (
-                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-blue-100 text-blue-900 border border-blue-300">
+                                {isThesisNotif && userRole !== 'dosen' && (
+                                  <span className="px-1.5 py-0.5 rounded text-[8.5px] font-extrabold bg-blue-100 text-blue-900 border border-blue-300">
                                     {n.badge_label || 'Judul TA'}
                                   </span>
                                 )}
-                                {isBimbinganMasuk ? (
-                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-indigo-100 text-indigo-800 border border-indigo-200">
-                                    {n.pembimbing ? `Pengajuan ${n.pembimbing}` : 'Bimbingan Baru'}
-                                  </span>
-                                ) : isBimbingan ? (
-                                  <span className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold ${
+                                {isBimbinganMasuk ? null : isBimbingan ? (
+                                  <span className={`px-1.5 py-0.5 rounded text-[8.5px] font-extrabold ${
                                     isApproved ? 'bg-emerald-100 text-emerald-800' :
                                     isMayor || isDitolak ? 'bg-rose-100 text-rose-800' :
                                     'bg-blue-100 text-blue-800'
@@ -682,120 +698,80 @@ export default function Navbar() {
                                       markNotificationAsRead(n.id);
                                     }
                                   }}
-                                  className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors ml-1 shrink-0"
+                                  className="p-0.5 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors ml-1 shrink-0"
                                   title="Tandai sudah dibaca & hapus"
                                 >
-                                  <X className="w-3.5 h-3.5" />
+                                  <X className="w-3 h-3" />
                                 </button>
                               </div>
                             </div>
 
-                            <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
-                              {n.message}
+                            <p className="text-[10px] sm:text-[10.5px] text-slate-600 mt-0.5 leading-relaxed">
+                              {displayMessage}
                             </p>
                             
                             {/* Email notification confirmation pill for Mahasiswa */}
                             {userRole === 'mahasiswa' && (
-                              <div className="mt-2 flex items-center space-x-1 text-[10px] text-emerald-700 font-medium bg-emerald-50 border border-emerald-200/60 rounded px-1.5 py-0.5 w-fit">
-                                <Mail className="w-3 h-3 text-emerald-600 shrink-0" />
+                              <div className="mt-1.5 flex items-center space-x-1 text-[9px] text-emerald-700 font-medium bg-emerald-50 border border-emerald-200/60 rounded px-1.5 py-0.5 w-fit">
+                                <Mail className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
                                 <span>Salinan otomatis terkirim ke email ({n.email_to || currentUser?.email || '09010182428002@student.unsri.ac.id'})</span>
-                              </div>
-                            )}
-
-                            {/* Dosen quick action button for new bimbingan */}
-                            {isBimbinganMasuk && (
-                              <div className="mt-2 flex items-center justify-between pt-1">
-                                <span className="inline-flex items-center space-x-1 text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-200/70">
-                                  <BookOpen className="w-3 h-3 text-indigo-600" />
-                                  <span>Validasi Sesi Bimbingan</span>
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setShowNotif(false);
-                                    if (n.id && markNotificationAsRead) markNotificationAsRead(n.id);
-                                    router.visit('/dosen/monitoring');
-                                  }}
-                                  className="text-[10px] font-semibold text-indigo-600 hover:text-indigo-800 hover:underline flex items-center space-x-0.5 cursor-pointer"
-                                  title="Buka Progres Monitoring Mahasiswa Bimbingan"
-                                >
-                                  <span>Progres Monitoring</span>
-                                  <ExternalLink className="w-3 h-3 ml-0.5" />
-                                </button>
                               </div>
                             )}
 
                             {/* Kaprodi quick action button for Inactivity alert */}
                             {(userRole === 'kaprodi' || userRole === 'admin') && isInactivityNotif && (
-                              <div className="mt-2 flex items-center justify-between pt-1">
-                                <span className="inline-flex items-center space-x-1 text-[10px] font-bold text-amber-900 bg-amber-100/90 px-2 py-0.5 rounded-md border border-amber-300">
-                                  <AlertTriangle className="w-3 h-3 text-amber-700" />
+                              <div className="mt-1.5 flex items-center justify-between pt-1">
+                                <span className="inline-flex items-center space-x-1 text-[9.5px] font-bold text-amber-900 bg-amber-100/90 px-1.5 py-0.5 rounded border border-amber-300">
+                                  <AlertTriangle className="w-2.5 h-2.5 text-amber-700" />
                                   <span>Hubungi Dospem di Monitoring</span>
                                 </span>
-                                <span className="text-[10px] font-semibold text-amber-700 group-hover:underline flex items-center space-x-0.5">
+                                <span className="text-[9.5px] font-semibold text-amber-700 group-hover:underline flex items-center space-x-0.5">
                                   <span>Buka Monitoring</span>
-                                  <ArrowRight className="w-3 h-3 ml-0.5" />
+                                  <ArrowRight className="w-2.5 h-2.5 ml-0.5" />
                                 </span>
                               </div>
                             )}
 
                             {/* Kaprodi quick action button for thesis title */}
                             {(userRole === 'kaprodi' || userRole === 'admin') && (isThesisNotif || isSimilarityNotif) && (
-                              <div className="mt-2 flex items-center justify-between pt-1">
-                                <span className="inline-flex items-center space-x-1 text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200/70">
-                                  <Sparkles className="w-3 h-3 text-blue-600" />
+                              <div className="mt-1.5 flex items-center justify-between pt-1">
+                                <span className="inline-flex items-center space-x-1 text-[9.5px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200/70">
+                                  <Sparkles className="w-2.5 h-2.5 text-blue-600" />
                                   <span>Tinjau Judul TA</span>
                                 </span>
-                                <span className="text-[10px] font-semibold text-blue-600 group-hover:underline flex items-center space-x-0.5">
+                                <span className="text-[9.5px] font-semibold text-blue-600 group-hover:underline flex items-center space-x-0.5">
                                   <span>Buka halaman tinjauan</span>
-                                  <ExternalLink className="w-3 h-3 ml-0.5" />
-                                </span>
-                              </div>
-                            )}
-
-                            {/* Dosen quick action button for thesis title */}
-                            {userRole === 'dosen' && (isThesisNotif || isSimilarityNotif) && (
-                              <div className="mt-2 flex items-center justify-between pt-1">
-                                <span className="inline-flex items-center space-x-1 text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200/70">
-                                  <Sparkles className="w-3 h-3 text-blue-600" />
-                                  <span>Validasi Usulan Judul</span>
-                                </span>
-                                <span className="text-[10px] font-semibold text-blue-600 group-hover:underline flex items-center space-x-0.5">
-                                  <span>Buka Validasi Judul</span>
-                                  <ExternalLink className="w-3 h-3 ml-0.5" />
+                                  <ExternalLink className="w-2.5 h-2.5 ml-0.5" />
                                 </span>
                               </div>
                             )}
 
                             {/* Kaprodi quick action button for siap sidang */}
                             {(userRole === 'kaprodi' || userRole === 'admin') && isSiapSidangNotif && (
-                              <div className="mt-2 flex items-center justify-between pt-1">
-                                <span className="inline-flex items-center space-x-1 text-[10px] font-bold text-emerald-800 bg-emerald-100/90 px-2 py-0.5 rounded-md border border-emerald-300">
-                                  <GraduationCap className="w-3 h-3 text-emerald-700" />
+                              <div className="mt-1.5 flex items-center justify-between pt-1">
+                                <span className="inline-flex items-center space-x-1 text-[9.5px] font-bold text-emerald-800 bg-emerald-100/90 px-1.5 py-0.5 rounded border border-emerald-300">
+                                  <GraduationCap className="w-2.5 h-2.5 text-emerald-700" />
                                   <span>Siap Verifikasi Sidang</span>
                                 </span>
-                                <span className="text-[10px] font-semibold text-emerald-700 group-hover:underline flex items-center space-x-0.5">
+                                <span className="text-[9.5px] font-semibold text-emerald-700 group-hover:underline flex items-center space-x-0.5">
                                   <span>Lihat Progres</span>
-                                  <ArrowRight className="w-3 h-3 ml-0.5" />
+                                  <ArrowRight className="w-2.5 h-2.5 ml-0.5" />
                                 </span>
                               </div>
                             )}
 
-                            <div className="mt-1.5 flex items-center justify-between text-[10px] text-slate-400">
-                              <span>
-                                {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {new Date(n.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+                            <div className="mt-1.5 flex items-center justify-between text-[9px] text-slate-400">
+                              <span className="flex items-center space-x-1">
+                                <Clock className="w-2.5 h-2.5 text-slate-400" />
+                                <span>{formatRelativeTime(n.created_at, currentTime)}</span>
                               </span>
-                              {isBimbingan && (
-                                <span className="text-indigo-600 font-semibold flex items-center space-x-0.5 hover:underline">
-                                  <span>{isBimbinganMasuk ? 'Validasi sekarang' : 'Lihat bimbingan'}</span>
+                              {isBimbingan && !isBimbinganMasuk && (
+                                <span className="text-indigo-600 font-semibold flex items-center space-x-0.5 hover:underline text-[9.5px]">
+                                  <span>Lihat bimbingan</span>
                                   <ArrowRight className="w-2.5 h-2.5" />
                                 </span>
                               )}
                             </div>
-                            <p className="text-xs text-slate-400 mt-1 font-normal select-none">
-                              {formatRelativeTime(n.created_at, currentTime)}
-                            </p>
                           </div>
                         );
                       })

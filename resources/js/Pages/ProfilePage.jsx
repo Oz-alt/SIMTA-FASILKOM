@@ -78,20 +78,11 @@ export default function ProfilePage() {
   }, [currentUser, advisors]);
 
   const resolveStudentAngkatan = (user) => {
-    if (!user) return '2024';
-    if (user.angkatan && String(user.angkatan).trim() && user.angkatan !== '-') {
-      return String(user.angkatan).replace(/^MI\s+/i, '').trim();
-    }
+    if (!user || !user.is_profile_completed) return '';
     const val = String(user.kelas || '').trim();
-    if (val && val !== '-' && val !== 'MI 5A' && val !== 'MI 5B' && !/^0901\d{8,}$/.test(val)) {
-      return val.replace(/^MI\s+/i, '').trim();
-    }
-    const nim = String(user.nim || '').trim();
-    const nimMatch = nim.match(/^090\d{4}(\d{2})/);
-    if (nimMatch && nimMatch[1]) {
-      return `20${nimMatch[1]}`;
-    }
-    return '2024';
+    if (!val || val === '-' || val === 'MI 5A' || val === 'MI 5B') return '';
+    if (/^0901\d{8,}$/.test(val)) return '2024';
+    return val.replace(/^MI\s+/i, '').trim();
   };
 
   // Resolusi jabatan fungsional: Sumber kebenaran utama adalah yang diset Kaprodi / Admin di Data Master Dosen
@@ -248,8 +239,7 @@ export default function ProfilePage() {
 
   const handleSaveProfile = async (e) => {
     e.preventDefault();
-    const effectiveNama = isMahasiswa ? (currentUser?.nama || formData.nama || '').trim() : formData.nama.trim();
-    if (!effectiveNama) {
+    if (!formData.nama.trim()) {
       setErrorMsg('Nama lengkap tidak boleh kosong.');
       return;
     }
@@ -269,6 +259,11 @@ export default function ProfilePage() {
         setErrorMsg('Nomor WhatsApp harus valid minimal 10 digit (contoh: 081234567890).');
         return;
       }
+      if (!formData.kelas.trim()) {
+        setErrorMsg('Angkatan mahasiswa wajib diisi (contoh: MI 2024).');
+        return;
+      }
+
     }
 
     // Password requirement for ALL roles (Mahasiswa, Dosen, Kaprodi, Admin)
@@ -307,11 +302,11 @@ export default function ProfilePage() {
 
     try {
       const payload = {
-        nama: effectiveNama,
+        nama: formData.nama.trim(),
         email: formData.email ? formData.email.trim() : undefined,
         no_hp: formData.no_hp.trim(),
-        prodi: isMahasiswa ? (currentUser?.prodi || formData.prodi || 'D3 Manajemen Informatika') : formData.prodi,
-        kelas: isMahasiswa ? (resolveStudentAngkatan(currentUser) || formData.kelas.trim() || '2024') : (formData.jabatan_fungsional || formData.kelas || '').trim(),
+        prodi: formData.prodi,
+        kelas: isMahasiswa ? formData.kelas.trim() : (formData.jabatan_fungsional || formData.kelas || '').trim(),
         jabatan_fungsional: isMahasiswa ? '' : (formData.jabatan_fungsional || '').trim(),
         keilmuan: isDosen ? (formData.keilmuan || '').trim() : undefined
       };
@@ -729,7 +724,7 @@ export default function ProfilePage() {
                 </span>
               </div>
               <p className="text-xs text-blue-900/90 leading-relaxed">
-                Akun Anda sudah aktif, namun Nomor HP / WhatsApp Anda belum tercatat di server cloud karena diaktivasi sebelum pembaruan sinkronisasi lintas perangkat. Silakan isi kembali <strong>No. HP / WhatsApp</strong> Anda di bawah ini lalu klik <strong>Simpan Perubahan</strong> (tanpa perlu mengubah kata sandi) agar langsung tersinkron permanen di semua perangkat.
+                Akun Anda sudah aktif, namun Nomor HP / WhatsApp Anda belum tercatat di server cloud karena diaktivasi sebelum pembaruan sinkronisasi lintas perangkat. Silakan isi kembali <strong>No. HP / WhatsApp</strong> Anda di bawah ini lalu klik <strong>Simpan</strong> (tanpa perlu mengubah kata sandi) agar langsung tersinkron permanen di semua perangkat.
               </p>
             </div>
           </div>
@@ -753,7 +748,7 @@ export default function ProfilePage() {
                 </span>
               </div>
               <p className="text-xs text-amber-900/90 leading-relaxed">
-                Halo <strong>{currentUser?.nama}</strong>, akun Anda saat ini terdeteksi masih menggunakan kredensial bawaan (kata sandi default NIM). Demi keamanan data akademik dan privasi proses bimbingan Tugas Akhir Anda di SIMTA, Anda diwajibkan melengkapi nomor WhatsApp aktif serta membuat <strong>kata sandi baru</strong> Anda.
+                Halo <strong>{currentUser?.nama}</strong>, akun Anda saat ini terdeteksi masih menggunakan kredensial bawaan (kata sandi default NIM). Demi keamanan data akademik dan privasi proses bimbingan Tugas Akhir Anda di SIMTA, Anda diwajibkan melengkapi nomor WhatsApp aktif, angkatan mahasiswa, serta membuat <strong>kata sandi baru</strong> Anda.
               </p>
             </div>
           </div>
@@ -922,18 +917,10 @@ export default function ProfilePage() {
             
             {/* 1. Nama Lengkap */}
             <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                  Nama Lengkap {!isEditing || isMahasiswa ? '' : '*'}
-                </span>
-                {isMahasiswa && (
-                  <span className="text-[10px] text-slate-400 font-medium flex items-center space-x-1">
-                    <Lock className="w-3 h-3 text-slate-400" />
-                    <span>Terkunci</span>
-                  </span>
-                )}
-              </div>
-              {isEditing && !isMahasiswa ? (
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                Nama Lengkap {!isEditing ? '' : '*'}
+              </span>
+              {isEditing ? (
                 <div className="relative">
                   <input
                     type="text"
@@ -1023,16 +1010,8 @@ export default function ProfilePage() {
 
             {/* 5. Program Studi (Prodi) */}
             <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Program Studi (Prodi)</span>
-                {isMahasiswa && (
-                  <span className="text-[10px] text-slate-400 font-medium flex items-center space-x-1">
-                    <Lock className="w-3 h-3 text-slate-400" />
-                    <span>Terkunci</span>
-                  </span>
-                )}
-              </div>
-              {isEditing && !isMahasiswa ? (
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Program Studi (Prodi)</span>
+              {isEditing ? (
                 <div className="relative">
                   <select
                     name="prodi"
@@ -1056,38 +1035,45 @@ export default function ProfilePage() {
 
             {/* 6. Angkatan Mahasiswa / Jabatan Fungsional */}
             <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                  {isMahasiswa ? 'Angkatan Mahasiswa' : 'Jabatan Fungsional'}
-                </span>
-                {isMahasiswa && (
-                  <span className="text-[10px] text-slate-400 font-medium flex items-center space-x-1">
-                    <Lock className="w-3 h-3 text-slate-400" />
-                    <span>Terkunci</span>
-                  </span>
-                )}
-              </div>
-              {isEditing && !isMahasiswa ? (
-                <div className="relative">
-                  <select
-                    name="jabatan_fungsional"
-                    value={formData.jabatan_fungsional}
-                    onChange={handleChange}
-                    className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 text-xs font-semibold text-slate-900 bg-white transition-all outline-none appearance-none"
-                  >
-                    <option value="">-- Pilih Jabatan Fungsional --</option>
-                    {JABATAN_FUNGSIONAL_OPTIONS.map(opt => (
-                      <option key={opt} value={opt}>{opt}</option>
-                    ))}
-                  </select>
-                  <GraduationCap className="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                </div>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                {isMahasiswa ? 'Angkatan Mahasiswa' : 'Jabatan Fungsional'} {isMahasiswa && isEditing && <span className="text-rose-500">*</span>}
+              </span>
+              {isEditing ? (
+                isMahasiswa ? (
+                  <div className="relative">
+                    <input
+                      type="text"
+                      name="kelas"
+                      value={formData.kelas}
+                      onChange={handleChange}
+                      required
+                      className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 text-xs font-semibold text-slate-900 bg-white transition-all outline-none"
+                      placeholder="Masukkan angkatan (contoh: 2024 / MI 2024)"
+                    />
+                    <GraduationCap className="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <select
+                      name="jabatan_fungsional"
+                      value={formData.jabatan_fungsional}
+                      onChange={handleChange}
+                      className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 text-xs font-semibold text-slate-900 bg-white transition-all outline-none appearance-none"
+                    >
+                      <option value="">-- Pilih Jabatan Fungsional --</option>
+                      {JABATAN_FUNGSIONAL_OPTIONS.map(opt => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                    <GraduationCap className="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                  </div>
+                )
               ) : (
                 <div className="flex items-center space-x-2 text-slate-900 font-semibold pt-0.5">
                   <GraduationCap className="w-4 h-4 text-slate-400" />
                   <span>
                     {isMahasiswa
-                      ? (resolveStudentAngkatan(currentUser) || '2024')
+                      ? (resolveStudentAngkatan(currentUser) || <span className="text-slate-400 font-normal italic">Belum diisi</span>)
                       : resolvedJabatan}
                   </span>
                 </div>

@@ -110,7 +110,7 @@ Route::get('/kaprodi/submission-status', function () {
 });
 
 Route::get('/kaprodi/advisors', function () {
-    return redirect('/kaprodi/dashboard');
+    return Inertia::render('kaprodi/KelolaDospemPage');
 });
 
 Route::get('/kaprodi/defense-schedules', function () {

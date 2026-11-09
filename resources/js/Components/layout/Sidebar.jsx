@@ -121,7 +121,8 @@ export default function Sidebar() {
               label: 'Tugas Akhir',
               icon: GraduationCap,
               items: [
-                { to: '/kaprodi/titles', label: 'Monitoring', icon: CheckSquare },
+                { to: '/kaprodi/titles', label: 'Monitoring Tugas Akhir', icon: CheckSquare },
+                { to: '/kaprodi/advisors', label: 'Pembagian Dosen Pembimbing', icon: UserCheck },
                 { to: '/kaprodi/defense-schedules', label: 'Manajemen Jadwal Sidang', icon: CalendarDays }
               ]
             },
@@ -345,9 +346,7 @@ export default function Sidebar() {
               }`}
             >
               <div className="flex items-center space-x-3">
-                {DashboardIcon && (
                 <DashboardIcon className={`w-4 h-4 ${isRouteActive(menuData.dashboard.to) ? 'text-indigo-600' : 'text-slate-500'}`} />
-              )}
                 <span>{menuData.dashboard.label}</span>
               </div>
               {menuData.dashboard.isLocked && (
@@ -428,7 +427,7 @@ export default function Sidebar() {
                           <Link
                             key={item.to}
                             href={item.to}
-                            className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                            className={`flex items-center ${Icon ? 'space-x-3' : ''} px-3 py-2 rounded-lg text-xs font-medium transition-all ${
                               isActive
                                 ? 'bg-indigo-50 text-indigo-700 font-semibold border-l-4 border-indigo-600 shadow-2xs'
                                 : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'

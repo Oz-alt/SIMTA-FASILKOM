@@ -4,7 +4,6 @@ import { ArrowLeft, Printer } from 'lucide-react';
 import { Link } from '@inertiajs/react';
 import BimbinganReminderBanner from '../../Components/common/BimbinganReminderBanner.jsx';
 import { calculateBimbinganReminder } from '../../lib/bimbinganReminder.js';
-import unsriLogo from '../../assets/photo/unsri logo.png';
 
 export default function KartuBimbinganPage() {
   const { currentUser, consultations, studentAdvisors, advisors, thesisTitles = [] } = useAuth();
@@ -251,48 +250,15 @@ export default function KartuBimbinganPage() {
       {/* Printable Area */}
       <div className="bg-white p-8 sm:p-12 shadow-sm border border-slate-200 print:p-0 print:shadow-none print:border-none print:m-0 mx-auto" style={{ width: '100%', maxWidth: '210mm', minHeight: '297mm' }}>
         
-        {/* Kop Surat Resmi UNSRI - Fasilkom */}
-        <div className="mb-4">
-          <div className="flex items-center justify-between gap-4">
-            <div className="shrink-0">
-              <img 
-                src={unsriLogo} 
-                alt="Logo Universitas Sriwijaya" 
-                className="w-20 h-20 sm:w-24 sm:h-24 object-contain"
-              />
-            </div>
-            <div className="flex-1 text-center text-black font-serif leading-tight">
-              <p className="text-xs sm:text-sm font-semibold tracking-wide uppercase">
-                KEMENTERIAN PENDIDIKAN TINGGI,<br />SAINS DAN TEKNOLOGI
-              </p>
-              <h2 className="text-base sm:text-lg font-extrabold tracking-wide uppercase mt-0.5">
-                UNIVERSITAS SRIWIJAYA
-              </h2>
-              <h3 className="text-sm sm:text-base font-bold tracking-wide uppercase">
-                FAKULTAS ILMU KOMPUTER
-              </h3>
-              <h4 className="text-xs sm:text-sm font-bold tracking-wide uppercase">
-                PROGRAM STUDI MANAJEMEN INFORMATIKA
-              </h4>
-              <p className="text-[10px] sm:text-[11px] mt-1 text-slate-800 leading-normal">
-                Kampus Unsri, Jalan Srijaya Negara Bukit Besar Palembang, Kode Pos: 30139<br />
-                Telepon (+62711)379249 Pos-el: <span className="text-blue-700 underline print:text-black print:no-underline">humas@ilkom.unsri.ac.id</span>
-              </p>
-            </div>
-            {/* Spacer placeholder agar teks di tengah tetap persis di tengah dokumen */}
-            <div className="w-20 sm:w-24 shrink-0 hidden sm:block"></div>
-          </div>
-
-          {/* Garis Ganda Kop Surat Resmi (Tebal di atas, tipis di bawah) */}
-          <div className="w-full border-b-[3px] border-black mt-3 mb-0.5"></div>
-          <div className="w-full border-b-[1px] border-black mb-5"></div>
-        </div>
-
-        {/* Judul Dokumen */}
-        <div className="text-center mb-6">
-          <h1 className="text-sm sm:text-base font-extrabold uppercase text-black tracking-wider">
+        {/* Header Kartu */}
+        <div className="text-center space-y-1 mb-8">
+          <h1 className="text-base sm:text-lg font-extrabold uppercase text-black tracking-wide">
             CATATAN KEGIATAN KONSULTASI AKADEMIK/PRIBADI
           </h1>
+          <p className="text-xs font-bold text-slate-700 uppercase">
+            FAKULTAS ILMU KOMPUTER - UNIVERSITAS SRIWIJAYA
+          </p>
+          <div className="border-b-2 border-black w-full pt-2"></div>
         </div>
 
         {/* Info Mahasiswa - Dynamic from logged-in account */}

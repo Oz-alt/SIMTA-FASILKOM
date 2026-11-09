@@ -382,7 +382,7 @@ export default function DashboardAdminSimta() {
                   className="flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-100 bg-slate-50/40 hover:bg-slate-50 transition-colors">
                   <div className="flex items-center space-x-3 min-w-0">
                     <div className={`w-8 h-8 rounded-lg ${item.bg} flex items-center justify-center shrink-0`}>
-                      {Icon && <Icon className={`w-3.5 h-3.5 ${item.color}`} />}
+                      <Icon className={`w-3.5 h-3.5 ${item.color}`} />
                     </div>
                     <div className="min-w-0">
                       <div className="text-xs font-semibold text-slate-900 truncate">{item.label}</div>
