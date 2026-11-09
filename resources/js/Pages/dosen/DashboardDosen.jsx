@@ -19,7 +19,6 @@ import {
   Sparkles, 
   Layers, 
   ArrowUpRight, 
-  ShieldCheck,
   Search,
   Filter,
   ExternalLink,
@@ -335,19 +334,12 @@ export default function DashboardDosen() {
     <div className="space-y-6 pb-12 font-sans antialiased text-slate-800">
       
       {/* ── 1. HEADER BANNER ── */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-900 rounded-2xl p-6 sm:p-8 text-white shadow-md relative overflow-hidden">
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-900 rounded-2xl py-8 sm:py-9 px-6 sm:px-8 text-white shadow-md relative overflow-hidden">
         <div className="absolute right-0 top-0 translate-x-12 -translate-y-12 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="relative z-10 space-y-2">
-          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-200 text-xs font-medium backdrop-blur-sm border border-blue-400/20">
-            <ShieldCheck className="w-3.5 h-3.5 text-blue-300" />
-            <span>Dashboard Dosen Pembimbing</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+        <div className="relative z-10">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
             Selamat Datang, {currentUser?.nama || 'Dosen Pembimbing'}
           </h1>
-          <p className="text-sm text-blue-100/90 max-w-2xl leading-relaxed font-normal">
-            Pantau kepatuhan bimbingan mahasiswa, validasi draf Tugas Akhir, dan evaluasi kelayakan ujian secara terpadu.
-          </p>
         </div>
       </div>
 
@@ -356,11 +348,8 @@ export default function DashboardDosen() {
         
         {/* Total Mahasiswa */}
         <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-2xs space-y-2">
-          <div className="flex items-center justify-between text-slate-400">
+          <div>
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Mahasiswa Bimbingan</span>
-            <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-              <Users className="w-4 h-4" />
-            </div>
           </div>
           <div className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
             {myStudents.length} <span className="text-xs font-normal text-slate-500">Mahasiswa</span>
@@ -373,13 +362,10 @@ export default function DashboardDosen() {
           href="/dosen/monitoring"
           className="bg-white border border-slate-200/90 hover:border-amber-400 rounded-2xl p-5 shadow-2xs space-y-2 cursor-pointer transition-all group block"
         >
-          <div className="flex items-center justify-between text-slate-400">
+          <div>
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 group-hover:text-amber-700 transition-colors">
               Belum 24x Bimbingan
             </span>
-            <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
-              <AlertTriangle className="w-4 h-4" />
-            </div>
           </div>
           <div className="text-2xl sm:text-3xl font-bold text-amber-600 tracking-tight">
             {under24List.length} <span className="text-xs font-normal text-slate-500">Mahasiswa</span>
@@ -392,18 +378,15 @@ export default function DashboardDosen() {
           href="/dosen/monitoring"
           className="bg-white border border-slate-200/90 hover:border-rose-400 rounded-2xl p-5 shadow-2xs space-y-2 cursor-pointer transition-all group block"
         >
-          <div className="flex items-center justify-between text-slate-400">
+          <div>
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 group-hover:text-rose-700 transition-colors">
               Tanpa Bimbingan &gt; 30 Hari
             </span>
-            <div className="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
-              <Clock className="w-4 h-4" />
-            </div>
           </div>
           <div className="text-2xl sm:text-3xl font-bold text-rose-600 tracking-tight">
             {overdueList.length} <span className="text-xs font-normal text-slate-500">Mahasiswa</span>
           </div>
-          <p className="text-xs text-rose-700/80 font-normal">Perlu perhatian khusus &amp; reminder</p>
+          <p className="text-xs text-rose-700/80 font-normal">Perlu perhatian khusus dan reminder</p>
         </Link>
 
         {/* Lebih 60 Hari */}
@@ -411,13 +394,10 @@ export default function DashboardDosen() {
           href="/dosen/monitoring"
           className="bg-white border border-slate-200/90 hover:border-rose-400 rounded-2xl p-5 shadow-2xs space-y-2 cursor-pointer transition-all group block"
         >
-          <div className="flex items-center justify-between text-slate-400">
+          <div>
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 group-hover:text-rose-700 transition-colors">
               Lebih 60 Hari
             </span>
-            <div className="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
-              <AlertTriangle className="w-4 h-4" />
-            </div>
           </div>
           <div className="text-2xl sm:text-3xl font-bold text-rose-600 tracking-tight">
             {overdue60List.length} <span className="text-xs font-normal text-slate-500">Mahasiswa</span>
@@ -516,10 +496,10 @@ export default function DashboardDosen() {
         <div className="lg:col-span-8 bg-white border border-slate-200/90 rounded-2xl p-6 shadow-2xs flex flex-col justify-between">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 divide-y md:divide-y-0 md:divide-x divide-slate-100">
             
-            {/* ── Kolom 1: Belum mencapai 24 bimbingan (16) ── */}
+            {/* ── Kolom 1: Belum mencapai 24 bimbingan ── */}
             <div className="space-y-3.5 pr-0 md:pr-4">
               <h4 className="text-xs font-semibold text-slate-900 tracking-tight">
-                Belum mencapai 24 bimbingan ({under24List.length})
+                Belum mencapai 24 bimbingan
               </h4>
 
               <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1 text-xs scrollbar-thin">
@@ -553,10 +533,10 @@ export default function DashboardDosen() {
               </div>
             </div>
 
-            {/* ── Kolom 2: Tanpa bimbingan > 30 hari (12) ── */}
+            {/* ── Kolom 2: Tanpa bimbingan > 30 hari ── */}
             <div className="space-y-3.5 pt-4 md:pt-0 md:px-4">
               <h4 className="text-xs font-semibold text-slate-900 tracking-tight">
-                Tanpa bimbingan &gt; 30 hari ({overdueList.length})
+                Tanpa bimbingan &gt; 30 hari
               </h4>
 
               <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1 text-xs scrollbar-thin">
@@ -590,57 +570,45 @@ export default function DashboardDosen() {
               </div>
             </div>
 
-            {/* ── Kolom 3: Lebih 60 hari ({overdue60List.length}) ── */}
-            <div className="space-y-3.5 pt-4 md:pt-0 md:pl-4 flex flex-col justify-between">
-              <div className="space-y-3.5">
-                <h4 className="text-xs font-semibold text-slate-900 tracking-tight">
-                  Lebih 60 hari ({overdue60List.length})
-                </h4>
+            {/* ── Kolom 3: Lebih 60 hari ── */}
+            <div className="space-y-3.5 pt-4 md:pt-0 md:pl-4">
+              <h4 className="text-xs font-semibold text-slate-900 tracking-tight">
+                Lebih 60 hari
+              </h4>
 
-                <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1 text-xs scrollbar-thin">
-                  {overdue60List.length === 0 ? (
-                    <div className="text-center py-6 text-slate-400 text-xs">
-                      Tidak ada mahasiswa &gt; 60 hari
-                    </div>
-                  ) : (
-                    overdue60List.map(student => {
-                      const daysDisplay = student.daysInactive < 900
-                        ? `${student.daysInactive} hari`
-                        : '> 60 hari';
+              <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1 text-xs scrollbar-thin">
+                {overdue60List.length === 0 ? (
+                  <div className="text-center py-6 text-slate-400 text-xs">
+                    Tidak ada mahasiswa &gt; 60 hari
+                  </div>
+                ) : (
+                  overdue60List.map(student => {
+                    const daysDisplay = student.daysInactive < 900
+                      ? `${student.daysInactive} hari`
+                      : '> 60 hari';
 
-                      return (
-                        <div 
-                          key={student.student_nim}
-                          className="flex items-center justify-between gap-2 py-0.5 hover:bg-slate-50 rounded-md px-1 transition-colors"
-                          title={`${student.student_nama} - ${daysDisplay} tanpa bimbingan`}
+                    return (
+                      <div 
+                        key={student.student_nim}
+                        className="flex items-center justify-between gap-2 py-0.5 hover:bg-slate-50 rounded-md px-1 transition-colors"
+                        title={`${student.student_nama} - ${daysDisplay} tanpa bimbingan`}
+                      >
+                        <StudentWhatsAppLink
+                          student={student}
+                          nim={student.student_nim}
+                          nama={student.student_nama}
+                          className="font-medium text-slate-700 text-xs uppercase truncate max-w-[145px] hover:text-emerald-700"
+                          showIcon={false}
                         >
-                          <StudentWhatsAppLink
-                            student={student}
-                            nim={student.student_nim}
-                            nama={student.student_nama}
-                            className="font-medium text-slate-700 text-xs uppercase truncate max-w-[145px] hover:text-emerald-700"
-                            showIcon={false}
-                          >
-                            {student.student_nama}
-                          </StudentWhatsAppLink>
-                          <span className="text-rose-600 font-medium text-xs shrink-0 text-right">
-                            {daysDisplay}
-                          </span>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
-
-              {/* Action Button */}
-              <div className="pt-3">
-                <Link
-                  href="/dosen/monitoring"
-                  className="w-full inline-flex items-center justify-center py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs shadow-xs transition-colors cursor-pointer"
-                >
-                  <span>Buka Progres Monitoring</span>
-                </Link>
+                          {student.student_nama}
+                        </StudentWhatsAppLink>
+                        <span className="text-rose-600 font-medium text-xs shrink-0 text-right">
+                          {daysDisplay}
+                        </span>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </div>
 
@@ -664,9 +632,6 @@ export default function DashboardDosen() {
                 Frekuensi konsultasi mahasiswa bimbingan Anda selama 6 bulan terakhir.
               </p>
             </div>
-            <span className="text-xs font-semibold text-blue-800 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200 self-start sm:self-auto">
-              Total {myConsultations.length} Sesi
-            </span>
           </div>
 
           {/* Bar Chart Visual */}
@@ -712,20 +677,14 @@ export default function DashboardDosen() {
 
         {/* Tren Aktivitas Bimbingan Line Chart (5 Cols) */}
         <div className="lg:col-span-5 bg-white border border-slate-200/90 rounded-2xl p-6 shadow-2xs space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <div>
-              <h3 className="text-sm font-semibold text-slate-900 flex items-center space-x-2 tracking-tight">
-                <TrendingUp className="w-4 h-4 text-emerald-600" />
-                <span>Tren Aktivitas Bimbingan</span>
-              </h3>
-              <p className="text-xs text-slate-500 mt-0.5 leading-relaxed font-normal">
-                Pergerakan grafik konsultasi tugas akhir.
-              </p>
-            </div>
-            <div className="flex items-center space-x-1 text-xs font-medium text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
-              <ArrowUpRight className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Aktif</span>
-            </div>
+          <div className="border-b border-slate-100 pb-3">
+            <h3 className="text-sm font-semibold text-slate-900 flex items-center space-x-2 tracking-tight">
+              <TrendingUp className="w-4 h-4 text-emerald-600" />
+              <span>Tren Aktivitas Bimbingan</span>
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5 leading-relaxed font-normal">
+              Pergerakan grafik konsultasi tugas akhir.
+            </p>
           </div>
 
           {/* SVG Line / Area Curve */}

@@ -26,9 +26,8 @@ import {
 import unsriLogo from '../../assets/photo/unsri logo.png';
 
 /**
- * Format waktu relatif yang diperbarui secara otomatis:
- * Contoh: "5 detik yang lalu", "5 menit yang lalu", "2 jam yang lalu", 
- * "3 hari yang lalu", "2 minggu yang lalu", "1 bulan yang lalu", "1 tahun yang lalu"
+ * Format waktu notifikasi dinamis:
+ * Berubah dari jam (< 24 jam), hari (1 - 6 hari), baru tanggal (>= 7 hari)
  */
 export function formatRelativeTime(dateInput, now = new Date()) {
   if (!dateInput) return '';
@@ -37,39 +36,31 @@ export function formatRelativeTime(dateInput, now = new Date()) {
 
   const diffInMs = now.getTime() - date.getTime();
   const diffInSeconds = Math.max(0, Math.floor(diffInMs / 1000));
-
-  if (diffInSeconds < 60) {
-    if (diffInSeconds < 10) return 'baru saja';
-    return `${diffInSeconds} detik yang lalu`;
-  }
-
   const diffInMinutes = Math.floor(diffInSeconds / 60);
-  if (diffInMinutes < 60) {
-    return `${diffInMinutes} menit yang lalu`;
-  }
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  const diffInDays = Math.floor(diffInHours / 24);
 
-  const diffInHours = Math.floor(diffInSeconds / 60);
+  // 1. Satuan Jam: jika dalam kurun waktu 24 jam (< 1 hari)
   if (diffInHours < 24) {
+    if (diffInHours < 1) {
+      if (diffInMinutes < 1) return 'baru saja';
+      return `${diffInMinutes} menit yang lalu`;
+    }
     return `${diffInHours} jam yang lalu`;
   }
 
-  const diffInDays = Math.floor(diffInHours / 24);
+  // 2. Satuan Hari: jika antara 1 sampai 6 hari yang lalu
   if (diffInDays < 7) {
+    if (diffInDays === 1) return '1 hari yang lalu';
     return `${diffInDays} hari yang lalu`;
   }
 
-  const diffInWeeks = Math.floor(diffInDays / 7);
-  if (diffInWeeks < 4) {
-    return `${diffInWeeks} minggu yang lalu`;
-  }
-
-  const diffInMonths = Math.floor(diffInDays / 30);
-  if (diffInMonths < 12) {
-    return `${diffInMonths} bulan yang lalu`;
-  }
-
-  const diffInYears = Math.floor(diffInDays / 365);
-  return `${diffInYears} tahun yang lalu`;
+  // 3. Satuan Tanggal: jika 7 hari atau lebih
+  return date.toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric'
+  });
 }
 
 export default function Navbar() {

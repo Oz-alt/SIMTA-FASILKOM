@@ -7,7 +7,6 @@ import {
   CreditCard, 
   Phone, 
   GraduationCap, 
-  ShieldCheck, 
   ShieldAlert,
   Camera, 
   Edit3, 
@@ -25,7 +24,6 @@ import {
   Check,
   Eye,
   EyeOff,
-  KeyRound,
   ArrowRight
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../services/supabase.js';
@@ -1124,20 +1122,15 @@ export default function ProfilePage() {
             {/* 7. Pengaturan Keamanan Kata Sandi Baru (Mahasiswa, Dosen, Kaprodi, Admin) */}
             <div className="col-span-1 md:col-span-2 p-5 rounded-2xl bg-gradient-to-br from-slate-50 to-blue-50/40 border border-blue-100/80 space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-blue-100/80 pb-3">
-                <div className="flex items-center space-x-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold shrink-0">
-                    <KeyRound className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h3 className="text-xs font-bold text-slate-900">
-                      Keamanan Akun: {isPendingProfile ? 'Buat Kata Sandi Baru (Wajib Diatur)' : 'Ubah Kata Sandi Akun'}
-                    </h3>
-                    <p className="text-[11px] text-slate-500 font-medium">
-                      {isPendingProfile 
-                        ? 'Akun masih menggunakan kata sandi default NIM. Tentukan kata sandi baru untuk mengamankan akun Anda.' 
-                        : 'Kosongkan kolom ini jika Anda tidak ingin mengubah kata sandi.'}
+                <div>
+                  <h3 className="text-xs font-bold text-slate-900">
+                    {isPendingProfile ? 'Buat Kata Sandi Baru (Wajib Diatur)' : 'Ubah Kata Sandi Akun'}
+                  </h3>
+                  {isPendingProfile && (
+                    <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                      Akun masih menggunakan kata sandi default NIM. Tentukan kata sandi baru untuk mengamankan akun Anda.
                     </p>
-                  </div>
+                  )}
                 </div>
                 {isPendingProfile && (
                   <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 uppercase tracking-wide shrink-0">
@@ -1204,8 +1197,7 @@ export default function ProfilePage() {
                     </div>
                   </div>
 
-                  <div className="col-span-1 md:col-span-2 text-[11px] text-slate-500 flex items-center space-x-1.5 pt-0.5">
-                    <ShieldCheck className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                  <div className="col-span-1 md:col-span-2 text-[11px] text-slate-500 pt-0.5">
                     <span>Kata sandi minimal 6 karakter {isMahasiswa ? 'dan tidak boleh menggunakan NIM Anda.' : (currentUser?.nip ? 'dan tidak boleh menggunakan NIP Anda.' : '.')}</span>
                   </div>
                 </div>
@@ -1243,7 +1235,7 @@ export default function ProfilePage() {
               <button
                 type="submit"
                 disabled={isSaving}
-                className={`px-5 py-2.5 rounded-xl text-white font-bold text-xs shadow-md transition-all flex items-center space-x-2 cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed ${
+                className={`px-5 py-2.5 rounded-xl text-white font-bold text-xs shadow-md transition-all flex items-center justify-center cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed ${
                   isPendingProfile 
                     ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/30' 
                     : 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/30'
@@ -1255,9 +1247,8 @@ export default function ProfilePage() {
                     <span>Menyimpan...</span>
                   </span>
                 ) : (
-                  <span key="state-idle" className="inline-flex items-center space-x-2">
-                    <Save className="w-4 h-4" />
-                    <span>{isPendingProfile ? 'Simpan & Aktifkan Akun Mahasiswa' : 'Simpan Perubahan'}</span>
+                  <span key="state-idle">
+                    {isPendingProfile ? 'Simpan dan Aktifkan Akun Mahasiswa' : 'Simpan'}
                   </span>
                 )}
               </button>

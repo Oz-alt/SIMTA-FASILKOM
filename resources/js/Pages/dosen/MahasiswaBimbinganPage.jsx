@@ -322,7 +322,7 @@ export default function MahasiswaBimbinganPage() {
                     student={student}
                     nim={student.student_nim}
                     nama={student.student_nama}
-                    className="font-bold text-sm sm:text-base text-slate-900 tracking-tight hover:text-emerald-700"
+                    className="font-medium text-xs sm:text-sm text-slate-900 tracking-tight hover:text-emerald-700"
                     showIcon={false}
                   >
                     {student.student_nama}

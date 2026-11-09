@@ -40,11 +40,13 @@ export default function JadwalSidangDosenPage() {
     <div className="max-w-7xl mx-auto space-y-6">
       
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-900 rounded-2xl p-6 sm:p-8 text-white shadow-lg space-y-2">
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Jadwal Sidang Tugas Akhir</h1>
-        <p className="text-sm text-indigo-100/90 max-w-2xl leading-relaxed mt-1 font-normal">
-          Tinjau jadwal sidang dan seminar terkait penugasan pengujian Anda.
-        </p>
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-900 rounded-2xl py-8 sm:py-9 px-6 sm:px-8 text-white shadow-md relative overflow-hidden">
+        <div className="absolute right-0 top-0 translate-x-12 -translate-y-12 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="relative z-10">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
+            Jadwal Sidang Tugas Akhir
+          </h1>
+        </div>
       </div>
 
       {/* Kolom Jadwal Sidang */}
@@ -75,7 +77,7 @@ export default function JadwalSidangDosenPage() {
                     <StudentWhatsAppLink
                       nim={jadwal.mhs_nim}
                       nama={jadwal.mhs_nama}
-                      className="text-sm sm:text-base font-semibold text-slate-900 hover:text-emerald-700"
+                      className="text-xs sm:text-sm font-medium text-slate-900 hover:text-emerald-700"
                       showIcon={false}
                     >
                       {jadwal.mhs_nama}

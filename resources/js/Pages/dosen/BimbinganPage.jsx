@@ -381,12 +381,12 @@ export default function BimbinganPage() {
 
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight truncate">
+                <h2 className="text-xs sm:text-sm font-medium text-slate-900 tracking-tight truncate">
                   {currentStudent ? (
                     <StudentWhatsAppLink
                       nim={currentStudent.nim}
                       nama={currentStudent.nama}
-                      className="text-slate-900 hover:text-emerald-700 font-bold"
+                      className="text-slate-900 hover:text-emerald-700 font-medium"
                       showIcon={false}
                     >
                       {currentStudent.nama}
@@ -396,7 +396,7 @@ export default function BimbinganPage() {
                   )}
                 </h2>
                 {currentStudent && (
-                  <span className="text-xs font-mono font-medium px-2.5 py-0.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200">
+                  <span className="text-xs font-mono font-normal px-2.5 py-0.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200">
                     {currentStudent.nim}
                   </span>
                 )}
@@ -635,8 +635,8 @@ export default function BimbinganPage() {
               {/* Seksi 2: Catatan Progres Mahasiswa */}
               <div className="pt-4 space-y-3">
                 <div>
-                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-600 block mb-2">
-                    Catatan Progres Mahasiswa
+                  <span className="text-xs font-medium text-slate-600 block mb-2">
+                    Catatan progres mahasiswa
                   </span>
                   <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 text-sm text-slate-700 leading-relaxed font-normal whitespace-pre-wrap">
                     {activeDetailCons.catatan_mahasiswa || 'Tidak ada rincian catatan progres dari mahasiswa.'}
@@ -698,8 +698,8 @@ export default function BimbinganPage() {
                     {/* Header Seksi: Label & Tanggal Respon */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
-                        <h4 className="font-bold text-xs text-slate-900 uppercase tracking-wider">
-                          Evaluasi &amp; Tanggapan Bimbingan
+                        <h4 className="font-medium text-xs text-slate-600">
+                          Evaluasi dan tanggapan bimbingan
                         </h4>
                         {isCompleted && (
                           <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -825,8 +825,8 @@ export default function BimbinganPage() {
 
                     {/* Arahan Dosen Pembimbing */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-slate-700 block">
-                        Arahan Dosen Pembimbing:
+                      <label className="text-xs font-medium text-slate-600 block">
+                        Catatan perbaikan untuk mahasiswa
                       </label>
                       <textarea
                         rows={3}

@@ -164,17 +164,17 @@ export default function Sidebar() {
               label: 'Menu Bimbingan',
               icon: FileCheck,
               items: [
-                { to: '/dosen/mahasiswa', label: 'Progres Monitoring', icon: Users },
-                { to: '/dosen/validasi-judul', label: 'Validasi Usulan Judul', icon: BookOpen },
-                { to: '/dosen/rekap', label: 'Rekap Bimbingan', icon: FileText }
+                { to: '/dosen/mahasiswa', label: 'Progres Monitoring' },
+                { to: '/dosen/validasi-judul', label: 'Validasi Usulan Judul' },
+                { to: '/dosen/rekap', label: 'Rekap Bimbingan' }
               ]
             },
             {
               id: 'lainnya',
-              label: 'Layanan & Akun',
+              label: 'Layanan dan Akun',
               icon: Settings,
               items: [
-                { to: '/dosen/jadwal-sidang', label: 'Jadwal Sidang TA', icon: CalendarDays }
+                { to: '/dosen/jadwal-sidang', label: 'Jadwal Sidang TA' }
               ]
             }
           ]
