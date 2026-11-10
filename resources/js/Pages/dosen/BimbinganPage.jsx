@@ -5,7 +5,7 @@ import StudentWhatsAppLink from '../../Components/common/StudentWhatsAppLink.jsx
 import { sortConsultationsChronologically } from '../../lib/consultationUtils.js';
 
 export default function BimbinganPage() {
-  const { currentUser, studentAdvisors, consultations, thesisTitles, reviewConsultation } = useAuth();
+  const { currentUser, studentAdvisors, consultations, thesisTitles, reviewConsultation, notifications, markNotificationAsRead } = useAuth();
   const { url } = usePage();
 
   const [feedbackState, setFeedbackState] = useState({});
@@ -144,6 +144,58 @@ export default function BimbinganPage() {
     return sortConsultationsChronologically(mine);
   }, [consultations, selectedNim]);
 
+  // Sinkronisasi: Saat halaman dibuka, tandai bimbingan mahasiswa ini sebagai telah dilihat
+  // dan bersihkan notifikasi titik merah terkait
+  useEffect(() => {
+    if (!selectedNim) return;
+
+    try {
+      // 1. Simpan bahwa log bimbingan mahasiswa ini telah dibuka/dilihat oleh dosen
+      const seenMap = JSON.parse(localStorage.getItem('simta_seen_student_bimbingan') || '{}');
+      seenMap[String(selectedNim).trim()] = Date.now();
+      localStorage.setItem('simta_seen_student_bimbingan', JSON.stringify(seenMap));
+
+      // 2. Simpan semua ID bimbingan mahasiswa ini ke dalam ID konsultasi yang telah dilihat
+      const seenIds = new Set(JSON.parse(localStorage.getItem('simta_seen_consultation_ids') || '[]'));
+      studentConsultations.forEach(c => {
+        if (c?.id) seenIds.add(String(c.id));
+      });
+      localStorage.setItem('simta_seen_consultation_ids', JSON.stringify(Array.from(seenIds)));
+
+      // 3. Tandai semua notifikasi terkait mahasiswa ini sebagai sudah dibaca
+      const readNotifs = new Set(JSON.parse(localStorage.getItem('simta_read_notif_ids') || '[]'));
+      let hasNewRead = false;
+      (notifications || []).forEach(n => {
+        if (!n) return;
+        const matchesStudent = 
+          String(n.mhs_nim || '').trim() === String(selectedNim).trim() ||
+          String(n.student_nim || '').trim() === String(selectedNim).trim() ||
+          String(n.recipient_nim || '').trim() === String(selectedNim).trim() ||
+          (n.message && n.message.includes(selectedNim)) ||
+          (n.action_url && n.action_url.includes(selectedNim));
+
+        if (matchesStudent && n.id) {
+          if (!readNotifs.has(String(n.id))) {
+            readNotifs.add(String(n.id));
+            hasNewRead = true;
+          }
+          if (markNotificationAsRead) {
+            markNotificationAsRead(n.id);
+          }
+        }
+      });
+
+      if (hasNewRead) {
+        localStorage.setItem('simta_read_notif_ids', JSON.stringify(Array.from(readNotifs)));
+      }
+
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new Event('simta_notifications_updated'));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [selectedNim, studentConsultations, notifications, markNotificationAsRead]);
+
   // Syarat bimbingan: tervalidasi 12x untuk kelayakan diterima
   const TARGET_TERVALIDASI = 12;
   // Total bimbingan yang telah dicapai mahasiswa terpilih
@@ -274,6 +326,7 @@ export default function BimbinganPage() {
   };
 
   const handleSelectJenis = (consId, jenis) => {
+    if (jenis === 'Menunggu') return; // Status Menunggu bawaan mahasiswa, tidak dapat diklik/dipilih dosen
     setFeedbackState(prev => ({
       ...prev,
       [consId]: {
@@ -301,15 +354,28 @@ export default function BimbinganPage() {
       ? feedback.jenis 
       : (targetCons?.jenis_revisi || (targetCons?.status === 'disetujui' ? 'Diterima' : targetCons?.status === 'menunggu_tanggapan' ? 'Menunggu' : targetCons?.status === 'perlu_revisi' ? 'Minor' : 'Menunggu'));
       
-    const notes = feedback.catatan !== undefined 
+    const rawNotes = feedback.catatan !== undefined 
       ? feedback.catatan 
       : (targetCons?.masukan_dosen || '');
+    const cleanNotes = String(rawNotes).replace(/^\[(Revisi Mayor|Revisi Minor|Mayor|Minor|Menunggu|Diterima|Disetujui|Ditolak)\]\s*/i, '').trim();
+
+    // 1. Validasi: Hasil evaluasi wajib dipilih dosen (tidak boleh Menunggu)
+    if (!chosenJenis || chosenJenis === 'Menunggu') {
+      setToastMsg('Silakan pilih hasil evaluasi bimbingan: Revisi Mayor, Revisi Minor, atau Diterima.');
+      setTimeout(() => setToastMsg(''), 4500);
+      return;
+    }
+
+    // 2. Validasi: Dosen wajib memberikan tanggapan atau catatan sebelum menyimpan
+    if (!cleanNotes) {
+      setToastMsg('Catatan perbaikan untuk mahasiswa wajib diisi sebelum menyimpan tanggapan.');
+      setTimeout(() => setToastMsg(''), 4500);
+      return;
+    }
 
     let status = 'perlu_revisi';
     if (chosenJenis === 'Diterima') {
       status = 'disetujui';
-    } else if (chosenJenis === 'Menunggu') {
-      status = 'menunggu_tanggapan';
     } else if (chosenJenis === 'Mayor' || chosenJenis === 'Minor') {
       status = 'perlu_revisi';
     }
@@ -317,9 +383,9 @@ export default function BimbinganPage() {
     setSavingId(consId);
     try {
       if (reviewConsultation) {
-        await reviewConsultation(consId, status, notes, chosenJenis);
+        await reviewConsultation(consId, status, cleanNotes, chosenJenis);
       }
-      setToastMsg(`Tanggapan bimbingan berhasil disimpan: ${chosenJenis}`);
+      setToastMsg(`Tanggapan bimbingan berhasil disimpan: ${chosenJenis === 'Mayor' ? 'Revisi Mayor' : chosenJenis === 'Minor' ? 'Revisi Minor' : chosenJenis}`);
       setTimeout(() => setToastMsg(''), 4000);
     } catch (err) {
       console.error(err);
@@ -692,14 +758,15 @@ export default function BimbinganPage() {
                         <div>
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                             
-                            {/* 1. Menunggu */}
+                            {/* 1. Menunggu (Nonaktif / tidak dapat diklik dosen) */}
                             <button
                               type="button"
-                              onClick={() => handleSelectJenis(c.id, 'Menunggu')}
-                              className={`px-3 py-2.5 rounded-xl text-xs font-semibold border transition-all text-center cursor-pointer ${
+                              disabled={true}
+                              title="Status bawaan pengajuan mahasiswa (tidak dapat dipilih dosen)"
+                              className={`px-3 py-2.5 rounded-xl text-xs font-semibold border transition-all text-center cursor-not-allowed select-none ${
                                 currentJenis === 'Menunggu'
-                                  ? 'bg-amber-500 text-white border-amber-500 shadow-xs'
-                                  : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-300'
+                                  ? 'bg-amber-500 text-white border-amber-500 shadow-xs opacity-90'
+                                  : 'bg-slate-100 text-slate-400 border-slate-200 opacity-60'
                               }`}
                             >
                               <span>Menunggu</span>
@@ -775,6 +842,11 @@ export default function BimbinganPage() {
                             : 'bg-white text-slate-800 border-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                         }`}
                       />
+                      {!isCompleted && !currentCatatan.trim() && (
+                        <p className="text-[11px] text-amber-600 font-medium">
+                          * Catatan perbaikan wajib diisi sebelum menyimpan tanggapan.
+                        </p>
+                      )}
                     </div>
 
                   </div>
@@ -796,13 +868,25 @@ export default function BimbinganPage() {
 
               if (isCompleted) return null;
 
+              const currentFeedback = feedbackState[c.id] || {};
+              const currentJenis = currentFeedback.jenis !== undefined 
+                ? currentFeedback.jenis 
+                : (c.jenis_revisi || (c.status === 'disetujui' ? 'Diterima' : c.status === 'menunggu_tanggapan' ? 'Menunggu' : 'Menunggu'));
+              const rawCatatan = currentFeedback.catatan !== undefined 
+                ? currentFeedback.catatan 
+                : (c.masukan_dosen || '');
+              const cleanCatatan = String(rawCatatan).replace(/^\[(Revisi Mayor|Revisi Minor|Mayor|Minor|Menunggu|Diterima|Disetujui|Ditolak)\]\s*/i, '').trim();
+
+              const isFormValid = Boolean(cleanCatatan && currentJenis && currentJenis !== 'Menunggu');
+
               return (
                 <div className="px-6 py-4 bg-slate-50/80 border-t border-slate-200/80 flex items-center justify-end">
                   <button
                     type="button"
-                    disabled={savingId === c.id}
+                    disabled={savingId === c.id || !isFormValid}
                     onClick={() => handleSaveFeedback(c.id)}
-                    className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-xs font-semibold shadow-xs transition-all cursor-pointer disabled:opacity-50"
+                    title={!cleanCatatan ? 'Catatan perbaikan wajib diisi sebelum menyimpan' : (!currentJenis || currentJenis === 'Menunggu') ? 'Silakan pilih hasil evaluasi bimbingan' : 'Simpan tanggapan bimbingan'}
+                    className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-xs font-semibold shadow-xs transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <span>{savingId === c.id ? 'Menyimpan...' : 'Simpan Tanggapan'}</span>
                   </button>

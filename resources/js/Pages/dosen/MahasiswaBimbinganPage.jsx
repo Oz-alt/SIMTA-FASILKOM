@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { Link } from '@inertiajs/react';
 import StudentWhatsAppLink from '../../Components/common/StudentWhatsAppLink.jsx';
@@ -19,6 +19,55 @@ export default function MahasiswaBimbinganPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterHealth, setFilterHealth] = useState('all'); // 'all' | 'new' | 'active' | 'warning'
   const [sentReminders, setSentReminders] = useState({});
+
+  // Pelacakan pengajuan yang telah dilihat / dibuka dosen
+  const [seenStudentMap, setSeenStudentMap] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('simta_seen_student_bimbingan') || '{}');
+    } catch {
+      return {};
+    }
+  });
+
+  const [seenConsultationIds, setSeenConsultationIds] = useState(() => {
+    try {
+      return new Set(JSON.parse(localStorage.getItem('simta_seen_consultation_ids') || '[]'));
+    } catch {
+      return new Set();
+    }
+  });
+
+  useEffect(() => {
+    const handleSync = () => {
+      try {
+        setSeenStudentMap(JSON.parse(localStorage.getItem('simta_seen_student_bimbingan') || '{}'));
+        setSeenConsultationIds(new Set(JSON.parse(localStorage.getItem('simta_seen_consultation_ids') || '[]')));
+      } catch {}
+    };
+    window.addEventListener('storage', handleSync);
+    window.addEventListener('simta_notifications_updated', handleSync);
+    return () => {
+      window.removeEventListener('storage', handleSync);
+      window.removeEventListener('simta_notifications_updated', handleSync);
+    };
+  }, []);
+
+  const handleOpenStudentLog = (studentNim, pendingList = []) => {
+    try {
+      const seen = JSON.parse(localStorage.getItem('simta_seen_student_bimbingan') || '{}');
+      seen[String(studentNim).trim()] = Date.now();
+      localStorage.setItem('simta_seen_student_bimbingan', JSON.stringify(seen));
+
+      const seenIds = new Set(JSON.parse(localStorage.getItem('simta_seen_consultation_ids') || '[]'));
+      (pendingList || []).forEach(c => {
+        if (c?.id) seenIds.add(String(c.id));
+      });
+      localStorage.setItem('simta_seen_consultation_ids', JSON.stringify(Array.from(seenIds)));
+
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new Event('simta_notifications_updated'));
+    } catch {}
+  };
 
   // 1. Filter students assigned to this dosen
   const assignedStudents = useMemo(() => {
@@ -110,11 +159,26 @@ export default function MahasiswaBimbinganPage() {
       const totalCount = mhsConsultations.length;
       const progressPercent = Math.min(100, Math.round((totalCount / 24) * 100));
       const pendingCount = pendingConsultations.length;
-      const hasNewSubmission = pendingCount > 0;
+
+      // Mahasiswa hanya memiliki indikator titik merah jika ada pengajuan bimbingan yang belum pernah dilihat/dibuka dosen
+      const studentNim = String(student.student_nim || '').trim();
+      const lastSeenTime = seenStudentMap[studentNim] ? Number(seenStudentMap[studentNim]) : 0;
+      
+      const unviewedPendingConsultations = pendingConsultations.filter(c => {
+        if (c.id && seenConsultationIds.has(String(c.id))) return false;
+        if (lastSeenTime > 0) {
+          const cTime = c.created_at || c.tanggal ? new Date(c.created_at || c.tanggal).getTime() : 0;
+          if (cTime && lastSeenTime >= cTime) return false;
+          if (!cTime) return false;
+        }
+        return true;
+      });
+
+      const hasNewSubmission = unviewedPendingConsultations.length > 0;
 
       // Ambil waktu pengajuan bimbingan terbaru untuk keperluan pengurutan
       const latestPendingDate = hasNewSubmission 
-        ? (pendingConsultations[0]?.tanggal || pendingConsultations[0]?.created_at || '2026-10-28')
+        ? (unviewedPendingConsultations[0]?.tanggal || unviewedPendingConsultations[0]?.created_at || '2026-10-28')
         : null;
 
       let lastDate = null;
@@ -138,6 +202,7 @@ export default function MahasiswaBimbinganPage() {
         totalConsultations: totalCount,
         approvedConsultations: approvedConsultations.length,
         pendingCount,
+        pendingConsultationsList: pendingConsultations,
         hasNewSubmission,
         latestPendingDate,
         progressPercent,
@@ -146,7 +211,7 @@ export default function MahasiswaBimbinganPage() {
         isReadyForDefense: totalCount >= 24
       };
     });
-  }, [assignedStudents, thesisTitles, consultations]);
+  }, [assignedStudents, thesisTitles, consultations, seenStudentMap, seenConsultationIds]);
 
   // 3. Filter dan Pengurutan Otomatis:
   // Data mahasiswa yang memiliki pengajuan baru (hasNewSubmission) diprioritaskan di urutan paling atas!
@@ -351,6 +416,7 @@ export default function MahasiswaBimbinganPage() {
                   <div className="flex items-center space-x-2">
                     <Link
                       href={`/dosen/validasi?nim=${student.student_nim}`}
+                      onClick={() => handleOpenStudentLog(student.student_nim, student.pendingConsultationsList)}
                       className="flex-1 inline-flex items-center justify-center space-x-1.5 px-3.5 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-all shadow-xs cursor-pointer bg-indigo-600 hover:bg-indigo-700 text-white"
                     >
                       <MessageSquare className="w-3.5 h-3.5 shrink-0" />

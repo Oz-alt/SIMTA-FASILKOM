@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Link, router } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { 
   GraduationCap, 
@@ -73,6 +73,7 @@ export default function Navbar() {
     markAllNotificationsAsRead, 
     markNotificationAsRead 
   } = useAuth();
+  const { url } = usePage();
   const [showNotif, setShowNotif] = useState(false);
   const [showRoleMenu, setShowRoleMenu] = useState(false);
   const [avatarError, setAvatarError] = useState(false);
@@ -99,6 +100,24 @@ export default function Navbar() {
       localStorage.setItem('simta_read_notif_ids', JSON.stringify(Array.from(newSet)));
     } catch {}
   };
+
+  // Sinkronkan status baca notifikasi antar-komponen secara real-time
+  useEffect(() => {
+    const syncReadIds = () => {
+      try {
+        const saved = localStorage.getItem('simta_read_notif_ids');
+        if (saved) {
+          setReadNotifIds(new Set(JSON.parse(saved)));
+        }
+      } catch {}
+    };
+    window.addEventListener('storage', syncReadIds);
+    window.addEventListener('simta_notifications_updated', syncReadIds);
+    return () => {
+      window.removeEventListener('storage', syncReadIds);
+      window.removeEventListener('simta_notifications_updated', syncReadIds);
+    };
+  }, []);
 
   // Close floating notification popover on click outside
   useEffect(() => {
@@ -293,13 +312,33 @@ export default function Navbar() {
 
   const unreadCount = userNotifications.length;
 
-  const handleMarkSingleAsRead = (id) => {
+  const handleMarkSingleAsRead = (id, notifObj = null) => {
     if (id && markNotificationAsRead) {
       markNotificationAsRead(id);
     }
     const next = new Set(readNotifIds);
     next.add(String(id));
     saveReadNotifIds(next);
+
+    // Jika notifikasi berkaitan dengan bimbingan mahasiswa, tandai mahasiswa & konsultasi sebagai sudah dilihat
+    const studentNim = notifObj?.mhs_nim || notifObj?.student_nim || (notifObj?.message ? notifObj.message.match(/\((\d{8,})\)/)?.[1] : null);
+    if (studentNim) {
+      try {
+        const seenMap = JSON.parse(localStorage.getItem('simta_seen_student_bimbingan') || '{}');
+        seenMap[String(studentNim).trim()] = Date.now();
+        localStorage.setItem('simta_seen_student_bimbingan', JSON.stringify(seenMap));
+      } catch {}
+    }
+    if (notifObj?.consultation_id) {
+      try {
+        const seenIds = new Set(JSON.parse(localStorage.getItem('simta_seen_consultation_ids') || '[]'));
+        seenIds.add(String(notifObj.consultation_id));
+        localStorage.setItem('simta_seen_consultation_ids', JSON.stringify(Array.from(seenIds)));
+      } catch {}
+    }
+
+    window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new Event('simta_notifications_updated'));
   };
 
   const handleMarkAllAsRead = () => {
@@ -313,8 +352,96 @@ export default function Navbar() {
     saveReadNotifIds(next);
   };
 
+  // Otomatis tandai notifikasi titik merah sebagai sudah dibaca saat pengguna membuka halaman yang bersangkutan
+  useEffect(() => {
+    if (!url || !userNotifications.length) return;
+
+    const toMark = [];
+    const nextReadIds = new Set(readNotifIds);
+    let changed = false;
+
+    userNotifications.forEach(n => {
+      if (n.is_read || nextReadIds.has(String(n.id))) return;
+
+      let isMatch = false;
+
+      // 1. Validasi bimbingan per mahasiswa (/dosen/validasi?nim=...)
+      if (url.includes('/dosen/validasi') || url.includes('/dosen/bimbingan')) {
+        const urlParams = new URLSearchParams(url.includes('?') ? url.split('?')[1] : '');
+        const currentNim = urlParams.get('nim');
+        if (currentNim) {
+          if (
+            String(n.mhs_nim || '').trim() === currentNim ||
+            String(n.student_nim || '').trim() === currentNim ||
+            String(n.recipient_nim || '').trim() === currentNim ||
+            (n.message && n.message.includes(currentNim)) ||
+            (n.action_url && n.action_url.includes(currentNim))
+          ) {
+            isMatch = true;
+          }
+        } else {
+          if (n.related_type === 'bimbingan_masuk' || n.related_type === 'consultation') {
+            isMatch = true;
+          }
+        }
+      }
+      // 2. Validasi judul (/dosen/validasi-judul atau /kaprodi/titles)
+      else if (url.includes('/dosen/validasi-judul') || url.includes('/kaprodi/titles')) {
+        if (n.related_type === 'thesis_title' || n.related_type === 'thesis_title_revised' || (n.action_url && (n.action_url.includes('/dosen/validasi-judul') || n.action_url.includes('/kaprodi/titles')))) {
+          isMatch = true;
+        }
+      }
+      // 3. Jadwal sidang
+      else if (url.includes('/dosen/jadwal-sidang') || url.includes('/kaprodi/defense-schedules')) {
+        if (n.related_type === 'defense_schedule' || n.related_type === 'defense' || (n.action_url && (n.action_url.includes('jadwal-sidang') || n.action_url.includes('defense-schedules')))) {
+          isMatch = true;
+        }
+      }
+      // 4. Reset password admin
+      else if (url.includes('/admin-simta/accounts/password-resets')) {
+        if (n.source_type === 'password_reset' || (n.action_url && n.action_url.includes('password-resets'))) {
+          isMatch = true;
+        }
+      }
+      // 5. Peminjaman ruangan admin & mahasiswa
+      else if (url.includes('/admin/bookings') || url.includes('/booking/status')) {
+        if (n.source_type === 'booking' || n.related_type === 'booking' || (n.action_url && (n.action_url.includes('bookings') || n.action_url.includes('booking/status')))) {
+          isMatch = true;
+        }
+      }
+      // 6. Konsultasi mahasiswa
+      else if (url.includes('/thesis/consultations')) {
+        if (n.related_type === 'consultation' || n.related_type === 'bimbingan_status' || (n.action_url && n.action_url.includes('thesis/consultations'))) {
+          isMatch = true;
+        }
+      }
+      // 7. General URL match
+      if (!isMatch && n.action_url) {
+        const cleanUrl = url.split('#')[0].split('?')[0];
+        const cleanAction = n.action_url.split('#')[0].split('?')[0];
+        if (cleanUrl === cleanAction && cleanUrl !== '/' && cleanUrl !== '') {
+          isMatch = true;
+        }
+      }
+
+      if (isMatch) {
+        toMark.push(n.id);
+        nextReadIds.add(String(n.id));
+        changed = true;
+      }
+    });
+
+    if (changed) {
+      saveReadNotifIds(nextReadIds);
+      toMark.forEach(id => {
+        if (markNotificationAsRead) markNotificationAsRead(id);
+      });
+      window.dispatchEvent(new Event('simta_notifications_updated'));
+    }
+  }, [url, userNotifications, readNotifIds, markNotificationAsRead]);
+
   const handleNotificationItemClick = (n) => {
-    handleMarkSingleAsRead(n.id);
+    handleMarkSingleAsRead(n.id, n);
     if (n.action_url) {
       setShowNotif(false);
       router.visit(n.action_url);
@@ -336,9 +463,7 @@ export default function Navbar() {
 
   const handleNotificationClick = (n) => {
     setShowNotif(false);
-    if (n.id && markNotificationAsRead) {
-      markNotificationAsRead(n.id);
-    }
+    handleMarkSingleAsRead(n.id, n);
 
     // Arahkan dosen langsung ke validasi bimbingan mahasiswa yang bersangkutan atau ke progres monitoring
     if (userRole === 'dosen') {
