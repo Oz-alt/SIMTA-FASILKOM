@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { Link } from '@inertiajs/react';
 import StudentWhatsAppLink from '../../Components/common/StudentWhatsAppLink.jsx';
+import DosenHeaderBanner from '../../Components/common/DosenHeaderBanner.jsx';
 import { 
   Users, 
   BookOpen, 
@@ -334,14 +335,10 @@ export default function DashboardDosen() {
     <div className="space-y-6 pb-12 font-sans antialiased text-slate-800">
       
       {/* ── 1. HEADER BANNER ── */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-900 rounded-2xl py-8 sm:py-9 px-6 sm:px-8 text-white shadow-md relative overflow-hidden">
-        <div className="absolute right-0 top-0 translate-x-12 -translate-y-12 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="relative z-10">
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
-            Selamat Datang, {currentUser?.nama || 'Dosen Pembimbing'}
-          </h1>
-        </div>
-      </div>
+      <DosenHeaderBanner
+        title={`Halo ${currentUser?.nama || 'Dr. Abdiansah, S.Kom., M.Cs.'} Selamat Datang`}
+        subtitle="SISTEM MONITORING TUGAS AKHIR"
+      />
 
       {/* ── 2. TOP METRIC CARDS ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

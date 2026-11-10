@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { CalendarDays, Clock } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import StudentWhatsAppLink from '../../Components/common/StudentWhatsAppLink.jsx';
+import DosenHeaderBanner from '../../Components/common/DosenHeaderBanner.jsx';
 
 export default function JadwalSidangDosenPage() {
   const { currentUser, defenseSchedules } = useAuth();
@@ -40,14 +41,10 @@ export default function JadwalSidangDosenPage() {
     <div className="max-w-7xl mx-auto space-y-6">
       
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-900 rounded-2xl py-8 sm:py-9 px-6 sm:px-8 text-white shadow-md relative overflow-hidden">
-        <div className="absolute right-0 top-0 translate-x-12 -translate-y-12 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="relative z-10">
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
-            Jadwal Sidang Tugas Akhir
-          </h1>
-        </div>
-      </div>
+      <DosenHeaderBanner
+        title="Jadwal Sidang Tugas Akhir"
+        subtitle="SISTEM MONITORING TUGAS AKHIR"
+      />
 
       {/* Kolom Jadwal Sidang */}
       <div className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs">
