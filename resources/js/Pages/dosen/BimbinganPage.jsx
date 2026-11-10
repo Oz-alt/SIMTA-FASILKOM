@@ -745,7 +745,7 @@ export default function BimbinganPage() {
                 <label className="text-xs font-medium text-slate-600 block">
                   Catatan progres mahasiswa
                 </label>
-                <div className="p-3.5 rounded-xl bg-slate-50/70 border border-slate-200/80 text-sm text-slate-700 leading-relaxed font-normal whitespace-pre-wrap">
+                <div className="p-3 rounded-xl bg-slate-50/70 border border-slate-200/80 text-xs text-slate-700 leading-relaxed font-normal whitespace-pre-wrap">
                   {activeDetailCons.catatan_mahasiswa || 'Tidak ada rincian catatan progres dari mahasiswa.'}
                 </div>
                 
@@ -914,7 +914,7 @@ export default function BimbinganPage() {
                             ? "Tidak ada catatan perbaikan."
                             : "Tuliskan catatan perbaikan untuk mahasiswa..."
                         }
-                        className={`w-full text-sm p-3.5 rounded-xl border transition-all leading-relaxed ${
+                        className={`w-full text-xs p-3 rounded-xl border transition-all leading-relaxed ${
                           isCompleted || !isAuthorized
                             ? 'bg-slate-50 text-slate-700 border-slate-200 cursor-default select-text'
                             : 'bg-white text-slate-800 border-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
