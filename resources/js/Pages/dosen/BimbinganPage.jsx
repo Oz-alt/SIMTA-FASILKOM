@@ -843,8 +843,8 @@ export default function BimbinganPage() {
                         }`}
                       />
                       {!isCompleted && !currentCatatan.trim() && (
-                        <p className="text-[11px] text-amber-600 font-medium">
-                          * Catatan perbaikan wajib diisi sebelum menyimpan tanggapan.
+                        <p className="text-[10px] text-slate-400 font-normal">
+                          Catatan perbaikan wajib diisi sebelum menyimpan tanggapan.
                         </p>
                       )}
                     </div>
