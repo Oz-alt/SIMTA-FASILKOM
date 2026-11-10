@@ -792,16 +792,9 @@ export default function BimbinganPage() {
                     
                     {/* Header Seksi: Label & Tanggal Respon */}
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <h4 className="text-xs font-medium text-slate-600 block">
-                          Evaluasi dan tanggapan bimbingan
-                        </h4>
-                        {!isAuthorized && (
-                          <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200">
-                            Akses Hanya Baca
-                          </span>
-                        )}
-                      </div>
+                      <h4 className="text-xs font-medium text-slate-600 block">
+                        Evaluasi dan tanggapan bimbingan
+                      </h4>
                       {c.reviewed_at && (
                         <span className="text-xs text-slate-400 font-normal">
                           Respon: {new Date(c.reviewed_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -809,44 +802,23 @@ export default function BimbinganPage() {
                       )}
                     </div>
 
-                    {/* Informasi Pembatasan Hak Akses Antara Pembimbing 1 & Pembimbing 2 */}
-                    {!isAuthorized && (
-                      <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 leading-relaxed font-normal">
-                        {isCompleted ? (
-                          <span>
-                            Sesi bimbingan ini telah dievaluasi oleh <strong className="font-semibold text-slate-800">{pembimbingInfo.role} ({pembimbingInfo.namaDosen})</strong>. Anda dapat melihat seluruh riwayat dan tanggapan ini dalam mode baca saja.
-                          </span>
-                        ) : (
-                          <span>
-                            Sesi bimbingan ini ditujukan untuk <strong className="font-semibold text-slate-800">{pembimbingInfo.role} ({pembimbingInfo.namaDosen})</strong>. Anda dapat melihat riwayat pengajuan ini, namun hak akses memberikan tanggapan hanya dimiliki oleh {pembimbingInfo.role}.
-                          </span>
-                        )}
-                      </div>
-                    )}
-
                     {/* SATU STATUS BIMBINGAN */}
                     <div>
-                      {isCompleted || !isAuthorized ? (
+                      {isCompleted ? (
                         <div className="flex flex-wrap items-center gap-2">
-                          {isCompleted ? (
-                            <span className={`px-3 py-1 rounded-lg text-xs font-semibold border ${
-                              currentJenis === 'Diterima'
-                                ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                                : currentJenis === 'Mayor'
-                                  ? 'bg-rose-50 text-rose-800 border-rose-300'
-                                  : currentJenis === 'Minor'
-                                    ? 'bg-blue-50 text-blue-800 border-blue-300'
-                                    : 'bg-amber-50 text-amber-800 border-amber-300'
-                            }`}>
-                              <span>
-                                {currentJenis === 'Mayor' ? 'Revisi Mayor' : currentJenis === 'Minor' ? 'Revisi Minor' : currentJenis}
-                              </span>
+                          <span className={`px-3 py-1 rounded-lg text-xs font-semibold border ${
+                            currentJenis === 'Diterima'
+                              ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                              : currentJenis === 'Mayor'
+                                ? 'bg-rose-50 text-rose-800 border-rose-300'
+                                : currentJenis === 'Minor'
+                                  ? 'bg-blue-50 text-blue-800 border-blue-300'
+                                  : 'bg-amber-50 text-amber-800 border-amber-300'
+                          }`}>
+                            <span>
+                              {currentJenis === 'Mayor' ? 'Revisi Mayor' : currentJenis === 'Minor' ? 'Revisi Minor' : currentJenis}
                             </span>
-                          ) : (
-                            <span className="px-3 py-1 rounded-lg text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-300">
-                              Menunggu Tanggapan {pembimbingInfo.role}
-                            </span>
-                          )}
+                          </span>
                         </div>
                       ) : (
                         <div>
@@ -869,11 +841,14 @@ export default function BimbinganPage() {
                             {/* 2. Revisi Mayor */}
                             <button
                               type="button"
-                              onClick={() => handleSelectJenis(c.id, 'Mayor')}
-                              className={`px-3 py-2.5 rounded-xl text-xs font-semibold border transition-all text-center cursor-pointer ${
+                              disabled={!isAuthorized}
+                              onClick={() => isAuthorized && handleSelectJenis(c.id, 'Mayor')}
+                              className={`px-3 py-2.5 rounded-xl text-xs font-semibold border transition-all text-center ${
                                 currentJenis === 'Mayor'
-                                  ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
-                                  : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-300'
+                                  ? 'bg-rose-600 text-white border-rose-600 shadow-xs cursor-pointer'
+                                  : !isAuthorized
+                                    ? 'bg-white text-slate-400 border-slate-200 cursor-not-allowed opacity-60'
+                                    : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-300 cursor-pointer'
                               }`}
                             >
                               <span>Revisi Mayor</span>
@@ -882,11 +857,14 @@ export default function BimbinganPage() {
                             {/* 3. Revisi Minor */}
                             <button
                               type="button"
-                              onClick={() => handleSelectJenis(c.id, 'Minor')}
-                              className={`px-3 py-2.5 rounded-xl text-xs font-semibold border transition-all text-center cursor-pointer ${
+                              disabled={!isAuthorized}
+                              onClick={() => isAuthorized && handleSelectJenis(c.id, 'Minor')}
+                              className={`px-3 py-2.5 rounded-xl text-xs font-semibold border transition-all text-center ${
                                 currentJenis === 'Minor'
-                                  ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                                  : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-300'
+                                  ? 'bg-blue-600 text-white border-blue-600 shadow-xs cursor-pointer'
+                                  : !isAuthorized
+                                    ? 'bg-white text-slate-400 border-slate-200 cursor-not-allowed opacity-60'
+                                    : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-300 cursor-pointer'
                               }`}
                             >
                               <span>Revisi Minor</span>
@@ -895,17 +873,19 @@ export default function BimbinganPage() {
                             {/* 4. Diterima */}
                             <button
                               type="button"
-                              disabled={isDiterimaDisabled}
-                              onClick={() => !isDiterimaDisabled && handleSelectJenis(c.id, 'Diterima')}
+                              disabled={!isAuthorized || isDiterimaDisabled}
+                              onClick={() => isAuthorized && !isDiterimaDisabled && handleSelectJenis(c.id, 'Diterima')}
                               title={
-                                !isEligibleForDiterima 
-                                  ? `Tombol Diterima baru aktif setelah mahasiswa menyelesaikan minimal 12 kali bimbingan (saat ini: ${totalBimbinganCount}/12 kali).`
-                                  : 'Beri status Diterima'
+                                !isAuthorized
+                                  ? 'Hanya dapat dipilih oleh dosen pembimbing bersangkutan'
+                                  : !isEligibleForDiterima 
+                                    ? `Tombol Diterima baru aktif setelah mahasiswa menyelesaikan minimal 12 kali bimbingan (saat ini: ${totalBimbinganCount}/12 kali).`
+                                    : 'Beri status Diterima'
                               }
                               className={`px-3 py-2.5 rounded-xl text-xs font-semibold border transition-all text-center ${
                                 currentJenis === 'Diterima'
                                   ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs cursor-pointer'
-                                  : isDiterimaDisabled
+                                  : (!isAuthorized || isDiterimaDisabled)
                                     ? 'bg-slate-100 text-slate-400 border-slate-200/80 cursor-not-allowed opacity-60'
                                     : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-300 cursor-pointer'
                               }`}
@@ -932,9 +912,7 @@ export default function BimbinganPage() {
                         placeholder={
                           isCompleted
                             ? "Tidak ada catatan perbaikan."
-                            : !isAuthorized
-                              ? `Menunggu catatan tanggapan dari ${pembimbingInfo.role} (${pembimbingInfo.namaDosen})...`
-                              : "Tuliskan catatan perbaikan untuk mahasiswa..."
+                            : "Tuliskan catatan perbaikan untuk mahasiswa..."
                         }
                         className={`w-full text-sm p-3.5 rounded-xl border transition-all leading-relaxed ${
                           isCompleted || !isAuthorized
