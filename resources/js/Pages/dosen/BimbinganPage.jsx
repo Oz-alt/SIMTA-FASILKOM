@@ -250,6 +250,55 @@ export default function BimbinganPage() {
     return { role, namaDosen };
   }, [activeDetailCons, currentStudent, currentUser]);
 
+  // Helper penentuan hak akses respon bimbingan (Pembimbing 1 vs Pembimbing 2)
+  // Kedua pembimbing dapat melihat seluruh riwayat bimbingan, namun hanya pembimbing bersangkutan yang dapat memberikan/mengubah tanggapan
+  const isAuthorizedSupervisor = (cons) => {
+    if (!cons || !currentUser) return false;
+
+    const userNip = String(currentUser.nip || currentUser.nim || '').trim();
+    const userNama = (currentUser.nama || '').toLowerCase().replace(/dr\.|ir\.|prof\.|s\.kom\.|m\.cs\.|m\.t\.|m\.kom\.|ph\.d\.|st\.|s\.t\./gi, '').trim();
+
+    // 1. Cek langsung kecocokan NIP atau Nama pada sesi bimbingan
+    const consNip = String(cons.dosen_nip || '').trim();
+    const consNama = (cons.dosen_nama || '').toLowerCase().replace(/dr\.|ir\.|prof\.|s\.kom\.|m\.cs\.|m\.t\.|m\.kom\.|ph\.d\.|st\.|s\.t\./gi, '').trim();
+
+    // 2. Tentukan peran target sesi bimbingan: 'Pembimbing 1' atau 'Pembimbing 2'
+    let isTargetPemb2 = false;
+    if (cons.pembimbing && cons.pembimbing.includes('2')) {
+      isTargetPemb2 = true;
+    } else if (cons.pembimbing && cons.pembimbing.includes('1')) {
+      isTargetPemb2 = false;
+    } else {
+      if (currentStudent?.dospem2_nip && consNip && consNip === String(currentStudent.dospem2_nip).trim()) {
+        isTargetPemb2 = true;
+      } else if (currentStudent?.dospem2_nama && consNama && currentStudent.dospem2_nama.toLowerCase().includes(consNama)) {
+        isTargetPemb2 = true;
+      }
+    }
+
+    if (isTargetPemb2) {
+      // Sesi ditujukan untuk Pembimbing 2
+      if (userNip && currentStudent?.dospem2_nip && String(currentStudent.dospem2_nip).trim() === userNip) return true;
+      if (userNip && consNip && userNip === consNip) return true;
+      if (userNama && currentStudent?.dospem2_nama) {
+        const d2Clean = currentStudent.dospem2_nama.toLowerCase().replace(/dr\.|ir\.|prof\.|s\.kom\.|m\.cs\.|m\.t\.|m\.kom\.|ph\.d\.|st\.|s\.t\./gi, '').trim();
+        if (d2Clean.includes(userNama) || userNama.includes(d2Clean)) return true;
+      }
+      if (userNama && consNama && (consNama.includes(userNama) || userNama.includes(consNama))) return true;
+      return false;
+    } else {
+      // Sesi ditujukan untuk Pembimbing 1
+      if (userNip && currentStudent?.dospem1_nip && String(currentStudent.dospem1_nip).trim() === userNip) return true;
+      if (userNip && consNip && userNip === consNip) return true;
+      if (userNama && currentStudent?.dospem1_nama) {
+        const d1Clean = currentStudent.dospem1_nama.toLowerCase().replace(/dr\.|ir\.|prof\.|s\.kom\.|m\.cs\.|m\.t\.|m\.kom\.|ph\.d\.|st\.|s\.t\./gi, '').trim();
+        if (d1Clean.includes(userNama) || userNama.includes(d1Clean)) return true;
+      }
+      if (userNama && consNama && (consNama.includes(userNama) || userNama.includes(consNama))) return true;
+      return false;
+    }
+  };
+
   // Format tanggal Bahasa Indonesia yang rapi
   const formatDateIndo = (rawDate) => {
     if (!rawDate) return '-';
@@ -327,6 +376,9 @@ export default function BimbinganPage() {
 
   const handleSelectJenis = (consId, jenis) => {
     if (jenis === 'Menunggu') return; // Status Menunggu bawaan mahasiswa, tidak dapat diklik/dipilih dosen
+    const targetCons = studentConsultations.find(sc => String(sc.id) === String(consId));
+    if (!isAuthorizedSupervisor(targetCons)) return; // Pembatasan hak akses: bukan pembimbing sesi ini
+
     setFeedbackState(prev => ({
       ...prev,
       [consId]: {
@@ -337,6 +389,9 @@ export default function BimbinganPage() {
   };
 
   const handleCatatanChange = (consId, catatan) => {
+    const targetCons = studentConsultations.find(sc => String(sc.id) === String(consId));
+    if (!isAuthorizedSupervisor(targetCons)) return; // Pembatasan hak akses: bukan pembimbing sesi ini
+
     setFeedbackState(prev => ({
       ...prev,
       [consId]: {
@@ -348,6 +403,16 @@ export default function BimbinganPage() {
 
   const handleSaveFeedback = async (consId) => {
     const targetCons = studentConsultations.find(sc => String(sc.id) === String(consId));
+    
+    // Pembatasan hak akses: Setiap pembimbing hanya dapat memberikan tanggapan pada log bimbingan masing-masing
+    if (!isAuthorizedSupervisor(targetCons)) {
+      const isPemb2 = String(targetCons?.pembimbing || '').includes('2');
+      const targetRole = isPemb2 ? 'Pembimbing 2' : 'Pembimbing 1';
+      setToastMsg(`Anda tidak memiliki hak akses untuk memberikan atau mengubah tanggapan pada sesi bimbingan milik ${targetRole}.`);
+      setTimeout(() => setToastMsg(''), 4500);
+      return;
+    }
+
     const feedback = feedbackState[consId] || {};
     
     const chosenJenis = feedback.jenis !== undefined 
@@ -699,9 +764,10 @@ export default function BimbinganPage() {
                 )}
               </div>
 
-              {/* Seksi 3: Form Tanggapan & Evaluasi Dosen (Status Tunggal & Arahan Dosen Pembimbing, tanpa icon) */}
+              {/* Seksi 3: Form Tanggapan & Evaluasi Dosen (Pembatasan Hak Akses Pembimbing 1 vs Pembimbing 2) */}
               {(() => {
                 const c = activeDetailCons;
+                const isAuthorized = isAuthorizedSupervisor(c);
                 const isCompleted = Boolean(
                   c.reviewed_at || 
                   c.status === 'disetujui' || 
@@ -726,9 +792,16 @@ export default function BimbinganPage() {
                     
                     {/* Header Seksi: Label & Tanggal Respon */}
                     <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-medium text-slate-600 block">
-                        Evaluasi dan tanggapan bimbingan
-                      </h4>
+                      <div className="flex items-center space-x-2">
+                        <h4 className="text-xs font-medium text-slate-600 block">
+                          Evaluasi dan tanggapan bimbingan
+                        </h4>
+                        {!isAuthorized && (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                            Akses Hanya Baca
+                          </span>
+                        )}
+                      </div>
                       {c.reviewed_at && (
                         <span className="text-xs text-slate-400 font-normal">
                           Respon: {new Date(c.reviewed_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -736,23 +809,44 @@ export default function BimbinganPage() {
                       )}
                     </div>
 
+                    {/* Informasi Pembatasan Hak Akses Antara Pembimbing 1 & Pembimbing 2 */}
+                    {!isAuthorized && (
+                      <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 leading-relaxed font-normal">
+                        {isCompleted ? (
+                          <span>
+                            Sesi bimbingan ini telah dievaluasi oleh <strong className="font-semibold text-slate-800">{pembimbingInfo.role} ({pembimbingInfo.namaDosen})</strong>. Anda dapat melihat seluruh riwayat dan tanggapan ini dalam mode baca saja.
+                          </span>
+                        ) : (
+                          <span>
+                            Sesi bimbingan ini ditujukan untuk <strong className="font-semibold text-slate-800">{pembimbingInfo.role} ({pembimbingInfo.namaDosen})</strong>. Anda dapat melihat riwayat pengajuan ini, namun hak akses memberikan tanggapan hanya dimiliki oleh {pembimbingInfo.role}.
+                          </span>
+                        )}
+                      </div>
+                    )}
+
                     {/* SATU STATUS BIMBINGAN */}
                     <div>
-                      {isCompleted ? (
+                      {isCompleted || !isAuthorized ? (
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className={`px-3 py-1 rounded-lg text-xs font-semibold border ${
-                            currentJenis === 'Diterima'
-                              ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                              : currentJenis === 'Mayor'
-                                ? 'bg-rose-50 text-rose-800 border-rose-300'
-                                : currentJenis === 'Minor'
-                                  ? 'bg-blue-50 text-blue-800 border-blue-300'
-                                  : 'bg-amber-50 text-amber-800 border-amber-300'
-                          }`}>
-                            <span>
-                              {currentJenis === 'Mayor' ? 'Revisi Mayor' : currentJenis === 'Minor' ? 'Revisi Minor' : currentJenis}
+                          {isCompleted ? (
+                            <span className={`px-3 py-1 rounded-lg text-xs font-semibold border ${
+                              currentJenis === 'Diterima'
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                                : currentJenis === 'Mayor'
+                                  ? 'bg-rose-50 text-rose-800 border-rose-300'
+                                  : currentJenis === 'Minor'
+                                    ? 'bg-blue-50 text-blue-800 border-blue-300'
+                                    : 'bg-amber-50 text-amber-800 border-amber-300'
+                            }`}>
+                              <span>
+                                {currentJenis === 'Mayor' ? 'Revisi Mayor' : currentJenis === 'Minor' ? 'Revisi Minor' : currentJenis}
+                              </span>
                             </span>
-                          </span>
+                          ) : (
+                            <span className="px-3 py-1 rounded-lg text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-300">
+                              Menunggu Tanggapan {pembimbingInfo.role}
+                            </span>
+                          )}
                         </div>
                       ) : (
                         <div>
@@ -831,18 +925,24 @@ export default function BimbinganPage() {
                       </label>
                       <textarea
                         rows={3}
-                        readOnly={isCompleted}
-                        disabled={isCompleted}
+                        readOnly={isCompleted || !isAuthorized}
+                        disabled={isCompleted || !isAuthorized}
                         value={currentCatatan}
-                        onChange={(e) => !isCompleted && handleCatatanChange(c.id, e.target.value)}
-                        placeholder={isCompleted ? "Tidak ada catatan perbaikan." : "Tuliskan catatan perbaikan untuk mahasiswa..."}
-                        className={`w-full text-sm p-3.5 rounded-xl border transition-all leading-relaxed ${
+                        onChange={(e) => isAuthorized && !isCompleted && handleCatatanChange(c.id, e.target.value)}
+                        placeholder={
                           isCompleted
+                            ? "Tidak ada catatan perbaikan."
+                            : !isAuthorized
+                              ? `Menunggu catatan tanggapan dari ${pembimbingInfo.role} (${pembimbingInfo.namaDosen})...`
+                              : "Tuliskan catatan perbaikan untuk mahasiswa..."
+                        }
+                        className={`w-full text-sm p-3.5 rounded-xl border transition-all leading-relaxed ${
+                          isCompleted || !isAuthorized
                             ? 'bg-slate-50 text-slate-700 border-slate-200 cursor-default select-text'
                             : 'bg-white text-slate-800 border-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                         }`}
                       />
-                      {!isCompleted && !currentCatatan.trim() && (
+                      {isAuthorized && !isCompleted && !currentCatatan.trim() && (
                         <p className="text-[10px] text-red-500 font-normal">
                           Catatan perbaikan wajib diisi sebelum menyimpan tanggapan.
                         </p>
@@ -855,9 +955,10 @@ export default function BimbinganPage() {
 
             </div>
 
-            {/* Footer Modal: Tombol Simpan jika belum selesai (tanpa tombol Tutup bawah & tanpa label Selesai) */}
+            {/* Footer Modal: Tombol Simpan jika belum selesai dan memiliki hak akses */}
             {(() => {
               const c = activeDetailCons;
+              const isAuthorized = isAuthorizedSupervisor(c);
               const isCompleted = Boolean(
                 c.reviewed_at || 
                 c.status === 'disetujui' || 
@@ -866,7 +967,8 @@ export default function BimbinganPage() {
                 (c.masukan_dosen && c.status !== 'menunggu_tanggapan' && c.status !== 'menunggu')
               );
 
-              if (isCompleted) return null;
+              // Jika sudah selesai atau bukan pembimbing yang berhak, tombol Simpan tidak tampil
+              if (isCompleted || !isAuthorized) return null;
 
               const currentFeedback = feedbackState[c.id] || {};
               const currentJenis = currentFeedback.jenis !== undefined 
