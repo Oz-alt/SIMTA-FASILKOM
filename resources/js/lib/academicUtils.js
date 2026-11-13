@@ -58,6 +58,15 @@ export const AVAILABLE_SEMESTERS = [
   'Semester 8+'
 ];
 
+export const AVAILABLE_ANGKATAN = [
+  'Semua Angkatan',
+  '2026',
+  '2025',
+  '2024',
+  '2023',
+  '2022'
+];
+
 export const getStudentAngkatan = (std) => {
   if (!std) return '2024';
 

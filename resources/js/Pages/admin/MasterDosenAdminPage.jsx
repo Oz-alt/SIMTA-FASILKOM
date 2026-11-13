@@ -46,6 +46,7 @@ export default function MasterDosenAdminPage() {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [jabatanFilter, setJabatanFilter] = useState('ALL');
   const [prodiFilter, setProdiFilter] = useState('ALL');
+  const [roleFilter, setRoleFilter] = useState('ALL');
 
   // Modal States
   const [isImportOpen, setIsImportOpen] = useState(false);
@@ -123,10 +124,12 @@ export default function MasterDosenAdminPage() {
       const matchStatus = statusFilter === 'ALL' || (adv.status || 'aktif').toLowerCase() === statusFilter.toLowerCase();
       const matchJabatan = jabatanFilter === 'ALL' || adv.jabatan_fungsional === jabatanFilter;
       const matchProdi = prodiFilter === 'ALL' || adv.prodi === prodiFilter;
+      const isKaprodi = adv.role === 'kaprodi' || adv.nip === '198410012009121005';
+      const matchRole = roleFilter === 'ALL' || (roleFilter === 'kaprodi' ? isKaprodi : !isKaprodi);
 
-      return matchQuery && matchStatus && matchJabatan && matchProdi;
+      return matchQuery && matchStatus && matchJabatan && matchProdi && matchRole;
     });
-  }, [rawDosenList, searchQuery, statusFilter, jabatanFilter, prodiFilter]);
+  }, [rawDosenList, searchQuery, statusFilter, jabatanFilter, prodiFilter, roleFilter]);
 
   // Statistics Summary
   const totalDosen = rawDosenList.length;
@@ -424,6 +427,19 @@ export default function MasterDosenAdminPage() {
           {/* Filters Row */}
           <div className="flex flex-wrap items-center gap-2">
             
+            {/* Role Filter (Ketentuan #7) */}
+            <div className="flex items-center space-x-1.5">
+              <select
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value)}
+                className="text-xs py-2 px-3 rounded-xl border border-slate-200 bg-white font-medium text-slate-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="ALL">Semua Role</option>
+                <option value="dosen">Dosen Pembimbing</option>
+                <option value="kaprodi">Kaprodi</option>
+              </select>
+            </div>
+
             {/* Status Filter */}
             <div className="flex items-center space-x-1.5">
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider hidden sm:inline">Status:</span>
@@ -469,7 +485,7 @@ export default function MasterDosenAdminPage() {
             </div>
 
             {/* Reset Filter Button */}
-            {(searchQuery || statusFilter !== 'ALL' || jabatanFilter !== 'ALL' || prodiFilter !== 'ALL') && (
+            {(searchQuery || statusFilter !== 'ALL' || jabatanFilter !== 'ALL' || prodiFilter !== 'ALL' || roleFilter !== 'ALL') && (
               <button
                 type="button"
                 onClick={() => {
@@ -477,6 +493,7 @@ export default function MasterDosenAdminPage() {
                   setStatusFilter('ALL');
                   setJabatanFilter('ALL');
                   setProdiFilter('ALL');
+                  setRoleFilter('ALL');
                 }}
                 className="px-2.5 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
               >
@@ -490,17 +507,17 @@ export default function MasterDosenAdminPage() {
 
       {/* Main Table */}
       <div className="bg-white border border-slate-200 rounded-2xl shadow-2xs overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto table-scroll-container overscroll-contain">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
-                <th className="py-3.5 px-4">Dosen</th>
-                <th className="py-3.5 px-4">Kontak</th>
-                <th className="py-3.5 px-4">Jabatan &amp; Prodi</th>
-                <th className="py-3.5 px-4">Bidang Keahlian</th>
-                <th className="py-3.5 px-4 text-center">Kuota (P1 / P2)</th>
-                <th className="py-3.5 px-4">Status</th>
-                <th className="py-3.5 px-4 text-center">Aksi</th>
+                <th className="py-2.5 px-3">Dosen</th>
+                <th className="py-2.5 px-3">Kontak</th>
+                <th className="py-2.5 px-3">Jabatan &amp; Prodi</th>
+                <th className="py-2.5 px-3">Bidang Keahlian</th>
+                <th className="py-2.5 px-3 text-center whitespace-nowrap">Kuota (P1 / P2)</th>
+                <th className="py-2.5 px-3">Status</th>
+                <th className="py-2.5 px-3 text-center">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs">
@@ -517,35 +534,49 @@ export default function MasterDosenAdminPage() {
                   const keahlianList = Array.isArray(adv.keahlian) 
                     ? adv.keahlian 
                     : (adv.keahlian || '').split(',').map(s => s.trim()).filter(Boolean);
+                  const isKaprodi = adv.role === 'kaprodi' || adv.nip === '198410012009121005';
 
                   return (
                     <tr key={adv.id || adv.nip} className="hover:bg-slate-50/80 transition-colors">
                       
-                      {/* Dosen Info */}
-                      <td className="py-3.5 px-4">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-9 h-9 rounded-full bg-blue-50 border border-blue-200 text-blue-700 font-extrabold text-xs flex items-center justify-center shrink-0">
+                      {/* Dosen Info (Ketentuan #7) */}
+                      <td className="py-2.5 px-3">
+                        <div className="flex items-center space-x-2.5">
+                          <div className={`w-8 h-8 rounded-full border text-xs font-extrabold flex items-center justify-center shrink-0 ${
+                            isKaprodi
+                              ? 'bg-purple-50 border-purple-200 text-purple-700'
+                              : 'bg-blue-50 border-blue-200 text-blue-700'
+                          }`}>
                             {adv.nama ? adv.nama.charAt(0).toUpperCase() : 'D'}
                           </div>
                           <div className="min-w-0">
-                            <button
-                              type="button"
-                              onClick={() => setViewingDosen(adv)}
-                              className="font-bold text-slate-900 hover:text-blue-600 transition-colors text-left truncate block cursor-pointer"
-                            >
-                              {adv.nama}
-                            </button>
+                            <div className="flex items-center space-x-1.5">
+                              <button
+                                type="button"
+                                onClick={() => setViewingDosen(adv)}
+                                className="font-bold text-slate-900 hover:text-blue-600 transition-colors text-left truncate block cursor-pointer"
+                              >
+                                {adv.nama}
+                              </button>
+                              <span className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase shrink-0 ${
+                                isKaprodi
+                                  ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                                  : 'bg-indigo-50 text-indigo-700 border border-indigo-100'
+                              }`}>
+                                {isKaprodi ? 'Kaprodi' : 'Dospem'}
+                              </span>
+                            </div>
                             <div className="text-[11px] font-mono text-slate-500 font-medium">{adv.nip}</div>
                           </div>
                         </div>
                       </td>
 
                       {/* Contact Info */}
-                      <td className="py-3.5 px-4">
+                      <td className="py-2.5 px-3">
                         <div className="space-y-0.5">
                           <div className="flex items-center space-x-1.5 text-slate-600 text-[11px]">
                             <Mail className="w-3 h-3 text-slate-400 shrink-0" />
-                            <span className="truncate max-w-[170px]">{adv.email || `${adv.nip}@unsri.ac.id`}</span>
+                            <span className="truncate max-w-[170px]" title={adv.email}>{adv.email || `${adv.nip}@unsri.ac.id`}</span>
                           </div>
                           {adv.no_hp && adv.no_hp !== '-' && (
                             <div className="flex items-center space-x-1.5 text-slate-500 text-[11px]">
@@ -557,36 +588,38 @@ export default function MasterDosenAdminPage() {
                       </td>
 
                       {/* Jabatan & Prodi */}
-                      <td className="py-3.5 px-4">
-                        <div className="font-semibold text-slate-800">{adv.jabatan_fungsional || 'Asisten Ahli'}</div>
+                      <td className="py-2.5 px-3">
+                        <div className="font-semibold text-slate-800 text-[11px]">{adv.jabatan_fungsional || 'Asisten Ahli'}</div>
                         <div className="text-[11px] text-slate-500">{adv.prodi || 'D3 Manajemen Informatika'}</div>
                       </td>
 
                       {/* Keahlian Chips */}
-                      <td className="py-3.5 px-4">
-                        <div className="flex flex-wrap gap-1 max-w-[200px]">
+                      <td className="py-2.5 px-3">
+                        <div className="flex flex-wrap gap-1 max-w-[190px]">
                           {keahlianList.slice(0, 2).map((k, idx) => (
-                            <span key={idx} className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                            <span key={idx} className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
                               {k}
                             </span>
                           ))}
                           {keahlianList.length > 2 && (
-                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-600">
+                            <span className="px-1 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-600">
                               +{keahlianList.length - 2}
                             </span>
                           )}
                         </div>
                       </td>
 
-                      {/* Kuota (P1 / P2) */}
-                      <td className="py-3.5 px-4 text-center">
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-slate-50 text-slate-800 border border-slate-200">
-                          {adv.kuota_dospem1 || 8} / {adv.kuota_dospem2 || 8}
+                      {/* Kuota (P1 / P2) (Ketentuan #5) */}
+                      <td className="py-2.5 px-3 text-center whitespace-nowrap min-w-[110px]">
+                        <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-lg text-xs font-bold bg-slate-50 text-slate-800 border border-slate-200 whitespace-nowrap">
+                          <span className="text-blue-700">P1: {adv.kuota_dospem1 || 8}</span>
+                          <span className="text-slate-300">•</span>
+                          <span className="text-emerald-700">P2: {adv.kuota_dospem2 || 8}</span>
                         </span>
                       </td>
 
                       {/* Status */}
-                      <td className="py-3.5 px-4">
+                      <td className="py-2.5 px-3 whitespace-nowrap">
                         <button
                           type="button"
                           onClick={() => handleOpenStatusModal(adv)}
@@ -597,8 +630,8 @@ export default function MasterDosenAdminPage() {
                         </button>
                       </td>
 
-                      {/* Actions */}
-                      <td className="py-3.5 px-4 text-center">
+                      {/* Actions (Ketentuan #4: Hanya Eye, Edit2, Trash2 - Tanpa ShieldCheck) */}
+                      <td className="py-2.5 px-3 text-center whitespace-nowrap">
                         <div className="flex items-center justify-center space-x-1">
                           
                           {/* Detail */}
@@ -619,16 +652,6 @@ export default function MasterDosenAdminPage() {
                             title="Edit Data Master Dosen"
                           >
                             <Edit2 className="w-4 h-4" />
-                          </button>
-
-                          {/* Kelola Status */}
-                          <button
-                            type="button"
-                            onClick={() => handleOpenStatusModal(adv)}
-                            className="p-1.5 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 transition-colors cursor-pointer"
-                            title="Kelola Status Dosen"
-                          >
-                            <ShieldCheck className="w-4 h-4" />
                           </button>
 
                           {/* Delete */}

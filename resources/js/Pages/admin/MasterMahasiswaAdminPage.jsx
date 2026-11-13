@@ -31,7 +31,7 @@ import {
   UserX,
   Upload
 } from 'lucide-react';
-import { getStudentSemester, AVAILABLE_SEMESTERS } from '../../lib/academicUtils.js';
+import { getStudentAngkatan, AVAILABLE_ANGKATAN } from '../../lib/academicUtils.js';
 import ModalImportMasterData from '../../Components/common/ModalImportMasterData.jsx';
 
 export default function MasterMahasiswaAdminPage() {
@@ -50,8 +50,7 @@ export default function MasterMahasiswaAdminPage() {
   // Search & Filter States
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const [classFilter, setClassFilter] = useState('ALL');
-  const [semesterFilter, setSemesterFilter] = useState('Semua Semester');
+  const [angkatanFilter, setAngkatanFilter] = useState('Semua Angkatan');
   const [prodiFilter, setProdiFilter] = useState('ALL');
 
   // Modal States
@@ -145,13 +144,12 @@ export default function MasterMahasiswaAdminPage() {
         (std.no_hp && String(std.no_hp).toLowerCase().includes(q));
 
       const matchStatus = statusFilter === 'ALL' || (std.status || 'aktif').toLowerCase() === statusFilter.toLowerCase();
-      const matchClass = classFilter === 'ALL' || std.kelas === classFilter;
-      const matchSemester = semesterFilter === 'Semua Semester' || getStudentSemester(std) === semesterFilter;
+      const matchAngkatan = angkatanFilter === 'Semua Angkatan' || getStudentAngkatan(std) === angkatanFilter;
       const matchProdi = prodiFilter === 'ALL' || std.prodi === prodiFilter;
 
-      return matchQuery && matchStatus && matchClass && matchSemester && matchProdi;
+      return matchQuery && matchStatus && matchAngkatan && matchProdi;
     });
-  }, [rawMahasiswaList, searchQuery, statusFilter, classFilter, semesterFilter, prodiFilter]);
+  }, [rawMahasiswaList, searchQuery, statusFilter, angkatanFilter, prodiFilter]);
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -159,7 +157,7 @@ export default function MasterMahasiswaAdminPage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, statusFilter, classFilter, semesterFilter, prodiFilter]);
+  }, [searchQuery, statusFilter, angkatanFilter, prodiFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredStudents.length / pageSize));
   const startIndex = (currentPage - 1) * pageSize;
@@ -176,11 +174,14 @@ export default function MasterMahasiswaAdminPage() {
     }
   };
 
-  // Statistics Summary
+  // Statistics Summary (Dihitung dinamis dari basis data aktual - Ketentuan #3)
   const totalMahasiswa = rawMahasiswaList.length;
-  const totalAktif = rawMahasiswaList.filter(s => (s.status || 'aktif') === 'aktif').length;
-  const totalCuti = rawMahasiswaList.filter(s => s.status === 'cuti').length;
-  const totalNonaktif = rawMahasiswaList.filter(s => s.status === 'nonaktif' || s.status === 'ditangguhkan').length;
+  const totalAktif = rawMahasiswaList.filter(s =>
+    (s.status === 'aktif' || s.is_activated === true || s.password_changed === true) &&
+    s.status !== 'nonaktif' && s.status !== 'cuti' && s.status !== 'ditangguhkan'
+  ).length;
+  const totalNonaktif = Math.max(0, totalMahasiswa - totalAktif);
+  const totalAngkatan = new Set(rawMahasiswaList.map(s => getStudentAngkatan(s)).filter(a => a && a !== 'Lainnya')).size;
 
   // Open Add Modal
   const handleOpenAdd = () => {
@@ -432,21 +433,21 @@ export default function MasterMahasiswaAdminPage() {
         </div>
 
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-1 hover:border-amber-300 transition-all">
-          <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Status Cuti</div>
+          <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Status Nonaktif</div>
           <div className="text-2xl font-extrabold text-amber-600 flex items-center justify-between">
-            <span>{totalCuti}</span>
-            <AlertTriangle className="w-6 h-6 text-amber-500/40" />
+            <span>{totalNonaktif}</span>
+            <UserX className="w-6 h-6 text-amber-500/40" />
           </div>
-          <p className="text-[11px] text-slate-500">Tercatat cuti semester berjalan</p>
+          <p className="text-[11px] text-slate-500">Belum aktivasi awal / dinonaktifkan</p>
         </div>
 
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-1 hover:border-slate-300 transition-all">
-          <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Nonaktif / Lainnya</div>
-          <div className="text-2xl font-extrabold text-slate-600 flex items-center justify-between">
-            <span>{totalNonaktif}</span>
-            <UserX className="w-6 h-6 text-slate-400/40" />
+          <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Angkatan Terdaftar</div>
+          <div className="text-2xl font-extrabold text-indigo-600 flex items-center justify-between">
+            <span>{totalAngkatan} Angkatan</span>
+            <AlertTriangle className="w-6 h-6 text-indigo-500/40" />
           </div>
-          <p className="text-[11px] text-slate-500">Akun dibekukan atau nonaktif</p>
+          <p className="text-[11px] text-slate-500">Sebaran data angkatan mahasiswa</p>
         </div>
       </div>
 
@@ -494,42 +495,27 @@ export default function MasterMahasiswaAdminPage() {
               </select>
             </div>
 
-            {/* Semester Filter */}
+            {/* Angkatan Filter (Ketentuan #4) */}
             <div className="flex items-center space-x-1.5">
               <select
-                value={semesterFilter}
-                onChange={(e) => setSemesterFilter(e.target.value)}
+                value={angkatanFilter}
+                onChange={(e) => setAngkatanFilter(e.target.value)}
                 className="text-xs py-2 px-3 rounded-xl border border-slate-200 bg-white font-medium text-slate-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
               >
-                {AVAILABLE_SEMESTERS.map(s => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Class Filter */}
-            <div className="flex items-center space-x-1.5">
-              <select
-                value={classFilter}
-                onChange={(e) => setClassFilter(e.target.value)}
-                className="text-xs py-2 px-3 rounded-xl border border-slate-200 bg-white font-medium text-slate-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
-              >
-                <option value="ALL">Semua Kelas</option>
-                {availableClasses.filter(c => c !== 'ALL').map(cls => (
-                  <option key={cls} value={cls}>{cls}</option>
+                {AVAILABLE_ANGKATAN.map(a => (
+                  <option key={a} value={a}>{a === 'Semua Angkatan' ? a : `Angkatan ${a}`}</option>
                 ))}
               </select>
             </div>
 
             {/* Reset Filter Button */}
-            {(searchQuery || statusFilter !== 'ALL' || classFilter !== 'ALL' || semesterFilter !== 'Semua Semester' || prodiFilter !== 'ALL') && (
+            {(searchQuery || statusFilter !== 'ALL' || angkatanFilter !== 'Semua Angkatan' || prodiFilter !== 'ALL') && (
               <button
                 type="button"
                 onClick={() => {
                   setSearchQuery('');
                   setStatusFilter('ALL');
-                  setClassFilter('ALL');
-                  setSemesterFilter('Semua Semester');
+                  setAngkatanFilter('Semua Angkatan');
                   setProdiFilter('ALL');
                 }}
                 className="px-2.5 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
@@ -544,17 +530,17 @@ export default function MasterMahasiswaAdminPage() {
 
       {/* Main Table */}
       <div className="bg-white border border-slate-200 rounded-2xl shadow-2xs overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto table-scroll-container overscroll-contain">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
-                <th className="py-3.5 px-4">Mahasiswa</th>
-                <th className="py-3.5 px-4">Kontak</th>
-                <th className="py-3.5 px-4">Program Studi &amp; Kelas</th>
-                <th className="py-3.5 px-4">Dosen Pembimbing</th>
-                <th className="py-3.5 px-4">Semester</th>
-                <th className="py-3.5 px-4">Status</th>
-                <th className="py-3.5 px-4 text-center">Aksi</th>
+                <th className="py-2.5 px-3">Mahasiswa</th>
+                <th className="py-2.5 px-3">Kontak</th>
+                <th className="py-2.5 px-3">Program Studi &amp; Kelas</th>
+                <th className="py-2.5 px-3">Dosen Pembimbing</th>
+                <th className="py-2.5 px-3 text-center">Angkatan</th>
+                <th className="py-2.5 px-3">Status</th>
+                <th className="py-2.5 px-3 text-center">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs">
@@ -573,9 +559,9 @@ export default function MasterMahasiswaAdminPage() {
                   <tr key={std.id || std.nim} className="hover:bg-slate-50/80 transition-colors">
                     
                     {/* Mahasiswa Info */}
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-9 h-9 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 font-extrabold text-xs flex items-center justify-center shrink-0">
+                    <td className="py-2.5 px-3">
+                      <div className="flex items-center space-x-2.5">
+                        <div className="w-8 h-8 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 font-extrabold text-xs flex items-center justify-center shrink-0">
                           {std.nama ? std.nama.charAt(0).toUpperCase() : 'M'}
                         </div>
                         <div className="min-w-0">
@@ -592,11 +578,11 @@ export default function MasterMahasiswaAdminPage() {
                     </td>
 
                     {/* Contact Info */}
-                    <td className="py-3.5 px-4">
+                    <td className="py-2.5 px-3">
                       <div className="space-y-0.5">
                         <div className="flex items-center space-x-1.5 text-slate-600 text-[11px]">
                           <Mail className="w-3 h-3 text-slate-400 shrink-0" />
-                          <span className="truncate max-w-[180px]">{std.email || `${std.nim}@student.unsri.ac.id`}</span>
+                          <span className="truncate max-w-[170px]" title={std.email}>{std.email || `${std.nim}@student.unsri.ac.id`}</span>
                         </div>
                         {std.no_hp && std.no_hp !== '-' && (
                           <div className="flex items-center space-x-1.5 text-slate-500 text-[11px]">
@@ -608,27 +594,27 @@ export default function MasterMahasiswaAdminPage() {
                     </td>
 
                     {/* Prodi & Kelas */}
-                    <td className="py-3.5 px-4">
-                      <div className="font-semibold text-slate-800">{std.prodi || 'D3 Manajemen Informatika'}</div>
-                      <div className="inline-flex items-center px-2 py-0.5 mt-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600">
+                    <td className="py-2.5 px-3">
+                      <div className="font-semibold text-slate-800 text-[11px]">{std.prodi || 'D3 Manajemen Informatika'}</div>
+                      <div className="inline-flex items-center px-1.5 py-0.5 mt-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600">
                         {std.kelas || 'MI 5A'}
                       </div>
                     </td>
 
                     {/* Dosen Pembimbing 1 & 2 */}
-                    <td className="py-3.5 px-4">
+                    <td className="py-2.5 px-3">
                       {adv.hasAdvisors ? (
                         <div className="space-y-1">
                           {adv.p1 && (
                             <div className="text-[11px] text-slate-700 flex items-center space-x-1">
                               <span className="font-extrabold text-[9px] px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-800 shrink-0">P1</span>
-                              <span className="truncate max-w-[160px] font-medium" title={adv.p1.nama}>{adv.p1.nama}</span>
+                              <span className="truncate max-w-[150px] font-medium" title={adv.p1.nama}>{adv.p1.nama}</span>
                             </div>
                           )}
                           {adv.p2 && (
                             <div className="text-[11px] text-slate-700 flex items-center space-x-1">
                               <span className="font-extrabold text-[9px] px-1.5 py-0.5 rounded bg-teal-100 text-teal-800 shrink-0">P2</span>
-                              <span className="truncate max-w-[160px] font-medium" title={adv.p2.nama}>{adv.p2.nama}</span>
+                              <span className="truncate max-w-[150px] font-medium" title={adv.p2.nama}>{adv.p2.nama}</span>
                             </div>
                           )}
                         </div>
@@ -637,15 +623,15 @@ export default function MasterMahasiswaAdminPage() {
                       )}
                     </td>
 
-                    {/* Semester */}
-                    <td className="py-3.5 px-4">
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100">
-                        {getStudentSemester(std)}
+                    {/* Angkatan */}
+                    <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100">
+                        {getStudentAngkatan(std)}
                       </span>
                     </td>
 
                     {/* Status */}
-                    <td className="py-3.5 px-4">
+                    <td className="py-2.5 px-3 whitespace-nowrap">
                       <button
                         type="button"
                         onClick={() => handleOpenStatusModal(std)}
@@ -656,8 +642,8 @@ export default function MasterMahasiswaAdminPage() {
                       </button>
                     </td>
 
-                    {/* Actions */}
-                    <td className="py-3.5 px-4 text-center">
+                    {/* Actions (Ketentuan #4: Hanya Eye, Edit2, Trash2 - Tanpa ShieldCheck) */}
+                    <td className="py-2.5 px-3 text-center whitespace-nowrap">
                       <div className="flex items-center justify-center space-x-1">
                         
                         {/* Detail */}
@@ -678,16 +664,6 @@ export default function MasterMahasiswaAdminPage() {
                           title="Edit Data Master"
                         >
                           <Edit2 className="w-4 h-4" />
-                        </button>
-
-                        {/* Kelola Status */}
-                        <button
-                          type="button"
-                          onClick={() => handleOpenStatusModal(std)}
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 transition-colors cursor-pointer"
-                          title="Kelola Status Mahasiswa"
-                        >
-                          <ShieldCheck className="w-4 h-4" />
                         </button>
 
                         {/* Delete */}
@@ -824,9 +800,9 @@ export default function MasterMahasiswaAdminPage() {
                     <span className="font-bold text-slate-800">{viewingStudent.kelas || 'MI 5A'}</span>
                   </div>
                   <div>
-                    <span className="text-slate-400 block text-[10px]">Semester:</span>
+                    <span className="text-slate-400 block text-[10px]">Angkatan:</span>
                     <span className="font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 inline-block mt-0.5">
-                      {getStudentSemester(viewingStudent)}
+                      {getStudentAngkatan(viewingStudent)}
                     </span>
                   </div>
                   <div>

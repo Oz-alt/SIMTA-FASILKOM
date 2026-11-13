@@ -20,8 +20,13 @@ import {
   CheckCheck,
   Clock,
   ShieldCheck,
-  ShieldAlert
+  ShieldAlert,
+  Calendar,
+  FileStack,
+  Users,
+  Inbox
 } from 'lucide-react';
+import { supabase, isSupabaseConfigured } from '../../services/supabase.js';
 
 import unsriLogo from '../../assets/photo/unsri logo.png';
 
@@ -70,11 +75,15 @@ export default function Navbar() {
     notifications = [], 
     passwordResetRequests = [],
     bookings = [],
+    defenseSchedules = [],
+    thesisRepositories = [],
+    getAllMahasiswaAccounts,
     markAllNotificationsAsRead, 
     markNotificationAsRead 
   } = useAuth();
   const { url } = usePage();
   const [showNotif, setShowNotif] = useState(false);
+  const [notifFilter, setNotifFilter] = useState('all'); // 'all' | 'unread'
   const [showRoleMenu, setShowRoleMenu] = useState(false);
   const [avatarError, setAvatarError] = useState(false);
   const [currentTime, setCurrentTime] = useState(() => new Date());
@@ -87,7 +96,7 @@ export default function Navbar() {
   // Status baca persisten untuk notifikasi sistem & admin
   const [readNotifIds, setReadNotifIds] = useState(() => {
     try {
-      const saved = localStorage.getItem('simta_read_notif_ids');
+      const saved = localStorage.getItem('simta_read_notif_ids') || localStorage.getItem('simta_read_notification_ids');
       return new Set(saved ? JSON.parse(saved) : []);
     } catch {
       return new Set();
@@ -96,16 +105,56 @@ export default function Navbar() {
 
   const saveReadNotifIds = (newSet) => {
     setReadNotifIds(newSet);
+    const arr = Array.from(newSet);
     try {
-      localStorage.setItem('simta_read_notif_ids', JSON.stringify(Array.from(newSet)));
+      localStorage.setItem('simta_read_notif_ids', JSON.stringify(arr));
+      localStorage.setItem('simta_read_notification_ids', JSON.stringify(arr));
     } catch {}
+
+    if (isSupabaseConfigured && supabase && currentUser) {
+      const docId = `simta_read_notif_ids_${currentUser.id || currentUser.role || 'admin'}`;
+      supabase.from('admin_cms').upsert([{
+        id: docId,
+        judul: `Notification Read IDs (${currentUser.nama || currentUser.role})`,
+        kategori: 'notification_read_ids',
+        isi: JSON.stringify(arr),
+        updated_at: new Date().toISOString()
+      }], { onConflict: 'id' }).catch(() => {});
+    }
   };
+
+  // Sinkronkan status baca dari Supabase saat awal mount
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase || !currentUser) return;
+    const docId = `simta_read_notif_ids_${currentUser.id || currentUser.role || 'admin'}`;
+    supabase.from('admin_cms')
+      .select('isi')
+      .eq('id', docId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.isi) {
+          try {
+            const parsed = typeof data.isi === 'string' ? JSON.parse(data.isi) : data.isi;
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setReadNotifIds(prev => {
+                const merged = new Set([...prev, ...parsed]);
+                try {
+                  localStorage.setItem('simta_read_notif_ids', JSON.stringify(Array.from(merged)));
+                  localStorage.setItem('simta_read_notification_ids', JSON.stringify(Array.from(merged)));
+                } catch {}
+                return merged;
+              });
+            }
+          } catch {}
+        }
+      }).catch(() => {});
+  }, [currentUser?.id, currentUser?.role]);
 
   // Sinkronkan status baca notifikasi antar-komponen secara real-time
   useEffect(() => {
     const syncReadIds = () => {
       try {
-        const saved = localStorage.getItem('simta_read_notif_ids');
+        const saved = localStorage.getItem('simta_read_notif_ids') || localStorage.getItem('simta_read_notification_ids');
         if (saved) {
           setReadNotifIds(new Set(JSON.parse(saved)));
         }
@@ -150,45 +199,123 @@ export default function Navbar() {
     // KHUSUS ROLE ADMIN: Data Notifikasi Terpadu dari Realitas Sistem
     // ============================================================
     if (currentUser.role === 'admin') {
-      // 1. Permintaan Reset Password yang Menunggu Verifikasi
+      // 1. Permintaan Reset Password (Menunggu verifikasi & Aktif disetujui)
       const resetNotifs = (passwordResetRequests || [])
-        .filter(r => r && r.status === 'menunggu')
-        .map(r => ({
-          id: `notif-reset-${r.id}`,
-          source_type: 'password_reset',
-          raw_data: r,
-          title: 'Permintaan Reset Password Baru',
-          message: `Terdapat 1 pengguna (${r.nama || 'Pengguna'} - ${r.nim || r.nip || r.role}) yang mengajukan pemulihan kata sandi dan menunggu verifikasi Admin.`,
-          created_at: r.created_at || new Date().toISOString(),
-          action_url: '/admin-simta/accounts/password-resets',
-          action_label: 'Lihat Permintaan',
-          badge_label: 'Reset Sandi',
-          badge_color: 'bg-amber-100 text-amber-900 border-amber-300',
-          icon_type: 'key',
-          recipient_role: 'admin',
-          is_read: readNotifIds.has(`notif-reset-${r.id}`)
-        }));
+        .filter(r => r && (r.status === 'menunggu' || r.status === 'disetujui'))
+        .map(r => {
+          const isPending = r.status === 'menunggu';
+          const roleLabel = r.role === 'dosen' ? 'Dosen' : 'Mahasiswa';
+          const idNum = r.nim || r.nip || '';
+          const userStr = `${r.nama || 'Pengguna'}${idNum ? ` (${idNum})` : ''}`;
+          return {
+            id: `notif-reset-${r.id}`,
+            source_type: 'password_reset',
+            raw_data: r,
+            title: isPending ? 'Permintaan Reset Password' : 'Tautan Reset Password Aktif',
+            message: isPending
+              ? `${roleLabel} atas nama ${userStr} mengajukan reset password dan menunggu verifikasi Admin.`
+              : `Tautan reset sandi untuk ${userStr} telah disetujui dan dikirimkan ke email resmi pemohon.`,
+            created_at: r.created_at || r.tanggal_pengajuan || new Date().toISOString(),
+            action_url: '/admin-simta/accounts/password-resets',
+            action_label: isPending ? 'Verifikasi Reset' : 'Lihat Permintaan',
+            badge_label: isPending ? 'Reset Sandi' : 'Tautan Aktif',
+            badge_color: isPending 
+              ? 'bg-amber-100 text-amber-900 border-amber-300' 
+              : 'bg-emerald-100 text-emerald-900 border-emerald-300',
+            icon_type: 'key',
+            recipient_role: 'admin',
+            is_read: Boolean(readNotifIds.has(`notif-reset-${r.id}`))
+          };
+        });
 
-      // 2. Pengajuan Peminjaman Ruang Sidang Menunggu Persetujuan Admin
+      // 2. Pengajuan Peminjaman Ruang Sidang (Menunggu & Disetujui)
       const bookingNotifs = (bookings || [])
-        .filter(b => b && b.status === 'menunggu_persetujuan')
-        .map(b => ({
-          id: `notif-booking-${b.id}`,
-          source_type: 'booking',
-          raw_data: b,
-          title: 'Pengajuan Peminjaman Ruang Sidang',
-          message: `Peminjaman ruang ${b.room_name || 'Ruang Sidang'} oleh ${b.mhs_nama || b.mhs_nim || 'Mahasiswa'} (${b.booking_date || 'Terjadwal'}) menunggu persetujuan Admin.`,
-          created_at: b.created_at || new Date().toISOString(),
+        .filter(b => b && (b.status === 'menunggu_persetujuan' || b.status === 'diajukan' || b.status === 'disetujui'))
+        .map(b => {
+          const isPending = b.status === 'menunggu_persetujuan' || b.status === 'diajukan';
+          return {
+            id: `notif-booking-${b.id}`,
+            source_type: 'booking',
+            raw_data: b,
+            title: isPending ? 'Pengajuan Peminjaman Ruang' : 'Peminjaman Ruangan Disetujui',
+            message: isPending
+              ? `Pengajuan peminjaman ${b.room_name || 'Ruang Sidang'} oleh ${b.mhs_nama || b.mhs_nim || 'Mahasiswa'} (${b.booking_date || 'Terjadwal'}) menunggu persetujuan Admin.`
+              : `Peminjaman ${b.room_name || 'Ruang Sidang'} untuk ${b.mhs_nama || b.mhs_nim || 'Mahasiswa'} telah disetujui.`,
+            created_at: b.created_at || new Date().toISOString(),
+            action_url: '/admin/bookings',
+            action_label: isPending ? 'Persetujuan Ruangan' : 'Lihat Ruangan',
+            badge_label: isPending ? 'Peminjaman Ruang' : 'Ruang Disetujui',
+            badge_color: isPending 
+              ? 'bg-indigo-100 text-indigo-900 border-indigo-300' 
+              : 'bg-emerald-100 text-emerald-900 border-emerald-300',
+            icon_type: 'building',
+            recipient_role: 'admin',
+            is_read: Boolean(readNotifIds.has(`notif-booking-${b.id}`))
+          };
+        });
+
+      // 3. Penjadwalan Sidang Tugas Akhir
+      const defenseNotifs = (defenseSchedules || [])
+        .filter(s => s && s.id && (s.status === 'diajukan' || s.ruangan || s.jenis_sidang))
+        .map(s => ({
+          id: `notif-defense-${s.id}`,
+          source_type: 'defense_schedule',
+          raw_data: s,
+          title: 'Penjadwalan Sidang Tugas Akhir',
+          message: `Jadwal sidang ${s.jenis_sidang || 'Tugas Akhir'} untuk ${s.mhs_nama || 'Mahasiswa'} (${s.prodi || 'FASILKOM'}) telah diajukan dan membutuhkan koordinasi ruangan.`,
+          created_at: s.created_at || s.updated_at || new Date().toISOString(),
           action_url: '/admin/bookings',
-          action_label: 'Persetujuan Ruangan',
-          badge_label: 'Sarana Sidang',
-          badge_color: 'bg-indigo-100 text-indigo-900 border-indigo-300',
-          icon_type: 'building',
+          action_label: 'Jadwal Ruang Sidang',
+          badge_label: 'Jadwal Sidang',
+          badge_color: 'bg-purple-100 text-purple-900 border-purple-300',
+          icon_type: 'calendar',
           recipient_role: 'admin',
-          is_read: readNotifIds.has(`notif-booking-${b.id}`)
+          is_read: Boolean(readNotifIds.has(`notif-defense-${s.id}`))
         }));
 
-      // 3. Notifikasi Sistem Eksisting Bertarget Admin
+      // 4. Pengajuan Repositori Tugas Akhir (Review Publikasi Admin)
+      const repoNotifs = (thesisRepositories || [])
+        .filter(repo => repo && repo.id && (repo.status === 'menunggu_publikasi' || repo.status === 'draft' || repo.status === 'diajukan'))
+        .map(repo => ({
+          id: `notif-repo-${repo.id}`,
+          source_type: 'repository',
+          raw_data: repo,
+          title: 'Pengajuan Repositori Baru',
+          message: `Naskah tugas akhir "${repo.judul || 'Karya Ilmiah'}" oleh ${repo.penulis || 'Mahasiswa'} menunggu verifikasi publikasi Admin.`,
+          created_at: repo.created_at || repo.tanggal || new Date().toISOString(),
+          action_url: '/admin-simta/repository',
+          action_label: 'Publikasi Repositori',
+          badge_label: 'Repositori TA',
+          badge_color: 'bg-sky-100 text-sky-900 border-sky-300',
+          icon_type: 'file',
+          recipient_role: 'admin',
+          is_read: Boolean(readNotifIds.has(`notif-repo-${repo.id}`))
+        }));
+
+      // 5. Verifikasi Akun Baru / Akun Mahasiswa
+      let studentAccountNotifs = [];
+      try {
+        const allStudents = typeof getAllMahasiswaAccounts === 'function' ? getAllMahasiswaAccounts() : [];
+        const nonActiveStudents = (allStudents || []).filter(s => s && ((s.status || '').toLowerCase() === 'nonaktif' || (s.status || '').toLowerCase() === 'menunggu'));
+        if (nonActiveStudents.length > 0) {
+          studentAccountNotifs.push({
+            id: 'notif-admin-student-accounts-pending',
+            source_type: 'student_accounts',
+            title: 'Verifikasi Akun Mahasiswa',
+            message: `Terdapat ${nonActiveStudents.length} akun mahasiswa dengan status nonaktif yang membutuhkan verifikasi atau aktivasi status oleh Admin.`,
+            created_at: nonActiveStudents[0]?.created_at || new Date().toISOString(),
+            action_url: '/admin-simta/accounts/mahasiswa',
+            action_label: 'Buka Data Mahasiswa',
+            badge_label: 'Verifikasi Akun',
+            badge_color: 'bg-blue-100 text-blue-900 border-blue-300',
+            icon_type: 'users',
+            recipient_role: 'admin',
+            is_read: Boolean(readNotifIds.has('notif-admin-student-accounts-pending'))
+          });
+        }
+      } catch {}
+
+      // 6. Notifikasi Sistem Eksisting Bertarget Admin
       const existingAdminNotifs = (notifications || []).filter(n => {
         if (!n) return false;
         if (n.id === 'notif-1' || n.id === 'notif-2' || n.is_mock) return false;
@@ -204,25 +331,34 @@ export default function Navbar() {
         is_read: Boolean(n.is_read || readNotifIds.has(String(n.id)))
       }));
 
-      // Deduplikasi & Pengurutan Waktu Terkini (Hanya tampilkan yang belum dibaca)
+      // Deduplikasi & Pengurutan Waktu Terkini (Seluruh notifikasi tetap tersimpan dalam riwayat)
       const seen = new Set();
-      return [...resetNotifs, ...bookingNotifs, ...existingAdminNotifs]
+      return [
+        ...resetNotifs, 
+        ...bookingNotifs, 
+        ...defenseNotifs, 
+        ...repoNotifs, 
+        ...studentAccountNotifs, 
+        ...existingAdminNotifs
+      ]
         .filter(n => {
           if (!n || !n.id) return false;
-          if (n.is_read || readNotifIds.has(String(n.id))) return false;
           if (seen.has(String(n.id))) return false;
           seen.add(String(n.id));
           return true;
         })
+        .map(n => ({
+          ...n,
+          is_read: Boolean(n.is_read || readNotifIds.has(String(n.id)))
+        }))
         .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
     }
 
     // ============================================================
-    // ROLE KAPRODI, MAHASISWA, & DOSEN (Preserve 100% existing logic)
+    // ROLE KAPRODI, MAHASISWA, & DOSEN
     // ============================================================
     return (notifications || []).filter(n => {
       if (!n) return false;
-      if (n.is_read || readNotifIds.has(String(n.id))) return false;
       if (n.id === 'notif-1' || n.id === 'notif-2' || n.is_mock) return false;
       if (
         n.title === 'Judul TA Disetujui!' ||
@@ -307,10 +443,90 @@ export default function Navbar() {
       }
 
       return false;
-    });
-  }, [currentUser, notifications, passwordResetRequests, bookings, readNotifIds]);
+    }).map(n => ({
+      ...n,
+      is_read: Boolean(n.is_read || readNotifIds.has(String(n.id)))
+    })).sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+  }, [
+    currentUser, 
+    notifications, 
+    passwordResetRequests, 
+    bookings, 
+    defenseSchedules, 
+    thesisRepositories, 
+    getAllMahasiswaAccounts, 
+    readNotifIds
+  ]);
 
-  const unreadCount = userNotifications.length;
+  // Pisahkan notifikasi yang belum dibaca untuk badge dan filter
+  const unreadNotifications = useMemo(() => {
+    return userNotifications.filter(n => !n.is_read);
+  }, [userNotifications]);
+
+  const unreadCount = unreadNotifications.length;
+
+  const displayedNotifications = useMemo(() => {
+    if (notifFilter === 'unread') {
+      return unreadNotifications;
+    }
+    return userNotifications;
+  }, [notifFilter, unreadNotifications, userNotifications]);
+
+  // Helper render ikon dinamis kategori notifikasi
+  const renderNotifIcon = (iconType, isRead) => {
+    if (iconType === 'key') {
+      return (
+        <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
+          isRead ? 'bg-amber-50 text-amber-600 border border-amber-200/60' : 'bg-amber-100 text-amber-700 border border-amber-300 shadow-2xs'
+        }`}>
+          <KeyRound className="w-4 h-4" />
+        </div>
+      );
+    }
+    if (iconType === 'building') {
+      return (
+        <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
+          isRead ? 'bg-indigo-50 text-indigo-600 border border-indigo-200/60' : 'bg-indigo-100 text-indigo-700 border border-indigo-300 shadow-2xs'
+        }`}>
+          <Building2 className="w-4 h-4" />
+        </div>
+      );
+    }
+    if (iconType === 'calendar') {
+      return (
+        <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
+          isRead ? 'bg-purple-50 text-purple-600 border border-purple-200/60' : 'bg-purple-100 text-purple-700 border border-purple-300 shadow-2xs'
+        }`}>
+          <Calendar className="w-4 h-4" />
+        </div>
+      );
+    }
+    if (iconType === 'file') {
+      return (
+        <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
+          isRead ? 'bg-sky-50 text-sky-600 border border-sky-200/60' : 'bg-sky-100 text-sky-700 border border-sky-300 shadow-2xs'
+        }`}>
+          <FileStack className="w-4 h-4" />
+        </div>
+      );
+    }
+    if (iconType === 'users') {
+      return (
+        <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
+          isRead ? 'bg-blue-50 text-blue-600 border border-blue-200/60' : 'bg-blue-100 text-blue-700 border border-blue-300 shadow-2xs'
+        }`}>
+          <Users className="w-4 h-4" />
+        </div>
+      );
+    }
+    return (
+      <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
+        isRead ? 'bg-slate-100 text-slate-500 border border-slate-200/60' : 'bg-rose-100 text-rose-700 border border-rose-300 shadow-2xs'
+      }`}>
+        <Bell className="w-4 h-4" />
+      </div>
+    );
+  };
 
   const handleMarkSingleAsRead = (id, notifObj = null) => {
     if (id && markNotificationAsRead) {
@@ -350,6 +566,8 @@ export default function Navbar() {
       if (n?.id) next.add(String(n.id));
     });
     saveReadNotifIds(next);
+    window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new Event('simta_notifications_updated'));
   };
 
   // Otomatis tandai notifikasi titik merah sebagai sudah dibaca saat pengguna membuka halaman yang bersangkutan
@@ -583,34 +801,114 @@ export default function Navbar() {
               </button>
 
               {showNotif && (
-                <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-white shadow-2xl border border-slate-200 py-2 z-50 animate-in fade-in">
-                  <div className="px-3.5 py-2 border-b border-slate-100 flex items-center justify-between">
+                <div className="absolute right-0 mt-2 w-80 sm:w-[420px] rounded-2xl bg-white shadow-2xl border border-slate-200/90 py-0 z-50 animate-in fade-in overflow-hidden">
+                  
+                  {/* Dropdown Header */}
+                  <div className="px-4 py-3 bg-white border-b border-slate-100 flex items-center justify-between">
                     <div className="flex items-center space-x-2">
-                      <span className="font-bold text-xs text-slate-800">
-                        {userRole === 'admin' ? 'Notifikasi Admin' : 'Notifikasi'}
-                      </span>
+                      <div className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600">
+                        <Bell className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h3 className="font-extrabold text-xs text-slate-900 flex items-center gap-1.5">
+                          <span>{userRole === 'admin' ? 'Notifikasi Admin' : 'Notifikasi'}</span>
+                          {unreadCount > 0 && (
+                            <span className="px-1.5 py-0.5 rounded-full text-[9px] font-black bg-rose-100 text-rose-700 border border-rose-200">
+                              {unreadCount} Baru
+                            </span>
+                          )}
+                        </h3>
+                        <p className="text-[10px] text-slate-500 font-medium">
+                          {unreadCount > 0 ? `${unreadCount} belum dibaca` : 'Seluruh notifikasi telah dibaca'}
+                        </p>
+                      </div>
                     </div>
-                    {userNotifications.length > 0 && (
+
+                    {unreadCount > 0 ? (
                       <button 
                         type="button"
                         onClick={handleMarkAllAsRead}
-                        className="inline-flex items-center space-x-1 text-[10px] text-indigo-600 hover:text-indigo-800 font-semibold cursor-pointer transition-colors hover:underline"
-                        title="Tandai seluruh notifikasi sebagai sudah dibaca dan bersihkan"
+                        className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg text-[10.5px] text-indigo-700 hover:text-indigo-900 hover:bg-indigo-50 font-bold cursor-pointer transition-colors border border-indigo-100 shadow-2xs"
+                        title="Tandai seluruh notifikasi sebagai sudah dibaca"
                       >
-                        <CheckCheck className="w-3 h-3" />
-                        <span>Tandai sudah dibaca</span>
+                        <CheckCheck className="w-3.5 h-3.5" />
+                        <span>Tandai Semua Dibaca</span>
                       </button>
+                    ) : (
+                      <span className="inline-flex items-center space-x-1 text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
+                        <Check className="w-3 h-3 text-emerald-600" />
+                        <span>Semua Dibaca</span>
+                      </span>
                     )}
                   </div>
 
-                  <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
-                    {userNotifications.length === 0 ? (
-                      <div className="p-6 text-center text-xs text-slate-400">
-                        {userRole === 'admin' ? 'Tidak ada notifikasi baru untuk Admin' : 'Tidak ada notifikasi baru'}
-                      </div>
+                  {/* Filter Tab Switcher (Semua vs Belum Dibaca) */}
+                  <div className="flex items-center px-3 py-1.5 gap-1.5 border-b border-slate-100 bg-slate-50/70">
+                    <button
+                      type="button"
+                      onClick={() => setNotifFilter('all')}
+                      className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                        notifFilter === 'all'
+                          ? 'bg-white text-indigo-700 shadow-2xs border border-slate-200'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                      }`}
+                    >
+                      Semua ({userNotifications.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setNotifFilter('unread')}
+                      className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center space-x-1.5 ${
+                        notifFilter === 'unread'
+                          ? 'bg-white text-indigo-700 shadow-2xs border border-slate-200'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                      }`}
+                    >
+                      <span>Belum Dibaca</span>
+                      {unreadCount > 0 && (
+                        <span className="px-1.5 py-0.2 min-w-[16px] h-4 rounded-full bg-rose-600 text-white text-[9px] font-extrabold flex items-center justify-center">
+                          {unreadCount}
+                        </span>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Scrollable Notification List */}
+                  <div className="max-h-[380px] overflow-y-auto divide-y divide-slate-100">
+                    {displayedNotifications.length === 0 ? (
+                      notifFilter === 'unread' ? (
+                        <div className="py-9 px-4 text-center">
+                          <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-2 border border-emerald-100">
+                            <CheckCircle2 className="w-5 h-5" />
+                          </div>
+                          <p className="text-xs font-bold text-slate-800">Semua Notifikasi Telah Dibaca</p>
+                          <p className="text-[10.5px] text-slate-500 mt-1 max-w-[260px] mx-auto leading-relaxed">
+                            Tidak ada notifikasi baru yang belum dibaca. Seluruh riwayat aktivitas tersimpan aman.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => setNotifFilter('all')}
+                            className="mt-3 inline-flex items-center space-x-1 text-[11px] font-bold text-indigo-600 hover:text-indigo-800 hover:underline cursor-pointer"
+                          >
+                            <span>Lihat Semua Riwayat ({userNotifications.length})</span>
+                            <ArrowRight className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="py-9 px-4 text-center">
+                          <div className="w-10 h-10 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-2">
+                            <Inbox className="w-5 h-5" />
+                          </div>
+                          <p className="text-xs font-bold text-slate-700">Belum Ada Riwayat Notifikasi</p>
+                          <p className="text-[10.5px] text-slate-500 mt-1 max-w-[240px] mx-auto leading-relaxed">
+                            Pemberitahuan aktivitas sistem akan muncul di sini secara otomatis.
+                          </p>
+                        </div>
+                      )
                     ) : (
-                      userNotifications.map((n, index) => {
+                      displayedNotifications.map((n, index) => {
                         const isNewest = index === 0;
+
                         // ==========================================
                         // RENDER KHUSUS NOTIFIKASI ROLE ADMIN
                         // ==========================================
@@ -619,47 +917,48 @@ export default function Navbar() {
                             <div 
                               key={n.id} 
                               onClick={() => handleNotificationItemClick(n)}
-                              className={`p-2.5 sm:p-3 hover:bg-slate-50 transition-colors cursor-pointer group relative ${
+                              className={`p-3 hover:bg-slate-50/90 transition-all cursor-pointer group relative ${
                                 !n.is_read 
                                   ? (n.source_type === 'password_reset' 
-                                      ? 'border-l-4 border-l-amber-500 bg-amber-50/25' 
-                                      : 'border-l-4 border-l-indigo-500 bg-indigo-50/25')
-                                  : 'border-l-4 border-l-transparent bg-white hover:bg-slate-50 opacity-80'
+                                      ? 'border-l-4 border-l-amber-500 bg-amber-50/30' 
+                                      : n.source_type === 'booking'
+                                        ? 'border-l-4 border-l-indigo-600 bg-indigo-50/30'
+                                        : n.source_type === 'defense_schedule'
+                                          ? 'border-l-4 border-l-purple-600 bg-purple-50/30'
+                                          : n.source_type === 'repository'
+                                            ? 'border-l-4 border-l-sky-600 bg-sky-50/30'
+                                            : 'border-l-4 border-l-blue-600 bg-blue-50/30')
+                                  : 'border-l-4 border-l-transparent bg-white hover:bg-slate-50/80 opacity-80'
                               }`}
                             >
-                              <div className="flex items-start gap-2.5">
+                              <div className="flex items-start gap-3">
                                 {/* Category Icon Capsule */}
-                                <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
-                                  n.icon_type === 'key' 
-                                    ? 'bg-amber-100 text-amber-700 border border-amber-200/80 shadow-2xs' 
-                                    : 'bg-indigo-100 text-indigo-700 border border-indigo-200/80 shadow-2xs'
-                                }`}>
-                                  {n.icon_type === 'key' ? (
-                                    <KeyRound className="w-3.5 h-3.5" />
-                                  ) : (
-                                    <Building2 className="w-3.5 h-3.5" />
-                                  )}
-                                </div>
+                                {renderNotifIcon(n.icon_type, n.is_read)}
 
                                 {/* Body Content */}
                                 <div className="flex-1 min-w-0">
-                                  <div className="flex items-center justify-between gap-1">
+                                  <div className="flex items-center justify-between gap-1.5">
                                     <div className="flex items-center space-x-1.5 min-w-0">
                                       {!n.is_read && (
-                                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" title="Belum dibaca"></span>
+                                        <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0 animate-pulse" title="Belum dibaca" />
                                       )}
-                                      <h4 className={`text-[11px] truncate ${!n.is_read ? 'font-extrabold text-slate-900 group-hover:text-blue-600' : 'font-semibold text-slate-700'}`}>
+                                      <h4 className={`text-[11.5px] truncate ${!n.is_read ? 'font-bold text-slate-900 group-hover:text-indigo-600' : 'font-semibold text-slate-700'}`}>
                                         {n.title}
                                       </h4>
                                     </div>
 
                                     <div className="flex items-center space-x-1 shrink-0">
-                                      <span className={`px-1.5 py-0.5 rounded text-[8.5px] font-extrabold border ${n.badge_color || 'bg-slate-100 text-slate-700 border-slate-200'}`}>
+                                      <span className={`px-1.5 py-0.5 rounded text-[8.5px] font-bold border ${n.badge_color || 'bg-slate-100 text-slate-700 border-slate-200'}`}>
                                         {n.badge_label || 'Pemberitahuan'}
                                       </span>
-                                      {!n.is_read && (
-                                        <span className="px-1.5 py-0.5 rounded text-[8.5px] font-black bg-rose-100 text-rose-700">
+                                      {!n.is_read ? (
+                                        <span className="px-1.5 py-0.5 rounded text-[8.5px] font-black bg-rose-100 text-rose-700 uppercase tracking-wider">
                                           Baru
+                                        </span>
+                                      ) : (
+                                        <span className="px-1.5 py-0.5 rounded text-[8.5px] font-semibold bg-slate-100 text-slate-500 flex items-center space-x-0.5">
+                                          <Check className="w-2.5 h-2.5 text-slate-400" />
+                                          <span>Dibaca</span>
                                         </span>
                                       )}
                                       {!n.is_read && (
@@ -669,29 +968,31 @@ export default function Navbar() {
                                             e.stopPropagation();
                                             handleMarkSingleAsRead(n.id);
                                           }}
-                                          className="p-0.5 rounded text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
+                                          className="p-1 rounded text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 transition-colors ml-0.5"
                                           title="Tandai sudah dibaca"
                                         >
-                                          <Check className="w-3 h-3" />
+                                          <Check className="w-3.5 h-3.5" />
                                         </button>
                                       )}
                                     </div>
                                   </div>
 
-                                  <p className="text-[10px] text-slate-600 mt-0.5 leading-normal">
+                                  <p className={`text-[10.5px] mt-1 leading-relaxed ${!n.is_read ? 'text-slate-700 font-medium' : 'text-slate-500'}`}>
                                     {n.message}
                                   </p>
 
                                   {/* Footer: Clock relative time & Action Button */}
-                                  <div className="mt-2 flex items-center justify-between text-[9px] text-slate-400 pt-1 border-t border-slate-100/80">
+                                  <div className="mt-2.5 flex items-center justify-between text-[9.5px] text-slate-400 pt-1.5 border-t border-slate-100">
                                     <span className="flex items-center space-x-1">
-                                      <Clock className="w-2.5 h-2.5 text-slate-400" />
+                                      <Clock className="w-3 h-3 text-slate-400" />
                                       <span>{formatRelativeTime(n.created_at, currentTime)}</span>
                                     </span>
 
-                                    <span className="text-indigo-600 font-bold inline-flex items-center space-x-0.5 group-hover:translate-x-0.5 transition-transform text-[9px]">
-                                      <span>{n.action_label || 'Lihat Permintaan'}</span>
-                                      <ArrowRight className="w-2.5 h-2.5" />
+                                    <span className={`font-bold inline-flex items-center space-x-1 group-hover:translate-x-0.5 transition-transform text-[10px] ${
+                                      !n.is_read ? 'text-indigo-600' : 'text-slate-500'
+                                    }`}>
+                                      <span>{n.action_label || 'Lihat Detail'}</span>
+                                      <ArrowRight className="w-3 h-3" />
                                     </span>
                                   </div>
                                 </div>
@@ -727,7 +1028,6 @@ export default function Navbar() {
                           const isRevised = n.related_type === 'thesis_title_revised' || /pembaruan|revisi/i.test(n.title || '');
                           displayTitle = isRevised ? 'Pembaruan Judul Mahasiswa' : 'Pengajuan Judul Mahasiswa';
                           
-                          // Ambil nama dan NIM mahasiswa dari properti atau teks pesan
                           let mhsNama = n.student_name || '';
                           let mhsNim = n.student_nim || '';
                           if (!mhsNama || !mhsNim) {
@@ -749,38 +1049,37 @@ export default function Navbar() {
                           }
                         }
 
-                        // Bersihkan tanda koma setelah kurung NIM bila ada
                         displayMessage = (displayMessage || '').replace(/\(([0-9]+)\),\s*telah/i, '($1) telah');
 
-                        // Warna border samping & latar belakang hanya untuk notifikasi paling baru (isNewest)
                         let borderClass = '';
-                        if (isNewest) {
-                          if (isInactivityNotif) borderClass = 'border-l-4 border-l-amber-500 bg-amber-50/20';
-                          else if (isSimilarityNotif) borderClass = 'border-l-4 border-l-rose-500 bg-rose-50/20';
-                          else if (isSiapSidangNotif) borderClass = 'border-l-4 border-l-emerald-500 bg-emerald-50/20';
-                          else if (isBimbinganMasuk) borderClass = 'border-l-3 border-l-indigo-600 bg-indigo-50/20';
+                        if (!n.is_read) {
+                          if (isInactivityNotif) borderClass = 'border-l-4 border-l-amber-500 bg-amber-50/25';
+                          else if (isSimilarityNotif) borderClass = 'border-l-4 border-l-rose-500 bg-rose-50/25';
+                          else if (isSiapSidangNotif) borderClass = 'border-l-4 border-l-emerald-500 bg-emerald-50/25';
+                          else if (isBimbinganMasuk) borderClass = 'border-l-4 border-l-indigo-600 bg-indigo-50/25';
+                          else borderClass = 'border-l-4 border-l-slate-400 bg-slate-50/30';
+                        } else {
+                          borderClass = 'border-l-4 border-l-transparent bg-white opacity-85';
                         }
 
                         return (
                           <div 
                             key={n.id} 
                             onClick={() => handleNotificationItemClick(n)}
-                            className={`p-2.5 sm:p-3 hover:bg-slate-50 transition-colors cursor-pointer group ${borderClass} ${isNewest && !n.is_read ? 'bg-slate-50/70' : 'bg-white'}`}
+                            className={`p-3 hover:bg-slate-50 transition-colors cursor-pointer group ${borderClass}`}
                           >
                             <div className="flex items-start justify-between gap-2">
                               <div className="flex items-center space-x-1.5 flex-1 min-w-0">
-                                {/* Titik indikator berwarna HANYA untuk notifikasi paling baru (isNewest) yang belum dibaca */}
-                                {isNewest && !n.is_read && (
-                                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" title="Notifikasi terbaru"></span>
+                                {!n.is_read && (
+                                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" title="Belum dibaca"></span>
                                 )}
-                                {isNewest && isInactivityNotif && (
-                                  <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
+                                {isInactivityNotif && (
+                                  <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                                 )}
-                                {isNewest && isSiapSidangNotif && (
-                                  <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                                {isSiapSidangNotif && (
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                                 )}
-                                {/* Judul selalu hitam biasa (text-slate-900), tidak berwarna biru */}
-                                <p className="text-[11px] font-bold text-slate-900 transition-colors truncate">
+                                <p className={`text-[11px] transition-colors truncate ${!n.is_read ? 'font-bold text-slate-900 group-hover:text-indigo-600' : 'font-medium text-slate-700'}`}>
                                   {displayTitle}
                                 </p>
                               </div>
@@ -815,23 +1114,34 @@ export default function Navbar() {
                                   </span>
                                 ) : null}
 
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (n.id && markNotificationAsRead) {
-                                      markNotificationAsRead(n.id);
-                                    }
-                                  }}
-                                  className="p-0.5 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors ml-1 shrink-0"
-                                  title="Tandai sudah dibaca & hapus"
-                                >
-                                  <X className="w-3 h-3" />
-                                </button>
+                                {!n.is_read ? (
+                                  <span className="px-1.5 py-0.5 rounded text-[8.5px] font-black bg-rose-100 text-rose-700 uppercase tracking-wider">
+                                    Baru
+                                  </span>
+                                ) : (
+                                  <span className="px-1.5 py-0.5 rounded text-[8.5px] font-semibold bg-slate-100 text-slate-500 flex items-center space-x-0.5">
+                                    <Check className="w-2.5 h-2.5 text-slate-400" />
+                                    <span>Dibaca</span>
+                                  </span>
+                                )}
+
+                                {!n.is_read && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleMarkSingleAsRead(n.id, n);
+                                    }}
+                                    className="p-0.5 rounded text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors ml-1 shrink-0"
+                                    title="Tandai sudah dibaca"
+                                  >
+                                    <Check className="w-3 h-3" />
+                                  </button>
+                                )}
                               </div>
                             </div>
 
-                            <p className="text-[10px] sm:text-[10.5px] text-slate-600 mt-0.5 leading-relaxed">
+                            <p className="text-[10px] sm:text-[10.5px] text-slate-600 mt-1 leading-relaxed">
                               {displayMessage}
                             </p>
                             
@@ -885,7 +1195,7 @@ export default function Navbar() {
                               </div>
                             )}
 
-                            <div className="mt-1.5 flex items-center justify-between text-[9px] text-slate-400">
+                            <div className="mt-2 flex items-center justify-between text-[9px] text-slate-400 pt-1 border-t border-slate-100">
                               <span className="flex items-center space-x-1">
                                 <Clock className="w-2.5 h-2.5 text-slate-400" />
                                 <span>{formatRelativeTime(n.created_at, currentTime)}</span>
@@ -901,6 +1211,15 @@ export default function Navbar() {
                         );
                       })
                     )}
+                  </div>
+
+                  {/* Dropdown Footer */}
+                  <div className="px-4 py-2 border-t border-slate-100 bg-slate-50/80 flex items-center justify-between text-[10px] text-slate-500 font-medium">
+                    <span>Sistem Monitoring Real-Time SIMONITA</span>
+                    <span className="flex items-center space-x-1.5 text-emerald-700 font-semibold">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                      <span>Sinkron</span>
+                    </span>
                   </div>
                 </div>
               )}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link, router, Head } from '@inertiajs/react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import AuthLayout from '../../Layouts/AuthLayout.jsx';
@@ -15,13 +15,15 @@ import {
   AlertCircle,
   Loader2,
   KeyRound,
-  ShieldCheck
+  ShieldCheck,
+  Check,
+  X
 } from 'lucide-react';
 
 export default function ResetPassword({ token, email }) {
   const { confirmPasswordReset, verifyPasswordResetToken } = useAuth();
 
-  // Read query params as fallback if not in props
+  // Ambil query params dari URL browser
   const getQueryParam = (name) => {
     if (typeof window === 'undefined') return '';
     const params = new URLSearchParams(window.location.search);
@@ -46,7 +48,7 @@ export default function ResetPassword({ token, email }) {
   const formPanelRef = useRef(null);
   const leftContentRef = useRef(null);
 
-  // Verifikasi keabsahan token & status persetujuan Admin
+  // Verifikasi keabsahan token & masa berlaku 24 jam saat halaman dibuka (Section C.1 & C.3)
   useEffect(() => {
     if (verifyPasswordResetToken && (resetToken || userEmail)) {
       const res = verifyPasswordResetToken(resetToken, userEmail);
@@ -54,11 +56,45 @@ export default function ResetPassword({ token, email }) {
         setTokenStatus({ checked: true, valid: false, error: res.error, user: null });
       } else {
         setTokenStatus({ checked: true, valid: true, error: '', user: res.user });
+        if (res.user?.email && !userEmail) {
+          setUserEmail(res.user.email);
+        }
       }
     } else {
-      setTokenStatus({ checked: true, valid: true, error: '', user: null });
+      setTokenStatus({ 
+        checked: true, 
+        valid: false, 
+        error: 'Tautan reset kata sandi tidak valid atau token verifikasi tidak ditemukan.', 
+        user: null 
+      });
     }
   }, [resetToken, userEmail, verifyPasswordResetToken]);
+
+  // Evaluasi kekuatan kata sandi
+  const passwordStrength = useMemo(() => {
+    if (!password) return { score: 0, label: 'Kosong', color: 'bg-slate-200', text: 'text-slate-400' };
+    let score = 0;
+    if (password.length >= 6) score += 1;
+    if (password.length >= 8) score += 1;
+    if (/[A-Z]/.test(password) && /[a-z]/.test(password)) score += 1;
+    if (/[0-9]/.test(password)) score += 1;
+    if (/[^A-Za-z0-9]/.test(password)) score += 1;
+
+    if (score <= 2) {
+      return { score: 33, label: 'Lemah', color: 'bg-rose-500', text: 'text-rose-600' };
+    } else if (score <= 4) {
+      return { score: 66, label: 'Cukup', color: 'bg-amber-500', text: 'text-amber-600' };
+    } else {
+      return { score: 100, label: 'Kuat', color: 'bg-emerald-500', text: 'text-emerald-600' };
+    }
+  }, [password]);
+
+  // Validasi kriteria
+  const hasMinLength = password.length >= 6;
+  const hasLetterAndNumber = /[A-Za-z]/.test(password) && /[0-9]/.test(password);
+  const passwordsMatch = password && password === passwordConfirmation;
+  const userIdentifier = String(tokenStatus.user?.nim || tokenStatus.user?.nip || tokenStatus.user?.identifier || '').trim().toLowerCase();
+  const isNotSameAsId = !userIdentifier || (password.toLowerCase() !== userIdentifier);
 
   // GSAP Entrance Animations
   useEffect(() => {
@@ -100,22 +136,28 @@ export default function ResetPassword({ token, email }) {
       return;
     }
 
+    // Validasi Keamanan (Section B.3): Password tidak boleh sama dengan NIM atau NIP
+    if (!isNotSameAsId) {
+      setErrorMessage('Kata sandi baru tidak boleh sama dengan NIM atau NIP akun Anda demi alasan keamanan.');
+      return;
+    }
+
     setIsLoading(true);
     setErrorMessage('');
 
     try {
       await confirmPasswordReset({
-        emailOrToken: userEmail || resetToken,
+        emailOrToken: resetToken || userEmail,
         newPassword: password
       });
 
       setIsLoading(false);
       setIsSuccess(true);
 
-      // Auto redirect to login after 2 seconds
+      // Pengalihan ke halaman Login dengan notifikasi sukses (Section D.2)
       setTimeout(() => {
-        router.visit('/login');
-      }, 2000);
+        router.visit('/login?status=reset_success');
+      }, 1500);
 
     } catch (err) {
       setIsLoading(false);
@@ -125,7 +167,7 @@ export default function ResetPassword({ token, email }) {
 
   return (
     <div className="min-h-screen w-full grid grid-cols-1 lg:grid-cols-12 bg-white text-slate-900 font-sans select-none overflow-x-hidden">
-      <Head title="Reset Kata Sandi - SIMONITA FASILKOM" />
+      <Head title="Perbarui Password Akun - SIMONITA FASILKOM" />
 
       {/* LEFT COLUMN: 50% / 7 Cols - Background Diklat Photo with UNSRI Blue Overlay */}
       <div className="lg:col-span-6 xl:col-span-7 relative hidden lg:flex flex-col justify-between p-10 xl:p-14 bg-blue-950 text-white overflow-hidden">
@@ -184,11 +226,11 @@ export default function ResetPassword({ token, email }) {
             </div>
             <div className="flex items-center space-x-3">
               <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>Hindari menggunakan kata sandi yang mudah ditebak</span>
+              <span>Kombinasikan huruf besar, huruf kecil, dan angka</span>
             </div>
             <div className="flex items-center space-x-3">
               <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>Kata sandi baru langsung aktif setelah konfirmasi</span>
+              <span>Tautan aman hanya berlaku 24 jam dan sekali pakai</span>
             </div>
           </div>
         </div>
@@ -216,39 +258,41 @@ export default function ResetPassword({ token, email }) {
         </div>
 
         {/* Center Form Container */}
-        <div ref={formPanelRef} className="my-auto max-w-md w-full mx-auto space-y-7 py-4">
+        <div ref={formPanelRef} className="my-auto max-w-md w-full mx-auto space-y-6 py-4">
 
-          {/* Header Title */}
+          {/* Header Title (Section B.1) */}
           <div className="space-y-1.5">
             <span className="text-xs font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-3 py-1 rounded-md border border-blue-100 inline-block">
-              Perbarui Kata Sandi
+              Keamanan Akun
             </span>
             <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight pt-1">
-              Atur Ulang Kata Sandi
+              Perbarui Password Akun Anda
             </h2>
             <p className="text-xs text-slate-500">
-              Buat kata sandi baru untuk akun Anda.
+              Masukkan kata sandi baru untuk mengamankan kembali akun SIMONITA Anda.
             </p>
           </div>
 
-          {/* Token Invalid / Expired Warning */}
+          {/* Token Invalid / Expired Warning (Section C.3: Jangan tampilkan form jika token kedaluwarsa) */}
           {tokenStatus.checked && !tokenStatus.valid ? (
             <div className="p-6 rounded-2xl bg-rose-50 border border-rose-200 text-center space-y-4 animate-in fade-in">
               <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
                 <AlertCircle className="w-6 h-6" />
               </div>
-              <div className="space-y-1">
-                <h3 className="font-bold text-sm text-rose-950">Tautan Reset Tidak Valid</h3>
+              <div className="space-y-1.5">
+                <h3 className="font-bold text-sm text-rose-950">
+                  Tautan Reset Password Tidak Berlaku
+                </h3>
                 <p className="text-xs text-rose-700 leading-relaxed">
-                  {tokenStatus.error || 'Token reset kata sandi tidak ditemukan atau belum disetujui oleh Admin SIMTA.'}
+                  {tokenStatus.error || 'Tautan reset password sudah tidak berlaku atau telah kedaluwarsa (melebihi batas 24 jam atau telah digunakan).'}
                 </p>
               </div>
               <div className="pt-2 flex flex-col gap-2">
                 <Link
                   href="/forgot-password"
-                  className="w-full py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs transition-all text-center block"
+                  className="w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition-all text-center block shadow-md shadow-blue-600/20"
                 >
-                  Ajukan Permintaan Reset Baru
+                  Minta Tautan Baru
                 </Link>
                 <Link
                   href="/login"
@@ -259,18 +303,19 @@ export default function ResetPassword({ token, email }) {
               </div>
             </div>
           ) : isSuccess ? (
+            /* Success Feedback (Section D.2) */
             <div className="p-6 rounded-2xl bg-emerald-50 border border-emerald-200 text-center space-y-4 animate-in fade-in zoom-in-95 duration-300">
               <div className="w-14 h-14 rounded-full bg-emerald-500 text-white flex items-center justify-center mx-auto shadow-lg shadow-emerald-500/30 animate-bounce">
                 <CheckCircle2 className="w-8 h-8" />
               </div>
               <div className="space-y-1">
-                <h3 className="font-extrabold text-base text-emerald-950">Kata Sandi Berhasil Diperbarui!</h3>
+                <h3 className="font-extrabold text-base text-emerald-950">Password Berhasil Diperbarui!</h3>
                 <p className="text-xs text-emerald-700 leading-relaxed">
-                  Kata sandi baru akun Anda telah berhasil disimpan dengan aman (hashing SHA-256). Mengalihkan Anda ke halaman login...
+                  Password baru Anda telah berhasil disimpan dengan aman (hashing SHA-256). Mengalihkan Anda ke halaman login...
                 </p>
               </div>
               <Link
-                href="/login"
+                href="/login?status=reset_success"
                 className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition-all"
               >
                 Masuk Sekarang
@@ -297,30 +342,30 @@ export default function ResetPassword({ token, email }) {
                 </div>
               )}
 
-              {/* Reset Password Form */}
+              {/* Reset Password Form (Section B.2) */}
               <form onSubmit={handleSubmit} className="space-y-4">
 
-                {/* Email / Identifier (Read-only or editable) */}
+                {/* Email / Identifier (Read-only for safety) */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-700">
-                    Alamat Email / NIM / NIP
+                    Alamat Email Akun
                   </label>
                   <div className="relative">
                     <input
                       type="text"
-                      value={userEmail}
-                      onChange={(e) => setUserEmail(e.target.value)}
-                      placeholder="Email atau NIM/NIP Akun"
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 text-xs sm:text-sm text-slate-900 bg-slate-50 transition-all outline-none font-medium"
+                      readOnly
+                      value={userEmail || tokenStatus.user?.email || ''}
+                      placeholder="Email Akun"
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm text-slate-600 bg-slate-50 font-medium cursor-not-allowed outline-none"
                     />
                     <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   </div>
                 </div>
 
-                {/* New Password */}
+                {/* New Password Field */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-700">
-                    Kata Sandi Baru *
+                    Password Baru *
                   </label>
                   <div className="relative">
                     <input
@@ -328,7 +373,7 @@ export default function ResetPassword({ token, email }) {
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Masukkan kata sandi baru (min. 6 karakter)..."
+                      placeholder="Masukkan password baru (min. 6 karakter)..."
                       className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 text-xs sm:text-sm text-slate-900 bg-white transition-all outline-none font-medium"
                     />
                     <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -340,12 +385,28 @@ export default function ResetPassword({ token, email }) {
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
+
+                  {/* Password Strength Meter */}
+                  {password && (
+                    <div className="pt-1 space-y-1">
+                      <div className="flex justify-between items-center text-[11px]">
+                        <span className="text-slate-500 font-medium">Kekuatan Sandi:</span>
+                        <span className={`font-bold ${passwordStrength.text}`}>{passwordStrength.label}</span>
+                      </div>
+                      <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full transition-all duration-300 rounded-full ${passwordStrength.color}`}
+                          style={{ width: `${passwordStrength.score}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                {/* Confirm New Password */}
+                {/* Confirm New Password Field */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-700">
-                    Konfirmasi Kata Sandi Baru *
+                    Konfirmasi Password Baru *
                   </label>
                   <div className="relative">
                     <input
@@ -353,7 +414,7 @@ export default function ResetPassword({ token, email }) {
                       required
                       value={passwordConfirmation}
                       onChange={(e) => setPasswordConfirmation(e.target.value)}
-                      placeholder="Ketik ulang kata sandi baru..."
+                      placeholder="Ketik ulang password baru..."
                       className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 text-xs sm:text-sm text-slate-900 bg-white transition-all outline-none font-medium"
                     />
                     <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -367,19 +428,55 @@ export default function ResetPassword({ token, email }) {
                   </div>
                 </div>
 
+                {/* Checklist Kriteria Validasi Keamanan (Section B.3) */}
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-[11px] space-y-1.5 font-medium">
+                  <div className="flex items-center space-x-2">
+                    {hasMinLength ? (
+                      <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    ) : (
+                      <X className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    )}
+                    <span className={hasMinLength ? 'text-emerald-700 font-semibold' : 'text-slate-500'}>
+                      Minimal 6 karakter
+                    </span>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    {passwordsMatch ? (
+                      <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    ) : (
+                      <X className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    )}
+                    <span className={passwordsMatch ? 'text-emerald-700 font-semibold' : 'text-slate-500'}>
+                      Konfirmasi password cocok
+                    </span>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    {isNotSameAsId ? (
+                      <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    ) : (
+                      <X className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                    )}
+                    <span className={isNotSameAsId ? 'text-emerald-700 font-semibold' : 'text-rose-600 font-bold'}>
+                      Tidak sama dengan NIM / NIP akun
+                    </span>
+                  </div>
+                </div>
+
                 {/* Submit Button */}
                 <button
                   type="submit"
-                  disabled={isLoading}
-                  className="w-full py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-blue-600/30 transition-all flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
+                  disabled={isLoading || !hasMinLength || !passwordsMatch || !isNotSameAsId}
+                  className="w-full py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-blue-600/30 transition-all flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isLoading ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin text-white" />
-                      <span>Menyimpan Kata Sandi Baru...</span>
+                      <span>Menyimpan Password Baru...</span>
                     </>
                   ) : (
-                    <span>Simpan Kata Sandi Baru</span>
+                    <span>Simpan Password Baru</span>
                   )}
                 </button>
 
@@ -409,4 +506,3 @@ export default function ResetPassword({ token, email }) {
 
 // Lepaskan halaman Buat Password Baru dari Admin / Dashboard layout
 ResetPassword.layout = (page) => <AuthLayout>{page}</AuthLayout>;
-

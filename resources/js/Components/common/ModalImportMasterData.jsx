@@ -87,15 +87,15 @@ export default function ModalImportMasterData({
           'Email',
           'No HP',
           'Program Studi',
-          'Kelas',
+          'Angkatan',
           'Status',
           'NIP Pembimbing 1',
           'NIP Pembimbing 2'
         ],
         sampleRows: [
-          ['09010182428090', 'Budi Pratama', '09010182428090@student.unsri.ac.id', '081234567890', 'D3 Manajemen Informatika', 'MI 5A', 'aktif', '198910142023211013', '198710092024211001'],
-          ['09010182428091', 'Siti Rahmawati', '09010182428091@student.unsri.ac.id', '081298765432', 'D3 Manajemen Informatika', 'MI 5B', 'aktif', '198303182023212034', '198810052023212046'],
-          ['09010182428092', 'Ahmad Fadillah', '09010182428092@student.unsri.ac.id', '082155667788', 'D3 Manajemen Informatika', 'MI 5A', 'cuti', '', '']
+          ['09010182428090', 'Budi Pratama', '09010182428090@student.unsri.ac.id', '081234567890', 'D3 Manajemen Informatika', '2024', 'aktif', '198910142023211013', '198710092024211001'],
+          ['09010182428091', 'Siti Rahmawati', '09010182428091@student.unsri.ac.id', '081298765432', 'D3 Manajemen Informatika', '2024', 'aktif', '198303182023212034', '198810052023212046'],
+          ['09010182428092', 'Ahmad Fadillah', '09010182428092@student.unsri.ac.id', '082155667788', 'D3 Manajemen Informatika', '2023', 'nonaktif', '', '']
         ],
         xlsxFilename: 'template_import_mahasiswa_simta.xlsx',
         csvFilename: 'template_import_mahasiswa_simta.csv'

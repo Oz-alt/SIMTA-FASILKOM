@@ -2,9 +2,17 @@ import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import RoomScheduleTimeline from '../../Components/common/RoomScheduleTimeline.jsx';
 
+const getTodayDateString = () => {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+};
+
 export default function JadwalRuangPage() {
   const { rooms, bookings, buildings } = useAuth();
-  const [selectedDate, setSelectedDate] = useState('2026-09-12');
+  const [selectedDate, setSelectedDate] = useState(getTodayDateString);
 
   return (
     <div className="space-y-6">

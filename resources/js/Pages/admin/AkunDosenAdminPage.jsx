@@ -42,6 +42,7 @@ export default function AkunDosenAdminPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [jabatanFilter, setJabatanFilter] = useState('ALL');
+  const [roleFilter, setRoleFilter] = useState('ALL');
 
   // Modal States
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -90,9 +91,24 @@ export default function AkunDosenAdminPage() {
     setTimeout(() => setToastMessage(''), 3500);
   };
 
-  // Live Dosen Accounts Dataset
+  // Live Dosen Accounts Dataset (dengan deduplikasi ketat NIP / Email)
   const dosenList = useMemo(() => {
-    return getAllDosenAccounts();
+    const raw = getAllDosenAccounts();
+    const seen = new Set();
+    const unique = [];
+    (raw || []).forEach(d => {
+      if (!d) return;
+      const nipKey = String(d.nip || d.nim || '').replace(/[^0-9]/g, '');
+      const emailKey = String(d.email || '').trim().toLowerCase();
+      const nameKey = String(d.nama || '').trim().toLowerCase();
+      const primaryKey = nipKey || emailKey || nameKey;
+      if (primaryKey && !seen.has(primaryKey)) {
+        seen.add(primaryKey);
+        if (emailKey && emailKey !== 'dosen@unsri.ac.id') seen.add(emailKey);
+        unique.push(d);
+      }
+    });
+    return unique;
   }, [getAllDosenAccounts]);
 
   // Unique Functional Titles list for filter
@@ -114,9 +130,11 @@ export default function AkunDosenAdminPage() {
 
       const matchStatus = statusFilter === 'ALL' || adv.status === statusFilter;
       const matchJabatan = jabatanFilter === 'ALL' || adv.jabatan_fungsional === jabatanFilter;
-      return matchQuery && matchStatus && matchJabatan;
+      const isKaprodi = adv.role === 'kaprodi' || adv.nip === '198410012009121005';
+      const matchRole = roleFilter === 'ALL' || (roleFilter === 'kaprodi' ? isKaprodi : !isKaprodi);
+      return matchQuery && matchStatus && matchJabatan && matchRole;
     });
-  }, [dosenList, searchQuery, statusFilter, jabatanFilter]);
+  }, [dosenList, searchQuery, statusFilter, jabatanFilter, roleFilter]);
 
   // Statistics
   const totalDosen = dosenList.length;
@@ -156,7 +174,7 @@ export default function AkunDosenAdminPage() {
       keahlian: Array.isArray(dosen.keahlian) ? dosen.keahlian.join(', ') : (dosen.keahlian || ''),
       kuota_dospem1: dosen.kuota_dospem1 ?? 8,
       kuota_dospem2: dosen.kuota_dospem2 ?? 8,
-      role: dosen.role || 'dosen',
+      role: dosen.role || (dosen.nip === '198410012009121005' ? 'kaprodi' : 'dosen'),
       status: dosen.status || 'aktif',
       password: ''
     });
@@ -375,6 +393,20 @@ export default function AkunDosenAdminPage() {
           {/* Filters */}
           <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto justify-end">
             
+            {/* Role Filter (Ketentuan #7) */}
+            <div className="flex items-center space-x-1.5 bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700">
+              <span>Role:</span>
+              <select
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value)}
+                className="bg-transparent text-xs font-bold text-purple-600 outline-none cursor-pointer"
+              >
+                <option value="ALL">Semua Role</option>
+                <option value="dosen">Dosen Pembimbing</option>
+                <option value="kaprodi">Kaprodi</option>
+              </select>
+            </div>
+
             {/* Status Filter */}
             <div className="flex items-center space-x-1.5 bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700">
               <Filter className="w-3.5 h-3.5 text-slate-400" />
@@ -415,18 +447,18 @@ export default function AkunDosenAdminPage() {
         </div>
 
         {/* Data Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-700">
+        <div className="overflow-x-auto table-scroll-container overscroll-contain">
+          <table className="w-full text-left text-xs text-slate-700 border-collapse">
             <thead className="bg-slate-50 border-b border-slate-200/80 text-[11px] font-extrabold uppercase text-slate-500 tracking-wider">
               <tr>
-                <th className="py-3.5 px-4 w-12 text-center">No</th>
-                <th className="py-3.5 px-4">Dosen Pembimbing</th>
-                <th className="py-3.5 px-4">Kontak &amp; Email</th>
-                <th className="py-3.5 px-4">Jabatan &amp; Keahlian</th>
-                <th className="py-3.5 px-4 text-center">Kuota Dospem</th>
-                <th className="py-3.5 px-4 text-center">Role</th>
-                <th className="py-3.5 px-4 text-center">Status</th>
-                <th className="py-3.5 px-4 text-right">Aksi Kelola</th>
+                <th className="py-2.5 px-3 w-10 text-center">No</th>
+                <th className="py-2.5 px-3">Dosen Pembimbing</th>
+                <th className="py-2.5 px-3">Kontak &amp; Email</th>
+                <th className="py-2.5 px-3">Jabatan &amp; Keahlian</th>
+                <th className="py-2.5 px-3 text-center whitespace-nowrap">Kuota Dospem</th>
+                <th className="py-2.5 px-3 text-center whitespace-nowrap">Role</th>
+                <th className="py-2.5 px-3 text-center whitespace-nowrap">Status</th>
+                <th className="py-2.5 px-3 text-right whitespace-nowrap">Aksi Kelola</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium">
@@ -438,22 +470,28 @@ export default function AkunDosenAdminPage() {
                   </td>
                 </tr>
               ) : (
-                filteredDosen.map((adv, idx) => (
+                filteredDosen.map((adv, idx) => {
+                  const isKaprodi = adv.role === 'kaprodi' || adv.nip === '198410012009121005';
+                  return (
                   <tr key={adv.id || adv.nip || idx} className="hover:bg-indigo-50/30 transition-colors group">
                     
                     {/* No */}
-                    <td className="py-3.5 px-4 text-center text-slate-400 font-semibold text-[11px]">
+                    <td className="py-2.5 px-3 text-center text-slate-400 font-semibold text-[11px]">
                       {idx + 1}
                     </td>
 
                     {/* Dosen Info */}
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-600 to-blue-700 text-white font-extrabold text-xs flex items-center justify-center shrink-0 shadow-2xs">
+                    <td className="py-2.5 px-3">
+                      <div className="flex items-center space-x-2.5">
+                        <div className={`w-8 h-8 rounded-xl font-extrabold text-xs flex items-center justify-center shrink-0 shadow-2xs ${
+                          isKaprodi
+                            ? 'bg-gradient-to-br from-purple-600 to-indigo-700 text-white'
+                            : 'bg-gradient-to-br from-indigo-600 to-blue-700 text-white'
+                        }`}>
                           {adv.nama ? adv.nama.charAt(0).toUpperCase() : 'D'}
                         </div>
                         <div className="min-w-0">
-                          <div className="font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                          <div className="font-bold text-slate-900 group-hover:text-indigo-600 transition-colors truncate max-w-[190px]" title={adv.nama}>
                             {adv.nama}
                           </div>
                           <div className="text-[11px] font-semibold text-slate-500 font-mono">
@@ -464,11 +502,11 @@ export default function AkunDosenAdminPage() {
                     </td>
 
                     {/* Contact & Email */}
-                    <td className="py-3.5 px-4">
+                    <td className="py-2.5 px-3">
                       <div className="space-y-0.5">
                         <div className="flex items-center space-x-1.5 text-slate-700 font-medium">
                           <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <span className="truncate max-w-[180px]">{adv.email || `${adv.nip}@unsri.ac.id`}</span>
+                          <span className="truncate max-w-[170px]" title={adv.email}>{adv.email || `${adv.nip}@unsri.ac.id`}</span>
                         </div>
                         {adv.no_hp && adv.no_hp !== '-' && (
                           <div className="flex items-center space-x-1.5 text-[11px] text-slate-500">
@@ -480,14 +518,14 @@ export default function AkunDosenAdminPage() {
                     </td>
 
                     {/* Jabatan & Keahlian */}
-                    <td className="py-3.5 px-4">
+                    <td className="py-2.5 px-3">
                       <div className="space-y-1 max-w-xs">
                         <span className="inline-block px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-bold text-[10px] border border-indigo-100">
                           {adv.jabatan_fungsional || 'Asisten Ahli'}
                         </span>
                         <div className="flex flex-wrap gap-1">
                           {(Array.isArray(adv.keahlian) ? adv.keahlian : (adv.keahlian || '').split(',')).slice(0, 2).map((k, i) => (
-                            <span key={i} className="inline-block px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[9px] font-medium truncate max-w-[120px]">
+                            <span key={i} className="inline-block px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[9px] font-medium truncate max-w-[110px]" title={typeof k === 'string' ? k.trim() : ''}>
                               {typeof k === 'string' ? k.trim() : ''}
                             </span>
                           ))}
@@ -495,36 +533,33 @@ export default function AkunDosenAdminPage() {
                       </div>
                     </td>
 
-                    {/* Kuota Bimbingan */}
-                    <td className="py-3.5 px-4 text-center">
-                      <div className="inline-flex items-center space-x-2 text-[11px]">
-                        <span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 font-bold" title="Kuota Dospem 1">
-                          P1: {adv.kuota_dospem1 ?? 8}
-                        </span>
-                        <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-bold" title="Kuota Dospem 2">
-                          P2: {adv.kuota_dospem2 ?? 8}
-                        </span>
-                      </div>
+                    {/* Kuota Bimbingan (Ketentuan #5) */}
+                    <td className="py-2.5 px-3 text-center whitespace-nowrap min-w-[110px]">
+                      <span className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-50 text-slate-800 border border-slate-200 whitespace-nowrap">
+                        <span className="text-blue-700">P1: {adv.kuota_dospem1 ?? 8}</span>
+                        <span className="text-slate-300">•</span>
+                        <span className="text-emerald-700">P2: {adv.kuota_dospem2 ?? 8}</span>
+                      </span>
                     </td>
 
-                    {/* Role */}
-                    <td className="py-3.5 px-4 text-center">
+                    {/* Role (Ketentuan #7) */}
+                    <td className="py-2.5 px-3 text-center whitespace-nowrap">
                       <span className={`px-2 py-0.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wider ${
-                        adv.role === 'kaprodi'
-                          ? 'bg-purple-50 text-purple-700 border border-purple-200'
+                        isKaprodi
+                          ? 'bg-purple-100 text-purple-800 border border-purple-200'
                           : 'bg-indigo-50 text-indigo-700 border border-indigo-100'
                       }`}>
-                        {adv.role === 'kaprodi' ? 'Kaprodi' : 'Dosen'}
+                        {isKaprodi ? 'Kaprodi' : 'Dosen'}
                       </span>
                     </td>
 
                     {/* Status */}
-                    <td className="py-3.5 px-4 text-center">
+                    <td className="py-2.5 px-3 text-center whitespace-nowrap">
                       {renderStatusBadge(adv.status || 'aktif')}
                     </td>
 
                     {/* Actions */}
-                    <td className="py-3.5 px-4 text-right">
+                    <td className="py-2.5 px-3 text-right whitespace-nowrap">
                       <div className="inline-flex items-center space-x-1">
                         
                         {/* View Detail */}
@@ -571,9 +606,10 @@ export default function AkunDosenAdminPage() {
                     </td>
 
                   </tr>
-                ))
-              )}
-            </tbody>
+                );
+              })
+            )}
+          </tbody>
           </table>
         </div>
 

@@ -35,6 +35,7 @@ export default function ProfilePage() {
   const { url } = usePage();
 
   const isMahasiswa = currentUser?.role === 'mahasiswa';
+  const isAdmin = currentUser?.role === 'admin';
   const isPendingProfile = isMahasiswa && !currentUser?.is_profile_completed;
   const isFirstLogin = isPendingProfile || (typeof url === 'string' && url.includes('first_login'));
 
@@ -88,6 +89,7 @@ export default function ProfilePage() {
   // Resolusi jabatan fungsional: Sumber kebenaran utama adalah yang diset Kaprodi / Admin di Data Master Dosen
   const resolvedJabatan = useMemo(() => {
     if (isMahasiswa) return resolveStudentAngkatan(currentUser);
+    if (isAdmin) return '';
     if (matchedAdvisor?.jabatan_fungsional && matchedAdvisor.jabatan_fungsional !== 'Dosen Pembimbing') {
       return matchedAdvisor.jabatan_fungsional;
     }
@@ -98,7 +100,7 @@ export default function ProfilePage() {
       return currentUser.kelas;
     }
     return 'Asisten Ahli';
-  }, [currentUser, matchedAdvisor, isMahasiswa]);
+  }, [currentUser, matchedAdvisor, isMahasiswa, isAdmin]);
 
   const resolvedKeilmuan = useMemo(() => {
     if (currentUser?.keilmuan) return currentUser.keilmuan;
@@ -113,6 +115,7 @@ export default function ProfilePage() {
 
   const [formData, setFormData] = useState({
     nama: currentUser?.nama || '',
+    nip: currentUser?.nip || currentUser?.nim || '',
     email: currentUser?.email || (currentUser?.nim ? `${currentUser.nim}@student.unsri.ac.id` : ''),
     no_hp: currentUser?.no_hp && currentUser?.no_hp !== '-' ? currentUser.no_hp : '',
     prodi: currentUser?.prodi || 'D3 Manajemen Informatika',
@@ -189,6 +192,7 @@ export default function ProfilePage() {
       }
       setFormData({
         nama: currentUser.nama || '',
+        nip: currentUser.nip || currentUser.nim || '',
         email: currentUser.email || (currentUser.nim ? `${currentUser.nim}@student.unsri.ac.id` : ''),
         no_hp: currentUser.no_hp && currentUser.no_hp !== '-' ? currentUser.no_hp : '',
         prodi: currentUser.prodi || 'D3 Manajemen Informatika',
@@ -216,6 +220,7 @@ export default function ProfilePage() {
   const handleStartEdit = () => {
     setFormData({
       nama: currentUser?.nama || '',
+      nip: currentUser?.nip || currentUser?.nim || '',
       email: currentUser?.email || (currentUser?.nim ? `${currentUser.nim}@student.unsri.ac.id` : ''),
       no_hp: currentUser?.no_hp && currentUser?.no_hp !== '-' ? currentUser.no_hp : '',
       prodi: currentUser?.prodi || 'D3 Manajemen Informatika',
@@ -266,6 +271,25 @@ export default function ProfilePage() {
 
     }
 
+    if (isAdmin) {
+      if (!formData.nip || !formData.nip.trim()) {
+        setErrorMsg('NIP / ID Pegawai Admin tidak boleh kosong.');
+        return;
+      }
+      const cleanNip = formData.nip.trim();
+      try {
+        const regUsers = JSON.parse(localStorage.getItem('simta_registered_users') || '[]');
+        const isDuplicate = regUsers.some(u =>
+          u && u.role !== 'admin' &&
+          (String(u.nip || '').trim() === cleanNip || String(u.nim || '').trim() === cleanNip)
+        );
+        if (isDuplicate) {
+          setErrorMsg(`NIP / ID Pegawai ${cleanNip} sudah digunakan oleh akun lain di sistem.`);
+          return;
+        }
+      } catch {}
+    }
+
     // Password requirement for ALL roles (Mahasiswa, Dosen, Kaprodi, Admin)
     const hasPasswordInput = Boolean(newPassword.trim() || confirmPassword.trim());
     if (isPendingProfile || hasPasswordInput) {
@@ -306,11 +330,15 @@ export default function ProfilePage() {
         email: formData.email ? formData.email.trim() : undefined,
         no_hp: formData.no_hp.trim(),
         prodi: formData.prodi,
-        kelas: isMahasiswa ? formData.kelas.trim() : (formData.jabatan_fungsional || formData.kelas || '').trim(),
-        jabatan_fungsional: isMahasiswa ? '' : (formData.jabatan_fungsional || '').trim(),
+        kelas: isMahasiswa ? formData.kelas.trim() : (isAdmin ? '' : (formData.jabatan_fungsional || formData.kelas || '').trim()),
+        jabatan_fungsional: (isMahasiswa || isAdmin) ? '' : (formData.jabatan_fungsional || '').trim(),
         keilmuan: isDosen ? (formData.keilmuan || '').trim() : undefined
       };
 
+      if (isAdmin && formData.nip) {
+        payload.nip = formData.nip.trim();
+        payload.nim = formData.nip.trim();
+      }
       if (isMahasiswa) {
         payload.is_profile_completed = true;
       }
@@ -940,21 +968,40 @@ export default function ProfilePage() {
               )}
             </div>
 
-            {/* 2. NIM / NIP (Read-Only Identity Key) */}
+            {/* 2. NIM / NIP (Editable for Admin, Locked for other roles) */}
             <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 space-y-1.5">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                   {currentUser?.role === 'mahasiswa' ? 'NIM (Nomor Induk Mahasiswa)' : 'NIP / ID Pegawai'}
+                  {isAdmin && isEditing && <span className="text-rose-500 ml-0.5">*</span>}
                 </span>
-                <span className="text-[10px] text-slate-400 font-medium flex items-center space-x-1">
-                  <Lock className="w-3 h-3 text-slate-400" />
-                  <span>Terkunci</span>
-                </span>
+                {isAdmin && isEditing ? (
+                  <span className="text-[10px] text-blue-600 font-semibold">Dapat diedit (Admin)</span>
+                ) : (
+                  <span className="text-[10px] text-slate-400 font-medium flex items-center space-x-1">
+                    <Lock className="w-3 h-3 text-slate-400" />
+                    <span>Terkunci</span>
+                  </span>
+                )}
               </div>
-              <div className="flex items-center space-x-2 text-slate-700 font-semibold pt-0.5">
-                <CreditCard className="w-4 h-4 text-slate-400" />
-                <span>{currentUser?.nim || currentUser?.nip || '09010182428002'}</span>
-              </div>
+              {isAdmin && isEditing ? (
+                <div className="relative">
+                  <input
+                    type="text"
+                    name="nip"
+                    value={formData.nip ?? ''}
+                    onChange={handleChange}
+                    className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 text-xs font-semibold text-slate-900 bg-white transition-all outline-none"
+                    placeholder="Masukkan NIP / ID Pegawai Admin..."
+                  />
+                  <CreditCard className="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                </div>
+              ) : (
+                <div className="flex items-center space-x-2 text-slate-700 font-semibold pt-0.5">
+                  <CreditCard className="w-4 h-4 text-slate-400" />
+                  <span>{currentUser?.nim || currentUser?.nip || '09010182428002'}</span>
+                </div>
+              )}
             </div>
 
             {/* 3. Email Resmi (Bisa diedit oleh mahasiswa maupun role lain) */}
@@ -1033,52 +1080,54 @@ export default function ProfilePage() {
               )}
             </div>
 
-            {/* 6. Angkatan Mahasiswa / Jabatan Fungsional */}
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 space-y-1.5">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                {isMahasiswa ? 'Angkatan Mahasiswa' : 'Jabatan Fungsional'} {isMahasiswa && isEditing && <span className="text-rose-500">*</span>}
-              </span>
-              {isEditing ? (
-                isMahasiswa ? (
-                  <div className="relative">
-                    <input
-                      type="text"
-                      name="kelas"
-                      value={formData.kelas}
-                      onChange={handleChange}
-                      required
-                      className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 text-xs font-semibold text-slate-900 bg-white transition-all outline-none"
-                      placeholder="Masukkan angkatan (contoh: 2024 / MI 2024)"
-                    />
-                    <GraduationCap className="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                  </div>
+            {/* 6. Angkatan Mahasiswa / Jabatan Fungsional (Khusus Mahasiswa, Dosen, Kaprodi - Hapus dari Admin) */}
+            {!isAdmin && (
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 space-y-1.5">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                  {isMahasiswa ? 'Angkatan Mahasiswa' : 'Jabatan Fungsional'} {isMahasiswa && isEditing && <span className="text-rose-500">*</span>}
+                </span>
+                {isEditing ? (
+                  isMahasiswa ? (
+                    <div className="relative">
+                      <input
+                        type="text"
+                        name="kelas"
+                        value={formData.kelas}
+                        onChange={handleChange}
+                        required
+                        className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 text-xs font-semibold text-slate-900 bg-white transition-all outline-none"
+                        placeholder="Masukkan angkatan (contoh: 2024 / MI 2024)"
+                      />
+                      <GraduationCap className="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <select
+                        name="jabatan_fungsional"
+                        value={formData.jabatan_fungsional}
+                        onChange={handleChange}
+                        className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 text-xs font-semibold text-slate-900 bg-white transition-all outline-none appearance-none"
+                      >
+                        <option value="">-- Pilih Jabatan Fungsional --</option>
+                        {JABATAN_FUNGSIONAL_OPTIONS.map(opt => (
+                          <option key={opt} value={opt}>{opt}</option>
+                        ))}
+                      </select>
+                      <GraduationCap className="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                    </div>
+                  )
                 ) : (
-                  <div className="relative">
-                    <select
-                      name="jabatan_fungsional"
-                      value={formData.jabatan_fungsional}
-                      onChange={handleChange}
-                      className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 text-xs font-semibold text-slate-900 bg-white transition-all outline-none appearance-none"
-                    >
-                      <option value="">-- Pilih Jabatan Fungsional --</option>
-                      {JABATAN_FUNGSIONAL_OPTIONS.map(opt => (
-                        <option key={opt} value={opt}>{opt}</option>
-                      ))}
-                    </select>
-                    <GraduationCap className="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                  <div className="flex items-center space-x-2 text-slate-900 font-semibold pt-0.5">
+                    <GraduationCap className="w-4 h-4 text-slate-400" />
+                    <span>
+                      {isMahasiswa
+                        ? (resolveStudentAngkatan(currentUser) || <span className="text-slate-400 font-normal italic">Belum diisi</span>)
+                        : resolvedJabatan}
+                    </span>
                   </div>
-                )
-              ) : (
-                <div className="flex items-center space-x-2 text-slate-900 font-semibold pt-0.5">
-                  <GraduationCap className="w-4 h-4 text-slate-400" />
-                  <span>
-                    {isMahasiswa
-                      ? (resolveStudentAngkatan(currentUser) || <span className="text-slate-400 font-normal italic">Belum diisi</span>)
-                      : resolvedJabatan}
-                  </span>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
 
             {/* 6b. Keilmuan — khusus Dosen */}
             {isDosen && (

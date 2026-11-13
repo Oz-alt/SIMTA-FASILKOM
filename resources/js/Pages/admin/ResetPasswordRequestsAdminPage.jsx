@@ -32,7 +32,7 @@ import {
   AlertCircle,
   HelpCircle,
   CheckSquare,
-  Share2
+  Loader2
 } from 'lucide-react';
 
 export default function ResetPasswordRequestsAdminPage() {
@@ -43,6 +43,7 @@ export default function ResetPasswordRequestsAdminPage() {
     checkUserIdentityInDatabase,
     adminCreatePasswordResetRequest,
     approvePasswordResetRequest,
+    resendPasswordResetEmail,
     rejectPasswordResetRequest,
     deletePasswordResetRequest,
     getAllMahasiswaAccounts,
@@ -68,15 +69,16 @@ export default function ResetPasswordRequestsAdminPage() {
   const [verifyingRequest, setVerifyingRequest] = useState(null);
   const [approvingRequest, setApprovingRequest] = useState(null);
   const [rejectingRequest, setRejectingRequest] = useState(null);
-  const [sharingRequest, setSharingRequest] = useState(null);
   const [deletingRequest, setDeletingRequest] = useState(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+
+  // Loading States for Email Action
+  const [resendingId, setResendingId] = useState(null);
+  const [isApprovingLoading, setIsApprovingLoading] = useState(false);
 
   // Form States for Modals
   const [approvalNote, setApprovalNote] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
-  const [copiedLink, setCopiedLink] = useState(false);
-  const [copiedToken, setCopiedToken] = useState(false);
 
   // Form State for Manual Creation by Admin
   const [createForm, setCreateForm] = useState({
@@ -97,7 +99,7 @@ export default function ResetPasswordRequestsAdminPage() {
   // Lock background scroll when modals are open
   useEffect(() => {
     const isModalOpen = Boolean(
-      verifyingRequest || approvingRequest || rejectingRequest || sharingRequest || deletingRequest || isCreateOpen
+      verifyingRequest || approvingRequest || rejectingRequest || deletingRequest || isCreateOpen
     );
     if (isModalOpen) {
       document.body.style.overflow = 'hidden';
@@ -107,7 +109,7 @@ export default function ResetPasswordRequestsAdminPage() {
     return () => {
       document.body.style.overflow = 'unset';
     };
-  }, [verifyingRequest, approvingRequest, rejectingRequest, sharingRequest, deletingRequest, isCreateOpen]);
+  }, [verifyingRequest, approvingRequest, rejectingRequest, deletingRequest, isCreateOpen]);
 
   // Metrics computation
   const stats = useMemo(() => {
@@ -177,15 +179,48 @@ export default function ResetPasswordRequestsAdminPage() {
     ).slice(0, 20);
   }, [allAccountsForSelect, createSearch]);
 
-  // Handle Approve action
-  const handleApprove = () => {
+  // Handle Approve action (Otomatis picu kirim email resmi via SMTP - Section E.1)
+  const handleApprove = async () => {
     if (!approvingRequest) return;
-    const res = approvePasswordResetRequest(approvingRequest.id, approvalNote.trim());
-    setApprovingRequest(null);
-    setApprovalNote('');
-    if (res) {
-      showToast(`Permintaan reset kata sandi untuk ${res.nama} berhasil disetujui.`);
-      setSharingRequest(res);
+    const req = approvingRequest;
+    setIsApprovingLoading(true);
+    showToast(`Menyetujui permintaan & memicu pengiriman email resmi ke ${req.email}...`);
+
+    try {
+      const res = await approvePasswordResetRequest(req.id, approvalNote.trim());
+      setApprovingRequest(null);
+      setApprovalNote('');
+      if (res) {
+        if (res.email_status === 'sent') {
+          showToast(`Permintaan disetujui! Email resmi pemulihan kata sandi berhasil dikirim ke ${res.email}.`);
+        } else {
+          showToast(`Permintaan disetujui. Pengiriman email: ${res.email_error || 'Gagal'}. Anda dapat menekan Kirim Ulang Email.`);
+        }
+      }
+    } catch (err) {
+      showToast(`Terjadi kendala: ${err.message}`);
+    } finally {
+      setIsApprovingLoading(false);
+    }
+  };
+
+  // Handle Kirim Ulang Email Resmi (Section E.3)
+  const handleResendEmail = async (req) => {
+    if (!req) return;
+    setResendingId(req.id);
+    showToast(`Mengirim ulang email resmi pemulihan kata sandi ke ${req.email}...`);
+
+    try {
+      const res = await resendPasswordResetEmail(req.id);
+      if (res.success) {
+        showToast(`Email pemulihan kata sandi resmi berhasil dikirim ulang ke ${req.email}.`);
+      } else {
+        showToast(`Gagal mengirim ulang email: ${res.message}`);
+      }
+    } catch (err) {
+      showToast(`Gagal mengirim ulang email: ${err.message}`);
+    } finally {
+      setResendingId(null);
     }
   };
 
@@ -228,36 +263,11 @@ export default function ResetPasswordRequestsAdminPage() {
       });
       showToast(`Permintaan reset kata sandi untuk ${res.nama} berhasil dibuat.`);
       if (res.status === 'disetujui') {
-        setSharingRequest(res);
+        showToast(`Permintaan disetujui & email resmi pemulihan kata sandi otomatis diproses.`);
       }
     } catch (err) {
       alert(err.message || 'Gagal membuat permintaan reset kata sandi.');
     }
-  };
-
-  // Copy helper
-  const handleCopy = (text, type = 'link') => {
-    if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard.writeText(text);
-      if (type === 'link') {
-        setCopiedLink(true);
-        setTimeout(() => setCopiedLink(false), 2500);
-      } else {
-        setCopiedToken(true);
-        setTimeout(() => setCopiedToken(false), 2500);
-      }
-    }
-  };
-
-  // Generate WhatsApp message link
-  const getWhatsAppShareUrl = (req) => {
-    if (!req) return '';
-    const phone = String(req.no_hp || '').replace(/[^0-9]/g, '');
-    const cleanPhone = phone.startsWith('0') ? '62' + phone.substring(1) : phone;
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    const link = req.reset_link || `${origin}/reset-password?token=${req.token}&email=${encodeURIComponent(req.email)}`;
-    const msg = `Halo ${req.nama}, permintaan reset kata sandi akun SIMONITA FASILKOM Anda telah disetujui oleh Admin SIMTA. Silakan klik tautan berikut untuk membuat kata sandi baru (berlaku 24 jam):\n\n${link}\n\nToken Verifikasi: ${req.token}\n\nJika Anda tidak merasa mengajukan ini, segera laporkan ke Admin SIMTA.`;
-    return `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(msg)}`;
   };
 
   // Status Badge Component
@@ -557,7 +567,7 @@ export default function ResetPasswordRequestsAdminPage() {
                     <th className="py-3 px-4">Pemohon</th>
                     <th className="py-3 px-4">Kontak &amp; Program Studi</th>
                     <th className="py-3 px-4">Waktu Pengajuan</th>
-                    <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4">Status &amp; Pengiriman Email</th>
                     <th className="py-3 px-4 text-right">Aksi &amp; Verifikasi</th>
                   </tr>
                 </thead>
@@ -655,9 +665,53 @@ export default function ResetPasswordRequestsAdminPage() {
                             </div>
                           </td>
 
-                          {/* Status */}
+                          {/* Status & Pengiriman Email (Section E.2) */}
                           <td className="py-3.5 px-4">
                             {renderStatusBadge(req.status)}
+
+                            {/* Informasi Status Pengiriman Email & Waktu Kadaluarsa 24 Jam */}
+                            {req.status === 'disetujui' && (
+                              <div className="mt-2 p-2 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1 max-w-[220px]">
+                                <div className="flex items-center space-x-1">
+                                  {req.email_status === 'sent' ? (
+                                    <span className="inline-flex items-center space-x-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                      <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                                      <span>Berhasil Dikirim</span>
+                                    </span>
+                                  ) : req.email_status === 'sending' ? (
+                                    <span className="inline-flex items-center space-x-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 animate-pulse">
+                                      <Loader2 className="w-3 h-3 animate-spin text-blue-600 shrink-0" />
+                                      <span>Mengirim...</span>
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center space-x-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200" title={req.email_error || 'Gagal mengirim email'}>
+                                      <AlertCircle className="w-3 h-3 text-rose-600 shrink-0" />
+                                      <span>Gagal Dikirim</span>
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="text-[10px] text-slate-500 space-y-0.5 pt-0.5 font-medium">
+                                  <div className="truncate text-slate-600" title={req.email}>
+                                    Tujuan: <span className="font-semibold text-slate-800">{req.email}</span>
+                                  </div>
+                                  <div>
+                                    Kirim: <span className="text-slate-700 font-mono">{req.email_sent_at ? new Date(req.email_sent_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ', ' + new Date(req.email_sent_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : '-'}</span>
+                                  </div>
+                                  <div>
+                                    Kedaluwarsa: <span className="text-amber-700 font-mono font-semibold">{req.expires_at ? new Date(req.expires_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ', ' + new Date(req.expires_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : '24 Jam'}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {req.status === 'selesai' && (
+                              <div className="mt-1.5 text-[10px] text-emerald-700 font-semibold flex items-center space-x-1">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                                <span>Password Diperbarui</span>
+                              </div>
+                            )}
+
                             {req.processed_by && (
                               <div className="text-[10px] text-slate-400 mt-1">
                                 Oleh: {req.processed_by}
@@ -668,7 +722,7 @@ export default function ResetPasswordRequestsAdminPage() {
                           {/* Aksi & Verifikasi */}
                           <td className="py-3.5 px-4 text-right">
                             <div className="inline-flex items-center space-x-1.5 justify-end">
-                              {/* 1. Tombol Periksa Identitas (Ketentuan #3) */}
+                              {/* 1. Tombol Periksa Identitas */}
                               <button
                                 type="button"
                                 onClick={() => setVerifyingRequest(req)}
@@ -678,7 +732,7 @@ export default function ResetPasswordRequestsAdminPage() {
                                 <Eye className="w-4 h-4" />
                               </button>
 
-                              {/* 2. Tombol Setujui (Jika status Menunggu) */}
+                              {/* 2. Tombol Setujui & Tolak (Jika status Menunggu) */}
                               {req.status === 'menunggu' && (
                                 <>
                                   <button
@@ -695,7 +749,7 @@ export default function ResetPasswordRequestsAdminPage() {
                                     }`}
                                     title={
                                       isRowValid
-                                        ? "Setujui Permintaan"
+                                        ? "Setujui Permintaan & Kirim Email Otomatis"
                                         : isRowNotFound
                                         ? "Persetujuan dinonaktifkan: Akun tidak ditemukan di database"
                                         : "Persetujuan dinonaktifkan: Status akun non-aktif"
@@ -716,20 +770,25 @@ export default function ResetPasswordRequestsAdminPage() {
                                 </>
                               )}
 
-                              {/* 3. Tombol Salin Tautan (Jika status Disetujui) */}
+                              {/* 3. Tombol Kirim Ulang Email (Section E.3 - Otomatis via SMTP) */}
                               {req.status === 'disetujui' && (
                                 <button
                                   type="button"
-                                  onClick={() => setSharingRequest(req)}
-                                  className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition-colors cursor-pointer flex items-center space-x-1"
-                                  title="Lihat & Bagikan Tautan Reset"
+                                  disabled={resendingId === req.id}
+                                  onClick={() => handleResendEmail(req)}
+                                  className="px-2.5 py-1.5 rounded-xl bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-700 font-bold text-xs transition-colors cursor-pointer flex items-center space-x-1 disabled:opacity-60 shadow-xs"
+                                  title="Kirim Ulang Email Pemulihan Kata Sandi Resmi"
                                 >
-                                  <Share2 className="w-3.5 h-3.5" />
-                                  <span>Bagikan Tautan</span>
+                                  {resendingId === req.id ? (
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600 shrink-0" />
+                                  ) : (
+                                    <RefreshCw className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                                  )}
+                                  <span>Kirim Ulang Email</span>
                                 </button>
                               )}
 
-                              {/* 4. Tombol Hapus (Untuk membersihkan pengajuan lama) */}
+                              {/* 4. Tombol Hapus */}
                               <button
                                 type="button"
                                 onClick={() => setDeletingRequest(req)}
@@ -1104,14 +1163,15 @@ export default function ResetPasswordRequestsAdminPage() {
                   Anda akan menyetujui pemulihan kata sandi untuk akun <span className="font-bold text-slate-900">{displayName}</span>. Sistem akan menghasilkan tautan reset resmi dengan token verifikasi unik yang aktif selama 24 jam.
                 </p>
 
-                {/* Informative SMTP note (Ketentuan #9) */}
-                <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 space-y-1">
+                {/* Otomatis kirim email via SMTP (Section E.1) */}
+                <div className="p-3.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 space-y-1">
                   <div className="font-bold flex items-center space-x-1.5">
-                    <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
-                    <span>Informasi Konfigurasi Email:</span>
+                    <Mail className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Pengiriman Email Resmi Otomatis:</span>
                   </div>
-                  <p className="text-[11px] text-amber-800">
-                    Karena SMTP email saat ini belum dikonfigurasi aktif, tautan reset akan langsung disediakan pada dialog berikutnya agar Admin dapat menyalin dan memberikannya kepada pemohon.
+                  <p className="text-[11px] text-blue-800 leading-relaxed">
+                    Saat disetujui, sistem SIMONITA akan secara otomatis mengirimkan email resmi berisi tautan pemulihan kata sandi (berlaku 24 jam) ke alamat:
+                    <strong className="block mt-1 font-mono text-slate-900">{official.user?.email || approvingRequest.email}</strong>
                   </p>
                 </div>
 
@@ -1139,11 +1199,21 @@ export default function ResetPasswordRequestsAdminPage() {
                 </button>
                 <button
                   type="button"
+                  disabled={isApprovingLoading}
                   onClick={handleApprove}
-                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors cursor-pointer flex items-center space-x-1.5 shadow-sm"
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors cursor-pointer flex items-center space-x-1.5 shadow-sm disabled:opacity-60"
                 >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Konfirmasi &amp; Setujui</span>
+                  {isApprovingLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-white" />
+                      <span>Memproses &amp; Mengirim...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Konfirmasi &amp; Setujui</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>
@@ -1219,132 +1289,7 @@ export default function ResetPasswordRequestsAdminPage() {
         );
       })()}
 
-      {/* ── MODAL 4: BAGIKAN / SALIN TAUTAN RESET RESMI (Ketentuan #5) ── */}
-      {sharingRequest && (() => {
-        const official = checkUserIdentityInDatabase(sharingRequest.identifier || sharingRequest.nim || sharingRequest.nip || sharingRequest.email);
-        const displayName = (official.found && official.user?.nama) ? official.user.nama : sharingRequest.nama;
-        const origin = typeof window !== 'undefined' ? window.location.origin : '';
-        const fullLink = sharingRequest.reset_link || `${origin}/reset-password?token=${sharingRequest.token}&email=${encodeURIComponent(sharingRequest.email)}`;
-        const waUrl = getWhatsAppShareUrl({ ...sharingRequest, nama: displayName });
 
-        return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full border border-slate-200 overflow-hidden space-y-4">
-              <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold">
-                    <Share2 className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="font-extrabold text-sm text-slate-900">Tautan Reset Password Aktif</h3>
-                    <p className="text-xs text-slate-500">Berikan tautan ini langsung kepada {displayName}</p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setSharingRequest(null)}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700"
-                >
-                  <XCircle className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="p-5 space-y-4 text-xs">
-                <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 space-y-1">
-                  <span className="font-bold block flex items-center space-x-1.5">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    <span>Permintaan Disetujui &amp; Tautan Siap Digunakan</span>
-                  </span>
-                  <p className="text-[11px] text-emerald-800">
-                    Tautan reset ini aman dan terikat secara spesifik ke akun <span className="font-bold">{displayName}</span> ({sharingRequest.email}). Tautan kedaluwarsa dalam 24 jam.
-                  </p>
-                </div>
-
-                {/* Tautan Reset Box */}
-                <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700 block">Tautan Reset Password Resmi:</label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      readOnly
-                      value={fullLink}
-                      className="w-full p-2.5 rounded-xl border border-slate-300 bg-slate-50 font-mono text-[11px] text-slate-800 select-all outline-none"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleCopy(fullLink, 'link')}
-                      className={`px-3 py-2.5 rounded-xl font-bold text-xs transition-colors cursor-pointer shrink-0 flex items-center space-x-1 ${
-                        copiedLink ? 'bg-emerald-600 text-white' : 'bg-slate-900 hover:bg-slate-800 text-white'
-                      }`}
-                    >
-                      {copiedLink ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                      <span>{copiedLink ? 'Tersalin' : 'Salin'}</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Token Verifikasi Box */}
-                <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700 block">Token Verifikasi:</label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      readOnly
-                      value={sharingRequest.token || '-'}
-                      className="w-full p-2.5 rounded-xl border border-slate-300 bg-slate-50 font-mono text-xs font-bold text-slate-900 select-all outline-none"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleCopy(sharingRequest.token || '', 'token')}
-                      className={`px-3 py-2.5 rounded-xl font-bold text-xs transition-colors cursor-pointer shrink-0 flex items-center space-x-1 ${
-                        copiedToken ? 'bg-emerald-600 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-800'
-                      }`}
-                    >
-                      {copiedToken ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                      <span>{copiedToken ? 'Tersalin' : 'Salin'}</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* WhatsApp Direct Share Button */}
-                {sharingRequest.no_hp && sharingRequest.no_hp !== '-' && (
-                  <div className="pt-2">
-                    <a
-                      href={waUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors flex items-center justify-center space-x-2 shadow-sm"
-                    >
-                      <MessageSquare className="w-4 h-4" />
-                      <span>Kirim Tautan via WhatsApp ({sharingRequest.no_hp})</span>
-                    </a>
-                  </div>
-                )}
-              </div>
-
-              <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
-                <a
-                  href={fullLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center space-x-1"
-                >
-                  <span>Buka Halaman Reset</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
-
-                <button
-                  type="button"
-                  onClick={() => setSharingRequest(null)}
-                  className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-colors cursor-pointer"
-                >
-                  Selesai
-                </button>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
 
       {/* ── MODAL 5: BUAT PERMINTAAN RESET MANUAL OLEH ADMIN ── */}
       {isCreateOpen && (

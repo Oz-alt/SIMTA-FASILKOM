@@ -1,8 +1,49 @@
 import React, { useState } from 'react';
-import { Clock, Calendar, Building2, CheckCircle2, XCircle, AlertCircle, Wrench } from 'lucide-react';
+import { Clock, Calendar, Building2, CheckCircle2, XCircle, AlertCircle, Wrench, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
+
+const formatTodayDate = () => {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+};
 
 export default function RoomScheduleTimeline({ rooms = [], bookings = [], buildings = [], selectedDate, onDateChange }) {
   const [selectedBuilding, setSelectedBuilding] = useState('ALL');
+
+  // Ensure selectedDate defaults to real system today
+  const activeDate = selectedDate || formatTodayDate();
+
+  const handleStepDay = (delta) => {
+    try {
+      const parts = activeDate.split('-');
+      const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+      d.setDate(d.getDate() + delta);
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      onDateChange(`${yyyy}-${mm}-${dd}`);
+    } catch {
+      onDateChange(formatTodayDate());
+    }
+  };
+
+  const handleToday = () => {
+    onDateChange(formatTodayDate());
+  };
+
+  const formattedDateLabel = (() => {
+    try {
+      const parts = activeDate.split('-');
+      const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+      return d.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    } catch {
+      return activeDate;
+    }
+  })();
+
+  const isToday = activeDate === formatTodayDate();
 
   const timeSlots = [
     '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00'
@@ -19,7 +60,7 @@ export default function RoomScheduleTimeline({ rooms = [], bookings = [], buildi
     }
 
     const booking = bookings.find(b => {
-      if (b.room_id !== roomId || b.booking_date !== selectedDate) return false;
+      if (b.room_id !== roomId || b.booking_date !== activeDate) return false;
       if (b.status === 'ditolak' || b.status === 'dibatalkan') return false;
       
       const startHour = parseInt(b.start_time.split(':')[0]);
@@ -49,32 +90,68 @@ export default function RoomScheduleTimeline({ rooms = [], bookings = [], buildi
   };
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs space-y-4">
+    <div className="bg-white border border-slate-300 rounded-2xl p-5 shadow-xs space-y-4">
       
       {/* Timeline Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-slate-100 pb-4">
         <div>
           <h3 className="text-sm font-bold text-slate-900 flex items-center space-x-2">
             <Calendar className="w-4 h-4 text-indigo-600" />
             <span>Matriks Jadwal Timeline Ruang Sidang</span>
           </h3>
-          <p className="text-xs text-slate-500 mt-0.5">Visibilitas ketersediaan ruangan real-time per jam</p>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Jadwal: <span className="font-semibold text-indigo-700">{formattedDateLabel}</span>
+            {isToday && <span className="ml-2 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200">Hari Ini</span>}
+          </p>
         </div>
 
-        <div className="flex items-center space-x-3">
-          {/* Date Picker */}
-          <input 
-            type="date"
-            value={selectedDate}
-            onChange={(e) => onDateChange(e.target.value)}
-            className="text-xs border border-slate-300 rounded-lg px-3 py-1.5 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Day Stepper & Date Picker */}
+          <div className="inline-flex items-center space-x-1 bg-slate-50 p-1 rounded-xl border border-slate-200">
+            <button
+              type="button"
+              onClick={() => handleStepDay(-1)}
+              title="Hari Sebelumnya"
+              className="p-1.5 rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-white transition-all cursor-pointer"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+
+            <input 
+              type="date"
+              value={activeDate}
+              onChange={(e) => onDateChange(e.target.value)}
+              className="text-xs border-0 bg-transparent px-2 py-1 font-semibold text-slate-800 focus:outline-none cursor-pointer"
+            />
+
+            <button
+              type="button"
+              onClick={() => handleStepDay(1)}
+              title="Hari Berikutnya"
+              className="p-1.5 rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-white transition-all cursor-pointer"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Quick "Hari Ini" Button */}
+          {!isToday && (
+            <button
+              type="button"
+              onClick={handleToday}
+              className="px-2.5 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition-colors flex items-center space-x-1 cursor-pointer"
+              title="Kembali ke Tanggal Hari Ini"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Hari Ini</span>
+            </button>
+          )}
 
           {/* Building Filter */}
           <select
             value={selectedBuilding}
             onChange={(e) => setSelectedBuilding(e.target.value)}
-            className="text-xs border border-slate-300 rounded-lg px-3 py-1.5 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="text-xs border border-slate-300 rounded-xl px-3 py-2 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white cursor-pointer"
           >
             <option value="ALL">Semua Gedung</option>
             {buildings.map(b => (

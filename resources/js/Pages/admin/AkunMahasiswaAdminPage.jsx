@@ -1,24 +1,26 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Link } from '@inertiajs/react';
+import * as XLSX from 'xlsx';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { 
-  GraduationCap, 
-  Search, 
-  Filter, 
-  Plus, 
-  Edit2, 
-  Trash2, 
-  X, 
-  CheckCircle2, 
-  Mail, 
-  Phone, 
-  BookOpen, 
-  Users, 
-  KeyRound, 
-  Eye, 
-  EyeOff, 
-  ShieldCheck, 
-  UserCheck, 
+import {
+  GraduationCap,
+  Search,
+  Filter,
+  Plus,
+  Edit2,
+  Trash2,
+  X,
+  CheckCircle2,
+  Mail,
+  Phone,
+  BookOpen,
+  Users,
+  KeyRound,
+  Eye,
+  EyeOff,
+  ShieldCheck,
+  UserCheck,
+  UserX,
   AlertTriangle,
   RefreshCw,
   Check,
@@ -26,15 +28,23 @@ import {
   ExternalLink,
   ChevronDown,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  FileSpreadsheet,
+  Download,
+  UploadCloud,
+  FileUp,
+  Layers,
+  ToggleLeft,
+  ToggleRight
 } from 'lucide-react';
+import { getStudentAngkatan, AVAILABLE_ANGKATAN } from '../../lib/academicUtils.js';
 
 export default function AkunMahasiswaAdminPage() {
-  const { 
-    getAllMahasiswaAccounts, 
-    addMahasiswaAccount, 
-    updateMahasiswaAccount, 
-    deleteMahasiswaAccount, 
+  const {
+    getAllMahasiswaAccounts,
+    addMahasiswaAccount,
+    updateMahasiswaAccount,
+    deleteMahasiswaAccount,
     resetMahasiswaPassword,
     accountsVersion,
     passwordResetRequests = []
@@ -47,11 +57,12 @@ export default function AkunMahasiswaAdminPage() {
   // Search & Filter States
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const [classFilter, setClassFilter] = useState('ALL');
+  const [angkatanFilter, setAngkatanFilter] = useState('ALL');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Modal States
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isImportOpen, setIsImportOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
   const [viewingStudent, setViewingStudent] = useState(null);
   const [resettingStudent, setResettingStudent] = useState(null);
@@ -64,7 +75,7 @@ export default function AkunMahasiswaAdminPage() {
     email: '',
     no_hp: '',
     prodi: 'D3 Manajemen Informatika',
-    kelas: 'MI 5A',
+    angkatan: '2024',
     status: 'aktif',
     password: ''
   });
@@ -73,9 +84,16 @@ export default function AkunMahasiswaAdminPage() {
   const [newPasswordInput, setNewPasswordInput] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  // Lock background scroll when any modal is open so touchpad/wheel scrolls the modal
+  // Import Excel States
+  const fileInputRef = useRef(null);
+  const [importFile, setImportFile] = useState(null);
+  const [importRows, setImportRows] = useState([]);
+  const [importError, setImportError] = useState('');
+  const [isImporting, setIsImporting] = useState(false);
+
+  // Lock background scroll when any modal is open
   useEffect(() => {
-    const isAnyModalOpen = Boolean(isAddOpen || editingStudent || viewingStudent || resettingStudent || deletingStudent);
+    const isAnyModalOpen = Boolean(isAddOpen || isImportOpen || editingStudent || viewingStudent || resettingStudent || deletingStudent);
     if (isAnyModalOpen) {
       document.body.style.overflow = 'hidden';
     } else {
@@ -84,7 +102,7 @@ export default function AkunMahasiswaAdminPage() {
     return () => {
       document.body.style.overflow = 'unset';
     };
-  }, [isAddOpen, editingStudent, viewingStudent, resettingStudent, deletingStudent]);
+  }, [isAddOpen, isImportOpen, editingStudent, viewingStudent, resettingStudent, deletingStudent]);
 
   // Toast Notification
   const [toastMessage, setToastMessage] = useState('');
@@ -98,27 +116,28 @@ export default function AkunMahasiswaAdminPage() {
     return getAllMahasiswaAccounts();
   }, [getAllMahasiswaAccounts, accountsVersion, refreshTrigger]);
 
-  // Unique Classes list for filter
-  const availableClasses = useMemo(() => {
-    const classes = new Set(mahasiswaList.map(s => s.kelas).filter(Boolean));
-    return ['ALL', ...Array.from(classes).sort()];
+  // Unique Angkatan list for filter
+  const availableAngkatanList = useMemo(() => {
+    const set = new Set(mahasiswaList.map(s => getStudentAngkatan(s)).filter(Boolean));
+    return ['ALL', ...Array.from(set).sort().reverse()];
   }, [mahasiswaList]);
 
   // Filtered Students List
   const filteredStudents = useMemo(() => {
     return mahasiswaList.filter(std => {
       const q = searchQuery.toLowerCase().trim();
-      const matchQuery = !q || 
+      const matchQuery = !q ||
         (std.nim && String(std.nim).toLowerCase().includes(q)) ||
         (std.nama && std.nama.toLowerCase().includes(q)) ||
         (std.email && std.email.toLowerCase().includes(q)) ||
         (std.no_hp && String(std.no_hp).toLowerCase().includes(q));
 
-      const matchStatus = statusFilter === 'ALL' || std.status === statusFilter;
-      const matchClass = classFilter === 'ALL' || std.kelas === classFilter;
-      return matchQuery && matchStatus && matchClass;
+      const matchStatus = statusFilter === 'ALL' || (std.status || 'aktif') === statusFilter;
+      const stdAngkatan = getStudentAngkatan(std);
+      const matchAngkatan = angkatanFilter === 'ALL' || stdAngkatan === angkatanFilter;
+      return matchQuery && matchStatus && matchAngkatan;
     });
-  }, [mahasiswaList, searchQuery, statusFilter, classFilter]);
+  }, [mahasiswaList, searchQuery, statusFilter, angkatanFilter]);
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -126,11 +145,10 @@ export default function AkunMahasiswaAdminPage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, statusFilter, classFilter]);
+  }, [searchQuery, statusFilter, angkatanFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredStudents.length / pageSize));
   const startIndex = (currentPage - 1) * pageSize;
-  const endIndex = Math.min(startIndex + pageSize, filteredStudents.length);
   const paginatedStudents = useMemo(() => {
     return filteredStudents.slice(startIndex, startIndex + pageSize);
   }, [filteredStudents, startIndex, pageSize]);
@@ -138,16 +156,13 @@ export default function AkunMahasiswaAdminPage() {
   const handlePageChange = (newPage) => {
     if (newPage < 1 || newPage > totalPages) return;
     setCurrentPage(newPage);
-    if (window.lenis && typeof window.lenis.resize === 'function') {
-      window.lenis.resize();
-    }
   };
 
   // Statistics
   const totalAkun = mahasiswaList.length;
-  const totalAktif = mahasiswaList.filter(s => s.status === 'aktif').length;
-  const totalNonaktif = mahasiswaList.filter(s => s.status !== 'aktif').length;
-  const totalKelas = new Set(mahasiswaList.map(s => s.kelas).filter(Boolean)).size;
+  const totalAktif = mahasiswaList.filter(s => (s.status || 'aktif') === 'aktif').length;
+  const totalNonaktif = mahasiswaList.filter(s => (s.status || 'aktif') === 'nonaktif' || s.status === 'cuti').length;
+  const totalAngkatan = new Set(mahasiswaList.map(s => getStudentAngkatan(s)).filter(Boolean)).size;
 
   // Open Add Modal
   const handleOpenAdd = () => {
@@ -157,7 +172,7 @@ export default function AkunMahasiswaAdminPage() {
       email: '',
       no_hp: '',
       prodi: 'D3 Manajemen Informatika',
-      kelas: 'MI 5A',
+      angkatan: '2024',
       status: 'aktif',
       password: ''
     });
@@ -173,7 +188,7 @@ export default function AkunMahasiswaAdminPage() {
       email: student.email || '',
       no_hp: student.no_hp || '',
       prodi: student.prodi || 'D3 Manajemen Informatika',
-      kelas: student.kelas || 'MI 5A',
+      angkatan: getStudentAngkatan(student),
       status: student.status || 'aktif',
       password: ''
     });
@@ -183,6 +198,17 @@ export default function AkunMahasiswaAdminPage() {
   const handleOpenReset = (student) => {
     setResettingStudent(student);
     setNewPasswordInput(student.nim || 'unsri123');
+  };
+
+  // Toggle Account Status (Aktif <-> Nonaktif)
+  const handleToggleStatus = async (student) => {
+    const currentStatus = (student.status || 'aktif') === 'aktif' ? 'aktif' : 'nonaktif';
+    const nextStatus = currentStatus === 'aktif' ? 'nonaktif' : 'aktif';
+    await updateMahasiswaAccount(student.id || student.nim, {
+      status: nextStatus
+    });
+    setRefreshTrigger(v => v + 1);
+    showToast(`Akun ${student.nama} berhasil ${nextStatus === 'aktif' ? 'diaktifkan kembali' : 'dinonaktifkan'}.`);
   };
 
   // Handle Save Student (Add / Edit)
@@ -198,7 +224,8 @@ export default function AkunMahasiswaAdminPage() {
     if (editingStudent) {
       await updateMahasiswaAccount(editingStudent.id || editingStudent.nim, {
         ...studentForm,
-        email: emailToUse
+        email: emailToUse,
+        tahun_angkatan: studentForm.angkatan
       });
       setRefreshTrigger(v => v + 1);
       showToast(`Berhasil memperbarui data akun mahasiswa: ${studentForm.nama}`);
@@ -207,6 +234,7 @@ export default function AkunMahasiswaAdminPage() {
       await addMahasiswaAccount({
         ...studentForm,
         email: emailToUse,
+        tahun_angkatan: studentForm.angkatan,
         password: studentForm.password || studentForm.nim
       });
       setRefreshTrigger(v => v + 1);
@@ -236,43 +264,156 @@ export default function AkunMahasiswaAdminPage() {
     setDeletingStudent(null);
   };
 
+  // ── EXCEL IMPORT LOGIC ───────────────────────────────────────────────────
+  const handleDownloadTemplate = () => {
+    const headers = ['NIM', 'Nama Mahasiswa', 'Email', 'No HP', 'Program Studi', 'Angkatan', 'Status'];
+    const sampleRows = [
+      ['09010182428090', 'Budi Pratama', '09010182428090@student.unsri.ac.id', '081234567890', 'D3 Manajemen Informatika', '2024', 'aktif'],
+      ['09010182428091', 'Siti Rahmawati', '09010182428091@student.unsri.ac.id', '081298765432', 'D3 Manajemen Informatika', '2024', 'aktif'],
+      ['09010182428092', 'Ahmad Fadillah', '09010182428092@student.unsri.ac.id', '082155667788', 'D3 Manajemen Informatika', '2023', 'nonaktif']
+    ];
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...sampleRows]);
+    ws['!cols'] = [
+      { wch: 18 }, { wch: 26 }, { wch: 36 }, { wch: 16 }, { wch: 28 }, { wch: 12 }, { wch: 12 }
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Akun Mahasiswa');
+    XLSX.writeFile(wb, 'template_import_akun_mahasiswa.xlsx');
+  };
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImportFile(file);
+    setImportError('');
+    setImportRows([]);
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const bstr = evt.target.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const rawJson = XLSX.utils.sheet_to_json(ws, { defval: '' });
+
+        if (!rawJson || rawJson.length === 0) {
+          setImportError('File Excel kosong atau tidak memiliki data.');
+          return;
+        }
+
+        const existingNims = new Set(mahasiswaList.map(m => String(m.nim || '').trim().toLowerCase()));
+        const seenNimsInFile = new Set();
+
+        const validated = rawJson.map((row, idx) => {
+          // Normalize keys
+          const normRow = {};
+          Object.keys(row).forEach(k => {
+            const cleanKey = k.toLowerCase().replace(/[\s\-_.]/g, '');
+            normRow[cleanKey] = String(row[k]).trim();
+          });
+
+          const nim = normRow['nim'] || normRow['nomorinduk'] || '';
+          const nama = normRow['namamahasiswa'] || normRow['nama'] || normRow['namalengkap'] || '';
+          const email = normRow['email'] || (nim ? `${nim}@student.unsri.ac.id` : '');
+          const no_hp = normRow['nohp'] || normRow['telepon'] || normRow['whatsapp'] || '';
+          const prodi = normRow['programstudi'] || normRow['prodi'] || 'D3 Manajemen Informatika';
+          const angkatan = normRow['angkatan'] || normRow['tahunangkatan'] || (nim.match(/\d{6,7}(2[0-9])\d+/) ? `20${nim.match(/\d{6,7}(2[0-9])\d+/)[1]}` : '2024');
+          const rawStatus = (normRow['status'] || 'aktif').toLowerCase();
+          const status = (rawStatus === 'nonaktif' || rawStatus === 'cuti') ? 'nonaktif' : 'aktif';
+
+          let rowStatus = 'valid';
+          let message = 'Siap diimpor';
+
+          if (!nim || !nama) {
+            rowStatus = 'invalid';
+            message = 'NIM atau Nama Mahasiswa kosong';
+          } else if (existingNims.has(nim.toLowerCase())) {
+            rowStatus = 'duplicate';
+            message = 'NIM sudah terdaftar di sistem';
+          } else if (seenNimsInFile.has(nim.toLowerCase())) {
+            rowStatus = 'duplicate';
+            message = 'NIM duplikat di dalam file ini';
+          } else {
+            seenNimsInFile.add(nim.toLowerCase());
+          }
+
+          return {
+            rowNumber: idx + 2,
+            nim,
+            nama,
+            email,
+            no_hp,
+            prodi,
+            angkatan,
+            status,
+            rowStatus,
+            message
+          };
+        });
+
+        setImportRows(validated);
+      } catch (err) {
+        console.error('Error parsing excel:', err);
+        setImportError('Gagal membaca file Excel. Pastikan format file .xlsx atau .xls valid.');
+      }
+    };
+    reader.readAsBinaryString(file);
+  };
+
+  const handleProcessImport = async () => {
+    const validRows = importRows.filter(r => r.rowStatus === 'valid');
+    if (validRows.length === 0) {
+      showToast('Tidak ada data valid yang dapat diimpor!');
+      return;
+    }
+
+    setIsImporting(true);
+    let successCount = 0;
+
+    for (const r of validRows) {
+      await addMahasiswaAccount({
+        nim: r.nim,
+        nama: r.nama,
+        email: r.email,
+        no_hp: r.no_hp,
+        prodi: r.prodi,
+        tahun_angkatan: r.angkatan,
+        angkatan: r.angkatan,
+        status: r.status,
+        password: r.nim
+      });
+      successCount++;
+    }
+
+    setIsImporting(false);
+    setIsImportOpen(false);
+    setImportFile(null);
+    setImportRows([]);
+    setRefreshTrigger(v => v + 1);
+
+    const skippedCount = importRows.length - successCount;
+    showToast(`Berhasil mengimpor ${successCount} akun mahasiswa baru (${skippedCount} dilewati/duplikat).`);
+  };
+
   // Status Badge Helper
   const renderStatusBadge = (status) => {
-    switch (status) {
-      case 'aktif':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            Aktif
-          </span>
-        );
-      case 'cuti':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-            Cuti
-          </span>
-        );
-      case 'ditangguhkan':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
-            <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
-            Ditangguhkan
-          </span>
-        );
-      default:
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
-            <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
-            Nonaktif
-          </span>
-        );
-    }
+    const isAktif = (status || 'aktif') === 'aktif';
+    return (
+      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold ${isAktif
+        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+        : 'bg-slate-100 text-slate-700 border border-slate-200'
+        }`}>
+        <span className={`w-1.5 h-1.5 rounded-full ${isAktif ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`}></span>
+        {isAktif ? 'Aktif' : 'Nonaktif'}
+      </span>
+    );
   };
 
   return (
     <div className="space-y-6">
-      
+
       {/* Toast Notification Banner */}
       {toastMessage && (
         <div className="fixed top-20 right-6 z-50 flex items-center space-x-3 px-4 py-3 rounded-2xl bg-slate-900 text-white shadow-2xl border border-slate-700 animate-in fade-in slide-in-from-top-4 duration-300">
@@ -284,7 +425,7 @@ export default function AkunMahasiswaAdminPage() {
       {/* Header Banner */}
       <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
         <div className="absolute right-0 top-0 translate-x-8 -translate-y-8 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
-        
+
         <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-200 text-xs font-semibold backdrop-blur-sm mb-2 border border-blue-400/20">
@@ -293,7 +434,7 @@ export default function AkunMahasiswaAdminPage() {
             </div>
             <h1 className="text-2xl font-extrabold tracking-tight">Manajemen Akun Mahasiswa</h1>
             <p className="text-xs sm:text-sm text-blue-100/90 mt-1 max-w-2xl leading-relaxed">
-              Kelola data otorisasi, status keaktifan, dan kredensial akses seluruh akun mahasiswa Fakultas Ilmu Komputer UNSRI.
+              Kelola otorisasi akun, aktivasi/penonaktifan akses login, serta impor massal data mahasiswa Fakultas Ilmu Komputer UNSRI.
             </p>
           </div>
 
@@ -311,13 +452,29 @@ export default function AkunMahasiswaAdminPage() {
               )}
             </Link>
 
+            {/* Import Excel Button */}
+            <button
+              type="button"
+              onClick={() => {
+                setImportFile(null);
+                setImportRows([]);
+                setImportError('');
+                setIsImportOpen(true);
+              }}
+              className="inline-flex items-center justify-center space-x-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/30 transition-all cursor-pointer shrink-0 active:scale-95"
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              <span>Import Excel</span>
+            </button>
+
+            {/* Tambah Akun Manual */}
             <button
               type="button"
               onClick={handleOpenAdd}
               className="inline-flex items-center justify-center space-x-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-lg shadow-blue-600/30 transition-all cursor-pointer shrink-0 active:scale-95"
             >
               <Plus className="w-4 h-4" />
-              <span>Tambah Akun Mahasiswa</span>
+              <span>Tambah Akun</span>
             </button>
           </div>
         </div>
@@ -325,7 +482,7 @@ export default function AkunMahasiswaAdminPage() {
 
       {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        
+
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-1 hover:border-blue-300 transition-all">
           <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Akun Terdaftar</div>
           <div className="text-2xl font-extrabold text-slate-900 flex items-center justify-between">
@@ -341,35 +498,35 @@ export default function AkunMahasiswaAdminPage() {
             <span>{totalAktif}</span>
             <UserCheck className="w-6 h-6 text-emerald-500/40" />
           </div>
-          <p className="text-[11px] text-emerald-600/80 font-medium">Bisa login dan mengajukan TA</p>
+          <p className="text-[11px] text-emerald-600/80 font-medium">Memiliki izin login sistem</p>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-1 hover:border-amber-300 transition-all">
-          <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Cuti / Nonaktif</div>
-          <div className="text-2xl font-extrabold text-amber-600 flex items-center justify-between">
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-1 hover:border-slate-400 transition-all">
+          <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Akun Nonaktif</div>
+          <div className="text-2xl font-extrabold text-slate-600 flex items-center justify-between">
             <span>{totalNonaktif}</span>
-            <AlertTriangle className="w-6 h-6 text-amber-500/40" />
+            <UserX className="w-6 h-6 text-slate-400/40" />
           </div>
-          <p className="text-[11px] text-slate-500">Status akun dibatasi</p>
+          <p className="text-[11px] text-slate-500">Akses login ditangguhkan</p>
         </div>
 
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-1 hover:border-indigo-300 transition-all">
-          <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Rombel / Kelas</div>
+          <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Angkatan Mahasiswa</div>
           <div className="text-2xl font-extrabold text-indigo-600 flex items-center justify-between">
-            <span>{totalKelas} Kelas</span>
+            <span>{totalAngkatan} Angkatan</span>
             <GraduationCap className="w-6 h-6 text-indigo-500/40" />
           </div>
-          <p className="text-[11px] text-slate-500">Angkatan aktif</p>
+          <p className="text-[11px] text-slate-500">Tahun penerimaan terdata</p>
         </div>
 
       </div>
 
       {/* Main Table Card */}
       <div className="bg-white border border-slate-200 rounded-2xl shadow-2xs overflow-hidden">
-        
+
         {/* Search & Filter Header */}
         <div className="p-4 sm:p-5 border-b border-slate-100 flex flex-col lg:flex-row items-center justify-between gap-3 bg-slate-50/50">
-          
+
           {/* Search Input */}
           <div className="relative w-full lg:w-96">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -393,7 +550,7 @@ export default function AkunMahasiswaAdminPage() {
 
           {/* Filters */}
           <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto justify-end">
-            
+
             {/* Status Filter */}
             <div className="flex items-center space-x-1.5 bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700">
               <Filter className="w-3.5 h-3.5 text-slate-400" />
@@ -405,23 +562,21 @@ export default function AkunMahasiswaAdminPage() {
               >
                 <option value="ALL">Semua Status</option>
                 <option value="aktif">Aktif</option>
-                <option value="cuti">Cuti</option>
                 <option value="nonaktif">Nonaktif</option>
-                <option value="ditangguhkan">Ditangguhkan</option>
               </select>
             </div>
 
-            {/* Class Filter */}
+            {/* Angkatan Filter (Ketentuan #4 & #9) */}
             <div className="flex items-center space-x-1.5 bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700">
               <GraduationCap className="w-3.5 h-3.5 text-slate-400" />
-              <span>Kelas:</span>
+              <span>Angkatan:</span>
               <select
-                value={classFilter}
-                onChange={(e) => setClassFilter(e.target.value)}
+                value={angkatanFilter}
+                onChange={(e) => setAngkatanFilter(e.target.value)}
                 className="bg-transparent text-xs font-bold text-indigo-600 outline-none cursor-pointer"
               >
-                {availableClasses.map(c => (
-                  <option key={c} value={c}>{c === 'ALL' ? 'Semua Kelas' : c}</option>
+                {availableAngkatanList.map(a => (
+                  <option key={a} value={a}>{a === 'ALL' ? 'Semua Angkatan' : `Angkatan ${a}`}</option>
                 ))}
               </select>
             </div>
@@ -435,17 +590,17 @@ export default function AkunMahasiswaAdminPage() {
         </div>
 
         {/* Data Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-700">
+        <div className="overflow-x-auto table-scroll-container overscroll-contain">
+          <table className="w-full text-left text-xs text-slate-700 border-collapse">
             <thead className="bg-slate-50 border-b border-slate-200/80 text-[11px] font-extrabold uppercase text-slate-500 tracking-wider">
               <tr>
-                <th className="py-3.5 px-4 w-12 text-center">No</th>
-                <th className="py-3.5 px-4">Mahasiswa</th>
-                <th className="py-3.5 px-4">Kontak &amp; Email</th>
-                <th className="py-3.5 px-4">Prodi &amp; Kelas</th>
-                <th className="py-3.5 px-4">Role</th>
-                <th className="py-3.5 px-4 text-center">Status Akun</th>
-                <th className="py-3.5 px-4 text-right">Aksi Kelola</th>
+                <th className="py-2.5 px-3 w-10 text-center">No</th>
+                <th className="py-2.5 px-3">Mahasiswa</th>
+                <th className="py-2.5 px-3">Kontak &amp; Email</th>
+                <th className="py-2.5 px-3">Program Studi</th>
+                <th className="py-2.5 px-3 text-center">Angkatan</th>
+                <th className="py-2.5 px-3 text-center">Status Akun</th>
+                <th className="py-2.5 px-3 text-right">Aksi Kelola</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium">
@@ -457,118 +612,116 @@ export default function AkunMahasiswaAdminPage() {
                   </td>
                 </tr>
               ) : (
-                paginatedStudents.map((std, idx) => (
-                  <tr key={std.id || std.nim || idx} className="hover:bg-blue-50/40 transition-colors group">
-                    
-                    {/* No */}
-                    <td className="py-3.5 px-4 text-center text-slate-400 font-semibold text-[11px]">
-                      {startIndex + idx + 1}
-                    </td>
+                paginatedStudents.map((std, idx) => {
+                  const angkatan = getStudentAngkatan(std);
+                  return (
+                    <tr key={std.id || std.nim || idx} className="hover:bg-blue-50/40 transition-colors group">
 
-                    {/* Mahasiswa Info */}
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white font-extrabold text-xs flex items-center justify-center shrink-0 shadow-2xs">
-                          {std.nama ? std.nama.charAt(0).toUpperCase() : 'M'}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
-                            {std.nama}
-                          </div>
-                          <div className="text-[11px] font-semibold text-slate-500 font-mono">
-                            NIM: {std.nim}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
+                      {/* No */}
+                      <td className="py-2.5 px-3 text-center text-slate-400 font-semibold text-[11px]">
+                        {startIndex + idx + 1}
+                      </td>
 
-                    {/* Contact & Email */}
-                    <td className="py-3.5 px-4">
-                      <div className="space-y-0.5">
-                        <div className="flex items-center space-x-1.5 text-slate-700 font-medium">
-                          <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <span className="truncate max-w-[180px]">{std.email || `${std.nim}@student.unsri.ac.id`}</span>
-                        </div>
-                        {std.no_hp && std.no_hp !== '-' && (
-                          <div className="flex items-center space-x-1.5 text-[11px] text-slate-500">
-                            <Phone className="w-3 h-3 text-slate-400 shrink-0" />
-                            <span>{std.no_hp}</span>
+                      {/* Mahasiswa Info */}
+                      <td className="py-2.5 px-3">
+                        <div className="flex items-center space-x-2.5">
+                          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white font-extrabold text-xs flex items-center justify-center shrink-0 shadow-2xs">
+                            {std.nama ? std.nama.charAt(0).toUpperCase() : 'M'}
                           </div>
-                        )}
-                      </div>
-                    </td>
+                          <div className="min-w-0">
+                            <div className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate max-w-[190px]" title={std.nama}>
+                              {std.nama}
+                            </div>
+                            <div className="text-[11px] font-semibold text-slate-500 font-mono">
+                              NIM: {std.nim}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
 
-                    {/* Prodi & Kelas */}
-                    <td className="py-3.5 px-4">
-                      <div className="space-y-0.5">
+                      {/* Contact & Email */}
+                      <td className="py-2.5 px-3">
+                        <div className="space-y-0.5">
+                          <div className="flex items-center space-x-1.5 text-slate-700 font-medium">
+                            <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                            <span className="truncate max-w-[170px]" title={std.email}>{std.email || `${std.nim}@student.unsri.ac.id`}</span>
+                          </div>
+                          {std.no_hp && std.no_hp !== '-' && (
+                            <div className="flex items-center space-x-1.5 text-[11px] text-slate-500">
+                              <Phone className="w-3 h-3 text-slate-400 shrink-0" />
+                              <span>{std.no_hp}</span>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Program Studi */}
+                      <td className="py-2.5 px-3">
                         <div className="font-semibold text-slate-800 text-[11px]">{std.prodi || 'D3 Manajemen Informatika'}</div>
-                        <span className="inline-block px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-bold text-[10px]">
-                          {std.kelas || 'MI 5A'}
+                      </td>
+
+                      {/* Angkatan */}
+                      <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                        <span className="inline-block px-2 py-0.5 rounded-md bg-indigo-50 border border-indigo-100 text-indigo-700 font-bold text-[11px]">
+                          {angkatan}
                         </span>
-                      </div>
-                    </td>
+                      </td>
 
-                    {/* Role */}
-                    <td className="py-3.5 px-4">
-                      <span className="px-2.5 py-1 rounded-lg text-[10px] font-extrabold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-100">
-                        Mahasiswa
-                      </span>
-                    </td>
+                      {/* Status Akun (Ketentuan #2 & #4) */}
+                      <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                        {renderStatusBadge(std.status || 'nonaktif')}
+                      </td>
 
-                    {/* Status */}
-                    <td className="py-3.5 px-4 text-center">
-                      {renderStatusBadge(std.status || 'aktif')}
-                    </td>
+                      {/* Actions (Ketentuan #4: Eye, KeyRound, Edit2, Trash2) */}
+                      <td className="py-2.5 px-3 text-right whitespace-nowrap">
+                        <div className="inline-flex items-center space-x-1">
 
-                    {/* Actions */}
-                    <td className="py-3.5 px-4 text-right">
-                      <div className="inline-flex items-center space-x-1">
-                        
-                        {/* View Detail */}
-                        <button
-                          type="button"
-                          onClick={() => setViewingStudent(std)}
-                          title="Lihat Detail Akun"
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
+                          {/* View Detail */}
+                          <button
+                            type="button"
+                            onClick={() => setViewingStudent(std)}
+                            title="Lihat Detail Akun"
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
 
-                        {/* Reset Password */}
-                        <button
-                          type="button"
-                          onClick={() => handleOpenReset(std)}
-                          title="Reset Kata Sandi"
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-amber-600 hover:bg-amber-50 transition-colors cursor-pointer"
-                        >
-                          <KeyRound className="w-4 h-4" />
-                        </button>
+                          {/* Reset Password */}
+                          <button
+                            type="button"
+                            onClick={() => handleOpenReset(std)}
+                            title="Reset Kata Sandi"
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-amber-600 hover:bg-amber-50 transition-colors cursor-pointer"
+                          >
+                            <KeyRound className="w-4 h-4" />
+                          </button>
 
-                        {/* Edit */}
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEdit(std)}
-                          title="Edit Akun"
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
+                          {/* Edit */}
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEdit(std)}
+                            title="Edit Akun"
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
 
-                        {/* Delete */}
-                        <button
-                          type="button"
-                          onClick={() => setDeletingStudent(std)}
-                          title="Hapus Akun"
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                          {/* Delete */}
+                          <button
+                            type="button"
+                            onClick={() => setDeletingStudent(std)}
+                            title="Hapus Akun"
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
 
-                      </div>
-                    </td>
+                        </div>
+                      </td>
 
-                  </tr>
-                ))
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -608,28 +761,6 @@ export default function AkunMahasiswaAdminPage() {
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <div className="flex items-center space-x-1">
-              {Array.from({ length: totalPages }, (_, i) => i + 1)
-                .filter(page => page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1)
-                .map((page, idx, arr) => (
-                  <React.Fragment key={page}>
-                    {idx > 0 && arr[idx - 1] !== page - 1 && (
-                      <span className="px-1 text-slate-400">...</span>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => handlePageChange(page)}
-                      className={`min-w-[28px] h-7 px-2 rounded-lg font-bold text-xs transition-all cursor-pointer ${
-                        currentPage === page
-                          ? 'bg-indigo-600 text-white shadow-xs'
-                          : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  </React.Fragment>
-                ))}
-            </div>
             <button
               type="button"
               onClick={() => handlePageChange(currentPage + 1)}
@@ -644,11 +775,201 @@ export default function AkunMahasiswaAdminPage() {
 
       </div>
 
+      {/* ── MODAL: IMPORT EXCEL (Ketentuan #6) ──────────────────────────────── */}
+      {isImportOpen && (
+        <div
+          data-lenis-prevent
+          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto overscroll-contain animate-in fade-in"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !isImporting) {
+              setIsImportOpen(false);
+            }
+          }}
+        >
+          <div
+            data-lenis-prevent
+            className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-100 flex flex-col max-h-[90vh] overflow-hidden my-auto overscroll-contain"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between p-5 sm:p-6 pb-4 border-b border-slate-100 bg-white shrink-0">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold shrink-0">
+                  <FileSpreadsheet className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base text-slate-900">Import Akun Mahasiswa via Excel</h3>
+                  <p className="text-xs text-slate-500">Unggah berkas spreadsheet .xlsx atau .xls dengan data mahasiswa</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsImportOpen(false)}
+                disabled={isImporting}
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1 text-xs" data-lenis-prevent>
+
+              {/* Template download guidance */}
+              <div className="p-4 bg-emerald-50/60 border border-emerald-200/80 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-0.5">
+                  <h4 className="font-bold text-emerald-950 text-xs flex items-center space-x-1.5">
+                    <span>Format Kolom Wajib</span>
+                  </h4>
+                  <p className="text-[11px] text-emerald-800">
+                    Kolom: <strong>NIM, Nama Mahasiswa, Email, No HP, Program Studi, Angkatan, Status</strong>.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleDownloadTemplate}
+                  className="inline-flex items-center justify-center space-x-1.5 px-3.5 py-2 bg-white text-emerald-700 hover:bg-emerald-100/50 border border-emerald-300 rounded-xl font-bold text-xs transition-all cursor-pointer shrink-0 shadow-2xs"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Unduh Template Excel</span>
+                </button>
+              </div>
+
+              {/* Upload Dropzone */}
+              <div>
+                <label className="border-2 border-dashed border-slate-200 hover:border-emerald-400 rounded-2xl p-6 flex flex-col items-center justify-center cursor-pointer bg-slate-50/50 hover:bg-emerald-50/30 transition-colors">
+                  <UploadCloud className="w-8 h-8 text-emerald-500 mb-2" />
+                  <span className="text-xs font-bold text-slate-800">
+                    {importFile ? importFile.name : 'Klik untuk memilih berkas Excel (.xlsx / .xls)'}
+                  </span>
+                  <span className="text-[11px] text-slate-400 mt-0.5">
+                    Maksimal ukuran file 10MB
+                  </span>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+
+              {/* Error message */}
+              {importError && (
+                <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs flex items-center space-x-2 font-medium">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  <span>{importError}</span>
+                </div>
+              )}
+
+              {/* Preview Section */}
+              {importRows.length > 0 && (
+                <div className="space-y-3 pt-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-800 text-xs">
+                      Pratinjau Data ({importRows.length} baris)
+                    </span>
+                    <div className="flex items-center space-x-2 text-[11px]">
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">
+                        {importRows.filter(r => r.rowStatus === 'valid').length} Siap
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold">
+                        {importRows.filter(r => r.rowStatus === 'duplicate').length} Duplikat
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 font-bold">
+                        {importRows.filter(r => r.rowStatus === 'invalid').length} Tidak Lengkap
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="max-h-60 overflow-y-auto border border-slate-200 rounded-xl">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead className="bg-slate-50 border-b border-slate-200 text-[10px] uppercase font-bold text-slate-500 sticky top-0">
+                        <tr>
+                          <th className="py-2 px-3 w-10 text-center">Baris</th>
+                          <th className="py-2 px-3">NIM</th>
+                          <th className="py-2 px-3">Nama Mahasiswa</th>
+                          <th className="py-2 px-3">Angkatan</th>
+                          <th className="py-2 px-3">Status</th>
+                          <th className="py-2 px-3 text-right">Hasil Verifikasi</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {importRows.map((r, idx) => (
+                          <tr key={idx} className={r.rowStatus === 'valid' ? 'hover:bg-slate-50' : 'bg-rose-50/30'}>
+                            <td className="py-2 px-3 text-center text-slate-400 font-mono text-[10px]">{r.rowNumber}</td>
+                            <td className="py-2 px-3 font-mono font-bold text-slate-800">{r.nim || '-'}</td>
+                            <td className="py-2 px-3 font-medium text-slate-900">{r.nama || '-'}</td>
+                            <td className="py-2 px-3 font-medium text-slate-700">{r.angkatan || '-'}</td>
+                            <td className="py-2 px-3">{renderStatusBadge(r.status)}</td>
+                            <td className="py-2 px-3 text-right">
+                              {r.rowStatus === 'valid' && (
+                                <span className="inline-flex items-center text-emerald-600 font-bold text-[10px] space-x-1">
+                                  <Check className="w-3 h-3" />
+                                  <span>Siap</span>
+                                </span>
+                              )}
+                              {r.rowStatus === 'duplicate' && (
+                                <span className="inline-flex items-center text-amber-600 font-bold text-[10px] space-x-1">
+                                  <AlertTriangle className="w-3 h-3" />
+                                  <span>Duplikat (Dilewati)</span>
+                                </span>
+                              )}
+                              {r.rowStatus === 'invalid' && (
+                                <span className="inline-flex items-center text-rose-600 font-bold text-[10px] space-x-1">
+                                  <X className="w-3 h-3" />
+                                  <span>{r.message}</span>
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end space-x-2.5 p-4 sm:px-6 border-t border-slate-100 bg-slate-50/90 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsImportOpen(false)}
+                disabled={isImporting}
+                className="px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-200/70 font-bold transition-all cursor-pointer text-xs"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleProcessImport}
+                disabled={isImporting || importRows.filter(r => r.rowStatus === 'valid').length === 0}
+                className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold shadow-md shadow-emerald-600/30 transition-all cursor-pointer text-xs flex items-center space-x-1.5"
+              >
+                {isImporting ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Menyimpan ke Database...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Proses &amp; Simpan ({importRows.filter(r => r.rowStatus === 'valid').length} Akun)</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── MODAL: TAMBAH / EDIT AKUN MAHASISWA ────────────────────────────── */}
       {(isAddOpen || editingStudent) && (
-        <div 
+        <div
           data-lenis-prevent
-          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto overscroll-contain"
+          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto overscroll-contain animate-in fade-in"
           onClick={(e) => {
             if (e.target === e.currentTarget) {
               setIsAddOpen(false);
@@ -656,12 +977,12 @@ export default function AkunMahasiswaAdminPage() {
             }
           }}
         >
-          <div 
+          <div
             data-lenis-prevent
-            className="bg-white rounded-3xl max-w-lg w-full shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh] sm:max-h-[85vh] overflow-hidden my-auto overscroll-contain"
+            className="bg-white rounded-3xl max-w-lg w-full shadow-2xl border border-slate-100 flex flex-col max-h-[90vh] overflow-hidden my-auto overscroll-contain"
           >
-            
-            {/* Modal Header (Fixed at top of popup) */}
+
+            {/* Modal Header */}
             <div className="flex items-center justify-between p-5 sm:p-6 pb-4 border-b border-slate-100 bg-white shrink-0">
               <div className="flex items-center space-x-3">
                 <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold shrink-0">
@@ -680,21 +1001,19 @@ export default function AkunMahasiswaAdminPage() {
                 type="button"
                 onClick={() => { setIsAddOpen(false); setEditingStudent(null); }}
                 className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer shrink-0"
-                aria-label="Tutup modal"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Modal Form Wrapper */}
+            {/* Modal Form */}
             <form onSubmit={handleSaveStudent} className="flex flex-col flex-1 min-h-0 overflow-hidden" data-lenis-prevent>
-              
-              {/* Scrollable Form Body (Dedicated internal scroll) */}
-              <div 
+
+              <div
                 data-lenis-prevent
                 className="p-5 sm:p-6 space-y-4 text-xs overflow-y-auto flex-1 overscroll-contain"
               >
-                
+
                 {/* NIM */}
                 <div className="space-y-1">
                   <label className="font-bold text-slate-700">NIM (Nomor Induk Mahasiswa) *</label>
@@ -745,7 +1064,7 @@ export default function AkunMahasiswaAdminPage() {
                   </div>
                 </div>
 
-                {/* Prodi & Kelas */}
+                {/* Prodi & Angkatan (Ketentuan #4, #7, #9 - Tidak ada rombel/kelas) */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <label className="font-bold text-slate-700">Program Studi</label>
@@ -755,46 +1074,52 @@ export default function AkunMahasiswaAdminPage() {
                       className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-blue-600 outline-none text-xs font-semibold bg-white cursor-pointer"
                     >
                       <option value="D3 Manajemen Informatika">D3 Manajemen Informatika</option>
+                      <option value="D3 Komputerisasi Akuntansi">D3 Komputerisasi Akuntansi</option>
                       <option value="D3 Teknik Komputer">D3 Teknik Komputer</option>
                       <option value="S1 Sistem Informasi">S1 Sistem Informasi</option>
                       <option value="S1 Teknik Informatika">S1 Teknik Informatika</option>
-                      <option value="S1 Sistem Komputer">S1 Sistem Komputer</option>
                     </select>
                   </div>
                   <div className="space-y-1">
-                    <label className="font-bold text-slate-700">Kelas / Rombel</label>
+                    <label className="font-bold text-slate-700">Angkatan (Tahun Masuk)</label>
                     <input
                       type="text"
-                      value={studentForm.kelas}
-                      onChange={(e) => setStudentForm({ ...studentForm, kelas: e.target.value })}
-                      placeholder="Contoh: MI 5A"
+                      value={studentForm.angkatan}
+                      onChange={(e) => setStudentForm({ ...studentForm, angkatan: e.target.value })}
+                      placeholder="Contoh: 2024"
                       className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-xs font-medium"
                     />
                   </div>
                 </div>
 
-                {/* Status Akun */}
+                {/* Status Akun (Ketentuan #8 - Aktif atau Nonaktif) */}
                 <div className="space-y-1">
                   <label className="font-bold text-slate-700">Status Akun</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {['aktif', 'cuti', 'nonaktif'].map(st => (
-                      <button
-                        key={st}
-                        type="button"
-                        onClick={() => setStudentForm({ ...studentForm, status: st })}
-                        className={`py-2 px-3 rounded-xl border font-bold text-xs uppercase tracking-wider transition-all cursor-pointer ${
-                          studentForm.status === st
-                            ? 'bg-blue-50 border-blue-600 text-blue-700 ring-2 ring-blue-100'
-                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setStudentForm({ ...studentForm, status: 'aktif' })}
+                      className={`py-2 px-3 rounded-xl border font-bold text-xs uppercase tracking-wider transition-all cursor-pointer ${studentForm.status === 'aktif'
+                        ? 'bg-emerald-50 border-emerald-600 text-emerald-700 ring-2 ring-emerald-100'
+                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                         }`}
-                      >
-                        {st}
-                      </button>
-                    ))}
+                    >
+                      Aktif
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setStudentForm({ ...studentForm, status: 'nonaktif' })}
+                      className={`py-2 px-3 rounded-xl border font-bold text-xs uppercase tracking-wider transition-all cursor-pointer ${studentForm.status === 'nonaktif'
+                        ? 'bg-slate-100 border-slate-600 text-slate-800 ring-2 ring-slate-200'
+                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                        }`}
+                    >
+                      Nonaktif
+                    </button>
                   </div>
                 </div>
 
-                {/* Password Initial (Only for new accounts) */}
+                {/* Password Initial */}
                 {!editingStudent && (
                   <div className="space-y-1 pt-1">
                     <label className="font-bold text-slate-700">Kata Sandi Awal (Opsional)</label>
@@ -811,8 +1136,8 @@ export default function AkunMahasiswaAdminPage() {
 
               </div>
 
-              {/* Modal Footer (Pinned at bottom of popup) */}
-              <div className="flex items-center justify-end space-x-2.5 p-4 sm:px-6 border-t border-slate-100 bg-slate-50/90 backdrop-blur-xs shrink-0 rounded-b-3xl">
+              {/* Modal Footer */}
+              <div className="flex items-center justify-end space-x-2.5 p-4 sm:px-6 border-t border-slate-100 bg-slate-50/90 shrink-0">
                 <button
                   type="button"
                   onClick={() => { setIsAddOpen(false); setEditingStudent(null); }}
@@ -836,9 +1161,9 @@ export default function AkunMahasiswaAdminPage() {
 
       {/* ── MODAL: DETAIL AKUN MAHASISWA ─────────────────────────────────── */}
       {viewingStudent && (
-        <div data-lenis-prevent className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto overscroll-contain">
-          <div data-lenis-prevent className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200 space-y-5 max-h-[90vh] overflow-y-auto my-auto overscroll-contain">
-            
+        <div data-lenis-prevent className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto overscroll-contain animate-in fade-in">
+          <div data-lenis-prevent className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-5 max-h-[90vh] overflow-y-auto my-auto overscroll-contain">
+
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="font-extrabold text-base text-slate-900">Detail Akun Mahasiswa</h3>
               <button
@@ -875,8 +1200,8 @@ export default function AkunMahasiswaAdminPage() {
                 <span className="font-bold text-slate-900">{viewingStudent.prodi || 'D3 Manajemen Informatika'}</span>
               </div>
               <div className="flex justify-between py-1.5 border-b border-slate-100">
-                <span className="text-slate-500 font-semibold">Kelas:</span>
-                <span className="font-bold text-slate-900">{viewingStudent.kelas || 'MI 5A'}</span>
+                <span className="text-slate-500 font-semibold">Angkatan:</span>
+                <span className="font-bold text-slate-900">{getStudentAngkatan(viewingStudent)}</span>
               </div>
               <div className="flex justify-between py-1.5 border-b border-slate-100">
                 <span className="text-slate-500 font-semibold">Role Sistem:</span>
@@ -920,9 +1245,9 @@ export default function AkunMahasiswaAdminPage() {
 
       {/* ── MODAL: RESET PASSWORD MAHASISWA ──────────────────────────────── */}
       {resettingStudent && (
-        <div data-lenis-prevent className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto overscroll-contain">
-          <div data-lenis-prevent className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200 space-y-4 max-h-[90vh] overflow-y-auto my-auto overscroll-contain">
-            
+        <div data-lenis-prevent className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto overscroll-contain animate-in fade-in">
+          <div data-lenis-prevent className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4 max-h-[90vh] overflow-y-auto my-auto overscroll-contain">
+
             <div className="flex items-center space-x-3 text-amber-600">
               <div className="w-10 h-10 rounded-2xl bg-amber-50 flex items-center justify-center shrink-0 font-bold">
                 <KeyRound className="w-5 h-5" />
@@ -992,9 +1317,9 @@ export default function AkunMahasiswaAdminPage() {
 
       {/* ── MODAL: KONFIRMASI HAPUS MAHASISWA ────────────────────────────── */}
       {deletingStudent && (
-        <div data-lenis-prevent className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto overscroll-contain">
-          <div data-lenis-prevent className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200 space-y-4 max-h-[90vh] overflow-y-auto my-auto overscroll-contain">
-            
+        <div data-lenis-prevent className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto overscroll-contain animate-in fade-in">
+          <div data-lenis-prevent className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 space-y-4 max-h-[90vh] overflow-y-auto my-auto overscroll-contain">
+
             <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
               <AlertTriangle className="w-6 h-6" />
             </div>

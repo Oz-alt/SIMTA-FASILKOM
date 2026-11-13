@@ -206,118 +206,166 @@ export default function ForgotPassword({ status }) {
           {/* If verification succeeded / Request status */}
           {resetResult ? (
             <div className="p-5 rounded-2xl bg-blue-50/70 border border-blue-200 space-y-4 animate-in fade-in zoom-in-95 duration-200">
-              <div className="flex items-center space-x-3">
-                <div className={`w-10 h-10 rounded-xl text-white flex items-center justify-center font-bold shadow-md ${
-                  resetResult.status === 'disetujui' 
-                    ? 'bg-emerald-500 shadow-emerald-500/20' 
-                    : resetResult.status === 'ditolak'
-                    ? 'bg-rose-500 shadow-rose-500/20'
-                    : 'bg-amber-500 shadow-amber-500/20'
-                }`}>
-                  {resetResult.status === 'disetujui' ? (
-                    <CheckCircle2 className="w-6 h-6" />
-                  ) : resetResult.status === 'ditolak' ? (
-                    <AlertCircle className="w-6 h-6" />
-                  ) : (
-                    <ShieldCheck className="w-6 h-6" />
-                  )}
-                </div>
-                <div>
-                  <h3 className="font-bold text-sm text-slate-900">
-                    {resetResult.status === 'disetujui' 
-                      ? 'Permintaan Disetujui Admin!' 
-                      : resetResult.status === 'ditolak'
-                      ? 'Permintaan Ditolak Admin'
-                      : 'Permintaan Dalam Antrean Admin'}
-                  </h3>
-                  <p className="text-[11px] text-slate-600">{resetResult.nama || resetResult.user?.nama}</p>
-                </div>
-              </div>
-
-              <div className="p-3.5 rounded-xl bg-white border border-blue-100 text-xs space-y-2 font-medium">
-                <div className="flex justify-between text-slate-600">
-                  <span>NIM / NIP:</span>
-                  <span className="font-bold text-slate-900 font-mono">{resetResult.user?.nim || resetResult.user?.nip || identifier}</span>
-                </div>
-                <div className="flex justify-between text-slate-600">
-                  <span>Email Terdaftar:</span>
-                  <span className="font-bold text-slate-900">{resetResult.email}</span>
-                </div>
-                <div className="flex justify-between text-slate-600">
-                  <span>Role Akun:</span>
-                  <span className="font-bold text-blue-600 uppercase text-[10px]">{resetResult.user?.role || 'Pengguna'}</span>
-                </div>
-                <div className="flex justify-between text-slate-600 pt-1 border-t border-slate-100">
-                  <span>Status Verifikasi:</span>
-                  <span className={`font-bold px-2 py-0.5 rounded-md text-[10px] uppercase ${
-                    resetResult.status === 'disetujui'
-                      ? 'bg-emerald-100 text-emerald-800'
-                      : resetResult.status === 'ditolak'
-                      ? 'bg-rose-100 text-rose-800'
-                      : 'bg-amber-100 text-amber-800'
-                  }`}>
-                    {resetResult.status === 'disetujui' ? 'Disetujui' : resetResult.status === 'ditolak' ? 'Ditolak' : 'Menunggu Persetujuan Admin'}
-                  </span>
-                </div>
-              </div>
-
-              {resetResult.status === 'disetujui' ? (
+              {resetResult.status === 'neutral' ? (
                 <>
-                  <p className="text-xs text-blue-900 leading-relaxed">
-                    Admin telah menyetujui pemulihan kata sandi Anda. Silakan lanjutkan untuk membuat kata sandi baru akun Anda.
-                  </p>
-
-                  <button
-                    type="button"
-                    onClick={handleProceedToReset}
-                    className="w-full py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-blue-600/30 transition-all flex items-center justify-center space-x-2 cursor-pointer"
-                  >
-                    <span>Lanjutkan ke Reset Kata Sandi</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                </>
-              ) : resetResult.status === 'ditolak' ? (
-                <>
-                  <p className="text-xs text-rose-700 leading-relaxed bg-rose-50 p-3 rounded-xl border border-rose-200">
-                    <span className="font-bold block mb-1">Catatan Admin:</span>
-                    {resetResult.request?.catatan_admin || 'Identitas tidak dapat diverifikasi oleh Admin SIMTA.'}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setResetResult(null)}
-                    className="w-full py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs transition-all flex items-center justify-center space-x-2 cursor-pointer"
-                  >
-                    <span>Ajukan Permintaan Baru</span>
-                  </button>
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold shadow-md shadow-blue-600/20">
+                      <ShieldCheck className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-sm text-slate-900">Permintaan Pemulihan Diproses</h3>
+                      <p className="text-[11px] text-slate-600">Verifikasi Keamanan Sistem</p>
+                    </div>
+                  </div>
+                  <div className="p-3.5 rounded-xl bg-white border border-blue-100 text-xs leading-relaxed text-slate-700 space-y-2">
+                    <p>
+                      Jika identitas nomor induk atau email <strong className="font-mono text-slate-900">{identifier}</strong> terdaftar dalam basis data SIMONITA, permintaan pemulihan kata sandi telah diproses.
+                    </p>
+                    <p className="text-slate-500 text-[11px]">
+                      Demi keamanan akun, instruksi resmi pemulihan kata sandi hanya akan dikirimkan ke email terdaftar. Jika Anda membutuhkan bantuan segera, silakan hubungi Administrator SIMTA Fakultas Ilmu Komputer.
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setResetResult(null)}
+                      className="w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition-all text-center cursor-pointer shadow-sm"
+                    >
+                      Coba Identitas Lain
+                    </button>
+                    <Link
+                      href="/login"
+                      className="w-full py-2.5 px-4 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs transition-all text-center block"
+                    >
+                      Kembali ke Login
+                    </Link>
+                  </div>
                 </>
               ) : (
                 <>
-                  <div className="p-3 rounded-xl bg-amber-50/80 border border-amber-200 text-amber-900 text-xs leading-relaxed space-y-1">
-                    <span className="font-bold block">Menunggu Verifikasi Admin SIMTA:</span>
-                    <p className="text-[11px] text-amber-800">
-                      Permintaan pemulihan sandi Anda telah masuk ke daftar antrean Admin SIMTA. Demi keamanan akun, Admin akan memverifikasi identitas Anda terlebih dahulu. Silakan hubungi Admin atau tunggu persetujuan.
-                    </p>
+                  <div className="flex items-center space-x-3">
+                    <div className={`w-10 h-10 rounded-xl text-white flex items-center justify-center font-bold shadow-md ${
+                      resetResult.status === 'disetujui' 
+                        ? 'bg-emerald-500 shadow-emerald-500/20' 
+                        : resetResult.status === 'ditolak'
+                        ? 'bg-rose-500 shadow-rose-500/20'
+                        : 'bg-amber-500 shadow-amber-500/20'
+                    }`}>
+                      {resetResult.status === 'disetujui' ? (
+                        <CheckCircle2 className="w-6 h-6" />
+                      ) : resetResult.status === 'ditolak' ? (
+                        <AlertCircle className="w-6 h-6" />
+                      ) : (
+                        <ShieldCheck className="w-6 h-6" />
+                      )}
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-sm text-slate-900">
+                        {resetResult.status === 'disetujui' 
+                          ? 'Permintaan Disetujui Admin!' 
+                          : resetResult.status === 'ditolak'
+                          ? 'Permintaan Ditolak Admin'
+                          : 'Permintaan Dalam Antrean Admin'}
+                      </h3>
+                      <p className="text-[11px] text-slate-600">{resetResult.nama || resetResult.user?.nama}</p>
+                    </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleSubmit}
-                    className="w-full py-2.5 px-4 rounded-xl bg-white border border-blue-200 hover:bg-blue-50 text-blue-700 font-bold text-xs transition-all flex items-center justify-center space-x-2 cursor-pointer"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5" />
-                    <span>Periksa Status Persetujuan Admin</span>
-                  </button>
+
+                  <div className="p-3.5 rounded-xl bg-white border border-blue-100 text-xs space-y-2 font-medium">
+                    <div className="flex justify-between text-slate-600">
+                      <span>NIM / NIP:</span>
+                      <span className="font-bold text-slate-900 font-mono">{resetResult.user?.nim || resetResult.user?.nip || identifier}</span>
+                    </div>
+                    <div className="flex justify-between text-slate-600">
+                      <span>Email Terdaftar:</span>
+                      <span className="font-bold text-slate-900">{resetResult.email}</span>
+                    </div>
+                    <div className="flex justify-between text-slate-600">
+                      <span>Role Akun:</span>
+                      <span className="font-bold text-blue-600 uppercase text-[10px]">{resetResult.user?.role || 'Pengguna'}</span>
+                    </div>
+                    <div className="flex justify-between text-slate-600 pt-1 border-t border-slate-100">
+                      <span>Status Verifikasi:</span>
+                      <span className={`font-bold px-2 py-0.5 rounded-md text-[10px] uppercase ${
+                        resetResult.status === 'disetujui'
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : resetResult.status === 'ditolak'
+                          ? 'bg-rose-100 text-rose-800'
+                          : 'bg-amber-100 text-amber-800'
+                      }`}>
+                        {resetResult.status === 'disetujui' ? 'Disetujui' : resetResult.status === 'ditolak' ? 'Ditolak' : 'Menunggu Persetujuan Admin'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {resetResult.status === 'disetujui' ? (
+                    <div className="space-y-3">
+                      <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs leading-relaxed space-y-2">
+                        <div className="flex items-center space-x-2 text-emerald-800 font-bold">
+                          <Mail className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span>Tautan Reset Dikirim ke Email Anda!</span>
+                        </div>
+                        <p className="text-[12px] text-emerald-800">
+                          Admin telah menyetujui pemulihan kata sandi akun Anda. Sistem telah mengirimkan tautan resmi pembaruan kata sandi ke email Anda:
+                          <strong className="block mt-1 font-mono text-slate-900">{resetResult.email}</strong>
+                        </p>
+                        <p className="text-[11px] text-emerald-700">
+                          ⏱️ Tautan resmi di dalam email hanya berlaku selama <strong>24 Jam</strong>. Silakan periksa Inbox atau folder Spam email Anda.
+                        </p>
+                      </div>
+
+                      <Link
+                        href="/login"
+                        className="w-full py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-blue-600/30 transition-all flex items-center justify-center space-x-2 cursor-pointer"
+                      >
+                        <ArrowLeft className="w-4 h-4" />
+                        <span>Kembali ke Halaman Login</span>
+                      </Link>
+                    </div>
+                  ) : resetResult.status === 'ditolak' ? (
+                    <>
+                      <p className="text-xs text-rose-700 leading-relaxed bg-rose-50 p-3 rounded-xl border border-rose-200">
+                        <span className="font-bold block mb-1">Catatan Admin:</span>
+                        {resetResult.request?.catatan_admin || 'Identitas tidak dapat diverifikasi oleh Admin SIMTA.'}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setResetResult(null)}
+                        className="w-full py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs transition-all flex items-center justify-center space-x-2 cursor-pointer"
+                      >
+                        <span>Ajukan Permintaan Baru</span>
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <div className="p-3 rounded-xl bg-amber-50/80 border border-amber-200 text-amber-900 text-xs leading-relaxed space-y-1">
+                        <span className="font-bold block">Menunggu Verifikasi Admin SIMTA:</span>
+                        <p className="text-[11px] text-amber-800">
+                          Permintaan pemulihan sandi Anda telah masuk ke antrean verifikasi Admin SIMTA. Demi keamanan akun, Admin akan memverifikasi identitas Anda terlebih dahulu, kemudian sistem akan mengirimkan tautan reset otomatis ke email Anda.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleSubmit}
+                        className="w-full py-2.5 px-4 rounded-xl bg-white border border-blue-200 hover:bg-blue-50 text-blue-700 font-bold text-xs transition-all flex items-center justify-center space-x-2 cursor-pointer"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        <span>Periksa Status Persetujuan Admin</span>
+                      </button>
+                    </>
+                  )}
+
+                  <div className="text-center pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setResetResult(null)}
+                      className="text-xs text-slate-500 hover:text-slate-800 font-medium cursor-pointer"
+                    >
+                      Gunakan akun lain
+                    </button>
+                  </div>
                 </>
               )}
-
-              <div className="text-center pt-1">
-                <button
-                  type="button"
-                  onClick={() => setResetResult(null)}
-                  className="text-xs text-slate-500 hover:text-slate-800 font-medium"
-                >
-                  Gunakan akun lain
-                </button>
-              </div>
             </div>
           ) : (
             /* Forgot Password Form */

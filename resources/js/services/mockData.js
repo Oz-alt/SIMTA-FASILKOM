@@ -3320,8 +3320,8 @@ export const MOCK_ROOMS = [
   {
     id: 'room-1',
     building_id: 'bld-1',
-    name: 'Ruang Sidang Utama DIPKOM',
-    code: 'RS-DIPKOM-01',
+    name: 'Ruang Sidang MI',
+    code: 'RS-MI',
     capacity: 25,
     facilities: ['AC', 'Proyektor Ultra HD', 'Sound System', 'Whiteboard', 'Meja Penguji Oval'],
     status: 'aktif'
@@ -3329,29 +3329,29 @@ export const MOCK_ROOMS = [
   {
     id: 'room-2',
     building_id: 'bld-1',
-    name: 'Ruang Seminar DIPKOM Lt. 2',
-    code: 'RS-DIPKOM-02',
-    capacity: 35,
-    facilities: ['AC', 'Proyektor', 'Whiteboard', 'Podium'],
+    name: 'Ruang Sidang KA',
+    code: 'RS-KA',
+    capacity: 25,
+    facilities: ['AC', 'Proyektor HD', 'Sound System', 'Whiteboard', 'Podium'],
     status: 'aktif'
   },
   {
     id: 'room-3',
-    building_id: 'bld-2',
-    name: 'Ruang Sidang Diklat A',
-    code: 'RS-DIKLAT-A',
-    capacity: 30,
+    building_id: 'bld-1',
+    name: 'Ruang Sidang TK',
+    code: 'RS-TK',
+    capacity: 25,
     facilities: ['AC', 'Smart TV 75 inch', 'Sound System', 'Whiteboard'],
     status: 'aktif'
   },
   {
     id: 'room-4',
     building_id: 'bld-2',
-    name: 'Ruang Sidang Diklat B',
-    code: 'RS-DIKLAT-B',
-    capacity: 20,
-    facilities: ['AC', 'Proyektor'],
-    status: 'maintenance'
+    name: 'Ruang Sidang Lantai 3 di Gedung Diklat',
+    code: 'RS-DIKLAT-LT3',
+    capacity: 35,
+    facilities: ['AC', 'Proyektor Laser', 'Sound System', 'Whiteboard', 'Mic Wireless'],
+    status: 'aktif'
   }
 ];
 
@@ -6884,7 +6884,7 @@ export const MOCK_THESIS_TITLES = [
     jadwal_sidang: {
       tanggal: '2026-09-28',
       waktu: '09:00 - 10:30',
-      ruangan: 'Ruang Sidang Utama DIPKOM',
+      ruangan: 'Ruang Sidang MI',
       ketua_penguji: 'Dr. Abdiansah, S.Kom., M.Cs.',
       penguji: 'Iin Seprina, M.Kom.'
     },
@@ -7138,7 +7138,7 @@ export const MOCK_THESIS_TITLES = [
     jadwal_sidang: {
       tanggal: '2026-10-25',
       waktu: '09:00 - 10:30',
-      ruangan: 'Ruang Sidang Utama DIPKOM',
+      ruangan: 'Ruang Sidang MI',
       ketua_penguji: 'Dr. Abdiansah, S.Kom., M.Cs.',
       penguji: 'Hasnan Afif, S.Kom., M.Kom.'
     },
@@ -7254,7 +7254,7 @@ export const MOCK_THESIS_TITLES = [
     jadwal_sidang: {
       tanggal: '2026-09-22',
       waktu: '10:00 - 11:30',
-      ruangan: 'Ruang Sidang Utama DIPKOM',
+      ruangan: 'Ruang Sidang MI',
       ketua_penguji: 'M. Qurhanul Rizkie, Ph.D',
       penguji: 'Anna Dwi Marjusalinah, S.Kom., M.Kom.'
     },
@@ -7329,27 +7329,7 @@ export const MOCK_THESIS_STAGES = [
   }
 ];
 
-export const MOCK_BOOKINGS = [
-  {
-    id: 'book-1',
-    booking_code: 'BK-2026-0901',
-    thesis_stage_id: 'stage-1',
-    room_id: 'room-1',
-    booking_date: '2026-09-12',
-    start_time: '09:00',
-    end_time: '11:00',
-    purpose: 'Seminar Proposal - Ahmad Rizky Pratama',
-    status: 'disetujui',
-    rejection_reason: null,
-    approved_by: 'Budi Santoso, S.Kom.',
-    room_name: 'Ruang Sidang Utama DIPKOM',
-    building_code: 'DIPKOM',
-    mhs_nama: 'Ahmad Rizky Pratama',
-    mhs_nim: '09031182328001',
-    judul_ta: 'Sistem Informasi Manajemen Tugas Akhir dan Peminjaman Ruang Sidang Terpadu (SIMTA)',
-    stage_label: 'Seminar Proposal'
-  }
-];
+export const MOCK_BOOKINGS = [];
 
 export const MOCK_NOTIFICATIONS = [];
 
@@ -16047,6 +16027,57 @@ export const MOCK_ADMIN_TEMPLATES = [
   }
 ];
 
+export const MOCK_ADMIN_SOPS = [
+  {
+    id: 'sop-1',
+    nama: 'SOP Pelaksanaan Bimbingan Tugas Akhir',
+    kategori: 'Bimbingan',
+    deskripsi: 'Prosedur operasional standar pelaksanaan asistensi dan bimbingan tugas akhir antara mahasiswa dan dosen pembimbing.',
+    file_name: 'sop-bimbingan-ta-2026.pdf',
+    file_url: '#',
+    status: 'aktif',
+    updated_at: '2026-09-01',
+    ukuran: '520 KB',
+    uploader: 'Rina Agustina, S.Kom.'
+  },
+  {
+    id: 'sop-2',
+    nama: 'SOP Peminjaman Ruang Sidang dan Sarana',
+    kategori: 'Ruangan & Sarana',
+    deskripsi: 'Prosedur peminjaman ruang sidang (MI, KA, TK, Gedung Diklat Lantai 3) untuk seminar proposal dan ujian sidang akhir.',
+    file_name: 'sop-peminjaman-ruang-sidang.pdf',
+    file_url: '#',
+    status: 'aktif',
+    updated_at: '2026-09-05',
+    ukuran: '410 KB',
+    uploader: 'Rina Agustina, S.Kom.'
+  },
+  {
+    id: 'sop-3',
+    nama: 'SOP Pengajuan dan Verifikasi Judul Tugas Akhir',
+    kategori: 'Pengajuan Judul',
+    deskripsi: 'Tata cara pengajuan judul tugas akhir oleh mahasiswa, seleksi kemiripan judul, dan peninjauan oleh Kaprodi.',
+    file_name: 'sop-pengajuan-judul-ta.pdf',
+    file_url: '#',
+    status: 'aktif',
+    updated_at: '2026-09-10',
+    ukuran: '635 KB',
+    uploader: 'Rina Agustina, S.Kom.'
+  },
+  {
+    id: 'sop-4',
+    nama: 'SOP Penjadwalan dan Pelaksanaan Ujian Sidang Akhir',
+    kategori: 'Ujian Sidang',
+    deskripsi: 'Tata laksana penjadwalan ujian sidang akhir, kelengkapan berkas syarat kelulusan, dan tata tertib dewan penguji.',
+    file_name: 'sop-pelaksanaan-sidang-akhir.pdf',
+    file_url: '#',
+    status: 'aktif',
+    updated_at: '2026-09-15',
+    ukuran: '780 KB',
+    uploader: 'Rina Agustina, S.Kom.'
+  }
+];
+
 export const MOCK_DEFENSE_SCHEDULES = [
   {
     id: 'sch-1',
@@ -16082,7 +16113,7 @@ export const MOCK_DEFENSE_SCHEDULES = [
     tanggal: '2026-11-15',
     waktu_mulai: '09:00',
     waktu_selesai: '10:30',
-    ruangan: 'Ruang Sidang Utama DIPKOM',
+    ruangan: 'Ruang Sidang MI',
     ketua_penguji_nama: 'Dr. Abdiansah, S.Kom., M.Cs.',
     ketua_penguji_nip: '198410012009121005',
     sekretaris_nama: 'Iin Seprina, M.Kom.',

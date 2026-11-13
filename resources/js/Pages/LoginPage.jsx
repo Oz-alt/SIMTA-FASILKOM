@@ -21,6 +21,12 @@ export default function LoginPage({ status }) {
   const navigate = (url) => router.visit(url);
   const { login } = useAuth();
 
+  const queryParamStatus = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('status') : null;
+  const rawStatus = status || queryParamStatus;
+  const displayStatus = rawStatus === 'reset_success'
+    ? 'Password berhasil diperbarui! Silakan login kembali menggunakan password baru Anda.'
+    : rawStatus;
+
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -200,10 +206,10 @@ export default function LoginPage({ status }) {
           </div>
 
           {/* Status Message (e.g. from password reset) */}
-          {status && (
+          {displayStatus && (
             <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center space-x-2 animate-in fade-in">
               <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
-              <span>{status}</span>
+              <span>{displayStatus}</span>
             </div>
           )}
 

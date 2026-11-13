@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import * as XLSX from 'xlsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { 
   Database, 
@@ -59,7 +60,6 @@ export default function ManajemenRepositoryAdminPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedProdi, setSelectedProdi] = useState('Semua');
   const [selectedTahun, setSelectedTahun] = useState('Semua');
-  const [selectedStatus, setSelectedStatus] = useState('Semua');
   const [sortBy, setSortBy] = useState('terbaru');
 
   // Pagination
@@ -76,12 +76,20 @@ export default function ManajemenRepositoryAdminPage() {
   const [showDetailModal, setShowDetailModal] = useState(null);
   const [showFormModal, setShowFormModal] = useState(null); // null | 'add' | editItem
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showExcelImportModal, setShowExcelImportModal] = useState(false);
   const [showScraperModal, setShowScraperModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
 
+  // Excel Import States (Ketentuan #14)
+  const excelInputRef = useRef(null);
+  const [excelFile, setExcelFile] = useState(null);
+  const [excelRows, setExcelRows] = useState([]);
+  const [excelError, setExcelError] = useState('');
+  const [isExcelImporting, setIsExcelImporting] = useState(false);
+
   // Lock background scroll when any modal is open so touchpad/wheel scrolls the modal
   useEffect(() => {
-    const isAnyModalOpen = Boolean(showDetailModal || showFormModal || showImportModal || showScraperModal || showDeleteConfirm);
+    const isAnyModalOpen = Boolean(showDetailModal || showFormModal || showImportModal || showExcelImportModal || showScraperModal || showDeleteConfirm);
     if (isAnyModalOpen) {
       document.body.style.overflow = 'hidden';
     } else {
@@ -90,7 +98,7 @@ export default function ManajemenRepositoryAdminPage() {
     return () => {
       document.body.style.overflow = 'unset';
     };
-  }, [showDetailModal, showFormModal, showImportModal, showScraperModal, showDeleteConfirm]);
+  }, [showDetailModal, showFormModal, showImportModal, showExcelImportModal, showScraperModal, showDeleteConfirm]);
 
   // Scraper Simulation State
   const [isScraping, setIsScraping] = useState(false);
@@ -116,16 +124,15 @@ export default function ManajemenRepositoryAdminPage() {
   // Helper Stats
   const stats = useMemo(() => {
     const total = thesisArchives.length;
-    const dipublikasikan = thesisArchives.filter(a => (a.status || 'dipublikasikan') === 'dipublikasikan').length;
-    const draf = total - dipublikasikan;
     const prodiCounts = thesisArchives.reduce((acc, curr) => {
       const p = curr.prodi || 'Lainnya';
       acc[p] = (acc[p] || 0) + 1;
       return acc;
     }, {});
     const unikPenulis = new Set(thesisArchives.map(a => a.penulis_nim).filter(Boolean)).size;
+    const totalTahun = new Set(thesisArchives.map(a => a.tahun_ta || a.tahun_lulus).filter(Boolean)).size;
 
-    return { total, dipublikasikan, draf, prodiCounts, unikPenulis };
+    return { total, prodiCounts, unikPenulis, totalTahun };
   }, [thesisArchives]);
 
   // Filtered and Sorted Archives
@@ -136,18 +143,13 @@ export default function ManajemenRepositoryAdminPage() {
         (item.judul && item.judul.toLowerCase().includes(query)) ||
         (item.penulis_nama && item.penulis_nama.toLowerCase().includes(query)) ||
         (item.penulis_nim && item.penulis_nim.toLowerCase().includes(query)) ||
-        (item.pembimbing_1 && item.pembimbing_1.toLowerCase().includes(query)) ||
-        (item.pembimbing_2 && item.pembimbing_2.toLowerCase().includes(query)) ||
-        (item.dosen_pa && item.dosen_pa.toLowerCase().includes(query)) ||
         (item.link_repo_unsri && item.link_repo_unsri.toLowerCase().includes(query)) ||
         (item.keywords && item.keywords.toLowerCase().includes(query));
 
       const matchProdi = selectedProdi === 'Semua' || item.prodi === selectedProdi;
       const matchTahun = selectedTahun === 'Semua' || String(item.tahun_ta || item.tahun_lulus) === selectedTahun;
-      const itemStatus = item.status || 'dipublikasikan';
-      const matchStatus = selectedStatus === 'Semua' || itemStatus === selectedStatus;
 
-      return matchSearch && matchProdi && matchTahun && matchStatus;
+      return matchSearch && matchProdi && matchTahun;
     }).sort((a, b) => {
       if (sortBy === 'terbaru') {
         return (b.id || '').localeCompare(a.id || '');
@@ -166,7 +168,7 @@ export default function ManajemenRepositoryAdminPage() {
       }
       return 0;
     });
-  }, [thesisArchives, searchTerm, selectedProdi, selectedTahun, selectedStatus, sortBy]);
+  }, [thesisArchives, searchTerm, selectedProdi, selectedTahun, sortBy]);
 
   // Paginated Slices
   const totalPages = Math.ceil(filteredArchives.length / pageSize) || 1;
@@ -199,13 +201,144 @@ export default function ManajemenRepositoryAdminPage() {
     }
   };
 
-  const handleBulkPublish = () => {
-    if (selectedIds.length === 0) return;
-    selectedIds.forEach(id => {
-      updateRepositoryArchive(id, { status: 'dipublikasikan' });
-    });
-    setSelectedIds([]);
-    showNotification(`Berhasil mempublikasikan ${selectedIds.length} data ke Arsip SIMTA Global.`, 'success');
+  // ── EXCEL IMPORT LOGIC (Ketentuan #14) ─────────────────────────────────
+  const handleDownloadExcelTemplate = () => {
+    const headers = ['Judul', 'Penulis', 'NIM', 'Tahun', 'Program Studi', 'Abstrak', 'Link Repository'];
+    const sampleRows = [
+      [
+        'Rancang Bangun Sistem Informasi Manajemen Tugas Akhir dan Peminjaman Ruang Sidang FASILKOM UNSRI',
+        'Ahmad Rizky Pratama',
+        '09031182328001',
+        '2024',
+        'D3 Manajemen Informatika',
+        'Penelitian ini membahas perancangan dan implementasi aplikasi pemantauan tugas akhir dan reservasi ruangan...',
+        'http://repository.unsri.ac.id/200395/'
+      ],
+      [
+        'Pengembangan Aplikasi Presensi Bimbingan Tugas Akhir Berbasis Mobile Menggunakan Geofencing',
+        'Aulia Azzahra',
+        '09010182428002',
+        '2024',
+        'D3 Manajemen Informatika',
+        'Aplikasi ini mempermudah pencatatan kehadiran konsultasi antara mahasiswa dan dosen pembimbing...',
+        'http://repository.unsri.ac.id/200396/'
+      ]
+    ];
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...sampleRows]);
+    ws['!cols'] = [
+      { wch: 45 }, { wch: 25 }, { wch: 18 }, { wch: 10 }, { wch: 28 }, { wch: 50 }, { wch: 35 }
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Data Repositori');
+    XLSX.writeFile(wb, 'template_import_repositori_simta.xlsx');
+  };
+
+  const handleExcelUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setExcelFile(file);
+    setExcelError('');
+    setExcelRows([]);
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const bstr = evt.target.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const rawJson = XLSX.utils.sheet_to_json(ws, { defval: '' });
+
+        if (!rawJson || rawJson.length === 0) {
+          setExcelError('Berkas Excel kosong atau tidak memiliki baris data.');
+          return;
+        }
+
+        const existingTitles = new Set(thesisArchives.map(a => String(a.judul || '').trim().toLowerCase()));
+        const seenInFile = new Set();
+
+        const validated = rawJson.map((row, idx) => {
+          const normRow = {};
+          Object.keys(row).forEach(k => {
+            const cleanKey = k.toLowerCase().replace(/[\s\-_.]/g, '');
+            normRow[cleanKey] = String(row[k]).trim();
+          });
+
+          const judul = normRow['judul'] || normRow['judultugasakhir'] || normRow['title'] || '';
+          const penulis_nama = normRow['penulis'] || normRow['penulisnama'] || normRow['namamahasiswa'] || normRow['author'] || '';
+          const penulis_nim = normRow['nim'] || normRow['penulisnim'] || '';
+          const tahun_ta = normRow['tahun'] || normRow['tahunta'] || normRow['tahunlulus'] || '2024';
+          const prodi = normRow['programstudi'] || normRow['prodi'] || 'D3 Manajemen Informatika';
+          const abstrak = normRow['abstrak'] || normRow['abstract'] || '';
+          const link_repo_unsri = normRow['linkrepository'] || normRow['linkrepo'] || normRow['url'] || '';
+
+          let rowStatus = 'valid';
+          let message = 'Siap diimpor';
+
+          const titleLower = judul.toLowerCase();
+          if (!judul || !penulis_nama || !penulis_nim) {
+            rowStatus = 'invalid';
+            message = 'Judul, Penulis, atau NIM tidak lengkap';
+          } else if (existingTitles.has(titleLower)) {
+            rowStatus = 'duplicate';
+            message = 'Judul sudah terdaftar di database repositori';
+          } else if (seenInFile.has(titleLower)) {
+            rowStatus = 'duplicate';
+            message = 'Judul duplikat di dalam file ini';
+          } else {
+            seenInFile.add(titleLower);
+          }
+
+          return {
+            rowNumber: idx + 2,
+            judul,
+            penulis_nama,
+            penulis_nim,
+            tahun_ta,
+            prodi,
+            abstrak,
+            link_repo_unsri,
+            rowStatus,
+            message
+          };
+        });
+
+        setExcelRows(validated);
+      } catch (err) {
+        console.error('Error parsing excel:', err);
+        setExcelError('Gagal membaca file Excel. Pastikan berkas .xlsx atau .xls valid.');
+      }
+    };
+    reader.readAsBinaryString(file);
+  };
+
+  const handleProcessExcelImport = async () => {
+    const validRows = excelRows.filter(r => r.rowStatus === 'valid');
+    if (validRows.length === 0) {
+      showNotification('Tidak ada data valid yang dapat diimpor!', 'error');
+      return;
+    }
+
+    setIsExcelImporting(true);
+    const formattedPayload = validRows.map(r => ({
+      judul: r.judul,
+      penulis_nama: r.penulis_nama,
+      penulis_nim: r.penulis_nim,
+      tahun_ta: r.tahun_ta,
+      prodi: r.prodi,
+      abstrak: r.abstrak,
+      link_repo_unsri: r.link_repo_unsri
+    }));
+
+    const importedCount = batchImportRepositoryArchives(formattedPayload);
+    setIsExcelImporting(false);
+    setShowExcelImportModal(false);
+    setExcelFile(null);
+    setExcelRows([]);
+
+    const skipped = excelRows.length - importedCount;
+    showNotification(`Berhasil mengimpor ${importedCount} karya tugas akhir ke repositori (${skipped} dilewati/duplikat).`, 'success');
   };
 
   // Export Data Handlers
@@ -222,18 +355,15 @@ export default function ManajemenRepositoryAdminPage() {
   };
 
   const handleExportCSV = () => {
-    const headers = ['ID', 'Judul', 'Penulis', 'NIM', 'Prodi', 'Pembimbing 1', 'Pembimbing 2', 'Tahun TA', 'Link Repo UNSRI', 'Status'];
+    const headers = ['ID', 'Judul', 'Penulis', 'NIM', 'Prodi', 'Tahun TA', 'Link Repo UNSRI'];
     const rows = filteredArchives.map(a => [
       `"${a.id || ''}"`,
       `"${(a.judul || '').replace(/"/g, '""')}"`,
       `"${(a.penulis_nama || '').replace(/"/g, '""')}"`,
       `"${a.penulis_nim || ''}"`,
       `"${a.prodi || ''}"`,
-      `"${(a.pembimbing_1 || a.dosen_pa || '').replace(/"/g, '""')}"`,
-      `"${(a.pembimbing_2 || '').replace(/"/g, '""')}"`,
       `"${a.tahun_ta || ''}"`,
-      `"${a.link_repo_unsri || ''}"`,
-      `"${a.status || 'dipublikasikan'}"`
+      `"${a.link_repo_unsri || ''}"`
     ]);
     const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -302,8 +432,6 @@ export default function ManajemenRepositoryAdminPage() {
               penulis_nama: obj.penulis_nama || obj.nama || obj.author || obj['nama mahasiswa'],
               penulis_nim: obj.penulis_nim || obj.nim,
               prodi: obj.prodi || obj.jurusan || 'D3 Manajemen Informatika',
-              pembimbing_1: obj.pembimbing_1 || obj.pembimbing || obj.dospem,
-              pembimbing_2: obj.pembimbing_2,
               tahun_ta: obj.tahun_ta || obj.tahun || obj.year || '2024',
               abstrak: obj.abstrak || obj.abstract || '',
               link_repo_unsri: obj.link_repo_unsri || obj.link || obj.url
@@ -409,11 +537,24 @@ export default function ManajemenRepositoryAdminPage() {
             </button>
 
             <button
+              onClick={() => {
+                setExcelFile(null);
+                setExcelRows([]);
+                setExcelError('');
+                setShowExcelImportModal(true);
+              }}
+              className="inline-flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/30 transition-all cursor-pointer"
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              <span>Import Excel</span>
+            </button>
+
+            <button
               onClick={() => setShowImportModal(true)}
               className="inline-flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold border border-white/20 backdrop-blur-sm transition-all cursor-pointer"
             >
               <Upload className="w-4 h-4" />
-              <span>Impor Data (JSON/CSV)</span>
+              <span>Impor JSON/CSV</span>
             </button>
 
             <button
@@ -458,12 +599,12 @@ export default function ManajemenRepositoryAdminPage() {
         </div>
 
         <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-2xs">
-          <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Terpublikasi di Arsip</div>
+          <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Rentang Tahun</div>
           <div className="mt-1 text-2xl font-black text-emerald-600 flex items-center justify-between">
-            <span>{stats.dipublikasikan.toLocaleString()}</span>
-            <CheckCircle2 className="w-5 h-5 text-emerald-500/70" />
+            <span>{stats.totalTahun} Tahun</span>
+            <Calendar className="w-5 h-5 text-emerald-500/70" />
           </div>
-          <span className="text-[10px] text-emerald-600/80 font-medium">Tayang di Arsip Publik</span>
+          <span className="text-[10px] text-emerald-600/80 font-medium">Periode Arsip Karya</span>
         </div>
 
         <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-2xs">
@@ -508,7 +649,7 @@ export default function ManajemenRepositoryAdminPage() {
                 type="text"
                 value={searchTerm}
                 onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-                placeholder="Cari judul tugas akhir, nama mahasiswa, NIM, pembimbing, ID eprints..."
+                placeholder="Cari judul tugas akhir, nama mahasiswa, NIM, ID eprints..."
                 className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all shadow-2xs"
               />
               {searchTerm && (
@@ -548,19 +689,6 @@ export default function ManajemenRepositoryAdminPage() {
               </div>
 
               <div className="flex items-center space-x-1.5 bg-white px-2.5 py-1.5 rounded-xl border border-slate-200 shadow-2xs">
-                <span className="text-[11px] font-bold text-slate-400">Status:</span>
-                <select
-                  value={selectedStatus}
-                  onChange={(e) => { setSelectedStatus(e.target.value); setCurrentPage(1); }}
-                  className="bg-transparent text-xs font-semibold text-slate-700 focus:outline-none cursor-pointer"
-                >
-                  <option value="Semua">Semua Status</option>
-                  <option value="dipublikasikan">Dipublikasikan</option>
-                  <option value="draf">Draf / Belum Publish</option>
-                </select>
-              </div>
-
-              <div className="flex items-center space-x-1.5 bg-white px-2.5 py-1.5 rounded-xl border border-slate-200 shadow-2xs">
                 <span className="text-[11px] font-bold text-slate-400">Urutan:</span>
                 <select
                   value={sortBy}
@@ -586,12 +714,6 @@ export default function ManajemenRepositoryAdminPage() {
               </div>
               <div className="flex items-center space-x-2">
                 <button
-                  onClick={handleBulkPublish}
-                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold transition-all cursor-pointer"
-                >
-                  Publikasikan Massal
-                </button>
-                <button
                   onClick={handleBulkDelete}
                   className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-semibold transition-all cursor-pointer"
                 >
@@ -609,11 +731,11 @@ export default function ManajemenRepositoryAdminPage() {
         </div>
 
         {/* Repositories Data Table */}
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto table-scroll-container overscroll-contain">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">
-                <th className="p-3.5 pl-5 w-10">
+                <th className="p-2.5 pl-4 w-9">
                   <input
                     type="checkbox"
                     onChange={handleSelectAll}
@@ -621,19 +743,18 @@ export default function ManajemenRepositoryAdminPage() {
                     className="rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
                   />
                 </th>
-                <th className="p-3.5 w-16">No / ID</th>
-                <th className="p-3.5 min-w-[340px]">Judul Tugas Akhir &amp; Abstrak</th>
-                <th className="p-3.5 min-w-[200px]">Mahasiswa / Penulis</th>
-                <th className="p-3.5 min-w-[200px]">Dosen Pembimbing</th>
-                <th className="p-3.5 w-24">Tahun</th>
-                <th className="p-3.5 w-32">Status</th>
-                <th className="p-3.5 pr-5 text-right w-36">Aksi</th>
+                <th className="p-2.5 w-14 text-center">No / ID</th>
+                <th className="p-2.5 min-w-[240px]">Judul Tugas Akhir &amp; Abstrak</th>
+                <th className="p-2.5 w-44">Mahasiswa / Penulis</th>
+                <th className="p-2.5 w-40">Program Studi</th>
+                <th className="p-2.5 w-20 text-center">Tahun</th>
+                <th className="p-2.5 pr-4 text-right w-24">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
               {paginatedArchives.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="py-16 text-center">
+                  <td colSpan="7" className="py-16 text-center">
                     <div className="flex flex-col items-center justify-center space-y-3">
                       <div className="p-4 rounded-2xl bg-indigo-50 text-indigo-400">
                         <Database className="w-10 h-10" />
@@ -643,7 +764,7 @@ export default function ManajemenRepositoryAdminPage() {
                         Coba sesuaikan kata kunci pencarian, filter prodi/tahun, atau gunakan menu Tambah Dokumen Manual / Impor Data untuk memuat data.
                       </p>
                       <button
-                        onClick={() => { setSearchTerm(''); setSelectedProdi('Semua'); setSelectedTahun('Semua'); setSelectedStatus('Semua'); }}
+                        onClick={() => { setSearchTerm(''); setSelectedProdi('Semua'); setSelectedTahun('Semua'); }}
                         className="mt-2 text-xs font-semibold text-indigo-600 hover:text-indigo-800 cursor-pointer underline"
                       >
                         Reset Filter
@@ -662,7 +783,7 @@ export default function ManajemenRepositoryAdminPage() {
                       key={item.id || idx}
                       className={`hover:bg-slate-50/80 transition-colors ${isSelected ? 'bg-indigo-50/40' : ''}`}
                     >
-                      <td className="p-3.5 pl-5">
+                      <td className="p-2.5 pl-4">
                         <input
                           type="checkbox"
                           checked={isSelected}
@@ -671,7 +792,7 @@ export default function ManajemenRepositoryAdminPage() {
                         />
                       </td>
 
-                      <td className="p-3.5 font-mono text-[11px] text-slate-400 font-semibold">
+                      <td className="p-2.5 text-center font-mono text-[11px] text-slate-400 font-semibold whitespace-nowrap">
                         <div>#{rowNumber}</div>
                         {eprintId && (
                           <span className="text-[10px] text-indigo-500 font-bold">
@@ -680,25 +801,23 @@ export default function ManajemenRepositoryAdminPage() {
                         )}
                       </td>
 
-                      <td className="p-3.5">
-                        <div className="space-y-1 max-w-lg">
+                      <td className="p-2.5">
+                        <div className="space-y-1">
                           <button
                             onClick={() => setShowDetailModal(item)}
+                            title={item.judul}
                             className="text-left font-bold text-slate-900 hover:text-indigo-600 transition-colors line-clamp-2 cursor-pointer leading-snug"
                           >
                             {item.judul}
                           </button>
 
                           {item.abstrak && (
-                            <p className="text-[11px] text-slate-400 line-clamp-1 italic font-serif">
-                              "{item.abstrak.slice(0, 140)}..."
+                            <p className="text-[11px] text-slate-400 line-clamp-1 italic font-serif" title={item.abstrak}>
+                              "{item.abstrak.slice(0, 120)}..."
                             </p>
                           )}
 
                           <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[10px] font-medium">
-                              {item.prodi || 'D3 Manajemen Informatika'}
-                            </span>
                             {item.link_repo_unsri && (
                               <a
                                 href={item.link_repo_unsri}
@@ -714,10 +833,10 @@ export default function ManajemenRepositoryAdminPage() {
                         </div>
                       </td>
 
-                      <td className="p-3.5">
+                      <td className="p-2.5">
                         <div className="space-y-0.5">
-                          <div className="font-bold text-slate-900 flex items-center space-x-1.5">
-                            <span>{item.penulis_nama || '-'}</span>
+                          <div className="font-bold text-slate-900 truncate max-w-[170px]" title={item.penulis_nama || '-'}>
+                            {item.penulis_nama || '-'}
                           </div>
                           <div className="font-mono text-[11px] text-slate-500">
                             NIM: {item.penulis_nim || '-'}
@@ -725,40 +844,19 @@ export default function ManajemenRepositoryAdminPage() {
                         </div>
                       </td>
 
-                      <td className="p-3.5">
-                        <div className="space-y-0.5">
-                          <div className="text-xs text-slate-800 font-medium line-clamp-1">
-                            {item.pembimbing_1 || item.dosen_pa || '-'}
-                          </div>
-                          {item.pembimbing_2 && (
-                            <div className="text-[11px] text-slate-500 line-clamp-1">
-                              2: {item.pembimbing_2}
-                            </div>
-                          )}
-                        </div>
+                      <td className="p-2.5">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-700 text-[11px] font-semibold border border-indigo-100 truncate max-w-[150px]" title={item.prodi || 'D3 Manajemen Informatika'}>
+                          {item.prodi || 'D3 Manajemen Informatika'}
+                        </span>
                       </td>
 
-                      <td className="p-3.5 font-bold text-slate-800">
-                        <span className="px-2 py-1 rounded-lg bg-slate-100 text-slate-700 text-xs">
+                      <td className="p-2.5 text-center font-bold text-slate-800 whitespace-nowrap">
+                        <span className="px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 text-xs font-semibold">
                           {item.tahun_ta || item.tahun_lulus || '-'}
                         </span>
                       </td>
 
-                      <td className="p-3.5">
-                        {(item.status || 'dipublikasikan') === 'dipublikasikan' ? (
-                          <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-bold border border-emerald-200">
-                            <CheckCircle2 className="w-3 h-3" />
-                            <span>Dipublikasikan</span>
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 text-[11px] font-bold border border-amber-200">
-                            <Sparkles className="w-3 h-3" />
-                            <span>Draf / Scraped</span>
-                          </span>
-                        )}
-                      </td>
-
-                      <td className="p-3.5 pr-5 text-right">
+                      <td className="p-2.5 pr-4 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end space-x-1">
                           <button
                             onClick={() => setShowDetailModal(item)}
@@ -876,16 +974,6 @@ export default function ManajemenRepositoryAdminPage() {
                 <span className="text-[10px] font-bold text-slate-400 uppercase">Program Studi &amp; Tahun</span>
                 <p className="font-bold text-indigo-700">{showDetailModal.prodi || 'D3 Manajemen Informatika'}</p>
                 <p className="text-slate-500">Tahun TA / Lulus: {showDetailModal.tahun_ta || showDetailModal.tahun_lulus || '-'}</p>
-              </div>
-
-              <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-100 space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase">Dosen Pembimbing 1 / PA</span>
-                <p className="font-bold text-slate-900">{showDetailModal.pembimbing_1 || showDetailModal.dosen_pa || '-'}</p>
-              </div>
-
-              <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-100 space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase">Dosen Pembimbing 2 / Penguji</span>
-                <p className="font-bold text-slate-900">{showDetailModal.pembimbing_2 || showDetailModal.penguji_1 || '-'}</p>
               </div>
             </div>
 
@@ -1039,6 +1127,197 @@ export default function ManajemenRepositoryAdminPage() {
                 Impor ke Repositori
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: IMPORT DATA REPOSITORI VIA EXCEL (.XLSX / .XLS) */}
+      {/* ========================================================================= */}
+      {showExcelImportModal && (
+        <div data-lenis-prevent className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in overflow-y-auto overscroll-contain">
+          <div data-lenis-prevent className="bg-white rounded-3xl max-w-4xl w-full max-h-[92vh] overflow-y-auto shadow-2xl border border-slate-200 space-y-5 p-6 sm:p-8 my-auto overscroll-contain">
+            
+            {/* Modal Header */}
+            <div className="flex items-start justify-between border-b border-slate-100 pb-4">
+              <div className="space-y-1">
+                <div className="inline-flex items-center space-x-2 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200">
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Import Massal Dokumen Repositori</span>
+                </div>
+                <h2 className="text-lg sm:text-xl font-black text-slate-900">
+                  Import Data Repositori via Excel (.xlsx / .xls)
+                </h2>
+                <p className="text-xs text-slate-500">
+                  Unggah file Excel berisi judul karya, mahasiswa, NIM, prodi, dan tahun untuk ditambahkan ke repositori tugas akhir secara massal.
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowExcelImportModal(false);
+                  setExcelFile(null);
+                  setExcelRows([]);
+                  setExcelError('');
+                }}
+                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Step 1: Download Template */}
+            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="space-y-0.5">
+                <div className="text-xs font-bold text-slate-800 flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-full bg-indigo-600 text-white text-[10px] font-black inline-flex items-center justify-center">1</span>
+                  <span>Unduh Format Template Resmi</span>
+                </div>
+                <p className="text-[11px] text-slate-500 pl-7">
+                  Format kolom: Judul, Penulis, NIM, Tahun, Program Studi, Abstrak, Link Repository.
+                </p>
+              </div>
+              <button
+                onClick={handleDownloadExcelTemplate}
+                className="inline-flex items-center space-x-2 px-4 py-2 bg-white hover:bg-slate-100 text-emerald-700 font-bold text-xs rounded-xl border border-emerald-300 shadow-2xs transition-all cursor-pointer shrink-0"
+              >
+                <Download className="w-4 h-4 text-emerald-600" />
+                <span>Unduh Template .xlsx</span>
+              </button>
+            </div>
+
+            {/* Step 2: Upload Dropzone */}
+            <div className="space-y-2">
+              <div className="text-xs font-bold text-slate-800 flex items-center gap-2">
+                <span className="w-5 h-5 rounded-full bg-indigo-600 text-white text-[10px] font-black inline-flex items-center justify-center">2</span>
+                <span>Pilih Berkas Excel Hasil Pengisian</span>
+              </div>
+
+              <input
+                ref={excelInputRef}
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={handleExcelUpload}
+                className="hidden"
+              />
+
+              <div
+                onClick={() => excelInputRef.current?.click()}
+                className="border-2 border-dashed border-slate-200 hover:border-indigo-400 rounded-2xl p-6 text-center transition-colors bg-slate-50/50 cursor-pointer group"
+              >
+                <div className="flex flex-col items-center space-y-2">
+                  <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl group-hover:bg-emerald-100 transition-colors">
+                    <Upload className="w-6 h-6" />
+                  </div>
+                  <span className="text-xs font-bold text-slate-700 group-hover:text-indigo-600 transition-colors">
+                    {excelFile ? `Berkas Terpilih: ${excelFile.name}` : 'Klik untuk memilih berkas Excel (.xlsx / .xls)'}
+                  </span>
+                  <span className="text-[11px] text-slate-400">
+                    Sistem akan memvalidasi kolom dan mencegah duplikasi judul yang sudah ada di database.
+                  </span>
+                </div>
+              </div>
+
+              {excelError && (
+                <div className="p-3 rounded-xl bg-red-50 text-red-700 border border-red-200 text-xs font-medium flex items-center space-x-2">
+                  <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
+                  <span>{excelError}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Step 3: Data Preview & Validation */}
+            {excelRows.length > 0 && (
+              <div className="space-y-3 pt-2 border-t border-slate-100">
+                <div className="flex items-center justify-between">
+                  <div className="text-xs font-bold text-slate-800 flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-full bg-indigo-600 text-white text-[10px] font-black inline-flex items-center justify-center">3</span>
+                    <span>Hasil Validasi &amp; Pratinjau Data ({excelRows.length} Baris)</span>
+                  </div>
+
+                  <div className="flex items-center gap-2 text-[11px] font-semibold">
+                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      {excelRows.filter(r => r.rowStatus === 'valid').length} Valid
+                    </span>
+                    {excelRows.filter(r => r.rowStatus !== 'valid').length > 0 && (
+                      <span className="px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                        {excelRows.filter(r => r.rowStatus !== 'valid').length} Duplikat / Lewati
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="max-h-60 overflow-y-auto rounded-xl border border-slate-200 text-xs">
+                  <table className="w-full text-left border-collapse">
+                    <thead className="bg-slate-50 text-[10px] font-bold text-slate-500 uppercase tracking-wider sticky top-0 border-b border-slate-200">
+                      <tr>
+                        <th className="p-2.5 pl-3 w-10">No</th>
+                        <th className="p-2.5 min-w-[200px]">Judul Tugas Akhir</th>
+                        <th className="p-2.5 min-w-[140px]">Penulis</th>
+                        <th className="p-2.5 w-28">NIM</th>
+                        <th className="p-2.5 w-36">Prodi</th>
+                        <th className="p-2.5 w-16">Tahun</th>
+                        <th className="p-2.5 pr-3 w-32">Status Verifikasi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-[11px] text-slate-700">
+                      {excelRows.map((row, idx) => (
+                        <tr key={idx} className={row.rowStatus === 'valid' ? 'hover:bg-slate-50' : 'bg-amber-50/40'}>
+                          <td className="p-2.5 pl-3 font-mono text-slate-400">{row.rowNumber}</td>
+                          <td className="p-2.5 font-bold text-slate-800 line-clamp-1">{row.judul}</td>
+                          <td className="p-2.5 text-slate-700">{row.penulis_nama}</td>
+                          <td className="p-2.5 font-mono text-slate-600">{row.penulis_nim}</td>
+                          <td className="p-2.5 text-slate-600 truncate max-w-[140px]">{row.prodi}</td>
+                          <td className="p-2.5 font-semibold text-slate-700">{row.tahun_ta}</td>
+                          <td className="p-2.5 pr-3">
+                            {row.rowStatus === 'valid' ? (
+                              <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                <span>Valid</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 text-[10px] font-bold border border-amber-200" title={row.message}>
+                                <AlertCircle className="w-3 h-3 text-amber-600" />
+                                <span className="truncate max-w-[100px]">{row.message}</span>
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Modal Footer Actions */}
+            <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowExcelImportModal(false);
+                  setExcelFile(null);
+                  setExcelRows([]);
+                  setExcelError('');
+                }}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={excelRows.filter(r => r.rowStatus === 'valid').length === 0 || isExcelImporting}
+                onClick={handleProcessExcelImport}
+                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all shadow-md disabled:opacity-40 disabled:cursor-not-allowed flex items-center space-x-1.5 cursor-pointer"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                <span>
+                  {isExcelImporting
+                    ? 'Memproses...'
+                    : `Proses & Simpan (${excelRows.filter(r => r.rowStatus === 'valid').length} Data)`}
+                </span>
+              </button>
+            </div>
+
           </div>
         </div>
       )}
@@ -1219,15 +1498,10 @@ function FormRepositoryModal({ item, onClose, onSave }) {
     penulis_nama: item?.penulis_nama || '',
     penulis_nim: item?.penulis_nim || '',
     prodi: item?.prodi || 'D3 Manajemen Informatika',
-    pembimbing_1: item?.pembimbing_1 || item?.dosen_pa || '',
-    pembimbing_2: item?.pembimbing_2 || '',
-    penguji_1: item?.penguji_1 || '',
-    penguji_2: item?.penguji_2 || '',
     tahun_ta: item?.tahun_ta || item?.tahun_lulus || '2024',
     abstrak: item?.abstrak || '',
     link_repo_unsri: item?.link_repo_unsri || '',
-    keywords: item?.keywords || '',
-    status: item?.status || 'dipublikasikan'
+    keywords: item?.keywords || ''
   });
 
   const [errors, setErrors] = useState({});
@@ -1329,30 +1603,6 @@ function FormRepositoryModal({ item, onClose, onSave }) {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="font-bold text-slate-700">Dosen Pembimbing 1 / PA</label>
-                <input
-                  type="text"
-                  value={formData.pembimbing_1}
-                  onChange={(e) => setFormData({ ...formData, pembimbing_1: e.target.value })}
-                  placeholder="Nama Pembimbing 1"
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="font-bold text-slate-700">Dosen Pembimbing 2</label>
-                <input
-                  type="text"
-                  value={formData.pembimbing_2}
-                  onChange={(e) => setFormData({ ...formData, pembimbing_2: e.target.value })}
-                  placeholder="Nama Pembimbing 2 (Opsional)"
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-            </div>
-
             <div className="space-y-1">
               <label className="font-bold text-slate-700">URL Asli Repository UNSRI (E-Print Link)</label>
               <input
@@ -1373,18 +1623,6 @@ function FormRepositoryModal({ item, onClose, onSave }) {
                 placeholder="Isi abstrak atau ringkasan skripsi..."
                 className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-serif"
               />
-            </div>
-
-            <div className="space-y-1">
-              <label className="font-bold text-slate-700">Status Publikasi</label>
-              <select
-                value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              >
-                <option value="dipublikasikan">Dipublikasikan (Tayang di Arsip Publik SIMTA)</option>
-                <option value="draf">Draf / Belum Publish</option>
-              </select>
             </div>
           </div>
 

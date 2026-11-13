@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { Link, Head } from '@inertiajs/react';
 import {
   FileStack,
-  LayoutGrid,
+  FileCheck,
   FileText,
   Clock,
   ArrowRight,
@@ -23,8 +23,8 @@ import {
 export default function DashboardAdminSimta() {
   const {
     adminDocuments = [],
-    adminCmsContents = [],
     adminTemplates = [],
+    adminSops = [],
     thesisArchives = [],
     bookings = [],
     rooms = [],
@@ -64,8 +64,8 @@ export default function DashboardAdminSimta() {
   }, [bookings, rooms]);
 
   const docsList = Array.isArray(adminDocuments) ? adminDocuments : [];
-  const cmsList = Array.isArray(adminCmsContents) ? adminCmsContents : [];
   const tplList = Array.isArray(adminTemplates) ? adminTemplates : [];
+  const sopList = Array.isArray(adminSops) ? adminSops : [];
   const repoList = Array.isArray(thesisArchives) ? thesisArchives : [];
   const resetList = Array.isArray(passwordResetRequests) ? passwordResetRequests : [];
 
@@ -73,10 +73,10 @@ export default function DashboardAdminSimta() {
 
   const totalDokumen = docsList.length;
   const dokumenAktif = docsList.filter(d => d && d.status === 'aktif').length;
-  const totalCms = cmsList.length;
-  const cmsPublikasi = cmsList.filter(c => c && c.status === 'publikasi').length;
   const totalTemplate = tplList.length;
   const templateAktif = tplList.filter(t => t && t.status === 'aktif').length;
+  const totalSop = sopList.length;
+  const sopAktif = sopList.filter(s => s && s.status === 'aktif').length;
   const totalRepo = repoList.length;
   const repoPublish = repoList.filter(a => a && (a.status || 'dipublikasikan') === 'dipublikasikan').length;
 
@@ -84,23 +84,23 @@ export default function DashboardAdminSimta() {
   const recentActivity = useMemo(() => {
     try {
       return [
-        ...docsList.map(d => ({
-          id: d.id, label: d.nama, kategori: 'Dokumen', status: d.status,
-          tanggal: d.tanggal_upload, icon: FileStack, color: 'text-blue-600', bg: 'bg-blue-50'
+        ...sopList.map(s => ({
+          id: s.id, label: s.nama, kategori: 'SOP', status: s.status,
+          tanggal: s.updated_at, icon: FileCheck, color: 'text-emerald-600', bg: 'bg-emerald-50'
         })),
-        ...cmsList.map(c => ({
-          id: c.id, label: c.judul, kategori: 'CMS', status: c.status,
-          tanggal: c.updated_at ? String(c.updated_at).split('T')[0] : '', icon: LayoutGrid, color: 'text-purple-600', bg: 'bg-purple-50'
+        ...docsList.map(d => ({
+          id: d.id, label: d.nama, kategori: 'Surat', status: d.status,
+          tanggal: d.tanggal_upload, icon: FileStack, color: 'text-blue-600', bg: 'bg-blue-50'
         })),
         ...tplList.map(t => ({
           id: t.id, label: t.nama, kategori: 'Template', status: t.status,
-          tanggal: t.updated_at, icon: FileText, color: 'text-emerald-600', bg: 'bg-emerald-50'
+          tanggal: t.updated_at, icon: FileText, color: 'text-indigo-600', bg: 'bg-indigo-50'
         }))
       ].sort((a, b) => (b.tanggal || '').localeCompare(a.tanggal || '')).slice(0, 8);
     } catch {
       return [];
     }
-  }, [docsList, cmsList, tplList]);
+  }, [sopList, docsList, tplList]);
 
   const statusBadge = (status) => {
     if (status === 'aktif' || status === 'publikasi')
@@ -122,7 +122,7 @@ export default function DashboardAdminSimta() {
         </div>
         <h1 className="text-2xl font-extrabold tracking-tight">Dashboard Admin SIMONITA FASILKOM</h1>
         <p className="text-sm text-indigo-100/90 mt-1 max-w-3xl leading-relaxed">
-          Pusat kendali terpadu untuk mengelola persetujuan ruangan sidang, sarana prasarana, master data akun &amp; tugas akhir, dokumen resmi, CMS, dan repositori SIMTA Fasilkom UNSRI.
+          Pusat kendali terpadu untuk mengelola persetujuan ruangan sidang, sarana prasarana, master data akun, regulasi SOP resmi, dokumen template &amp; repositori SIMTA Fasilkom UNSRI.
         </p>
       </div>
 
@@ -169,8 +169,8 @@ export default function DashboardAdminSimta() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
           {/* Antrean Persetujuan Ruangan */}
           <Link href="/admin/bookings"
-            className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-1 hover:border-amber-300 hover:shadow-md transition-all group block">
-            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Antrean Persetujuan Ruangan</div>
+            className="bg-white border border-slate-300 rounded-2xl p-4 shadow-xs space-y-1 hover:border-amber-400 hover:shadow-md transition-all group block">
+            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Antrean Persetujuan Ruangan</div>
             <div className="text-xl font-extrabold text-amber-600 flex items-center justify-between">
               <span>{pendingBookings.length} Pengajuan</span>
               <Clock className="w-5 h-5 text-amber-500/50 group-hover:text-amber-600 transition-colors" />
@@ -186,21 +186,27 @@ export default function DashboardAdminSimta() {
 
           {/* Peminjaman Disetujui */}
           <Link href="/admin/bookings"
-            className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-1 hover:border-emerald-300 hover:shadow-md transition-all group block">
-            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Peminjaman Ruangan Disetujui</div>
+            className="bg-white border border-slate-300 rounded-2xl p-4 shadow-xs space-y-1 hover:border-emerald-400 hover:shadow-md transition-all group block">
+            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Peminjaman Ruangan Disetujui</div>
             <div className="text-xl font-extrabold text-emerald-600 flex items-center justify-between">
               <span>{approvedBookings.length} Terjadwal</span>
               <CheckSquare className="w-5 h-5 text-emerald-500/50 group-hover:text-emerald-600 transition-colors" />
             </div>
             <p className="text-[10px] text-slate-500">
-              <span className="text-emerald-600 font-bold">{approvedBookings.length} sesi</span> ruang sidang aktif
+              {approvedBookings.length > 0 ? (
+                <>
+                  <span className="text-emerald-600 font-bold">{approvedBookings.length} sesi</span> ruang sidang aktif
+                </>
+              ) : (
+                <span className="text-slate-400 font-medium">Belum ada peminjaman aktif</span>
+              )}
             </p>
           </Link>
 
           {/* Ruangan Siap Pakai */}
           <Link href="/admin/rooms"
-            className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-1 hover:border-indigo-300 hover:shadow-md transition-all group block">
-            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Ruang Sidang Siap Pakai</div>
+            className="bg-white border border-slate-300 rounded-2xl p-4 shadow-xs space-y-1 hover:border-indigo-400 hover:shadow-md transition-all group block">
+            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Ruang Sidang Siap Pakai</div>
             <div className="text-xl font-extrabold text-indigo-600 flex items-center justify-between">
               <span>{activeRooms.length} / {rooms.length} Ruang</span>
               <Building2 className="w-5 h-5 text-indigo-400/50 group-hover:text-indigo-600 transition-colors" />
@@ -218,12 +224,12 @@ export default function DashboardAdminSimta() {
           <Database className="w-3.5 h-3.5 text-blue-600" />
           <span>Master Data Akun &amp; Sumber Daya SIMTA</span>
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5">
 
           {/* Akun Mahasiswa */}
           <Link href="/admin-simta/master/mahasiswa"
-            className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-1 hover:border-blue-300 hover:shadow-md transition-all group block">
-            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Data Mahasiswa</div>
+            className="bg-white border border-slate-300 rounded-2xl p-4 shadow-xs space-y-1 hover:border-blue-400 hover:shadow-md transition-all group block">
+            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Data Mahasiswa</div>
             <div className="text-xl font-extrabold text-blue-600 flex items-center justify-between">
               <span>{totalMahasiswa}</span>
               <GraduationCap className="w-5 h-5 text-blue-400/50 group-hover:text-blue-600 transition-colors" />
@@ -235,8 +241,8 @@ export default function DashboardAdminSimta() {
 
           {/* Akun Dosen */}
           <Link href="/admin-simta/master/dosen"
-            className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-1 hover:border-indigo-300 hover:shadow-md transition-all group block">
-            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Data Dosen</div>
+            className="bg-white border border-slate-300 rounded-2xl p-4 shadow-xs space-y-1 hover:border-indigo-400 hover:shadow-md transition-all group block">
+            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Data Dosen</div>
             <div className="text-xl font-extrabold text-indigo-600 flex items-center justify-between">
               <span>{totalDosen}</span>
               <UserCheck className="w-5 h-5 text-indigo-400/50 group-hover:text-indigo-600 transition-colors" />
@@ -248,8 +254,8 @@ export default function DashboardAdminSimta() {
 
           {/* Repositori UNSRI */}
           <Link href="/admin-simta/repository"
-            className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-1 hover:border-amber-300 hover:shadow-md transition-all group block">
-            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Repositori UNSRI</div>
+            className="bg-white border border-slate-300 rounded-2xl p-4 shadow-xs space-y-1 hover:border-amber-400 hover:shadow-md transition-all group block">
+            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Repositori UNSRI</div>
             <div className="text-xl font-extrabold text-amber-600 flex items-center justify-between">
               <span>{totalRepo}</span>
               <Database className="w-5 h-5 text-amber-400/50 group-hover:text-amber-600 transition-colors" />
@@ -259,42 +265,29 @@ export default function DashboardAdminSimta() {
             </p>
           </Link>
 
-          {/* Dokumen / Surat */}
-          <Link href="/admin-simta/documents"
-            className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-1 hover:border-cyan-300 hover:shadow-md transition-all group block">
-            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Dokumen / Surat</div>
-            <div className="text-xl font-extrabold text-cyan-600 flex items-center justify-between">
-              <span>{totalDokumen}</span>
-              <FileStack className="w-5 h-5 text-cyan-400/50 group-hover:text-cyan-600 transition-colors" />
-            </div>
-            <p className="text-[10px] text-slate-500">
-              <span className="text-emerald-600 font-bold">{dokumenAktif} aktif</span>
-            </p>
-          </Link>
-
-          {/* Konten CMS */}
-          <Link href="/admin-simta/cms"
-            className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-1 hover:border-purple-300 hover:shadow-md transition-all group block">
-            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Konten CMS</div>
-            <div className="text-xl font-extrabold text-purple-600 flex items-center justify-between">
-              <span>{totalCms}</span>
-              <LayoutGrid className="w-5 h-5 text-purple-400/50 group-hover:text-purple-600 transition-colors" />
-            </div>
-            <p className="text-[10px] text-slate-500">
-              <span className="text-emerald-600 font-bold">{cmsPublikasi} publikasi</span>
-            </p>
-          </Link>
-
-          {/* Template */}
-          <Link href="/admin-simta/templates"
-            className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-1 hover:border-emerald-300 hover:shadow-md transition-all group block">
-            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Template</div>
+          {/* Standar Operasional (SOP) */}
+          <Link href="/admin-simta/sop"
+            className="bg-white border border-slate-300 rounded-2xl p-4 shadow-xs space-y-1 hover:border-emerald-400 hover:shadow-md transition-all group block">
+            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Regulasi SOP</div>
             <div className="text-xl font-extrabold text-emerald-600 flex items-center justify-between">
-              <span>{totalTemplate}</span>
-              <FileText className="w-5 h-5 text-emerald-400/50 group-hover:text-emerald-600 transition-colors" />
+              <span>{totalSop}</span>
+              <FileCheck className="w-5 h-5 text-emerald-400/50 group-hover:text-emerald-600 transition-colors" />
             </div>
             <p className="text-[10px] text-slate-500">
-              <span className="text-emerald-600 font-bold">{templateAktif} aktif</span>
+              <span className="text-emerald-600 font-bold">{sopAktif} aktif</span>
+            </p>
+          </Link>
+
+          {/* Template & Surat Administrasi */}
+          <Link href="/admin-simta/templates"
+            className="bg-white border border-slate-300 rounded-2xl p-4 shadow-xs space-y-1 hover:border-indigo-400 hover:shadow-md transition-all group block">
+            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Template &amp; Surat</div>
+            <div className="text-xl font-extrabold text-indigo-600 flex items-center justify-between">
+              <span>{totalTemplate + totalDokumen}</span>
+              <FileText className="w-5 h-5 text-indigo-400/50 group-hover:text-indigo-600 transition-colors" />
+            </div>
+            <p className="text-[10px] text-slate-500">
+              <span className="text-emerald-600 font-bold">{templateAktif + dokumenAktif} aktif</span>
             </p>
           </Link>
 
@@ -308,11 +301,11 @@ export default function DashboardAdminSimta() {
           { href: '/admin/rooms', Icon: Building2, color: 'indigo', title: 'Kelola Ruangan', sub: 'Fasilitas & gedung' },
           { href: '/admin-simta/accounts/password-resets', Icon: KeyRound, color: 'rose', title: 'Reset Sandi', sub: `${pendingResetRequests} antrean` },
           { href: '/admin-simta/master/mahasiswa', Icon: GraduationCap, color: 'blue', title: 'Data Mahasiswa', sub: 'Status & data' },
-          { href: '/admin-simta/master/dosen', Icon: UserCheck, color: 'purple', title: 'Data Dosen', sub: 'Jabatan & kuota' },
-          { href: '/admin-simta/documents', Icon: FileStack, color: 'cyan', title: 'Kelola Dokumen', sub: 'Upload surat resmi' }
+          { href: '/admin-simta/sop', Icon: FileCheck, color: 'emerald', title: 'Regulasi SOP', sub: 'Standar operasional' },
+          { href: '/admin-simta/templates', Icon: FileText, color: 'cyan', title: 'Template & Surat', sub: 'Berkas resmi SIMTA' }
         ].map(({ href, Icon, color, title, sub }) => (
           <Link key={href} href={href}
-            className="flex items-center justify-between bg-white border border-slate-200 rounded-2xl px-4 py-3.5 hover:border-slate-300 hover:shadow-md transition-all group">
+            className="flex items-center justify-between bg-white border border-slate-300 rounded-2xl px-4 py-3.5 hover:border-slate-400 hover:shadow-md transition-all group shadow-xs">
             <div className="flex items-center space-x-3 min-w-0">
               <div className={`w-8 h-8 rounded-xl bg-${color}-50 flex items-center justify-center shrink-0`}>
                 <Icon className={`w-4 h-4 text-${color}-600`} />
@@ -359,7 +352,7 @@ export default function DashboardAdminSimta() {
       )}
 
       {/* Section: Aktivitas Terbaru */}
-      <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs space-y-4">
+      <div className="bg-white border border-slate-300 rounded-2xl p-5 shadow-xs space-y-4">
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <h3 className="text-sm font-bold text-slate-900 flex items-center space-x-2">
             <Clock className="w-4 h-4 text-indigo-600" />

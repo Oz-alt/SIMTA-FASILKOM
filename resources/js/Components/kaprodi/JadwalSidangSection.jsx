@@ -64,7 +64,7 @@ export default function JadwalSidangSection({ showHeaderBanner = true }) {
     tanggal: new Date().toISOString().split('T')[0],
     waktu_mulai: '09:00',
     waktu_selesai: '10:30',
-    ruangan: 'Ruang Sidang Utama DIPKOM',
+    ruangan: 'Ruang Sidang MI',
     ketua_penguji_nama: '',
     ketua_penguji_nip: '',
     sekretaris_nama: '',
@@ -114,7 +114,7 @@ export default function JadwalSidangSection({ showHeaderBanner = true }) {
       tanggal: sch.tanggal || new Date().toISOString().split('T')[0],
       waktu_mulai: sch.waktu_mulai || '09:00',
       waktu_selesai: sch.waktu_selesai || '10:30',
-      ruangan: sch.ruangan || 'Ruang Sidang Utama DIPKOM',
+      ruangan: sch.ruangan || 'Ruang Sidang MI',
       ketua_penguji_nama: sch.ketua_penguji_nama || '',
       ketua_penguji_nip: sch.ketua_penguji_nip || '',
       sekretaris_nama: sch.sekretaris_nama || '',
@@ -226,15 +226,14 @@ export default function JadwalSidangSection({ showHeaderBanner = true }) {
     }
   };
 
-  // Available room names
+  // Available room names (Sesuai 4 Ruang Sidang Resmi)
   const availableRooms = useMemo(() => {
     const list = rooms && rooms.length > 0 ? rooms.map(r => r.name) : [];
     const defaults = [
-      'Ruang Sidang Utama DIPKOM',
-      'Ruang Seminar DIPKOM Lt. 2',
-      'Ruang Sidang Diklat A',
-      'Ruang Sidang Diklat B',
-      'Online Zoom Meeting'
+      'Ruang Sidang MI',
+      'Ruang Sidang KA',
+      'Ruang Sidang TK',
+      'Ruang Sidang Lantai 3 di Gedung Diklat'
     ];
     return Array.from(new Set([...list, ...defaults]));
   }, [rooms]);
