@@ -161,22 +161,16 @@ export default function Sidebar() {
           groups: [
             {
               id: 'bimbingan',
-              label: 'Menu Bimbingan',
+              label: 'Manajemen Bimbingan',
               icon: FileCheck,
               items: [
-                { to: '/dosen/mahasiswa', label: 'Progres Monitoring' },
-                { to: '/dosen/validasi-judul', label: 'Validasi Usulan Judul' },
-                { to: '/dosen/rekap', label: 'Rekap Bimbingan' }
-              ]
-            },
-            {
-              id: 'lainnya',
-              label: 'Layanan dan Akun',
-              icon: Settings,
-              items: [
-                { to: '/dosen/jadwal-sidang', label: 'Jadwal Sidang TA' }
+                { to: '/dosen/mahasiswa', label: 'Progres Mahasiswa' },
+                { to: '/dosen/rekap', label: 'Evaluasi Bimbingan' }
               ]
             }
+          ],
+          bottomItems: [
+            { to: '/dosen/jadwal-sidang', label: 'Jadwal Sidang', icon: CalendarDays }
           ]
         };
 
@@ -266,7 +260,8 @@ export default function Sidebar() {
       const allItems = [
         ...(menuData.dashboard ? [menuData.dashboard] : []),
         ...(menuData.items || []),
-        ...(menuData.groups?.flatMap(g => g.items) || [])
+        ...(menuData.groups?.flatMap(g => g.items) || []),
+        ...(menuData.bottomItems || [])
       ];
       const hasExactMatch = allItems.some(i => {
         const p = (i.to || '').split('?')[0].replace(/\/+$/, '') || '/';
@@ -440,6 +435,32 @@ export default function Sidebar() {
                     </div>
                   </div>
                 </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Standalone Bottom Navigation Items (e.g. Jadwal Sidang for Dosen) */}
+        {menuData.bottomItems && menuData.bottomItems.length > 0 && (
+          <div className="border-t border-slate-100 pt-2 space-y-1">
+            {menuData.bottomItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = isRouteActive(item.to);
+              return (
+                <Link
+                  key={item.to}
+                  href={item.to}
+                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                    isActive
+                      ? 'bg-indigo-50 text-indigo-700 border-l-4 border-indigo-600 shadow-2xs'
+                      : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
+                  }`}
+                >
+                  <div className="flex items-center space-x-3">
+                    {Icon && <Icon className={`w-4 h-4 ${isActive ? 'text-indigo-600' : 'text-slate-500'}`} />}
+                    <span>{item.label}</span>
+                  </div>
+                </Link>
               );
             })}
           </div>

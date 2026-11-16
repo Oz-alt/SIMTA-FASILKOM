@@ -607,9 +607,9 @@ export default function Navbar() {
           }
         }
       }
-      // 2. Validasi judul (/dosen/validasi-judul atau /kaprodi/titles)
-      else if (url.includes('/dosen/validasi-judul') || url.includes('/kaprodi/titles')) {
-        if (n.related_type === 'thesis_title' || n.related_type === 'thesis_title_revised' || (n.action_url && (n.action_url.includes('/dosen/validasi-judul') || n.action_url.includes('/kaprodi/titles')))) {
+      // 2. Validasi judul (/dosen/rekap atau /kaprodi/titles)
+      else if (url.includes('/dosen/rekap') || url.includes('/dosen/validasi-judul') || url.includes('/kaprodi/titles')) {
+        if (n.related_type === 'thesis_title' || n.related_type === 'thesis_title_revised' || (n.action_url && (n.action_url.includes('/dosen/validasi-judul') || n.action_url.includes('/dosen/rekap') || n.action_url.includes('/kaprodi/titles')))) {
           isMatch = true;
         }
       }
@@ -743,7 +743,7 @@ export default function Navbar() {
     // 4. Judul TA
     if (n.related_id && (n.related_type === 'thesis_title' || n.related_type === 'thesis_title_revised')) {
       if (userRole === 'dosen') {
-        router.visit('/dosen/validasi-judul');
+        router.visit('/dosen/rekap');
       } else {
         router.visit(`/kaprodi/titles/${n.related_id}`);
       }

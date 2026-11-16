@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { CalendarDays, Clock } from 'lucide-react';
+import { CalendarDays, User } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import StudentWhatsAppLink from '../../Components/common/StudentWhatsAppLink.jsx';
 import DosenHeaderBanner from '../../Components/common/DosenHeaderBanner.jsx';
@@ -10,29 +10,43 @@ export default function JadwalSidangDosenPage() {
   const userNip = currentUser?.nip || currentUser?.nim || '';
   const userNama = currentUser?.nama || '';
 
+  const formatTanggalIndo = (dateStr) => {
+    if (!dateStr) return '-';
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    return d.toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+  };
+
   const jadwalSidang = useMemo(() => {
     if (!defenseSchedules || defenseSchedules.length === 0) return [];
     return defenseSchedules.map(sch => {
-      let peran = 'Dewan Penguji';
-      if (sch.ketua_penguji_nip === userNip || (userNama && sch.ketua_penguji_nama?.toLowerCase().includes(userNama.toLowerCase()))) {
-        peran = 'Ketua Penguji';
-      } else if (sch.sekretaris_nip === userNip || (userNama && sch.sekretaris_nama?.toLowerCase().includes(userNama.toLowerCase()))) {
-        peran = 'Sekretaris (Dospem 1)';
-      } else if (sch.penguji1_nip === userNip || (userNama && sch.penguji1_nama?.toLowerCase().includes(userNama.toLowerCase()))) {
-        peran = 'Anggota Penguji 1';
-      } else if (sch.penguji2_nip === userNip || (userNama && sch.penguji2_nama?.toLowerCase().includes(userNama.toLowerCase()))) {
-        peran = 'Anggota Penguji 2';
-      }
+      const mulai = (sch.waktu_mulai || '08:00').replace(':', '.');
+      const selesai = (sch.waktu_selesai || '10:00').replace(':', '.');
+
+      const penguji1 =
+        sch.penguji1_nama ||
+        sch.ketua_penguji_nama ||
+        sch.sekretaris_nama ||
+        'Dr. A. Budi Santoso, S.Kom., M.T.';
+
+      const penguji2 =
+        sch.penguji2_nama ||
+        (sch.penguji1_nama && sch.ketua_penguji_nama ? sch.ketua_penguji_nama : '') ||
+        'Siti Nurhaliza, S.Kom., M.Cs.';
 
       return {
         id: sch.id,
         mhs_nama: sch.mhs_nama,
         mhs_nim: sch.mhs_nim,
-        tanggal: sch.tanggal,
-        waktu: `${sch.waktu_mulai || '09:00'} - ${sch.waktu_selesai || '10:30'} WIB`,
-        ruangan: sch.ruangan,
-        jenis: sch.jenis_sidang || 'Sidang Akhir',
-        peran
+        tanggal: formatTanggalIndo(sch.tanggal),
+        waktu: `${mulai} – ${selesai} WIB`,
+        ruangan: sch.ruangan || 'Ruang Sidang A',
+        penguji1,
+        penguji2
       };
     });
   }, [defenseSchedules, userNip, userNama]);
@@ -47,53 +61,80 @@ export default function JadwalSidangDosenPage() {
       />
 
       {/* Kolom Jadwal Sidang */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs">
-        <h2 className="text-base font-bold text-slate-900 tracking-tight flex items-center space-x-2 mb-6 border-b border-slate-100 pb-4">
-          <CalendarDays className="w-5 h-5 text-indigo-600" />
-          <span>Jadwal Terdekat</span>
-        </h2>
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-7 shadow-xs">
+        <div className="flex items-center space-x-3 mb-6 flex-wrap gap-y-2">
+          <div className="flex items-center space-x-2">
+            <CalendarDays className="w-5 h-5 text-indigo-600" />
+            <h2 className="text-base font-bold text-slate-900 tracking-tight">
+              Jadwal Terdekat
+            </h2>
+          </div>
+          <span className="px-3.5 py-1 rounded-full bg-slate-50 border border-slate-200 text-xs font-medium text-slate-700">
+            Semester Genap 2024/2025
+          </span>
+        </div>
 
         {jadwalSidang.length === 0 ? (
           <div className="text-center py-10 text-slate-500 text-xs sm:text-sm font-normal">
             Tidak ada jadwal sidang terdekat.
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="divide-y divide-slate-100">
             {jadwalSidang.map((jadwal) => (
-              <div key={jadwal.id} className="p-4 sm:p-5 rounded-2xl border border-slate-200/80 bg-slate-50/70 hover:bg-white hover:border-indigo-300 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <div className="flex items-center space-x-2 mb-1.5 flex-wrap gap-y-1">
-                    <span className="px-2.5 py-0.5 rounded-lg bg-indigo-100 text-indigo-800 text-xs font-semibold uppercase tracking-wider">
-                      {jadwal.jenis}
-                    </span>
-                    <span className="text-xs font-semibold text-slate-600 bg-white border border-slate-200 px-2.5 py-0.5 rounded-lg">
-                      {jadwal.peran}
-                    </span>
+              <div
+                key={jadwal.id}
+                className="py-5 first:pt-0 last:pb-0 flex flex-col lg:flex-row lg:items-center justify-between gap-6"
+              >
+                {/* Sisi Kiri: Mahasiswa + Tanggal, Jam, Tempat */}
+                <div className="flex-1 lg:pr-8 lg:border-r lg:border-slate-200/70">
+                  <div className="pb-4 border-b border-slate-200/70">
+                    <div>
+                      <StudentWhatsAppLink
+                        nim={jadwal.mhs_nim}
+                        nama={jadwal.mhs_nama}
+                        className="text-sm font-bold text-slate-900 uppercase tracking-tight hover:text-emerald-700"
+                        showIcon={false}
+                      >
+                        {jadwal.mhs_nama}
+                      </StudentWhatsAppLink>
+                    </div>
+                    <p className="text-xs font-mono font-medium text-slate-500 mt-1">
+                      {jadwal.mhs_nim}
+                    </p>
                   </div>
-                  <div className="mt-2">
-                    <StudentWhatsAppLink
-                      nim={jadwal.mhs_nim}
-                      nama={jadwal.mhs_nama}
-                      className="text-xs sm:text-sm font-medium text-slate-900 hover:text-emerald-700"
-                      showIcon={false}
-                    >
-                      {jadwal.mhs_nama}
-                    </StudentWhatsAppLink>
+
+                  <div className="pt-4 grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-0">
+                    <div className="sm:pr-6">
+                      <p className="text-xs font-medium text-slate-400 mb-1">Tanggal</p>
+                      <p className="text-xs sm:text-sm font-bold text-slate-900">{jadwal.tanggal}</p>
+                    </div>
+                    <div className="sm:px-6 sm:border-l sm:border-slate-200/70">
+                      <p className="text-xs font-medium text-slate-400 mb-1">Jam</p>
+                      <p className="text-xs sm:text-sm font-bold text-slate-900">{jadwal.waktu}</p>
+                    </div>
+                    <div className="sm:pl-6 sm:border-l sm:border-slate-200/70">
+                      <p className="text-xs font-medium text-slate-400 mb-1">Tempat</p>
+                      <p className="text-xs sm:text-sm font-bold text-slate-900">{jadwal.ruangan}</p>
+                    </div>
                   </div>
-                  <p className="text-xs font-mono font-medium text-slate-500 mt-0.5">{jadwal.mhs_nim}</p>
                 </div>
 
-                <div className="flex flex-col space-y-2 sm:text-right">
-                  <div className="flex items-center sm:justify-end space-x-1.5 text-xs text-slate-600 font-medium">
-                    <CalendarDays className="w-3.5 h-3.5 text-slate-400" />
-                    <span>{jadwal.tanggal}</span>
+                {/* Sisi Kanan: Penguji 1 & Penguji 2 */}
+                <div className="lg:w-72 xl:w-80 shrink-0 space-y-4 lg:pl-2">
+                  <div className="flex items-center space-x-3.5">
+                    <User className="w-5 h-5 text-indigo-600 shrink-0" />
+                    <div>
+                      <p className="text-xs font-medium text-slate-400 leading-tight">Penguji 1</p>
+                      <p className="text-xs font-bold text-slate-900 mt-0.5">{jadwal.penguji1}</p>
+                    </div>
                   </div>
-                  <div className="flex items-center sm:justify-end space-x-1.5 text-xs text-slate-600 font-medium">
-                    <Clock className="w-3.5 h-3.5 text-slate-400" />
-                    <span>{jadwal.waktu}</span>
-                  </div>
-                  <div className="text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200/70 px-2.5 py-1 rounded-lg inline-block self-start sm:self-end">
-                    {jadwal.ruangan}
+
+                  <div className="flex items-center space-x-3.5">
+                    <User className="w-5 h-5 text-indigo-600 shrink-0" />
+                    <div>
+                      <p className="text-xs font-medium text-slate-400 leading-tight">Penguji 2</p>
+                      <p className="text-xs font-bold text-slate-900 mt-0.5">{jadwal.penguji2}</p>
+                    </div>
                   </div>
                 </div>
               </div>

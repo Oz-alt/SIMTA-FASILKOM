@@ -278,7 +278,7 @@ Route::get('/dosen/jadwal-sidang', function () {
 });
 
 Route::get('/dosen/validasi-judul', function () {
-    return Inertia::render('dosen/ValidasiJudulDosenPage');
+    return redirect('/dosen/rekap');
 });
 
 // ============================================================

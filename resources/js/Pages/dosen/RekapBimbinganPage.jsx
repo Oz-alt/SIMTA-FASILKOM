@@ -4,26 +4,59 @@ import { Link } from '@inertiajs/react';
 import StudentWhatsAppLink from '../../Components/common/StudentWhatsAppLink.jsx';
 import DosenHeaderBanner from '../../Components/common/DosenHeaderBanner.jsx';
 import { isConsultationEvaluated, getMinSessionsPerAdvisor } from '../../lib/consultationUtils.js';
-import { 
-  Printer, 
-  CheckCircle2, 
-  Clock, 
-  Search, 
-  Users, 
+import {
+  Printer,
+  CheckCircle2,
+  Clock,
+  Search,
+  Users,
   Download,
   AlertCircle
 } from 'lucide-react';
 
 export default function RekapBimbinganPage() {
-  const { currentUser, studentAdvisors, thesisTitles, consultations, minSessionsRequirement } = useAuth();
+  const {
+    currentUser,
+    studentAdvisors,
+    thesisTitles,
+    consultations,
+    studentAccounts = [],
+    masterStudents = [],
+    minSessionsRequirement
+  } = useAuth();
 
   const userNip = currentUser?.nip || currentUser?.nim || '';
   const userNama = currentUser?.nama || '';
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all'); // 'all' | 'eligible' | 'ineligible' | 'pending'
+  const [filterAngkatan, setFilterAngkatan] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all'); // 'all' | 'eligible' | 'ineligible'
 
   const MIN_BIMBINGAN = minSessionsRequirement?.minPerAdvisor || getMinSessionsPerAdvisor(); // Minimal bimbingan untuk kelayakan ujian (Status: Diterima)
+
+  const getStudentAngkatan = (nim, titleObj) => {
+    const cleanNim = String(nim || '').trim();
+    const acc = (studentAccounts || []).find(a => String(a.nim || '').trim() === cleanNim);
+    const master = (masterStudents || []).find(m => String(m.nim || '').trim() === cleanNim);
+    return (
+      (titleObj?.mhs_kelas && titleObj.mhs_kelas !== '-' && titleObj.mhs_kelas !== 'MI 2024' ? titleObj.mhs_kelas : '') ||
+      (acc?.kelas && acc.kelas !== '-' ? acc.kelas : '') ||
+      (master?.angkatan ? String(master.angkatan) : '') ||
+      titleObj?.mhs_kelas ||
+      (cleanNim.length >= 9 && /^2[0-9]$/.test(cleanNim.substring(7, 9)) ? `20${cleanNim.substring(7, 9)}` : '-')
+    );
+  };
+
+  const getSimilarityColor = (score = 0) => {
+    const num = Number(score) || 0;
+    if (num <= 30) {
+      return { textColor: 'text-emerald-700', barColor: 'bg-emerald-500', badgeBg: 'bg-emerald-50 border-emerald-200 text-emerald-700' };
+    }
+    if (num <= 50) {
+      return { textColor: 'text-amber-700', barColor: 'bg-amber-500', badgeBg: 'bg-amber-50 border-amber-200 text-amber-700' };
+    }
+    return { textColor: 'text-rose-700', barColor: 'bg-rose-500', badgeBg: 'bg-rose-50 border-rose-200 text-rose-700' };
+  };
 
   // Filter students assigned to this dosen
   const assignedStudents = useMemo(() => {
@@ -32,9 +65,9 @@ export default function RekapBimbinganPage() {
 
     const matched = studentAdvisors.filter(sa => {
       const isDospem1 = (cleanNip && String(sa.dospem1_nip || '').trim() === cleanNip) ||
-                        (cleanNama && sa.dospem1_nama && sa.dospem1_nama.toLowerCase().includes(cleanNama));
+        (cleanNama && sa.dospem1_nama && sa.dospem1_nama.toLowerCase().includes(cleanNama));
       const isDospem2 = (cleanNip && String(sa.dospem2_nip || '').trim() === cleanNip) ||
-                        (cleanNama && sa.dospem2_nama && sa.dospem2_nama.toLowerCase().includes(cleanNama));
+        (cleanNama && sa.dospem2_nama && sa.dospem2_nama.toLowerCase().includes(cleanNama));
       return isDospem1 || isDospem2;
     });
 
@@ -99,12 +132,16 @@ export default function RekapBimbinganPage() {
       // Sesi bimbingan terhitung apabila telah ditanggapi dosen (Revisi Minor, Revisi Mayor, atau Diterima)
       const approvedCount = mhsConsultations.filter(c => isConsultationEvaluated(c)).length;
       const pendingCount = mhsConsultations.filter(c => !isConsultationEvaluated(c)).length;
-      
+
       const isEligible = approvedCount >= MIN_BIMBINGAN;
       const realTitle = title?.judul || (!isDummyTitle(student.judul_ta) ? student.judul_ta : '-');
+      const angkatan = getStudentAngkatan(student.student_nim, title);
+      const similarityScore = Number(title?.skor_kemiripan_terakhir) || 0;
 
       return {
         ...student,
+        angkatan,
+        similarityScore,
         thesisTitle: realTitle,
         totalConsultations: mhsConsultations.length,
         approvedCount,
@@ -112,31 +149,46 @@ export default function RekapBimbinganPage() {
         isEligible
       };
     });
-  }, [assignedStudents, thesisTitles, consultations]);
+  }, [assignedStudents, thesisTitles, consultations, studentAccounts, masterStudents]);
+
+  const availableAngkatan = useMemo(() => {
+    const set = new Set(['2025', '2024', '2023', '2022']);
+    rekapData.forEach(s => {
+      if (s.angkatan && s.angkatan !== '-') {
+        set.add(String(s.angkatan));
+      }
+    });
+    return Array.from(set).sort((a, b) => b.localeCompare(a));
+  }, [rekapData]);
 
   const filteredRekap = useMemo(() => {
     return rekapData.filter(s => {
-      const matchSearch = 
-        s.student_nama.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        s.student_nim.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        s.thesisTitle.toLowerCase().includes(searchQuery.toLowerCase());
+      const q = searchQuery.toLowerCase();
+      const matchSearch =
+        s.student_nama.toLowerCase().includes(q) ||
+        s.student_nim.toLowerCase().includes(q) ||
+        String(s.angkatan || '').toLowerCase().includes(q) ||
+        s.thesisTitle.toLowerCase().includes(q);
 
-      const matchStatus = 
+      const matchAngkatan =
+        filterAngkatan === 'all' ||
+        String(s.angkatan || '').includes(filterAngkatan);
+
+      const matchStatus =
         filterStatus === 'all' ||
         (filterStatus === 'eligible' && s.isEligible) ||
-        (filterStatus === 'ineligible' && !s.isEligible) ||
-        (filterStatus === 'pending' && s.pendingCount > 0);
+        (filterStatus === 'ineligible' && !s.isEligible);
 
-      return matchSearch && matchStatus;
+      return matchSearch && matchAngkatan && matchStatus;
     });
-  }, [rekapData, searchQuery, filterStatus]);
+  }, [rekapData, searchQuery, filterAngkatan, filterStatus]);
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      
+
       {/* Header Banner */}
       <DosenHeaderBanner
-        title="Rekap Bimbingan Mahasiswa"
+        title="Evaluasi Bimbingan Mahasiswa"
         subtitle="SISTEM MONITORING TUGAS AKHIR"
         rightContent={
           <button
@@ -162,110 +214,137 @@ export default function RekapBimbinganPage() {
           />
         </div>
 
-        <div className="flex items-center space-x-1.5 w-full sm:w-auto flex-wrap gap-y-2">
-          <button
-            onClick={() => setFilterStatus('all')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-              filterStatus === 'all' ? 'bg-slate-900 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
+        <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
+          <select
+            value={filterAngkatan}
+            onChange={(e) => setFilterAngkatan(e.target.value)}
+            className="flex-1 sm:flex-none sm:w-40 px-3 py-1.5 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors cursor-pointer"
           >
-            Semua
-          </button>
-          <button
-            onClick={() => setFilterStatus('eligible')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-              filterStatus === 'eligible' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
+            <option value="all">Semua Angkatan</option>
+            {availableAngkatan.map(ang => (
+              <option key={ang} value={ang}>
+                Angkatan {ang}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="flex-1 sm:flex-none sm:w-44 px-3 py-1.5 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors cursor-pointer"
           >
-            Diterima
-          </button>
-          <button
-            onClick={() => setFilterStatus('ineligible')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-              filterStatus === 'ineligible' ? 'bg-amber-500 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            Belum Cukup
-          </button>
+            <option value="all">Semua Status</option>
+            <option value="eligible">Diterima</option>
+            <option value="ineligible">Tidak Diterima</option>
+          </select>
         </div>
       </div>
 
       {/* Table Rekapitulasi */}
       <div className="bg-white border border-slate-200/80 rounded-xl shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
+        <div className="w-full">
+          <table className="w-full table-fixed text-left border-collapse text-xs">
             <thead>
-              <tr className="bg-slate-50/80 border-b border-slate-200/80 font-semibold text-slate-500 uppercase text-[11px] tracking-wider">
-                <th className="py-2.5 px-3.5 whitespace-nowrap">Nama</th>
-                <th className="py-2.5 px-3.5 whitespace-nowrap">NIM</th>
-                <th className="py-2.5 px-3.5">Judul</th>
-                <th className="py-2.5 px-3.5 text-center whitespace-nowrap">Tervalidasi</th>
-                <th className="py-2.5 px-3.5 text-center whitespace-nowrap">Status Kelayakan</th>
-                <th className="py-2.5 px-3.5 text-center whitespace-nowrap">Aksi</th>
+              <tr className="bg-slate-50/80 border-b border-slate-200/80 font-semibold text-slate-500 uppercase text-[10px] tracking-wider">
+                <th className="py-3 pl-5 pr-4 w-[21%]">Nama Mahasiswa</th>
+                <th className="py-3 px-3 w-[13%]">NIM</th>
+                <th className="py-3 px-2 text-center w-[8%]">Angkatan</th>
+                <th className="py-3 px-3.5 w-[30%]">Judul</th>
+                <th className="py-3 px-2 text-center w-[11%]">Jumlah Bimbingan</th>
+                <th className="py-3 px-2 text-center w-[10%]">Status</th>
+                <th className="py-3 pl-2 pr-5 text-center w-[7%]">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredRekap.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-slate-500 text-xs">
+                  <td colSpan={7} className="py-8 text-center text-slate-500 text-xs">
                     Tidak ada data yang sesuai.
                   </td>
                 </tr>
               ) : (
-                filteredRekap.map((item) => (
-                  <tr key={item.id} className="hover:bg-slate-50/70 transition-colors align-middle">
-                    {/* Nama */}
-                    <td className="py-2.5 px-3.5 whitespace-nowrap">
-                      <div className="font-medium text-slate-900 text-[11px] whitespace-nowrap">
-                        <StudentWhatsAppLink
-                          student={item}
-                          nim={item.student_nim}
-                          nama={item.student_nama}
-                          className="text-slate-900 font-medium hover:text-emerald-700 whitespace-nowrap text-[11px]"
-                          showIcon={false}
+                filteredRekap.map((item) => {
+                  const scoreNum = Number(item.similarityScore) || 0;
+                  const similarity = getSimilarityColor(scoreNum);
+
+                  return (
+                    <tr key={item.id} className="hover:bg-slate-50/70 transition-colors align-middle">
+                      {/* Nama Mahasiswa */}
+                      <td className="py-3 pl-5 pr-4 break-words">
+                        <div className="font-medium text-slate-800 text-[10px] leading-snug">
+                          <StudentWhatsAppLink
+                            student={item}
+                            nim={item.student_nim}
+                            nama={item.student_nama}
+                            className="text-slate-800 font-medium hover:text-emerald-700 text-[10px] leading-snug"
+                            showIcon={false}
+                          >
+                            {item.student_nama}
+                          </StudentWhatsAppLink>
+                        </div>
+                      </td>
+
+                      {/* NIM */}
+                      <td className="py-3 px-3 font-mono font-medium text-slate-600 text-[10.5px] whitespace-nowrap">
+                        {item.student_nim}
+                      </td>
+
+                      {/* Angkatan */}
+                      <td className="py-3 px-2 text-center whitespace-nowrap">
+                        <span className="inline-block px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-semibold text-[10px] border border-slate-200/80">
+                          {item.angkatan}
+                        </span>
+                      </td>
+
+                      {/* Judul & Similarity */}
+                      <td className="py-3 px-3.5 break-words">
+                        <div className="space-y-1">
+                          <p className="text-slate-700 font-normal text-[11px] leading-snug">
+                            {item.thesisTitle}
+                          </p>
+                          {item.thesisTitle && item.thesisTitle !== '-' && (
+                            <div className="flex items-center space-x-2">
+                              <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full ${similarity.barColor}`}
+                                  style={{ width: `${Math.min(100, Math.max(6, scoreNum))}%` }}
+                                />
+                              </div>
+                              <span className={`font-mono text-[10px] font-semibold ${similarity.textColor}`}>
+                                {scoreNum}%
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+
+                      <td className="py-3 px-2 text-center whitespace-nowrap">
+                        <span className="font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 text-[10px]">
+                          {item.approvedCount} / {MIN_BIMBINGAN}
+                        </span>
+                      </td>
+                      <td className="py-3 px-2 text-center whitespace-nowrap">
+                        {item.isEligible ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/80 shadow-2xs">
+                            <span>Diterima</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200/80">
+                            <span>Belum Diterima</span>
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 pl-2 pr-5 text-center whitespace-nowrap">
+                        <Link
+                          href={`/dosen/validasi?nim=${item.student_nim}`}
+                          className="inline-flex items-center justify-center text-blue-700 hover:text-blue-900 font-semibold bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-lg transition-colors text-[10.5px] whitespace-nowrap"
                         >
-                          {item.student_nama}
-                        </StudentWhatsAppLink>
-                      </div>
-                    </td>
-
-                    {/* NIM */}
-                    <td className="py-2.5 px-3.5 font-mono font-medium text-slate-600 whitespace-nowrap text-[11px]">
-                      {item.student_nim}
-                    </td>
-
-                    {/* Judul */}
-                    <td className="py-2.5 px-3.5 text-slate-700 font-normal text-xs leading-relaxed" title={item.thesisTitle}>
-                      {item.thesisTitle}
-                    </td>
-                    <td className="py-2.5 px-3.5 text-center">
-                      <span className="font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 text-[11px]">
-                        {item.approvedCount} / {MIN_BIMBINGAN}
-                      </span>
-                    </td>
-                    <td className="py-2.5 px-3.5 text-center">
-                      {item.isEligible ? (
-                        <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/80 shadow-2xs">
-                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                          <span>Diterima</span>
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200/80">
-                          <Clock className="w-3 h-3 text-amber-600" />
-                          <span>Kurang {MIN_BIMBINGAN - item.approvedCount}</span>
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-2.5 px-3.5 text-center">
-                      <Link
-                        href={`/dosen/validasi?nim=${item.student_nim}`}
-                        className="inline-flex items-center justify-center text-blue-700 hover:text-blue-900 font-semibold bg-blue-50 hover:bg-blue-100 px-3 py-1 rounded-lg transition-colors text-xs whitespace-nowrap"
-                      >
-                        <span>Log</span>
-                      </Link>
-                    </td>
-                  </tr>
-                ))
+                          <span>Log</span>
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
