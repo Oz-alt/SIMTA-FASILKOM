@@ -206,13 +206,13 @@ export default function BimbinganTAPage() {
         <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-1">
           <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Sesi Pembimbing 1</span>
           <div className="text-2xl font-extrabold text-indigo-700">{countPemb1} / {minRequiredPerPembimbing} Sesi</div>
-          <span className="text-[11px] text-slate-500">{countPemb1 >= minRequiredPerPembimbing ? '✓ Target 12x Terpenuhi' : `Kurang ${minRequiredPerPembimbing - countPemb1} sesi`}</span>
+          <span className="text-[11px] text-slate-500">{countPemb1 >= minRequiredPerPembimbing ? `✓ Target ${minRequiredPerPembimbing}x Terpenuhi` : `Kurang ${minRequiredPerPembimbing - countPemb1} sesi`}</span>
         </div>
 
         <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-1">
           <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Sesi Pembimbing 2</span>
           <div className="text-2xl font-extrabold text-purple-700">{countPemb2} / {minRequiredPerPembimbing} Sesi</div>
-          <span className="text-[11px] text-slate-500">{countPemb2 >= minRequiredPerPembimbing ? '✓ Target 12x Terpenuhi' : `Kurang ${minRequiredPerPembimbing - countPemb2} sesi`}</span>
+          <span className="text-[11px] text-slate-500">{countPemb2 >= minRequiredPerPembimbing ? `✓ Target ${minRequiredPerPembimbing}x Terpenuhi` : `Kurang ${minRequiredPerPembimbing - countPemb2} sesi`}</span>
         </div>
 
         <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-1.5">
@@ -224,7 +224,7 @@ export default function BimbinganTAPage() {
             <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${progressPercent}%` }}></div>
           </div>
           <span className={`text-[10px] font-bold block leading-tight ${isEligibleForDefense ? 'text-emerald-700' : 'text-amber-600'}`}>
-            {isEligibleForDefense ? '✓ Layak Daftar Sidang' : `Syarat Min. ${minRequired} Sesi (12x Tiap Pembimbing)`}
+            {isEligibleForDefense ? '✓ Layak Daftar Sidang' : `Syarat Min. ${minRequired} Sesi (${minRequiredPerPembimbing}x Tiap Pembimbing)`}
           </span>
         </div>
 

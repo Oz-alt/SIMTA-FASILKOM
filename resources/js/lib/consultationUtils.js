@@ -7,8 +7,68 @@
  * 3. Kelayakan Sidang tercapai jika minimal 12x bimbingan dengan Pembimbing 1 dan minimal 12x dengan Pembimbing 2 (Total target 24 sesi).
  */
 
-export const MIN_SESSIONS_PER_ADVISOR = 12;
-export const MIN_TOTAL_SESSIONS_DEFENSE = 24;
+export const DEFAULT_MIN_SESSIONS_PER_ADVISOR = 12;
+export const DEFAULT_MIN_TOTAL_SESSIONS_DEFENSE = 24;
+
+let memoryMinPerAdvisor = DEFAULT_MIN_SESSIONS_PER_ADVISOR;
+let memoryMinTotal = DEFAULT_MIN_TOTAL_SESSIONS_DEFENSE;
+
+export function getMinSessionsPerAdvisor() {
+  if (typeof window !== 'undefined') {
+    try {
+      const saved = localStorage.getItem('simta_min_bimbingan_setting');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Number(parsed?.minPerAdvisor) > 0) {
+          return Number(parsed.minPerAdvisor);
+        }
+      }
+    } catch {}
+  }
+  return memoryMinPerAdvisor;
+}
+
+export function getMinTotalSessionsDefense() {
+  if (typeof window !== 'undefined') {
+    try {
+      const saved = localStorage.getItem('simta_min_bimbingan_setting');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Number(parsed?.minTotal) > 0) {
+          return Number(parsed.minTotal);
+        }
+        if (Number(parsed?.minPerAdvisor) > 0) {
+          return Number(parsed.minPerAdvisor) * 2;
+        }
+      }
+    } catch {}
+  }
+  return memoryMinTotal;
+}
+
+export function setMinSessionsRequirement(perAdvisor, total) {
+  const numAdvisor = Number(perAdvisor) > 0 ? Number(perAdvisor) : DEFAULT_MIN_SESSIONS_PER_ADVISOR;
+  const numTotal = Number(total) > 0 ? Number(total) : numAdvisor * 2;
+  memoryMinPerAdvisor = numAdvisor;
+  memoryMinTotal = numTotal;
+
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem('simta_min_bimbingan_setting', JSON.stringify({
+        minPerAdvisor: numAdvisor,
+        minTotal: numTotal,
+        updated_at: new Date().toISOString()
+      }));
+      window.dispatchEvent(new CustomEvent('simta_min_bimbingan_updated', {
+        detail: { minPerAdvisor: numAdvisor, minTotal: numTotal }
+      }));
+    } catch {}
+  }
+  return { minPerAdvisor: numAdvisor, minTotal: numTotal };
+}
+
+export const MIN_SESSIONS_PER_ADVISOR = DEFAULT_MIN_SESSIONS_PER_ADVISOR;
+export const MIN_TOTAL_SESSIONS_DEFENSE = DEFAULT_MIN_TOTAL_SESSIONS_DEFENSE;
 
 /**
  * Comparator kronologis untuk sesi bimbingan: terlama di atas.
@@ -106,15 +166,25 @@ export function isConsultationEvaluated(consultation) {
 }
 
 /**
- * Menghitung rekapitulasi progres bimbingan mahasiswa terhadap syarat kelayakan sidang (24 sesi: 12x Pembimbing 1, 12x Pembimbing 2)
+ * Menghitung rekapitulasi progres bimbingan mahasiswa terhadap syarat kelayakan sidang (dinamis: default 24 sesi, 12x per pembimbing)
  * @param {Array} consultations - Seluruh daftar bimbingan atau bimbingan mahasiswa bersangkutan
  * @param {string} studentNim - NIM mahasiswa (opsional jika array sudah difilter)
+ * @param {Object} [options] - Opsi konfigurasi syarat bimbingan dinamis
+ * @param {number} [options.minPerAdvisor] - Minimal sesi per pembimbing
+ * @param {number} [options.minTotal] - Total minimal sesi kelayakan sidang
  */
-export function calculateBimbinganEligibility(consultations = [], studentNim = '') {
+export function calculateBimbinganEligibility(consultations = [], studentNim = '', options = {}) {
   let list = consultations || [];
   if (studentNim) {
     list = list.filter(c => String(c.mhs_nim || '').trim() === String(studentNim).trim());
   }
+
+  const minPerPembimbing = Number(options?.minPerAdvisor) > 0 
+    ? Number(options.minPerAdvisor) 
+    : getMinSessionsPerAdvisor();
+  const minRequired = Number(options?.minTotal) > 0 
+    ? Number(options.minTotal) 
+    : (Number(options?.minPerAdvisor) > 0 ? Number(options.minPerAdvisor) * 2 : getMinTotalSessionsDefense());
 
   // Sesi yang terhitung (status sudah dievaluasi: Mayor, Minor, Diterima)
   const evaluatedSessions = list.filter(isConsultationEvaluated);
@@ -133,11 +203,11 @@ export function calculateBimbinganEligibility(consultations = [], studentNim = '
   const countPemb2 = evaluatedSessions.filter(isPemb2).length;
   const totalEvaluated = countPemb1 + countPemb2;
 
-  const approvedPemb1 = Math.min(countPemb1, MIN_SESSIONS_PER_ADVISOR);
-  const approvedPemb2 = Math.min(countPemb2, MIN_SESSIONS_PER_ADVISOR);
-  const progressPercent = Math.min(100, Math.round(((approvedPemb1 + approvedPemb2) / MIN_TOTAL_SESSIONS_DEFENSE) * 100));
+  const approvedPemb1 = Math.min(countPemb1, minPerPembimbing);
+  const approvedPemb2 = Math.min(countPemb2, minPerPembimbing);
+  const progressPercent = Math.min(100, Math.round(((approvedPemb1 + approvedPemb2) / minRequired) * 100));
 
-  const isEligibleForDefense = countPemb1 >= MIN_SESSIONS_PER_ADVISOR && countPemb2 >= MIN_SESSIONS_PER_ADVISOR;
+  const isEligibleForDefense = countPemb1 >= minPerPembimbing && countPemb2 >= minPerPembimbing;
 
   // Cek apakah masing-masing pembimbing sudah pernah memberikan status ACC 'Diterima'
   const hasAccPemb1 = evaluatedSessions.some(c => isPemb1(c) && (c.status === 'disetujui' || String(c.jenis_revisi || '').toLowerCase() === 'diterima'));
@@ -148,8 +218,8 @@ export function calculateBimbinganEligibility(consultations = [], studentNim = '
     countPemb2,
     totalEvaluated,
     totalConsultations: list.length,
-    minPerPembimbing: MIN_SESSIONS_PER_ADVISOR,
-    minRequired: MIN_TOTAL_SESSIONS_DEFENSE,
+    minPerPembimbing,
+    minRequired,
     progressPercent,
     isEligibleForDefense,
     hasAccPemb1,
@@ -159,19 +229,24 @@ export function calculateBimbinganEligibility(consultations = [], studentNim = '
 
 /**
  * Memeriksa apakah opsi status 'Diterima' (ACC Bimbingan) boleh dipilih oleh dosen
- * Aturan: Hanya boleh dipilih jika mahasiswa telah menyelesaikan minimal 12 sesi bimbingan dengan pembimbing ini
+ * Aturan: Hanya boleh dipilih jika mahasiswa telah menyelesaikan minimal target sesi bimbingan dengan pembimbing ini
  * @param {Array} studentConsultationsWithAdvisor - Daftar bimbingan mahasiswa bersama dosen pembimbing ini
+ * @param {Object} [options] - Opsi konfigurasi syarat
+ * @param {number} [options.minPerAdvisor] - Minimal sesi per pembimbing
  * @returns {{ canAccept: boolean, sessionCount: number, minRequired: number, remainingSessions: number }}
  */
-export function checkCanAdvisorAccept(studentConsultationsWithAdvisor = []) {
+export function checkCanAdvisorAccept(studentConsultationsWithAdvisor = [], options = {}) {
+  const minRequired = Number(options?.minPerAdvisor) > 0 
+    ? Number(options.minPerAdvisor) 
+    : getMinSessionsPerAdvisor();
   const sessionCount = (studentConsultationsWithAdvisor || []).length;
-  const canAccept = sessionCount >= MIN_SESSIONS_PER_ADVISOR;
-  const remainingSessions = Math.max(0, MIN_SESSIONS_PER_ADVISOR - sessionCount);
+  const canAccept = sessionCount >= minRequired;
+  const remainingSessions = Math.max(0, minRequired - sessionCount);
 
   return {
     canAccept,
     sessionCount,
-    minRequired: MIN_SESSIONS_PER_ADVISOR,
+    minRequired,
     remainingSessions
   };
 }
@@ -181,8 +256,8 @@ export function checkCanAdvisorAccept(studentConsultationsWithAdvisor = []) {
  * 
  * Persyaratan:
  * 1. Sudah memiliki judul Tugas Akhir (tidak kosong).
- * 2. Sudah bimbingan minimal 12 kali di Pembimbing 1 (countPemb1 >= 12).
- * 3. Sudah bimbingan minimal 12 kali di Pembimbing 2 (countPemb2 >= 12).
+ * 2. Sudah bimbingan minimal target di Pembimbing 1 (countPemb1 >= minPerAdvisor).
+ * 3. Sudah bimbingan minimal target di Pembimbing 2 (countPemb2 >= minPerAdvisor).
  * 4. Pembimbing 1 sudah memberikan status 'Diterima' (ACC) pada sesi bimbingan.
  * 5. Pembimbing 2 sudah memberikan status 'Diterima' (ACC) pada sesi bimbingan.
  * (Wajib kedua dosen pembimbing memberikan status menerima; jika salah satu belum menerima, tidak boleh masuk list).
@@ -192,13 +267,15 @@ export function checkCanAdvisorAccept(studentConsultationsWithAdvisor = []) {
  * @param {Array} params.consultations - Daftar seluruh bimbingan
  * @param {Array} params.thesisTitles - Daftar judul TA
  * @param {Array} params.studentAdvisors - Daftar alokasi dospem mahasiswa
+ * @param {Object} [params.options] - Opsi konfigurasi syarat
  * @returns {{ isEligible: boolean, reason: string, judul: string, stats: Object }}
  */
 export function checkStudentDefenseEligibility({
   studentNim,
   consultations = [],
   thesisTitles = [],
-  studentAdvisors = []
+  studentAdvisors = [],
+  options = {}
 }) {
   const nim = String(studentNim || '').trim();
   if (!nim) {
@@ -223,17 +300,17 @@ export function checkStudentDefenseEligibility({
     };
   }
 
-  // Syarat 2: Bimbingan minimal 12 kali di masing-masing dospem (12 di dospem 1 & 12 di dospem 2)
-  const stats = calculateBimbinganEligibility(consultations, nim);
-  const { countPemb1, countPemb2, hasAccPemb1, hasAccPemb2 } = stats;
+  // Syarat 2: Bimbingan minimal di masing-masing dospem
+  const stats = calculateBimbinganEligibility(consultations, nim, options);
+  const { countPemb1, countPemb2, hasAccPemb1, hasAccPemb2, minPerPembimbing } = stats;
 
-  const passedCount1 = countPemb1 >= MIN_SESSIONS_PER_ADVISOR;
-  const passedCount2 = countPemb2 >= MIN_SESSIONS_PER_ADVISOR;
+  const passedCount1 = countPemb1 >= minPerPembimbing;
+  const passedCount2 = countPemb2 >= minPerPembimbing;
 
   if (!passedCount1 || !passedCount2) {
     return {
       isEligible: false,
-      reason: `Jumlah bimbingan belum memenuhi target (Pembimbing 1: ${countPemb1}/${MIN_SESSIONS_PER_ADVISOR}, Pembimbing 2: ${countPemb2}/${MIN_SESSIONS_PER_ADVISOR}).`,
+      reason: `Jumlah bimbingan belum memenuhi target (Pembimbing 1: ${countPemb1}/${minPerPembimbing}, Pembimbing 2: ${countPemb2}/${minPerPembimbing}).`,
       judul,
       stats
     };

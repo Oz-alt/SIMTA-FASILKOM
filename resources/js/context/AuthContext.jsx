@@ -23,7 +23,12 @@ import {
   MOCK_BIMBINGAN_REMINDER_LOGS
 } from '../services/mockData.js';
 import { calculateBimbinganReminder } from '../lib/bimbinganReminder.js';
-import { checkStudentDefenseEligibility } from '../lib/consultationUtils.js';
+import { 
+  checkStudentDefenseEligibility, 
+  getMinSessionsPerAdvisor, 
+  getMinTotalSessionsDefense, 
+  setMinSessionsRequirement 
+} from '../lib/consultationUtils.js';
 import { preProcessTitle } from '../services/titleService.js';
 
 const AuthContext = createContext();
@@ -1927,6 +1932,49 @@ export function AuthProvider({ children }) {
   const deleteAdminSop = async (id) => {
     setAdminSops(prev => prev.filter(s => s.id !== id));
   };
+
+  // ── Pengaturan Dinamis Syarat Minimum Bimbingan (Global Settings) ───────────
+  const [minSessionsRequirement, setMinSessionsState] = useState(() => ({
+    minPerAdvisor: getMinSessionsPerAdvisor(),
+    minTotal: getMinTotalSessionsDefense()
+  }));
+
+  useEffect(() => {
+    const handleSettingUpdated = (e) => {
+      if (e?.detail) {
+        setMinSessionsState(e.detail);
+      } else {
+        setMinSessionsState({
+          minPerAdvisor: getMinSessionsPerAdvisor(),
+          minTotal: getMinTotalSessionsDefense()
+        });
+      }
+    };
+    window.addEventListener('simta_min_bimbingan_updated', handleSettingUpdated);
+    return () => window.removeEventListener('simta_min_bimbingan_updated', handleSettingUpdated);
+  }, []);
+
+  const updateMinSessionsRequirement = async (newPerAdvisor, newTotal) => {
+    const setting = setMinSessionsRequirement(newPerAdvisor, newTotal);
+    setMinSessionsState(setting);
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('admin_cms').upsert([{
+          id: 'settings_min_bimbingan',
+          judul: 'Pengaturan Minimum Bimbingan Tugas Akhir',
+          kategori: 'system_settings_min_bimbingan',
+          isi: JSON.stringify(setting),
+          penulis: currentUser?.nama || 'Kaprodi',
+          status: 'aktif',
+          updated_at: new Date().toISOString()
+        }], { onConflict: 'id' });
+      } catch (err) {
+        console.warn('Gagal menyimpan pengaturan minimum bimbingan ke Supabase:', err);
+      }
+    }
+    return setting;
+  };
   // ─────────────────────────────────────────────────────────────────────────
 
   // Published Thesis Archives (Public Library)
@@ -3537,6 +3585,20 @@ export function AuthProvider({ children }) {
                   addReadNotificationIds(parsed);
                 }
               });
+            } catch {}
+
+            // Hidrasi pengaturan sistem: minimum bimbingan
+            try {
+              const settingRow = data.find(r => r && (r.id === 'settings_min_bimbingan' || r.kategori === 'system_settings_min_bimbingan'));
+              if (settingRow?.isi) {
+                const parsed = typeof settingRow.isi === 'string' ? JSON.parse(settingRow.isi) : settingRow.isi;
+                if (Number(parsed?.minPerAdvisor) > 0) {
+                  const perAdv = Number(parsed.minPerAdvisor);
+                  const total = Number(parsed.minTotal) > 0 ? Number(parsed.minTotal) : perAdv * 2;
+                  setMinSessionsRequirement(perAdv, total);
+                  setMinSessionsState({ minPerAdvisor: perAdv, minTotal: total });
+                }
+              }
             } catch {}
 
             // Hidrasi metadata profil mahasiswa terverifikasi (no_hp, kelas/angkatan, nama, prodi, avatar_url)
@@ -9427,7 +9489,9 @@ export function AuthProvider({ children }) {
       setRealtimeNotifEnabled,
       soundEnabled,
       setSoundEnabled,
-      playNotificationSound
+      playNotificationSound,
+      minSessionsRequirement,
+      updateMinSessionsRequirement
     }}>
       {children}
     </AuthContext.Provider>

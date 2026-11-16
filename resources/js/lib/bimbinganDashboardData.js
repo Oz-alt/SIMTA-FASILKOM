@@ -7,6 +7,7 @@
  */
 
 import { normalizeStudentAngkatan } from '../services/studentCredentials.js';
+import { getMinSessionsPerAdvisor, getMinTotalSessionsDefense } from './consultationUtils.js';
 
 const MONTH_SHORT_ID = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
 const MONTH_FULL_ID = [
@@ -299,9 +300,12 @@ export function calculateBimbinganDashboardStats(
     studentConsultationCounts.set(nim, (studentConsultationCounts.get(nim) || 0) + 1);
   });
 
+  const targetMinTotal = getMinTotalSessionsDefense();
+  const targetMinPerAdvisor = getMinSessionsPerAdvisor();
+
   let memenuhiTarget24Count = 0;
   studentConsultationCounts.forEach(count => {
-    if (count >= 24) memenuhiTarget24Count++;
+    if (count >= targetMinTotal) memenuhiTarget24Count++;
   });
 
   const persenMemenuhiTarget24 = totalMahasiswa > 0 ? Math.round((memenuhiTarget24Count / totalMahasiswa) * 100) : 0;
@@ -735,11 +739,11 @@ export function calculateBimbinganDashboardStats(
     const p1Adv = safeAdvisors.find(a => a.nip === sa.dospem1_nip);
     const p2Adv = safeAdvisors.find(a => a.nip === sa.dospem2_nip);
     const isLulus = info.status_kelulusan === 'lulus' || info.status_sidang === 'selesai';
-    const isMemenuhi24 = totalBimbinganStudent >= 24;
+    const isMemenuhi24 = totalBimbinganStudent >= targetMinTotal;
 
     let statusLabel = 'Belum Ada Bimbingan';
     if (isLulus) statusLabel = 'Lulus';
-    else if (isMemenuhi24) statusLabel = 'Memenuhi Syarat ≥24';
+    else if (isMemenuhi24) statusLabel = `Memenuhi Syarat ≥${targetMinTotal}`;
     else if (totalBimbinganStudent > 0) statusLabel = 'Sedang Berproses';
 
     return {
@@ -781,6 +785,8 @@ export function calculateBimbinganDashboardStats(
       totalDosen,
       totalBimbingan,
       rataRataPerMahasiswa,
+      targetMinTotal,
+      targetMinPerAdvisor,
       memenuhiTarget24Count,
       persenMemenuhiTarget24,
       belumMemenuhiCount,

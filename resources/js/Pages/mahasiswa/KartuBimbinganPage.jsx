@@ -4,6 +4,7 @@ import { ArrowLeft, Printer } from 'lucide-react';
 import { Link } from '@inertiajs/react';
 import BimbinganReminderBanner from '../../Components/common/BimbinganReminderBanner.jsx';
 import { calculateBimbinganReminder } from '../../lib/bimbinganReminder.js';
+import { getMinTotalSessionsDefense } from '../../lib/consultationUtils.js';
 import unsriLogo from '../../assets/photo/unsri logo.png';
 
 export default function KartuBimbinganPage() {
@@ -220,8 +221,8 @@ export default function KartuBimbinganPage() {
     ? `${window.location.origin}/verify/bimbingan/${studentNim}`
     : `/verify/bimbingan/${studentNim}`;
 
-  // Minimum 24 rows (12 per pembimbing), dynamically grows if student has more consultations
-  const ROWS_COUNT = Math.max(24, studentConsultations.length);
+  // Dynamic rows count (based on global minimum requirement), dynamically grows if student has more consultations
+  const ROWS_COUNT = Math.max(getMinTotalSessionsDefense(), studentConsultations.length);
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 select-none bg-slate-50 p-6 min-h-screen">

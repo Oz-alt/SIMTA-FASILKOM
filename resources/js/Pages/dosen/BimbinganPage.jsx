@@ -3,7 +3,7 @@ import { usePage, router } from '@inertiajs/react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import StudentWhatsAppLink from '../../Components/common/StudentWhatsAppLink.jsx';
 import DosenHeaderBanner from '../../Components/common/DosenHeaderBanner.jsx';
-import { sortConsultationsChronologically } from '../../lib/consultationUtils.js';
+import { sortConsultationsChronologically, getMinSessionsPerAdvisor } from '../../lib/consultationUtils.js';
 
 export default function BimbinganPage() {
   const { currentUser, studentAdvisors, consultations, thesisTitles, reviewConsultation, notifications, markNotificationAsRead } = useAuth();
@@ -197,8 +197,8 @@ export default function BimbinganPage() {
     }
   }, [selectedNim, studentConsultations, notifications, markNotificationAsRead]);
 
-  // Syarat bimbingan: tervalidasi 12x untuk kelayakan diterima
-  const TARGET_TERVALIDASI = 12;
+  // Syarat bimbingan: tervalidasi target per pembimbing untuk kelayakan diterima (dinamis)
+  const TARGET_TERVALIDASI = getMinSessionsPerAdvisor();
   // Total bimbingan yang telah dicapai mahasiswa terpilih
   const totalBimbinganCount = studentConsultations.length;
   // Syarat tombol Diterima baru aktif jika mahasiswa telah menyelesaikan minimal 12 kali bimbingan
@@ -876,7 +876,7 @@ export default function BimbinganPage() {
                                 !isAuthorized
                                   ? 'Hanya dapat dipilih oleh dosen pembimbing bersangkutan'
                                   : !isEligibleForDiterima 
-                                    ? `Tombol Diterima baru aktif setelah mahasiswa menyelesaikan minimal 12 kali bimbingan (saat ini: ${totalBimbinganCount}/12 kali).`
+                                    ? `Tombol Diterima baru aktif setelah mahasiswa menyelesaikan minimal ${TARGET_TERVALIDASI} kali bimbingan (saat ini: ${totalBimbinganCount}/${TARGET_TERVALIDASI} kali).`
                                     : 'Beri status Diterima'
                               }
                               className={`px-3 py-2.5 rounded-xl text-xs font-semibold border transition-all text-center ${

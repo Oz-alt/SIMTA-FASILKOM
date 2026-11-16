@@ -32,6 +32,7 @@ import {
 import { MOCK_USERS, MOCK_THESIS_ARCHIVES } from '../../services/mockData.js';
 import { resolveStudentContact } from '../../lib/whatsappHelper.js';
 import { getStudentCredential, getCachedStudentCredential } from '../../services/studentCredentials.js';
+import { getMinTotalSessionsDefense, getMinSessionsPerAdvisor } from '../../lib/consultationUtils.js';
 
 // Helper to determine year of admission (angkatan) from UNSRI NIM format (0901xxxYYZZnnn)
 const getAngkatanFromNim = (nim, fallback = '2024') => {
@@ -71,6 +72,8 @@ export default function MonitoringMahasiswaPage() {
     consultations = [],
     thesisTitles = []
   } = useAuth();
+
+  const targetMinTotal = getMinTotalSessionsDefense();
 
   // Filter & Search states (Tambahan 3b: default status mahasiswa adalah 'aktif')
   const [selectedBimbinganFilter, setSelectedBimbinganFilter] = useState('all'); // 'all' | 'siap_sidang' | 'belum_bimbingan' | 'overdue_30' | 'belum_24x'
@@ -408,14 +411,16 @@ export default function MonitoringMahasiswaPage() {
         }
       }
 
+      const targetMinTotal = getMinTotalSessionsDefense();
+
       // Classification flags
-      const isSiapSidang = totalSessions >= 24;
+      const isSiapSidang = totalSessions >= targetMinTotal;
       const isBelumBimbingan = totalSessions === 0;
       const isOverdue30Days = totalSessions === 0 || daysSinceLast > 30;
-      const isBelum24x = totalSessions < 24;
+      const isBelum24x = totalSessions < targetMinTotal;
 
-      // Tambahan 2b: Persen Progres = (totalSessions / 24) * 100, maksimal 100%, dibulatkan
-      const progressPercent = Math.min(100, Math.round((totalSessions / 24) * 100));
+      // Tambahan 2b: Persen Progres = (totalSessions / targetMinTotal) * 100, maksimal 100%, dibulatkan
+      const progressPercent = Math.min(100, Math.round((totalSessions / targetMinTotal) * 100));
 
       return {
         id: assignment.id || index + 1,
@@ -859,7 +864,7 @@ export default function MonitoringMahasiswaPage() {
           <div className="pt-1 flex flex-wrap items-center gap-2.5 text-xs font-medium text-blue-200">
             <span className="inline-flex items-center gap-1.5 bg-blue-950/70 px-3 py-1 rounded-lg border border-blue-800/60 text-[11px]">
               <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-              Target Kelulusan: &ge; 24 Sesi Bimbingan
+              Target Kelulusan: &ge; {targetMinTotal} Sesi Bimbingan
             </span>
             <span className="inline-flex items-center gap-1.5 bg-blue-950/70 px-3 py-1 rounded-lg border border-blue-800/60 text-[11px]">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300" />
@@ -955,7 +960,7 @@ export default function MonitoringMahasiswaPage() {
           </p>
         </div>
 
-        {/* Card 4: Belum 24x */}
+        {/* Card 4: Belum Target Minimal */}
         <div 
           onClick={() => handleCardClick('belum_24x')}
           className={`p-4 sm:p-5 rounded-2xl border transition-all cursor-pointer bg-white group shadow-2xs ${
@@ -963,11 +968,11 @@ export default function MonitoringMahasiswaPage() {
               ? 'border-blue-500 ring-2 ring-blue-500/20 shadow-xs bg-blue-50/10'
               : 'border-slate-200 hover:border-blue-300 hover:shadow-xs'
           }`}
-          title="Klik untuk filter mahasiswa dengan bimbingan belum mencapai 24x"
+          title={`Klik untuk filter mahasiswa dengan bimbingan belum mencapai ${targetMinTotal}x`}
         >
           <div className="flex items-center justify-between mb-1.5">
             <span className="block text-xs text-slate-500 font-bold uppercase tracking-wider group-hover:text-blue-700 transition-colors">
-              Belum 24x
+              Belum {targetMinTotal}x
             </span>
             <TrendingUp className="w-4 h-4 text-blue-500" />
           </div>
@@ -1032,10 +1037,10 @@ export default function MonitoringMahasiswaPage() {
               className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-slate-300 bg-slate-50/50 hover:bg-white focus:bg-white text-slate-700 shadow-2xs hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer transition-all"
             >
               <option value="all">Semua Progres Bimbingan</option>
-              <option value="siap_sidang">Siap sidang (≥ 24x)</option>
+              <option value="siap_sidang">Siap sidang (≥ {targetMinTotal}x)</option>
               <option value="belum_bimbingan">Belum bimbingan (0x)</option>
               <option value="overdue_30">Tanpa bimbingan &gt; 30 hari</option>
-              <option value="belum_24x">Belum 24x</option>
+              <option value="belum_24x">Belum {targetMinTotal}x</option>
             </select>
           </div>
 

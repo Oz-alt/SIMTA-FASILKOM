@@ -32,7 +32,9 @@ import {
   Edit3,
   ArrowRight,
   Database,
-  Filter
+  Filter,
+  Sliders,
+  Check
 } from 'lucide-react';
 
 /**
@@ -166,8 +168,61 @@ export default function DashboardKaprodi() {
     advisors = [], 
     studentAdvisors = [],
     consultations = [],
-    registeredUsers = []
+    registeredUsers = [],
+    minSessionsRequirement,
+    updateMinSessionsRequirement
   } = useAuth();
+
+  // Modal Pengaturan Target Syarat Minimum Bimbingan
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [inputPerAdvisor, setInputPerAdvisor] = useState(() => minSessionsRequirement?.minPerAdvisor || 12);
+  const [inputTotal, setInputTotal] = useState(() => minSessionsRequirement?.minTotal || 24);
+  const [isSavingSetting, setIsSavingSetting] = useState(false);
+  const [settingSuccessMsg, setSettingSuccessMsg] = useState('');
+
+  // Sinkronkan form saat data setting dari database/context berubah
+  React.useEffect(() => {
+    if (minSessionsRequirement) {
+      setInputPerAdvisor(minSessionsRequirement.minPerAdvisor || 12);
+      setInputTotal(minSessionsRequirement.minTotal || 24);
+    }
+  }, [minSessionsRequirement]);
+
+  const handlePerAdvisorChange = (val) => {
+    const num = Number(val);
+    setInputPerAdvisor(val);
+    if (num > 0) {
+      setInputTotal(num * 2);
+    }
+  };
+
+  const handleSaveSetting = async (e) => {
+    e?.preventDefault();
+    const perAdv = Number(inputPerAdvisor);
+    const tot = Number(inputTotal);
+    if (!perAdv || perAdv < 1) {
+      alert('Minimal bimbingan per pembimbing harus berupa angka lebih besar dari 0.');
+      return;
+    }
+    if (!tot || tot < perAdv) {
+      alert(`Total minimal bimbingan tidak boleh kurang dari target per pembimbing (${perAdv}).`);
+      return;
+    }
+
+    setIsSavingSetting(true);
+    try {
+      await updateMinSessionsRequirement(perAdv, tot);
+      setSettingSuccessMsg('Aturan syarat bimbingan berhasil diperbarui secara global!');
+      setTimeout(() => {
+        setSettingSuccessMsg('');
+        setShowSettingsModal(false);
+      }, 1500);
+    } catch {
+      alert('Terjadi kesalahan saat menyimpan pengaturan.');
+    } finally {
+      setIsSavingSetting(false);
+    }
+  };
 
   // Filter Angkatan state ('all' atau tahun spesifik seperti '2025', '2024', '2023', '2022')
   const [selectedAngkatan, setSelectedAngkatan] = useState('all');
@@ -421,7 +476,7 @@ export default function DashboardKaprodi() {
               Dashboard Ringkasan Kondisi Bimbingan Seluruh Prodi
             </h1>
             <p className="text-xs sm:text-sm text-blue-100/90 max-w-4xl leading-relaxed">
-              Pantau perkembangan frekuensi bimbingan, kepatuhan syarat &ge;24 sesi bimbingan, ketimpangan beban dosen pembimbing (P1 vs P2), tren bimbingan bulanan, dan keaktifan mahasiswa dalam satu dasbor terpadu.
+              Pantau perkembangan frekuensi bimbingan, kepatuhan syarat &ge;{dashboardStats.summary.targetMinTotal || 24} sesi bimbingan, ketimpangan beban dosen pembimbing (P1 vs P2), tren bimbingan bulanan, dan keaktifan mahasiswa dalam satu dasbor terpadu.
             </p>
           </div>
 
@@ -439,10 +494,16 @@ export default function DashboardKaprodi() {
               <FileCheck className="w-3.5 h-3.5 text-emerald-400" />
               <span>{dashboardStats.summary.totalBimbingan.toLocaleString('id-ID')} Total Bimbingan Tercatat</span>
             </span>
-            <span className="inline-flex items-center gap-1.5 bg-blue-950/70 px-3 py-1.5 rounded-xl border border-blue-800/60">
+            <button
+              type="button"
+              onClick={() => setShowSettingsModal(true)}
+              className="inline-flex items-center gap-1.5 bg-blue-950/70 hover:bg-blue-900 px-3 py-1.5 rounded-xl border border-blue-800/60 text-blue-200 hover:text-white transition-colors cursor-pointer"
+              title="Klik untuk mengubah aturan target minimum bimbingan"
+            >
               <Award className="w-3.5 h-3.5 text-amber-300" />
-              <span>{dashboardStats.summary.persenMemenuhiTarget24}% Memenuhi Syarat &ge;24x</span>
-            </span>
+              <span>{dashboardStats.summary.persenMemenuhiTarget24}% Memenuhi Syarat &ge;{dashboardStats.summary.targetMinTotal || 24}x</span>
+              <span className="text-[10px] bg-blue-800/80 px-1.5 py-0.5 rounded text-blue-200 font-mono font-semibold">Ubah</span>
+            </button>
           </div>
         </div>
       </div>
@@ -545,6 +606,17 @@ export default function DashboardKaprodi() {
               <span>Reset</span>
             </button>
           )}
+
+          {/* Button Atur Syarat Minimum Bimbingan */}
+          <button
+            type="button"
+            onClick={() => setShowSettingsModal(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition-all cursor-pointer shadow-2xs hover:scale-102"
+            title="Klik untuk mengubah aturan target minimum sesi bimbingan"
+          >
+            <Sliders className="w-3.5 h-3.5 text-indigo-600" />
+            <span>Target: {minSessionsRequirement?.minPerAdvisor || 12}x / dospem (Total {minSessionsRequirement?.minTotal || 24}x)</span>
+          </button>
         </div>
       </div>
 
@@ -695,15 +767,20 @@ export default function DashboardKaprodi() {
               </div>
             </div>
 
-            {/* 1.4 KARTU MEMENUHI >= 24 BIMBINGAN: Persentase dan “n dari N mahasiswa aktif” */}
+            {/* 1.4 KARTU MEMENUHI >= TARGET BIMBINGAN: Persentase dan “n dari N mahasiswa aktif” */}
             <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-2xs hover:shadow-md transition-shadow relative overflow-hidden group flex flex-col justify-between">
               <div className="absolute top-0 right-0 w-24 h-24 bg-amber-50 rounded-bl-full pointer-events-none -mr-4 -mt-4 transition-transform group-hover:scale-110" />
               <div className="relative z-10 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Memenuhi &ge; 24 Bimbingan</span>
-                  <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Memenuhi &ge; {dashboardStats.summary.targetMinTotal || 24} Bimbingan</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowSettingsModal(true)}
+                    className="w-9 h-9 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-700 flex items-center justify-center font-bold cursor-pointer transition-colors"
+                    title="Ubah Target Syarat Bimbingan"
+                  >
                     <Award className="w-5 h-5 text-amber-600" />
-                  </div>
+                  </button>
                 </div>
                 <div className="flex items-baseline justify-between">
                   <div className="text-3xl font-black text-indigo-700 tracking-tight">
@@ -726,7 +803,7 @@ export default function DashboardKaprodi() {
                   />
                 </div>
                 <p className="text-[10px] text-slate-400">
-                  {dashboardStats.summary.belumMemenuhiCount} mahasiswa masih berproses menuju batas &ge;24x
+                  {dashboardStats.summary.belumMemenuhiCount} mahasiswa masih berproses menuju batas &ge;{dashboardStats.summary.targetMinTotal || 24}x
                 </p>
               </div>
             </div>
@@ -1247,11 +1324,11 @@ export default function DashboardKaprodi() {
                           <td className="py-3 px-3 text-center align-middle">
                             {st.isMemenuhi24 ? (
                               <span className="inline-flex items-center text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
-                                ✓ &ge; 24 Sesi (Layak)
+                                ✓ &ge; {dashboardStats.summary.targetMinTotal || 24} Sesi (Layak)
                               </span>
                             ) : (
                               <span className="inline-flex items-center text-[11px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-                                Proses ({st.totalBimbingan}/24)
+                                Proses ({st.totalBimbingan}/{dashboardStats.summary.targetMinTotal || 24})
                               </span>
                             )}
                           </td>
@@ -1264,7 +1341,7 @@ export default function DashboardKaprodi() {
 
               <div className="pt-2 border-t border-slate-100 text-xs text-slate-400 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                 <span>Tabel interaktif: menampilkan 10 mahasiswa paling aktif dalam bimbingan</span>
-                <span className="font-medium text-emerald-700">Syarat minimal pendaftaran sidang: 24 sesi bimbingan</span>
+                <span className="font-medium text-emerald-700">Syarat minimal pendaftaran sidang: {dashboardStats.summary.targetMinTotal || 24} sesi bimbingan ({dashboardStats.summary.targetMinPerAdvisor || 12}x per pembimbing)</span>
               </div>
             </div>
 
@@ -1537,6 +1614,126 @@ export default function DashboardKaprodi() {
                 Tutup
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL PENGATURAN SYARAT MINIMUM BIMBINGAN */}
+      {showSettingsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden transform transition-all animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="p-5 bg-gradient-to-r from-blue-900 via-indigo-900 to-blue-950 text-white flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center backdrop-blur-xs text-amber-300">
+                  <Sliders className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold">Aturan Minimum Sesi Bimbingan</h3>
+                  <p className="text-xs text-blue-200/90">Program Studi D3 Manajemen Informatika</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setShowSettingsModal(false); setSettingSuccessMsg(''); }}
+                className="p-1 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Form Body */}
+            <form onSubmit={handleSaveSetting} className="p-6 space-y-5">
+              {settingSuccessMsg && (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2.5 text-xs font-bold text-emerald-800 animate-in fade-in">
+                  <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>{settingSuccessMsg}</span>
+                </div>
+              )}
+
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Tentukan jumlah sesi bimbingan yang diwajibkan bagi mahasiswa Tugas Akhir. Nilai ini berlaku secara dinamis di seluruh sistem secara real-time.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700">
+                    Target per Pembimbing (P1 &amp; P2)
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="1"
+                      max="100"
+                      value={inputPerAdvisor}
+                      onChange={(e) => handlePerAdvisorChange(e.target.value)}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-bold text-slate-900 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 transition-all"
+                      required
+                    />
+                    <span className="absolute right-3.5 top-2.5 text-xs font-bold text-slate-400">Sesi</span>
+                  </div>
+                  <p className="text-[11px] text-slate-400">Standar default: 12 sesi / dospem</p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700">
+                    Total Kelayakan Sidang
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="1"
+                      max="200"
+                      value={inputTotal}
+                      onChange={(e) => setInputTotal(e.target.value)}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-bold text-slate-900 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 transition-all"
+                      required
+                    />
+                    <span className="absolute right-3.5 top-2.5 text-xs font-bold text-slate-400">Sesi</span>
+                  </div>
+                  <p className="text-[11px] text-slate-400">Total akumulasi P1 + P2 (default: 24)</p>
+                </div>
+              </div>
+
+              {/* Dampak Aturan */}
+              <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 space-y-2 text-xs text-slate-600">
+                <span className="font-bold text-slate-700 flex items-center gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5 text-indigo-600" />
+                  Dampak Perubahan Aturan:
+                </span>
+                <ul className="list-disc list-inside space-y-1 text-[11px] text-slate-500 leading-relaxed">
+                  <li>Opsi konfirmasi status <strong className="text-slate-700">'Diterima' (ACC)</strong> bagi dosen baru akan aktif setelah mahasiswa mencapai minimal <strong>{inputPerAdvisor} sesi</strong> bersama dosen bersangkutan.</li>
+                  <li>Mahasiswa dinyatakan <strong className="text-emerald-700">Layak Mendaftar Sidang</strong> bila memenuhi minimal <strong>{inputPerAdvisor} sesi di P1</strong> dan <strong>{inputPerAdvisor} sesi di P2</strong> (total {inputTotal} sesi) serta disetujui kedua dosen.</li>
+                  <li>Metrik persentase kelulusan dan target bimbingan di dashboard otomatis terkalkulasi ulang.</li>
+                </ul>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => { setShowSettingsModal(false); setSettingSuccessMsg(''); }}
+                  disabled={isSavingSetting}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingSetting}
+                  className="px-5 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  {isSavingSetting ? (
+                    <span>Menyimpan...</span>
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4" />
+                      <span>Simpan &amp; Terapkan Aturan</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
