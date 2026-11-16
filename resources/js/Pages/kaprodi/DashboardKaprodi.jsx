@@ -880,7 +880,7 @@ export default function DashboardKaprodi() {
             
             {/* 2.1 CHART KIRI: Beban Bimbingan per Dosen (P1 vs P2) */}
             {(!expandedCard || expandedCard === 'workload') && (
-              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-4 flex flex-col justify-between transition-all">
+              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-4 flex flex-col justify-between transition-all min-w-0 overflow-hidden">
                 <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 border-b border-slate-100 pb-3.5">
                   <div className="space-y-0.5 min-w-0 flex-1">
                     <div className="flex items-center gap-2">
@@ -1051,7 +1051,7 @@ export default function DashboardKaprodi() {
 
             {/* 2.2 CHART KANAN: Bimbingan per Bulan (Bar Hijau dengan label MM/YYYY & Clickable) */}
             {(!expandedCard || expandedCard === 'monthly') && (
-              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-4 flex flex-col justify-between transition-all">
+              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-4 flex flex-col justify-between transition-all min-w-0 overflow-hidden">
                 <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 border-b border-slate-100 pb-3.5">
                   <div className="space-y-0.5 min-w-0 flex-1">
                     <div className="flex items-center gap-2">
@@ -1109,7 +1109,7 @@ export default function DashboardKaprodi() {
                 </div>
 
                 {/* Monthly Green Bar Chart */}
-                <div className="pt-2">
+                <div className="pt-2 w-full min-w-0">
                   <div className="flex items-center justify-between gap-2 mb-2 text-xs">
                     <div className="flex items-center gap-1.5">
                       <span className="w-3 h-3 rounded-xs bg-emerald-500 shadow-2xs" />
@@ -1120,57 +1120,61 @@ export default function DashboardKaprodi() {
                     </span>
                   </div>
 
-                  {/* Chart Area */}
-                  <div className={`h-56 sm:h-60 flex items-end justify-between gap-1.5 sm:gap-2.5 px-1 border-b border-slate-200 ${
-                    chartsLayout === 'stacked' || expandedCard === 'monthly' ? 'w-full' : ''
-                  }`}>
-                    {dashboardStats.monthlyChartData.map((m) => {
-                      const maxMonthly = Math.max(1, dashboardStats.summary.maxMonthlyTotal);
-                      const heightPercent = Math.min(100, Math.max(2, Math.round((m.total / maxMonthly) * 100)));
-                      const isCurrentMonth = m.key === dashboardStats.summary.currentMonthKey;
+                  {/* Chart Area: Responsive & Scrollable when needed, no overflow */}
+                  <div className="w-full overflow-x-auto pb-1 scrollbar-thin">
+                    <div className="h-56 sm:h-60 flex items-end justify-between gap-1 sm:gap-2 px-1 border-b border-slate-200 min-w-[360px] w-full">
+                      {dashboardStats.monthlyChartData.map((m) => {
+                        const maxMonthly = Math.max(1, dashboardStats.summary.maxMonthlyTotal);
+                        const heightPercent = Math.min(100, Math.max(2, Math.round((m.total / maxMonthly) * 100)));
+                        const isCurrentMonth = m.key === dashboardStats.summary.currentMonthKey;
 
-                      return (
-                        <div 
-                          key={m.key} 
-                          onClick={() => setSelectedMonthModal({ isOpen: true, monthData: m })}
-                          className="flex-1 flex flex-col items-center h-full justify-end group cursor-pointer"
-                          title={`Klik untuk melihat detail ${m.name} (${m.labelMMYYYY}): ${m.total} bimbingan`}
-                        >
-                          {/* Value on top of bar */}
-                          <span className="text-[10px] font-extrabold text-slate-600 group-hover:text-emerald-700 transition-colors mb-1 font-mono">
-                            {m.total}
-                          </span>
-
-                          {/* Bar Hijau */}
-                          <div
-                            className={`w-full ${chartsLayout === 'stacked' || expandedCard === 'monthly' ? 'max-w-[48px]' : 'max-w-[38px]'} bg-slate-100 rounded-t-lg overflow-hidden flex flex-col justify-end transition-all group-hover:shadow-md group-hover:scale-105`}
-                            style={{ height: `${heightPercent}%` }}
+                        return (
+                          <div 
+                            key={m.key} 
+                            onClick={() => setSelectedMonthModal({ isOpen: true, monthData: m })}
+                            className="flex-1 flex flex-col items-center h-full justify-end group cursor-pointer min-w-0"
+                            title={`Klik untuk melihat detail ${m.name} (${m.labelMMYYYY}): ${m.total} bimbingan`}
                           >
-                            <div 
-                              className={`w-full h-full transition-all duration-300 rounded-t-lg flex flex-col justify-between p-1 ${
-                                isCurrentMonth 
-                                  ? 'bg-gradient-to-t from-emerald-600 to-teal-500 ring-2 ring-emerald-400' 
-                                  : 'bg-gradient-to-t from-emerald-600 to-emerald-400 group-hover:from-emerald-500 group-hover:to-teal-300'
-                              }`}
+                            {/* Value on top of bar */}
+                            <span className="text-[10px] font-extrabold text-slate-600 group-hover:text-emerald-700 transition-colors mb-1 font-mono">
+                              {m.total}
+                            </span>
+
+                            {/* Bar Hijau */}
+                            <div
+                              className="w-full max-w-[28px] sm:max-w-[34px] lg:max-w-[40px] bg-slate-100 rounded-t-lg overflow-hidden flex flex-col justify-end transition-all group-hover:shadow-md group-hover:scale-105"
+                              style={{ height: `${heightPercent}%` }}
                             >
-                              <div className="w-full flex justify-center">
-                                <span className="w-1.5 h-1.5 rounded-full bg-white/70" />
-                              </div>
-                              <div className="text-[8px] text-white/95 text-center font-bold font-mono">
-                                {m.daringCount}d
+                              <div 
+                                className={`w-full h-full transition-all duration-300 rounded-t-lg flex flex-col justify-between p-0.5 sm:p-1 ${
+                                  isCurrentMonth 
+                                    ? 'bg-gradient-to-t from-emerald-600 to-teal-500 ring-2 ring-emerald-400' 
+                                    : 'bg-gradient-to-t from-emerald-600 to-emerald-400 group-hover:from-emerald-500 group-hover:to-teal-300'
+                                }`}
+                              >
+                                <div className="w-full flex justify-center">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-white/70" />
+                                </div>
+                                <div className="text-[8px] text-white/95 text-center font-bold font-mono">
+                                  {m.daringCount}d
+                                </div>
                               </div>
                             </div>
-                          </div>
 
-                          {/* Label Sumbu X: MM/YYYY */}
-                          <span className={`text-[10px] font-bold mt-2 transition-colors font-mono ${
-                            isCurrentMonth ? 'text-emerald-700 font-black' : 'text-slate-600 group-hover:text-emerald-600'
-                          }`}>
-                            {m.labelMMYYYY}
-                          </span>
-                        </div>
-                      );
-                    })}
+                            {/* Label Sumbu X: Responsive compact label */}
+                            <span 
+                              className={`text-[9px] sm:text-[10px] font-bold mt-2 transition-colors font-mono tracking-tighter truncate text-center ${
+                                isCurrentMonth ? 'text-emerald-700 font-black' : 'text-slate-600 group-hover:text-emerald-600'
+                              }`} 
+                              title={`${m.name} (${m.labelMMYYYY})`}
+                            >
+                              <span className="hidden xl:inline">{m.labelMMYYYY}</span>
+                              <span className="inline xl:hidden">{m.short}</span>
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
 
                   <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
