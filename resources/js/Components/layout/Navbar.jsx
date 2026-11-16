@@ -113,13 +113,17 @@ export default function Navbar() {
 
     if (isSupabaseConfigured && supabase && currentUser) {
       const docId = `simta_read_notif_ids_${currentUser.id || currentUser.role || 'admin'}`;
-      supabase.from('admin_cms').upsert([{
-        id: docId,
-        judul: `Notification Read IDs (${currentUser.nama || currentUser.role})`,
-        kategori: 'notification_read_ids',
-        isi: JSON.stringify(arr),
-        updated_at: new Date().toISOString()
-      }], { onConflict: 'id' }).catch(() => {});
+      (async () => {
+        try {
+          await supabase.from('admin_cms').upsert([{
+            id: docId,
+            judul: `Notification Read IDs (${currentUser.nama || currentUser.role})`,
+            kategori: 'notification_read_ids',
+            isi: JSON.stringify(arr),
+            updated_at: new Date().toISOString()
+          }], { onConflict: 'id' });
+        } catch {}
+      })();
     }
   };
 

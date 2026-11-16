@@ -391,13 +391,17 @@ export const addReadNotificationIds = (idsToAdd = [], currentUser = null) => {
 
     if (isSupabaseConfigured && supabase) {
       const roleOrId = currentUser?.id || currentUser?.role || 'user';
-      supabase.from('admin_cms').upsert([{
-        id: `simta_read_notif_ids_${roleOrId}`,
-        judul: `Read Notifications (${roleOrId})`,
-        kategori: 'notification_read_ids',
-        isi: JSON.stringify(arr),
-        updated_at: new Date().toISOString()
-      }], { onConflict: 'id' }).then(() => {}).catch(() => {});
+      (async () => {
+        try {
+          await supabase.from('admin_cms').upsert([{
+            id: `simta_read_notif_ids_${roleOrId}`,
+            judul: `Read Notifications (${roleOrId})`,
+            kategori: 'notification_read_ids',
+            isi: JSON.stringify(arr),
+            updated_at: new Date().toISOString()
+          }], { onConflict: 'id' });
+        } catch {}
+      })();
     }
   } catch { }
 };

@@ -426,28 +426,32 @@ export const getStudentCredential = async (nim, options = {}) => {
             const remoteHasAvatar = Boolean(remoteAvatar);
             const needsAdminCmsHeal = (resolvedNoHp && !remoteHasPhone) || (resolvedAvatar && !remoteHasAvatar);
             if (needsAdminCmsHeal) {
-                supabase.from('admin_cms').upsert([{
-                    id: `${PROFILE_META_PREFIX}${key}`,
-                    judul: key,
-                    kategori: PROFILE_META_CATEGORY,
-                    isi: JSON.stringify({
-                        ...(remoteMeta || {}),
-                        nim: key,
-                        nama: resolvedNama,
-                        email: resolvedEmail,
-                        noHp: resolvedNoHp,
-                        no_hp: resolvedNoHp,
-                        kelas: resolvedKelas || '2024',
-                        prodi: resolvedProdi || 'D3 Manajemen Informatika',
-                        avatar_url: resolvedAvatar || '',
-                        avatarUrl: resolvedAvatar || '',
-                        isProfileCompleted: isCompleted,
-                        updated_at: new Date().toISOString(),
-                    }),
-                    status: 'aktif',
-                    penulis: 'Student Profile Auto-Heal',
-                    updated_at: new Date().toISOString(),
-                }], { onConflict: 'id' }).then(() => {}).catch(() => {});
+                (async () => {
+                    try {
+                        await supabase.from('admin_cms').upsert([{
+                            id: `${PROFILE_META_PREFIX}${key}`,
+                            judul: key,
+                            kategori: PROFILE_META_CATEGORY,
+                            isi: JSON.stringify({
+                                ...(remoteMeta || {}),
+                                nim: key,
+                                nama: resolvedNama,
+                                email: resolvedEmail,
+                                noHp: resolvedNoHp,
+                                no_hp: resolvedNoHp,
+                                kelas: resolvedKelas || '2024',
+                                prodi: resolvedProdi || 'D3 Manajemen Informatika',
+                                avatar_url: resolvedAvatar || '',
+                                avatarUrl: resolvedAvatar || '',
+                                isProfileCompleted: isCompleted,
+                                updated_at: new Date().toISOString(),
+                            }),
+                            status: 'aktif',
+                            penulis: 'Student Profile Auto-Heal',
+                            updated_at: new Date().toISOString(),
+                        }], { onConflict: 'id' });
+                    } catch {}
+                })();
             }
 
             const existsOnServer = Boolean(row || remoteMeta || profPhone || ttNama);
