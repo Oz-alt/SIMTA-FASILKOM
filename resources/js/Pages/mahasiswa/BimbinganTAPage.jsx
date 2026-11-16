@@ -30,7 +30,7 @@ import { calculateBimbinganReminder } from '../../lib/bimbinganReminder.js';
 import { calculateBimbinganEligibility, isConsultationEvaluated } from '../../lib/consultationUtils.js';
 
 export default function BimbinganTAPage() {
-  const { currentUser, consultations, reviewConsultation } = useAuth();
+  const { currentUser, consultations, reviewConsultation, minSessionsRequirement } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingConsultation, setEditingConsultation] = useState(null);
   const [toastMsg, setToastMsg] = useState('');
@@ -85,8 +85,11 @@ export default function BimbinganTAPage() {
   // Recap stats: Sesi bimbingan terhitung jika status telah dievaluasi (Revisi Mayor, Minor, atau Diterima).
   // Status 'Menunggu' belum terhitung.
   const bimbinganStats = useMemo(() => {
-    return calculateBimbinganEligibility(studentConsultations);
-  }, [studentConsultations]);
+    return calculateBimbinganEligibility(studentConsultations, {
+      minPerAdvisor: minSessionsRequirement?.minPerAdvisor,
+      minTotal: minSessionsRequirement?.minTotal
+    });
+  }, [studentConsultations, minSessionsRequirement]);
 
   const {
     countPemb1,

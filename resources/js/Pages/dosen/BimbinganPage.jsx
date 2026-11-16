@@ -6,7 +6,7 @@ import DosenHeaderBanner from '../../Components/common/DosenHeaderBanner.jsx';
 import { sortConsultationsChronologically, getMinSessionsPerAdvisor } from '../../lib/consultationUtils.js';
 
 export default function BimbinganPage() {
-  const { currentUser, studentAdvisors, consultations, thesisTitles, reviewConsultation, notifications, markNotificationAsRead } = useAuth();
+  const { currentUser, studentAdvisors, consultations, thesisTitles, reviewConsultation, notifications, markNotificationAsRead, minSessionsRequirement } = useAuth();
   const { url } = usePage();
 
   const [feedbackState, setFeedbackState] = useState({});
@@ -198,7 +198,7 @@ export default function BimbinganPage() {
   }, [selectedNim, studentConsultations, notifications, markNotificationAsRead]);
 
   // Syarat bimbingan: tervalidasi target per pembimbing untuk kelayakan diterima (dinamis)
-  const TARGET_TERVALIDASI = getMinSessionsPerAdvisor();
+  const TARGET_TERVALIDASI = minSessionsRequirement?.minPerAdvisor || getMinSessionsPerAdvisor();
   // Total bimbingan yang telah dicapai mahasiswa terpilih
   const totalBimbinganCount = studentConsultations.length;
   // Syarat tombol Diterima baru aktif jika mahasiswa telah menyelesaikan minimal 12 kali bimbingan

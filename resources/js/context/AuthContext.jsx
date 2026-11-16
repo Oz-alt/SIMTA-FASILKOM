@@ -9211,7 +9211,7 @@ export function AuthProvider({ children }) {
             penguji2_nama: '',
             penguji2_nip: '',
             status: 'diajukan', // Status awal masuk tabel: "Diajukan"
-            catatan: 'Mahasiswa otomatis masuk ke jadwal sidang setelah memenuhi syarat minimal 12x bimbingan per pembimbing dan disetujui Diterima oleh kedua pembimbing.',
+            catatan: `Mahasiswa otomatis masuk ke jadwal sidang setelah memenuhi syarat minimal ${getMinSessionsPerAdvisor()}x bimbingan per pembimbing dan disetujui Diterima oleh kedua pembimbing.`,
             link_berkas: '',
             created_at: new Date().toISOString()
           };
@@ -9226,7 +9226,7 @@ export function AuthProvider({ children }) {
       }
       return prev;
     });
-  }, [consultations, thesisTitles, studentAdvisors, advisors]);
+  }, [consultations, thesisTitles, studentAdvisors, advisors, minSessionsRequirement]);
 
   // Auto-reconcile notifications for Thesis Title Submissions & Updates (Dosen)
   useEffect(() => {

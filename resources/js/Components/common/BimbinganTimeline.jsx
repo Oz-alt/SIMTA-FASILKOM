@@ -21,8 +21,10 @@ import {
 } from 'lucide-react';
 import ModalAjukanBimbingan from './ModalAjukanBimbingan.jsx';
 import { calculateBimbinganEligibility, isConsultationEvaluated } from '../../lib/consultationUtils.js';
+import { useAuth } from '../../context/AuthContext.jsx';
 
 export default function BimbinganTimeline({ consultations = [], currentUser }) {
+  const { minSessionsRequirement } = useAuth();
   const [filterAdvisor, setFilterAdvisor] = useState('all'); // 'all', 'Pembimbing 1', 'Pembimbing 2'
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -83,8 +85,11 @@ export default function BimbinganTimeline({ consultations = [], currentUser }) {
   // Recap statistics: Sesi terhitung jika status telah dievaluasi (Revisi Mayor, Minor, atau Diterima).
   // Status 'Menunggu' belum terhitung.
   const bimbinganStats = useMemo(() => {
-    return calculateBimbinganEligibility(studentConsultations);
-  }, [studentConsultations]);
+    return calculateBimbinganEligibility(studentConsultations, {
+      minPerAdvisor: minSessionsRequirement?.minPerAdvisor,
+      minTotal: minSessionsRequirement?.minTotal
+    });
+  }, [studentConsultations, minSessionsRequirement]);
 
   const {
     countPemb1,
@@ -148,7 +153,7 @@ export default function BimbinganTimeline({ consultations = [], currentUser }) {
             </span>
           </h3>
           <p className="text-xs text-slate-500 leading-relaxed max-w-2xl">
-            Pantau jejak riwayat konsultasi, masukan arahan dosen pembimbing, serta progres pemenuhan syarat 24 sesi sidang akhir.
+            Pantau jejak riwayat konsultasi, masukan arahan dosen pembimbing, serta progres pemenuhan syarat {minRequired} sesi sidang akhir.
           </p>
         </div>
       </div>
@@ -168,7 +173,7 @@ export default function BimbinganTimeline({ consultations = [], currentUser }) {
               </span>
             </div>
             <p className="text-xs font-semibold text-slate-700 mt-0.5">
-              Tercapai <span className="font-extrabold text-indigo-700">{totalEvaluated}</span> dari target <span className="font-extrabold text-slate-900">{minRequired} Sesi Bimbingan</span> (12x masing-masing pembimbing)
+              Tercapai <span className="font-extrabold text-indigo-700">{totalEvaluated}</span> dari target <span className="font-extrabold text-slate-900">{minRequired} Sesi Bimbingan</span> ({minPerPembimbing}x masing-masing pembimbing)
             </p>
             <p className="text-[10px] text-slate-400 mt-0.5">
               Sesi terhitung otomatis setelah dosen memberikan evaluasi (Revisi Mayor, Minor, atau Diterima).

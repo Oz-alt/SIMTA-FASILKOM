@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { Link } from '@inertiajs/react';
 import StudentWhatsAppLink from '../../Components/common/StudentWhatsAppLink.jsx';
 import DosenHeaderBanner from '../../Components/common/DosenHeaderBanner.jsx';
-import { isConsultationEvaluated } from '../../lib/consultationUtils.js';
+import { isConsultationEvaluated, getMinTotalSessionsDefense } from '../../lib/consultationUtils.js';
 import { 
   Users, 
   Search, 
@@ -12,7 +12,8 @@ import {
 } from 'lucide-react';
 
 export default function MahasiswaBimbinganPage() {
-  const { currentUser, studentAdvisors, thesisTitles, consultations } = useAuth();
+  const { currentUser, studentAdvisors, thesisTitles, consultations, minSessionsRequirement } = useAuth();
+  const targetTotal = minSessionsRequirement?.minTotal || getMinTotalSessionsDefense();
 
   const userNip = currentUser?.nip || currentUser?.nim || '';
   const userNama = currentUser?.nama || '';
@@ -158,7 +159,7 @@ export default function MahasiswaBimbinganPage() {
       );
       
       const totalCount = mhsConsultations.length;
-      const progressPercent = Math.min(100, Math.round((totalCount / 24) * 100));
+      const progressPercent = Math.min(100, Math.round((totalCount / targetTotal) * 100));
       const pendingCount = pendingConsultations.length;
 
       // Mahasiswa hanya memiliki indikator titik merah jika ada pengajuan bimbingan yang belum pernah dilihat/dibuka dosen

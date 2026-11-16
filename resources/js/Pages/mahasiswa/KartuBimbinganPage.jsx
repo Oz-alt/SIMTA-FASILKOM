@@ -8,7 +8,7 @@ import { getMinTotalSessionsDefense } from '../../lib/consultationUtils.js';
 import unsriLogo from '../../assets/photo/unsri logo.png';
 
 export default function KartuBimbinganPage() {
-  const { currentUser, consultations, studentAdvisors, advisors, thesisTitles = [] } = useAuth();
+  const { currentUser, consultations, studentAdvisors, advisors, thesisTitles = [], minSessionsRequirement } = useAuth();
 
   // Find advisor assignment for current student dynamically
   const studentNim = currentUser?.nim || '';
@@ -222,7 +222,8 @@ export default function KartuBimbinganPage() {
     : `/verify/bimbingan/${studentNim}`;
 
   // Dynamic rows count (based on global minimum requirement), dynamically grows if student has more consultations
-  const ROWS_COUNT = Math.max(getMinTotalSessionsDefense(), studentConsultations.length);
+  const targetRows = minSessionsRequirement?.minTotal || getMinTotalSessionsDefense();
+  const ROWS_COUNT = Math.max(targetRows, studentConsultations.length);
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 select-none bg-slate-50 p-6 min-h-screen">

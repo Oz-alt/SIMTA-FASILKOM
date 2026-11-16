@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { Link } from '@inertiajs/react';
 import StudentWhatsAppLink from '../../Components/common/StudentWhatsAppLink.jsx';
 import DosenHeaderBanner from '../../Components/common/DosenHeaderBanner.jsx';
+import { getMinTotalSessionsDefense, getMinSessionsPerAdvisor } from '../../lib/consultationUtils.js';
 import { 
   Users, 
   BookOpen, 
@@ -29,7 +30,10 @@ import {
 } from 'lucide-react';
 
 export default function DashboardDosen() {
-  const { currentUser, studentAdvisors = [], thesisTitles = [], thesisStages = [], consultations = [] } = useAuth();
+  const { currentUser, studentAdvisors = [], thesisTitles = [], thesisStages = [], consultations = [], minSessionsRequirement } = useAuth();
+
+  const minTotalDefense = minSessionsRequirement?.minTotal || getMinTotalSessionsDefense();
+  const minPerAdvisor = minSessionsRequirement?.minPerAdvisor || getMinSessionsPerAdvisor();
 
   // Normalize current user identifiers
   const userNip = currentUser?.nip || currentUser?.nim || '';
@@ -165,8 +169,8 @@ export default function DashboardDosen() {
       }
 
       const isOverdue = daysInactive > 30;
-      const isUnder24 = totalConsultations < 24;
-      const isReadyForDefense = totalConsultations >= 24;
+      const isUnder24 = totalConsultations < minTotalDefense;
+      const isReadyForDefense = totalConsultations >= minTotalDefense;
 
       // Stage of TA
       let currentStage = 'Penyusunan Proposal';
@@ -496,17 +500,17 @@ export default function DashboardDosen() {
             {/* ── Kolom 1: Belum mencapai 24 bimbingan ── */}
             <div className="space-y-3.5 pr-0 md:pr-4">
               <h4 className="text-xs font-semibold text-slate-900 tracking-tight">
-                Belum mencapai 24 bimbingan
+                Belum mencapai {minTotalDefense} bimbingan
               </h4>
 
               <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1 text-xs scrollbar-thin">
                 {under24List.map(student => {
-                  const progressPct = Math.min(100, Math.round((student.totalConsultations / 24) * 100));
+                  const progressPct = Math.min(100, Math.round((student.totalConsultations / minTotalDefense) * 100));
                   return (
                     <div 
                       key={student.student_nim}
                       className="flex items-center justify-between gap-2 py-0.5 hover:bg-slate-50 rounded-md px-1 transition-colors"
-                      title={`${student.student_nama} (${student.totalConsultations}/24 bimbingan)`}
+                      title={`${student.student_nama} (${student.totalConsultations}/${minTotalDefense} bimbingan)`}
                     >
                       <StudentWhatsAppLink
                         student={student}

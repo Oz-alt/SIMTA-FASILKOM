@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { Link } from '@inertiajs/react';
 import StudentWhatsAppLink from '../../Components/common/StudentWhatsAppLink.jsx';
 import DosenHeaderBanner from '../../Components/common/DosenHeaderBanner.jsx';
-import { isConsultationEvaluated } from '../../lib/consultationUtils.js';
+import { isConsultationEvaluated, getMinSessionsPerAdvisor } from '../../lib/consultationUtils.js';
 import { 
   Printer, 
   CheckCircle2, 
@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 
 export default function RekapBimbinganPage() {
-  const { currentUser, studentAdvisors, thesisTitles, consultations } = useAuth();
+  const { currentUser, studentAdvisors, thesisTitles, consultations, minSessionsRequirement } = useAuth();
 
   const userNip = currentUser?.nip || currentUser?.nim || '';
   const userNama = currentUser?.nama || '';
@@ -23,7 +23,7 @@ export default function RekapBimbinganPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('all'); // 'all' | 'eligible' | 'ineligible' | 'pending'
 
-  const MIN_BIMBINGAN = 12; // Minimal 12x bimbingan untuk kelayakan ujian (Status: Diterima)
+  const MIN_BIMBINGAN = minSessionsRequirement?.minPerAdvisor || getMinSessionsPerAdvisor(); // Minimal bimbingan untuk kelayakan ujian (Status: Diterima)
 
   // Filter students assigned to this dosen
   const assignedStudents = useMemo(() => {

@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { getMinSessionsPerAdvisor } from '../../lib/consultationUtils.js';
 import {
   CalendarDays,
   Clock,
@@ -1010,7 +1011,7 @@ export default function JadwalSidangSection({ showHeaderBanner = true }) {
                       <div className="max-w-xs mx-auto space-y-2">
                         <CalendarDays className="w-8 h-8 text-slate-300 mx-auto" />
                         <p className="text-xs font-semibold text-slate-600">Belum ada jadwal sidang yang sesuai.</p>
-                        <p className="text-[11px] text-slate-400">Mahasiswa yang menyelesaikan minimal 12x bimbingan tiap pembimbing dan di-ACC kedua dospem akan otomatis muncul di sini.</p>
+                        <p className="text-[11px] text-slate-400">Mahasiswa yang menyelesaikan minimal {getMinSessionsPerAdvisor()}x bimbingan tiap pembimbing dan di-ACC kedua dospem akan otomatis muncul di sini.</p>
                       </div>
                     </td>
                   </tr>

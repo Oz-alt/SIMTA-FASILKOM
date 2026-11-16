@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import StudentWhatsAppLink from '../../Components/common/StudentWhatsAppLink.jsx';
 import DosenHeaderBanner from '../../Components/common/DosenHeaderBanner.jsx';
-import { isConsultationEvaluated } from '../../lib/consultationUtils.js';
+import { isConsultationEvaluated, getMinSessionsPerAdvisor } from '../../lib/consultationUtils.js';
 import { 
   Clock,
   X,
@@ -21,13 +21,14 @@ export default function ValidasiJudulDosenPage() {
     consultations = [],
     studentAccounts = [],
     masterStudents = [],
-    validateThesisTitleDosen
+    validateThesisTitleDosen,
+    minSessionsRequirement
   } = useAuth();
 
   const [toastMsg, setToastMsg] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const MIN_BIMBINGAN = 12;
+  const MIN_BIMBINGAN = minSessionsRequirement?.minPerAdvisor || getMinSessionsPerAdvisor();
 
   // Normalize current user identifiers
   const userNip = currentUser?.nip || currentUser?.nim || '';

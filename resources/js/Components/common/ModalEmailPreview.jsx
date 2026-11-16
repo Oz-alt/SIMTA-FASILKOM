@@ -11,6 +11,7 @@ import {
   Send
 } from 'lucide-react';
 import unsriLogo from '../../assets/photo/unsri logo.png';
+import { getMinTotalSessionsDefense, getMinSessionsPerAdvisor } from '../../lib/consultationUtils.js';
 
 export default function ModalEmailPreview({ isOpen, onClose, reminder, student, onResendEmail }) {
   if (!isOpen || !reminder) return null;
@@ -151,7 +152,7 @@ export default function ModalEmailPreview({ isOpen, onClose, reminder, student, 
           {/* Instructions */}
           <div className="space-y-2 text-xs text-slate-600 leading-relaxed">
             <p>
-              Mahasiswa diwajibkan untuk aktif berkonsultasi dengan Dosen Pembimbing 1 dan Dosen Pembimbing 2 sekurang-kurangnya <strong>2 kali dalam sebulan</strong> untuk memastikan kelancaran penulisan naskah serta pemenuhan syarat kelayakan pendaftaran sidang (minimal 24 sesi bimbingan, 12 sesi masing-masing pembimbing).
+              Mahasiswa diwajibkan untuk aktif berkonsultasi dengan Dosen Pembimbing 1 dan Dosen Pembimbing 2 sekurang-kurangnya <strong>2 kali dalam sebulan</strong> untuk memastikan kelancaran penulisan naskah serta pemenuhan syarat kelayakan pendaftaran sidang (minimal {getMinTotalSessionsDefense()} sesi bimbingan, {getMinSessionsPerAdvisor()} sesi masing-masing pembimbing).
             </p>
             <p>
               Silakan akses portal SIMONITA mahasiswa untuk mencatat sesi bimbingan atau mengunggah naskah revisi terbaru Anda.
