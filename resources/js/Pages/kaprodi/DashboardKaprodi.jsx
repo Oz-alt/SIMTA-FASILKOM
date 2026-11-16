@@ -34,7 +34,11 @@ import {
   Database,
   Filter,
   Sliders,
-  Check
+  Check,
+  Maximize2,
+  Minimize2,
+  LayoutGrid,
+  Rows
 } from 'lucide-react';
 
 /**
@@ -308,6 +312,11 @@ export default function DashboardKaprodi() {
 
   // Sorting state for Beban Bimbingan per Dosen
   const [workloadSortBy, setWorkloadSortBy] = useState('total_desc'); // 'total_desc' | 'disparity_desc' | 'balanced' | 'name'
+
+  // Flexible Layout state for the two main charts: 'grid' (2 Kolom) or 'stacked' (1 Kolom Lebar Penuh)
+  const [chartsLayout, setChartsLayout] = useState('grid');
+  // Specific expanded card (null | 'workload' | 'monthly')
+  const [expandedCard, setExpandedCard] = useState(null);
 
   // Sorted Workload List
   const sortedWorkloads = useMemo(() => {
@@ -811,278 +820,369 @@ export default function DashboardKaprodi() {
           </div>
 
           {/* ===================================================================== */}
-          {/* BARIS 2: CHART BATANG BERDAMPINGAN (KIRI & KANAN)                     */}
+          {/* BARIS 2: CHART ANALITIK FLEKSIBEL (BERDAMPINGAN ATAU LEBAR PENUH)    */}
           {/* Kiri: Beban Bimbingan per Dosen (P1 vs P2) - Grouped Bar               */}
           {/* Kanan: Bimbingan per Bulan (Bar Hijau dengan label MM/YYYY & Klik)    */}
           {/* ===================================================================== */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-stretch">
+          
+          {/* Layout Controls Bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-200/70 text-blue-700 flex items-center justify-center font-bold shadow-2xs shrink-0">
+                <BarChart3 className="w-4 h-4" />
+              </div>
+              <div>
+                <h2 className="text-sm sm:text-base font-extrabold text-slate-900 tracking-tight">
+                  Grafik Analisis Beban &amp; Tren Bimbingan
+                </h2>
+                <p className="text-xs text-slate-500 font-medium">
+                  Komparasi beban dosen (P1 vs P2) dan distribusi riwayat bimbingan bulanan
+                </p>
+              </div>
+            </div>
+
+            {/* Layout View Switcher */}
+            <div className="flex items-center gap-1.5 self-start sm:self-auto bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs">
+              <button
+                type="button"
+                onClick={() => { setChartsLayout('grid'); setExpandedCard(null); }}
+                className={`px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                  chartsLayout === 'grid' && !expandedCard
+                    ? 'bg-white text-indigo-700 font-bold shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+                title="Tampilkan 2 Kolom (Berdampingan)"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span>2 Kolom</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setChartsLayout('stacked'); setExpandedCard(null); }}
+                className={`px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                  chartsLayout === 'stacked' || expandedCard
+                    ? 'bg-white text-indigo-700 font-bold shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+                title="Tampilkan Lebar Penuh (1 Kolom per Baris)"
+              >
+                <Rows className="w-3.5 h-3.5" />
+                <span>Lebar Penuh</span>
+              </button>
+            </div>
+          </div>
+
+          <div className={`grid gap-5 items-stretch transition-all duration-300 ${
+            chartsLayout === 'stacked' || expandedCard
+              ? 'grid-cols-1'
+              : 'grid-cols-1 lg:grid-cols-2'
+          }`}>
             
             {/* 2.1 CHART KIRI: Beban Bimbingan per Dosen (P1 vs P2) */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-4 flex flex-col justify-between">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-2">
-                    <BarChart3 className="w-4 h-4 text-blue-600" />
-                    <h3 className="text-sm font-bold text-slate-900">
-                      Beban Bimbingan per Dosen (P1 vs P2)
-                    </h3>
+            {(!expandedCard || expandedCard === 'workload') && (
+              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-4 flex flex-col justify-between transition-all">
+                <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 border-b border-slate-100 pb-3.5">
+                  <div className="space-y-0.5 min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <BarChart3 className="w-4 h-4 text-blue-600 shrink-0" />
+                      <h3 className="text-sm font-bold text-slate-900 truncate">
+                        Beban Bimbingan per Dosen (P1 vs P2)
+                      </h3>
+                    </div>
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                      Grouped bar: Pembimbing 1 (Biru) vs Pembimbing 2 (Oranye) tiap dosen
+                      {selectedAngkatan !== 'all' && (
+                        <span className="ml-1.5 inline-flex items-center text-[10px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
+                          Angkatan {selectedAngkatan}
+                        </span>
+                      )}
+                    </p>
                   </div>
-                  <p className="text-xs text-slate-500">
-                    Grouped bar: Pembimbing 1 (Biru) vs Pembimbing 2 (Oranye) tiap dosen
-                    {selectedAngkatan !== 'all' && (
-                      <span className="ml-1.5 inline-flex items-center text-[10px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
-                        Angkatan {selectedAngkatan}
-                      </span>
-                    )}
-                  </p>
-                </div>
 
-                <div className="flex items-center flex-wrap gap-2">
-                  <div className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 rounded-xl border border-slate-200 text-xs">
-                    <Filter className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                    <select
-                      aria-label="Filter Beban Dosen per Angkatan"
-                      value={selectedAngkatan}
-                      onChange={(e) => setSelectedAngkatan(e.target.value)}
-                      className="bg-transparent border-0 py-0.5 pr-2 text-xs font-bold text-slate-800 focus:ring-0 focus:outline-hidden cursor-pointer"
+                  <div className="flex items-center flex-wrap gap-2 shrink-0">
+                    <div className="inline-flex items-center gap-1.5 bg-slate-50 hover:bg-slate-100/90 px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs transition-colors">
+                      <Filter className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                      <select
+                        aria-label="Filter Beban Dosen per Angkatan"
+                        value={selectedAngkatan}
+                        onChange={(e) => setSelectedAngkatan(e.target.value)}
+                        className="bg-transparent border-0 p-0 pr-2 text-xs font-bold text-slate-800 focus:ring-0 focus:outline-hidden cursor-pointer"
+                      >
+                        <option value="all">Semua Angkatan</option>
+                        {availableAngkatans.map(a => (
+                          <option key={a.year} value={a.year}>
+                            {a.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="inline-flex items-center bg-white px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs shadow-2xs hover:border-slate-300 transition-colors">
+                      <Sliders className="w-3.5 h-3.5 text-slate-400 mr-1.5 shrink-0" />
+                      <select
+                        value={workloadSortBy}
+                        onChange={(e) => setWorkloadSortBy(e.target.value)}
+                        className="bg-transparent border-0 p-0 pr-1 text-xs font-bold text-slate-700 focus:outline-hidden focus:ring-0 cursor-pointer"
+                      >
+                        <option value="total_desc">Total Beban Terbanyak</option>
+                        <option value="disparity_desc">Ketimpangan Tertinggi</option>
+                        <option value="balanced">Beban Paling Seimbang</option>
+                        <option value="name">Nama Dosen (A - Z)</option>
+                      </select>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setExpandedCard(expandedCard === 'workload' ? null : 'workload')}
+                      className={`p-1.5 rounded-xl border transition-all cursor-pointer ${
+                        expandedCard === 'workload'
+                          ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                          : 'bg-white text-slate-500 hover:text-slate-800 border-slate-200 hover:bg-slate-50'
+                      }`}
+                      title={expandedCard === 'workload' ? 'Kembalikan ukuran normal' : 'Perluas tampilan penuh'}
                     >
-                      <option value="all">Semua Angkatan</option>
-                      {availableAngkatans.map(a => (
-                        <option key={a.year} value={a.year}>
-                          {a.label}
-                        </option>
-                      ))}
-                    </select>
+                      {expandedCard === 'workload' ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+                    </button>
                   </div>
-
-                  <select
-                    value={workloadSortBy}
-                    onChange={(e) => setWorkloadSortBy(e.target.value)}
-                    className="py-1 px-2.5 text-xs border border-slate-200 rounded-xl bg-white font-bold text-slate-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
-                  >
-                    <option value="total_desc">Total Beban Terbanyak</option>
-                    <option value="disparity_desc">Ketimpangan Tertinggi</option>
-                    <option value="balanced">Beban Paling Seimbang</option>
-                    <option value="name">Nama Dosen (A - Z)</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Grouped Bar Chart Area */}
-              <div className="pt-2">
-                {/* Legend */}
-                <div className="flex items-center justify-between gap-2 mb-2 text-xs">
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-3 h-3 rounded-xs bg-blue-600 shadow-2xs" />
-                      <span className="text-[11px] font-bold text-slate-700">Pembimbing-1 (P1)</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-3 h-3 rounded-xs bg-orange-500 shadow-2xs" />
-                      <span className="text-[11px] font-bold text-slate-700">Pembimbing-2 (P2)</span>
-                    </div>
-                  </div>
-                  <span className="text-[10px] text-slate-400 font-medium">Kuota Maks: {dashboardStats.advisorWorkloadSummary.kapasitasMaksBeban} Mhs</span>
                 </div>
 
-                {/* Sumbu Y & Gridlines with Scrollable X-Axis */}
-                <div className="relative border-b border-slate-200">
-                  {/* Horizontal Gridlines */}
-                  <div className="absolute inset-0 flex flex-col justify-between pointer-events-none text-[9px] text-slate-400 pb-12">
-                    {(() => {
-                      const maxTick = dashboardStats.advisorWorkloadSummary.kapasitasMaksBeban;
-                      const ticks = [1, 0.75, 0.5, 0.25, 0].map(f => Math.round(maxTick * f));
-                      return ticks.map((val, i) => (
-                        <div
-                          key={`tick-${i}`}
-                          className={`border-b w-full flex items-center justify-between ${i === ticks.length - 1 ? 'border-slate-200' : 'border-slate-100'}`}
-                        >
-                          <span className="bg-white/90 px-0.5">{val}</span>
-                        </div>
-                      ));
-                    })()}
+                {/* Grouped Bar Chart Area */}
+                <div className="pt-2">
+                  {/* Legend */}
+                  <div className="flex items-center justify-between gap-2 mb-2 text-xs">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-3 h-3 rounded-xs bg-blue-600 shadow-2xs" />
+                        <span className="text-[11px] font-bold text-slate-700">Pembimbing-1 (P1)</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-3 h-3 rounded-xs bg-orange-500 shadow-2xs" />
+                        <span className="text-[11px] font-bold text-slate-700">Pembimbing-2 (P2)</span>
+                      </div>
+                    </div>
+                    <span className="text-[10px] text-slate-400 font-medium">Kuota Maks: {dashboardStats.advisorWorkloadSummary.kapasitasMaksBeban} Mhs</span>
                   </div>
 
-                  {/* Scrollable Columns */}
-                  <div className="overflow-x-auto pb-1 pl-5">
-                    <div className="h-56 flex items-end justify-between gap-3 min-w-[620px] pt-4">
-                      {sortedWorkloads.map((adv) => {
-                        const maxVal = dashboardStats.advisorWorkloadSummary.kapasitasMaksBeban;
-                        const heightP1 = Math.min(100, Math.round((adv.p1Count / maxVal) * 100));
-                        const heightP2 = Math.min(100, Math.round((adv.p2Count / maxVal) * 100));
-                        const displayName = adv.nama.replace(/^(Dr\.|Prof\.|Ir\.)\s*/i, '').split(',')[0].trim();
-
-                        return (
+                  {/* Sumbu Y & Gridlines with Scrollable / Flexible Columns */}
+                  <div className="relative border-b border-slate-200">
+                    {/* Horizontal Gridlines */}
+                    <div className="absolute inset-0 flex flex-col justify-between pointer-events-none text-[9px] text-slate-400 pb-12">
+                      {(() => {
+                        const maxTick = dashboardStats.advisorWorkloadSummary.kapasitasMaksBeban;
+                        const ticks = [1, 0.75, 0.5, 0.25, 0].map(f => Math.round(maxTick * f));
+                        return ticks.map((val, i) => (
                           <div
-                            key={adv.nip}
-                            className="flex-1 flex flex-col items-center h-full justify-end group min-w-[46px]"
-                            title={`${adv.nama}\nID / NIP: ${adv.nip}\n• Pembimbing 1: ${adv.p1Count} mhs\n• Pembimbing 2: ${adv.p2Count} mhs\nTotal: ${adv.totalBeban} mhs (${adv.ketimpanganLabel})`}
+                            key={`tick-${i}`}
+                            className={`border-b w-full flex items-center justify-between ${i === ticks.length - 1 ? 'border-slate-200' : 'border-slate-100'}`}
                           >
-                            {/* Grouped Bars Container */}
-                            <div className="w-full flex items-end justify-center gap-1.5 h-full pb-1">
-                              {/* Bar P1 (Biru) */}
-                              <div className="w-4 sm:w-5 flex flex-col items-center justify-end h-full">
-                                <span className="text-[9px] font-extrabold text-blue-700 font-mono mb-0.5 opacity-90 group-hover:opacity-100">
-                                  {adv.p1Count}
-                                </span>
-                                <div
-                                  className="w-full bg-blue-600 group-hover:bg-blue-500 rounded-t-sm transition-all duration-300 shadow-2xs"
-                                  style={{ height: `${Math.max(4, heightP1)}%` }}
-                                />
-                              </div>
-
-                              {/* Bar P2 (Oranye) */}
-                              <div className="w-4 sm:w-5 flex flex-col items-center justify-end h-full">
-                                <span className="text-[9px] font-extrabold text-orange-600 font-mono mb-0.5 opacity-90 group-hover:opacity-100">
-                                  {adv.p2Count}
-                                </span>
-                                <div
-                                  className="w-full bg-orange-500 group-hover:bg-orange-400 rounded-t-sm transition-all duration-300 shadow-2xs"
-                                  style={{ height: `${Math.max(4, heightP2)}%` }}
-                                />
-                              </div>
-                            </div>
-
-                            {/* Label Sumbu X: Nama dan ID Dosen */}
-                            <div className="text-center mt-2 w-full pt-1 border-t border-slate-100">
-                              <div className="text-[10px] font-bold text-slate-800 truncate group-hover:text-indigo-600 transition-colors" title={adv.nama}>
-                                {displayName}
-                              </div>
-                              <div className="text-[9px] text-slate-400 font-mono truncate" title={`NIP: ${adv.nip}`}>
-                                ID: {adv.nip.slice(-4)}
-                              </div>
-                            </div>
+                            <span className="bg-white/90 px-0.5">{val}</span>
                           </div>
-                        );
-                      })}
+                        ));
+                      })()}
+                    </div>
+
+                    {/* Columns */}
+                    <div className={`overflow-x-auto pb-1 pl-5 ${chartsLayout === 'stacked' || expandedCard === 'workload' ? 'scrollbar-none' : 'scrollbar-thin'}`}>
+                      <div className={`h-56 sm:h-60 flex items-end justify-between gap-2 sm:gap-3 pt-4 ${
+                        chartsLayout === 'stacked' || expandedCard === 'workload' ? 'w-full min-w-0' : 'min-w-[620px]'
+                      }`}>
+                        {sortedWorkloads.map((adv) => {
+                          const maxVal = dashboardStats.advisorWorkloadSummary.kapasitasMaksBeban;
+                          const heightP1 = Math.min(100, Math.round((adv.p1Count / maxVal) * 100));
+                          const heightP2 = Math.min(100, Math.round((adv.p2Count / maxVal) * 100));
+                          const displayName = adv.nama.replace(/^(Dr\.|Prof\.|Ir\.)\s*/i, '').split(',')[0].trim();
+
+                          return (
+                            <div
+                              key={adv.nip}
+                              className="flex-1 flex flex-col items-center h-full justify-end group min-w-[46px]"
+                              title={`${adv.nama}\nID / NIP: ${adv.nip}\n• Pembimbing 1: ${adv.p1Count} mhs\n• Pembimbing 2: ${adv.p2Count} mhs\nTotal: ${adv.totalBeban} mhs (${adv.ketimpanganLabel})`}
+                            >
+                              {/* Grouped Bars Container */}
+                              <div className="w-full flex items-end justify-center gap-1.5 h-full pb-1">
+                                {/* Bar P1 (Biru) */}
+                                <div className="w-4 sm:w-5 flex flex-col items-center justify-end h-full">
+                                  <span className="text-[9px] font-extrabold text-blue-700 font-mono mb-0.5 opacity-90 group-hover:opacity-100">
+                                    {adv.p1Count}
+                                  </span>
+                                  <div
+                                    className="w-full bg-blue-600 group-hover:bg-blue-500 rounded-t-sm transition-all duration-300 shadow-2xs"
+                                    style={{ height: `${Math.max(4, heightP1)}%` }}
+                                  />
+                                </div>
+
+                                {/* Bar P2 (Oranye) */}
+                                <div className="w-4 sm:w-5 flex flex-col items-center justify-end h-full">
+                                  <span className="text-[9px] font-extrabold text-orange-600 font-mono mb-0.5 opacity-90 group-hover:opacity-100">
+                                    {adv.p2Count}
+                                  </span>
+                                  <div
+                                    className="w-full bg-orange-500 group-hover:bg-orange-400 rounded-t-sm transition-all duration-300 shadow-2xs"
+                                    style={{ height: `${Math.max(4, heightP2)}%` }}
+                                  />
+                                </div>
+                              </div>
+
+                              {/* Label Sumbu X: Nama dan ID Dosen */}
+                              <div className="text-center mt-2 w-full pt-1 border-t border-slate-100">
+                                <div className="text-[10px] font-bold text-slate-800 truncate group-hover:text-indigo-600 transition-colors" title={adv.nama}>
+                                  {displayName}
+                                </div>
+                                <div className="text-[9px] text-slate-400 font-mono truncate" title={`NIP: ${adv.nip}`}>
+                                  ID: {adv.nip.slice(-4)}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
-                  <span>Rata-Rata: <strong className="text-slate-800">{dashboardStats.advisorWorkloadSummary.rataRataBeban} mhs / dosen</strong></span>
-                  <span className="text-amber-700 bg-amber-50 px-2 py-0.5 rounded text-[11px] font-semibold border border-amber-200/80">
-                    {dashboardStats.advisorWorkloadSummary.totalTimpang} Dosen Ketimpangan Tinggi
-                  </span>
+                  <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
+                    <span>Rata-Rata: <strong className="text-slate-800">{dashboardStats.advisorWorkloadSummary.rataRataBeban} mhs / dosen</strong></span>
+                    <span className="text-amber-700 bg-amber-50 px-2 py-0.5 rounded text-[11px] font-semibold border border-amber-200/80">
+                      {dashboardStats.advisorWorkloadSummary.totalTimpang} Dosen Ketimpangan Tinggi
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* 2.2 CHART KANAN: Bimbingan per Bulan (Bar Hijau dengan label MM/YYYY & Clickable) */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-4 flex flex-col justify-between">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-emerald-600" />
-                    <h3 className="text-sm font-bold text-slate-900">
-                      Bimbingan per Bulan (Tahun 2026)
-                    </h3>
-                  </div>
-                  <p className="text-xs text-slate-500">
-                    Bar hijau dengan label MM/YYYY &bull; Klik bar untuk membuka rincian log
-                    {selectedAngkatan !== 'all' && (
-                      <span className="ml-1.5 inline-flex items-center text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                        Angkatan {selectedAngkatan}
-                      </span>
-                    )}
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 rounded-xl border border-slate-200 text-xs">
-                    <Filter className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                    <select
-                      aria-label="Filter Bimbingan Bulanan per Angkatan"
-                      value={selectedAngkatan}
-                      onChange={(e) => setSelectedAngkatan(e.target.value)}
-                      className="bg-transparent border-0 py-0.5 pr-2 text-xs font-bold text-slate-800 focus:ring-0 focus:outline-hidden cursor-pointer"
-                    >
-                      <option value="all">Semua Angkatan</option>
-                      {availableAngkatans.map(a => (
-                        <option key={a.year} value={a.year}>
-                          {a.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <span className="hidden sm:inline-flex px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold border border-emerald-200">
-                    Interaktif &bull; Klik Bar Hijau
-                  </span>
-                </div>
-              </div>
-
-              {/* Monthly Green Bar Chart */}
-              <div className="pt-2">
-                <div className="flex items-center justify-between gap-2 mb-2 text-xs">
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-3 h-3 rounded-xs bg-emerald-500 shadow-2xs" />
-                    <span className="text-[11px] font-bold text-slate-700">Total Bimbingan Bulanan</span>
-                  </div>
-                  <span className="text-[11px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                    Bisa Diklik
-                  </span>
-                </div>
-
-                {/* Chart Area */}
-                <div className="h-56 flex items-end justify-between gap-2 sm:gap-2.5 px-1 border-b border-slate-200">
-                  {dashboardStats.monthlyChartData.map((m) => {
-                    const maxMonthly = Math.max(1, dashboardStats.summary.maxMonthlyTotal);
-                    const heightPercent = Math.min(100, Math.max(2, Math.round((m.total / maxMonthly) * 100)));
-                    const isCurrentMonth = m.key === dashboardStats.summary.currentMonthKey;
-
-                    return (
-                      <div 
-                        key={m.key} 
-                        onClick={() => setSelectedMonthModal({ isOpen: true, monthData: m })}
-                        className="flex-1 flex flex-col items-center h-full justify-end group cursor-pointer"
-                        title={`Klik untuk melihat detail ${m.name} (${m.labelMMYYYY}): ${m.total} bimbingan`}
-                      >
-                        {/* Value on top of bar */}
-                        <span className="text-[10px] font-extrabold text-slate-600 group-hover:text-emerald-700 transition-colors mb-1 font-mono">
-                          {m.total}
+            {(!expandedCard || expandedCard === 'monthly') && (
+              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-4 flex flex-col justify-between transition-all">
+                <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 border-b border-slate-100 pb-3.5">
+                  <div className="space-y-0.5 min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <h3 className="text-sm font-bold text-slate-900 truncate">
+                        Bimbingan per Bulan (Tahun 2026)
+                      </h3>
+                    </div>
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                      Bar hijau dengan label MM/YYYY &bull; Klik bar untuk membuka rincian log
+                      {selectedAngkatan !== 'all' && (
+                        <span className="ml-1.5 inline-flex items-center text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                          Angkatan {selectedAngkatan}
                         </span>
+                      )}
+                    </p>
+                  </div>
 
-                        {/* Bar Hijau */}
-                        <div
-                          className="w-full max-w-[38px] bg-slate-100 rounded-t-lg overflow-hidden flex flex-col justify-end transition-all group-hover:shadow-md group-hover:scale-105"
-                          style={{ height: `${heightPercent}%` }}
+                  <div className="flex items-center flex-wrap gap-2 shrink-0">
+                    <div className="inline-flex items-center gap-1.5 bg-slate-50 hover:bg-slate-100/90 px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs transition-colors">
+                      <Filter className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <select
+                        aria-label="Filter Bimbingan Bulanan per Angkatan"
+                        value={selectedAngkatan}
+                        onChange={(e) => setSelectedAngkatan(e.target.value)}
+                        className="bg-transparent border-0 p-0 pr-2 text-xs font-bold text-slate-800 focus:ring-0 focus:outline-hidden cursor-pointer"
+                      >
+                        <option value="all">Semua Angkatan</option>
+                        {availableAngkatans.map(a => (
+                          <option key={a.year} value={a.year}>
+                            {a.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-200/80">
+                      <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Interaktif</span>
+                    </span>
+
+                    <button
+                      type="button"
+                      onClick={() => setExpandedCard(expandedCard === 'monthly' ? null : 'monthly')}
+                      className={`p-1.5 rounded-xl border transition-all cursor-pointer ${
+                        expandedCard === 'monthly'
+                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                          : 'bg-white text-slate-500 hover:text-slate-800 border-slate-200 hover:bg-slate-50'
+                      }`}
+                      title={expandedCard === 'monthly' ? 'Kembalikan ukuran normal' : 'Perluas tampilan penuh'}
+                    >
+                      {expandedCard === 'monthly' ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Monthly Green Bar Chart */}
+                <div className="pt-2">
+                  <div className="flex items-center justify-between gap-2 mb-2 text-xs">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-3 h-3 rounded-xs bg-emerald-500 shadow-2xs" />
+                      <span className="text-[11px] font-bold text-slate-700">Total Bimbingan Bulanan</span>
+                    </div>
+                    <span className="text-[11px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                      Bisa Diklik
+                    </span>
+                  </div>
+
+                  {/* Chart Area */}
+                  <div className={`h-56 sm:h-60 flex items-end justify-between gap-1.5 sm:gap-2.5 px-1 border-b border-slate-200 ${
+                    chartsLayout === 'stacked' || expandedCard === 'monthly' ? 'w-full' : ''
+                  }`}>
+                    {dashboardStats.monthlyChartData.map((m) => {
+                      const maxMonthly = Math.max(1, dashboardStats.summary.maxMonthlyTotal);
+                      const heightPercent = Math.min(100, Math.max(2, Math.round((m.total / maxMonthly) * 100)));
+                      const isCurrentMonth = m.key === dashboardStats.summary.currentMonthKey;
+
+                      return (
+                        <div 
+                          key={m.key} 
+                          onClick={() => setSelectedMonthModal({ isOpen: true, monthData: m })}
+                          className="flex-1 flex flex-col items-center h-full justify-end group cursor-pointer"
+                          title={`Klik untuk melihat detail ${m.name} (${m.labelMMYYYY}): ${m.total} bimbingan`}
                         >
-                          <div 
-                            className={`w-full h-full transition-all duration-300 rounded-t-lg flex flex-col justify-between p-1 ${
-                              isCurrentMonth 
-                                ? 'bg-gradient-to-t from-emerald-600 to-teal-500 ring-2 ring-emerald-400' 
-                                : 'bg-gradient-to-t from-emerald-600 to-emerald-400 group-hover:from-emerald-500 group-hover:to-teal-300'
-                            }`}
+                          {/* Value on top of bar */}
+                          <span className="text-[10px] font-extrabold text-slate-600 group-hover:text-emerald-700 transition-colors mb-1 font-mono">
+                            {m.total}
+                          </span>
+
+                          {/* Bar Hijau */}
+                          <div
+                            className={`w-full ${chartsLayout === 'stacked' || expandedCard === 'monthly' ? 'max-w-[48px]' : 'max-w-[38px]'} bg-slate-100 rounded-t-lg overflow-hidden flex flex-col justify-end transition-all group-hover:shadow-md group-hover:scale-105`}
+                            style={{ height: `${heightPercent}%` }}
                           >
-                            <div className="w-full flex justify-center">
-                              <span className="w-1.5 h-1.5 rounded-full bg-white/70" />
-                            </div>
-                            <div className="text-[8px] text-white/95 text-center font-bold font-mono">
-                              {m.daringCount}d
+                            <div 
+                              className={`w-full h-full transition-all duration-300 rounded-t-lg flex flex-col justify-between p-1 ${
+                                isCurrentMonth 
+                                  ? 'bg-gradient-to-t from-emerald-600 to-teal-500 ring-2 ring-emerald-400' 
+                                  : 'bg-gradient-to-t from-emerald-600 to-emerald-400 group-hover:from-emerald-500 group-hover:to-teal-300'
+                              }`}
+                            >
+                              <div className="w-full flex justify-center">
+                                <span className="w-1.5 h-1.5 rounded-full bg-white/70" />
+                              </div>
+                              <div className="text-[8px] text-white/95 text-center font-bold font-mono">
+                                {m.daringCount}d
+                              </div>
                             </div>
                           </div>
+
+                          {/* Label Sumbu X: MM/YYYY */}
+                          <span className={`text-[10px] font-bold mt-2 transition-colors font-mono ${
+                            isCurrentMonth ? 'text-emerald-700 font-black' : 'text-slate-600 group-hover:text-emerald-600'
+                          }`}>
+                            {m.labelMMYYYY}
+                          </span>
                         </div>
+                      );
+                    })}
+                  </div>
 
-                        {/* Label Sumbu X: MM/YYYY */}
-                        <span className={`text-[10px] font-bold mt-2 transition-colors font-mono ${
-                          isCurrentMonth ? 'text-emerald-700 font-black' : 'text-slate-600 group-hover:text-emerald-600'
-                        }`}>
-                          {m.labelMMYYYY}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
-                  <span>Rata-rata: <strong className="text-slate-800">~232 sesi / bulan</strong></span>
-                  <div className="flex items-center gap-1.5 text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 text-[11px]">
-                    <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Klik bar bulan untuk detail</span>
+                  <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
+                    <span>Rata-rata: <strong className="text-slate-800">~232 sesi / bulan</strong></span>
+                    <div className="flex items-center gap-1.5 text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 text-[11px]">
+                      <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Klik bar bulan untuk detail</span>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
 
           </div>
 
