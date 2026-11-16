@@ -121,8 +121,7 @@ export default function Sidebar() {
               label: 'Tugas Akhir',
               icon: GraduationCap,
               items: [
-                { to: '/kaprodi/titles', label: 'Monitoring Tugas Akhir', icon: CheckSquare },
-                { to: '/kaprodi/advisors', label: 'Pembagian Dosen Pembimbing', icon: UserCheck },
+                { to: '/kaprodi/titles', label: 'Monitoring', icon: CheckSquare },
                 { to: '/kaprodi/defense-schedules', label: 'Manajemen Jadwal Sidang', icon: CalendarDays }
               ]
             },
@@ -192,6 +191,7 @@ export default function Sidebar() {
               items: [
                 { to: '/admin/bookings', label: 'Persetujuan Ruangan', icon: CheckSquare },
                 { to: '/admin/rooms', label: 'Kelola Ruang & Gedung', icon: Building2 },
+                { to: '/admin/priorities', label: 'Prioritas Ruangan', icon: ListOrdered },
                 { to: '/schedule', label: 'Jadwal Ruang Sidang', icon: CalendarDays }
               ]
             },
@@ -202,6 +202,14 @@ export default function Sidebar() {
               items: [
                 { to: '/admin-simta/master/mahasiswa', label: 'Data Mahasiswa', icon: GraduationCap },
                 { to: '/admin-simta/master/dosen', label: 'Data Dosen', icon: UserCheck }
+              ]
+            },
+            {
+              id: 'tugas_akhir',
+              label: 'Tugas Akhir',
+              icon: BookOpen,
+              items: [
+                { to: '/admin-simta/thesis-management', label: 'Manajemen Tugas Akhir', icon: BookOpen }
               ]
             },
             {
@@ -219,8 +227,9 @@ export default function Sidebar() {
               label: 'Konten & Dokumen',
               icon: Layers,
               items: [
-                { to: '/admin-simta/templates', label: 'Template & Surat', icon: FileText },
-                { to: '/admin-simta/sop', label: 'Standar Operasional (SOP)', icon: FileCheck }
+                { to: '/admin-simta/documents', label: 'Dokumen / Surat', icon: FileStack },
+                { to: '/admin-simta/cms', label: 'CMS', icon: LayoutGrid },
+                { to: '/admin-simta/templates', label: 'Template', icon: FileText }
               ]
             },
             {
@@ -229,7 +238,8 @@ export default function Sidebar() {
               icon: Database,
               items: [
                 { to: '/admin-simta/repository', label: 'Manajemen Repositori', icon: Database },
-                { to: '/thesis/archive', label: 'Arsip Tugas Akhir', icon: BookOpen }
+                { to: '/thesis/archive', label: 'Arsip Tugas Akhir', icon: BookOpen },
+                { to: '/admin/repository/publish', label: 'Publikasi Repositori Global', icon: Globe }
               ]
             }
           ]

@@ -63,11 +63,26 @@ export const sanitizeStudentAvatarUrl = (val) => {
 export const normalizeStudentAngkatan = (value) => {
     const raw = String(value ?? '').trim();
     if (!raw || raw === '-' || raw === 'MI 5A' || raw === 'MI 5B') return '';
+    // Format NIM UNSRI: misal 09010282428031 atau 09010582428083 (digit ke-7 sampai 9 adalah 24 -> 2024)
     if (/^0901\d{8,}$/.test(raw)) {
-        const yr = raw.slice(6, 8);
-        return yr && /^\d{2}$/.test(yr) ? `20${yr}` : '2024';
+        const yr2 = raw.slice(7, 9);
+        if (/^\d{2}$/.test(yr2) && Number(yr2) >= 15 && Number(yr2) <= 35) {
+            return `20${yr2}`;
+        }
+        const yr1 = raw.slice(6, 8);
+        if (/^\d{2}$/.test(yr1) && Number(yr1) >= 15 && Number(yr1) <= 35) {
+            return `20${yr1}`;
+        }
+        return '2024';
     }
-    return raw.replace(/^MI\s+/i, '').trim();
+    const cleaned = raw.replace(/^MI\s+/i, '').replace(/^Angkatan\s+/i, '').trim();
+    if (/^\d{2}$/.test(cleaned) && Number(cleaned) >= 15 && Number(cleaned) <= 35) {
+        return `20${cleaned}`;
+    }
+    if (/^20\d{2}$/.test(cleaned)) {
+        return cleaned;
+    }
+    return cleaned;
 };
 
 /**

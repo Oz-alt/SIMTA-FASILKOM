@@ -110,7 +110,7 @@ Route::get('/kaprodi/submission-status', function () {
 });
 
 Route::get('/kaprodi/advisors', function () {
-    return Inertia::render('kaprodi/KelolaDospemPage');
+    return redirect('/kaprodi/dashboard');
 });
 
 Route::get('/kaprodi/defense-schedules', function () {
@@ -170,15 +170,15 @@ Route::get('/admin/rooms', function () {
 });
 
 Route::get('/admin/priorities', function () {
-    return redirect('/admin/rooms');
+    return Inertia::render('admin/PrioritasRuangPage');
 });
 
 Route::get('/admin/repository/publish', function () {
-    return redirect('/admin-simta/repository');
+    return Inertia::render('admin/PublikasiRepositoryAdmin');
 });
 
 // ============================================================
-// ADMIN SIMTA ROUTES (Manajemen Akun, SOP, Template, Repositori)
+// ADMIN SIMTA ROUTES (Manajemen Akun, Dokumen, CMS, Template)
 // ============================================================
 
 Route::get('/admin-simta/dashboard', function () {
@@ -202,19 +202,15 @@ Route::get('/admin-simta/accounts/reset-requests', function () {
 });
 
 Route::get('/admin-simta/documents', function () {
-    return redirect('/admin-simta/templates');
+    return Inertia::render('admin/DokumenAdminPage');
 });
 
 Route::get('/admin-simta/cms', function () {
-    return redirect('/admin-simta/dashboard');
+    return Inertia::render('admin/CmsAdminPage');
 });
 
 Route::get('/admin-simta/templates', function () {
     return Inertia::render('admin/TemplateAdminPage');
-});
-
-Route::get('/admin-simta/sop', function () {
-    return Inertia::render('admin/SopAdminPage');
 });
 
 Route::get('/admin-simta/master/mahasiswa', function () {
@@ -234,11 +230,11 @@ Route::get('/admin-simta/master-data/dosen', function () {
 });
 
 Route::get('/admin-simta/thesis-management', function () {
-    return redirect('/admin-simta/dashboard');
+    return Inertia::render('admin/ManajemenTAAdminPage');
 });
 
 Route::get('/admin-simta/manajemen-ta', function () {
-    return redirect('/admin-simta/dashboard');
+    return Inertia::render('admin/ManajemenTAAdminPage');
 });
 
 Route::get('/admin-simta/repository', function () {

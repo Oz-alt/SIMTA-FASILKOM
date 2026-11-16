@@ -265,6 +265,104 @@ export const OFFICIAL_DOSEN_HOMEBASE = {
 };
 
 /**
+ * Helper pembersih gelar akademik dosen untuk perbandingan nama yang akurat
+ */
+export const stripAcademicTitles = (str) => String(str || '')
+  .toLowerCase()
+  .replace(/\b(prof|dr|ir|drs|dra|s\s*\.?\s*kom|s\s*\.?\s*t|s\s*\.?\s*si|m\s*\.?\s*kom|m\s*\.?\s*cs|m\s*\.?\s*t|m\s*\.?\s*si|m\s*\.?\s*sc|ph\s*\.?\s*d|mt|st)\b\.?/gi, ' ')
+  .replace(/[^a-z0-9]/g, ' ')
+  .replace(/\s+/g, ' ')
+  .trim();
+
+export const isGenericDosenPlaceholder = (name) => {
+  const s = String(name || '').trim().toLowerCase();
+  return !s || s === '-' || s === 'dosen pembimbing' || s === 'dosen pembimbing 1' || s === 'dosen pembimbing 2' || s === 'pembimbing 1' || s === 'pembimbing 2' || s === 'pembimbing';
+};
+
+/**
+ * Memeriksa apakah user (dosen) yang aktif merupakan target dosen pembimbing
+ * yang berhak merespons / memvalidasi sesi bimbingan tertentu.
+ */
+export const isTargetAdvisorForConsultation = (cons, user, studentAdvisors = [], advisors = [], thesisTitles = []) => {
+  if (!cons || !user) return false;
+  if (user.role === 'mahasiswa') return false;
+
+  const userNip = String(user.nip || user.nim || '').trim();
+  const userCleanNama = stripAcademicTitles(user.nama);
+
+  // 1. Tentukan peran pembimbing tujuan sesi ini (Pembimbing 1 atau Pembimbing 2)
+  const isPemb2 = String(cons.pembimbing || '').includes('2');
+
+  // 2. Ambil data alokasi pembimbing 1 & 2 dari studentAdvisors / thesisTitles
+  const mhsNim = String(cons.mhs_nim || '').trim();
+  let assignedDospem1 = null;
+  let assignedDospem2 = null;
+
+  if (mhsNim) {
+    const sa = (studentAdvisors || []).find(s => String(s.student_nim || '').trim() === mhsNim);
+    const tt = (thesisTitles || []).find(t => String(t.mhs_nim || '').trim() === mhsNim && t.status !== 'ditolak');
+
+    const d1Nip = String(sa?.dospem1_nip || tt?.pembimbing_1_nip || '').trim();
+    const d2Nip = String(sa?.dospem2_nip || tt?.pembimbing_2_nip || '').trim();
+    const d1Nama = String(sa?.dospem1_nama || tt?.pembimbing_1_nama || tt?.pembimbing_1 || '').trim();
+    const d2Nama = String(sa?.dospem2_nama || tt?.pembimbing_2_nama || tt?.pembimbing_2 || '').trim();
+
+    assignedDospem1 = { nip: d1Nip, nama: d1Nama };
+    assignedDospem2 = { nip: d2Nip, nama: d2Nama };
+  }
+
+  const targetAdvisor = isPemb2 ? assignedDospem2 : assignedDospem1;
+  const otherAdvisor = isPemb2 ? assignedDospem1 : assignedDospem2;
+
+  // 3. PENTING: Cek eksklusi terhadap pembimbing LAINNYA.
+  // Jika pengguna saat ini cocok dengan pembimbing lawannya, maka mutlak TIDAK BOLEH memvalidasi!
+  if (otherAdvisor) {
+    const otherNip = String(otherAdvisor.nip || '').trim();
+    const otherCleanNama = stripAcademicTitles(otherAdvisor.nama);
+
+    if (userNip && otherNip && userNip === otherNip) {
+      return false;
+    }
+    if (userCleanNama && otherCleanNama && !isGenericDosenPlaceholder(otherAdvisor.nama)) {
+      if (userCleanNama === otherCleanNama || userCleanNama.includes(otherCleanNama) || otherCleanNama.includes(userCleanNama)) {
+        return false;
+      }
+    }
+  }
+
+  // 4. Cek kecocokan pengguna dengan TARGET pembimbing yang dituju
+  // 4a. Dari data alokasi mahasiswa
+  if (targetAdvisor) {
+    const targetNip = String(targetAdvisor.nip || '').trim();
+    const targetCleanNama = stripAcademicTitles(targetAdvisor.nama);
+
+    if (userNip && targetNip && userNip === targetNip) {
+      return true;
+    }
+    if (userCleanNama && targetCleanNama && !isGenericDosenPlaceholder(targetAdvisor.nama)) {
+      if (userCleanNama === targetCleanNama || userCleanNama.includes(targetCleanNama) || targetCleanNama.includes(userCleanNama)) {
+        return true;
+      }
+    }
+  }
+
+  // 4b. Dari record konsultasi itu sendiri (cons.dosen_nip / cons.dosen_nama)
+  const consNip = String(cons.dosen_nip || '').trim();
+  const consCleanNama = stripAcademicTitles(cons.dosen_nama);
+
+  if (userNip && consNip && userNip === consNip) {
+    return true;
+  }
+  if (userCleanNama && consCleanNama && !isGenericDosenPlaceholder(cons.dosen_nama)) {
+    if (userCleanNama === consCleanNama || userCleanNama.includes(consCleanNama) || consCleanNama.includes(userCleanNama)) {
+      return true;
+    }
+  }
+
+  return false;
+};
+
+/**
  * Daftar ID notifikasi yang telah ditandai sudah dibaca atau dihapus pengguna
  * Disimpan di localStorage agar tidak kembali muncul setelah reload / sync Supabase
  */
@@ -9239,6 +9337,7 @@ export function AuthProvider({ children }) {
       assignStudentAdvisors,
       bulkAssignStudentAdvisors,
       getStudentAdvisors,
+      isTargetAdvisorForConsultation,
       addThesisTitle,
       updateThesisSubmission,
       cancelThesisTitle,
