@@ -46,9 +46,10 @@ export default function MobileMenuSheet({ isOpen, onClose }) {
     router.visit(href);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     onClose();
-    logout();
+    await logout();
+    router.visit('/');
   };
 
   return (
