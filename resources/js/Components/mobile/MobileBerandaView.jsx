@@ -114,7 +114,7 @@ export default function MobileBerandaView() {
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-blue-950/80 to-blue-900/60" />
 
         <div className="relative z-10 flex items-center justify-between gap-2">
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-[10px] font-bold tracking-wide">
+          <span className="inline-flex items-center whitespace-nowrap gap-1.5 px-2.5 py-1 rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-[10px] font-bold tracking-wide">
             <GraduationCap className="w-3 h-3 text-amber-300" />
             <span>D3 Manajemen Informatika</span>
           </span>
@@ -170,7 +170,7 @@ export default function MobileBerandaView() {
           <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-800">
             Ambang Cek Kemiripan Judul
           </h2>
-          <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-full">
+          <span className="shrink-0 whitespace-nowrap text-[10px] font-bold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-full">
             Real-Time
           </span>
         </div>

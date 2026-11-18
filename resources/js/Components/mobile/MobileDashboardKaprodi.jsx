@@ -64,7 +64,7 @@ export default function MobileDashboardKaprodi({
           <button
             type="button"
             onClick={onOpenSettings}
-            className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 text-[11px] font-bold"
+            className="shrink-0 whitespace-nowrap inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 text-[11px] font-bold"
           >
             <Sliders className="w-3.5 h-3.5 text-amber-300" />
             <span>Target {summary.targetMinTotal || 24}x</span>
@@ -273,7 +273,7 @@ export default function MobileDashboardKaprodi({
                       <div className="text-xs font-bold text-slate-900 truncate">{adv.nama}</div>
                       <div className="text-[10px] text-slate-500">Total {adv.totalBeban} bimbingan</div>
                     </div>
-                    <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border ${adv.badgeClass}`}>
+                    <span className={`shrink-0 whitespace-nowrap text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${adv.badgeClass}`}>
                       {adv.ketimpanganLabel}
                     </span>
                   </div>
@@ -421,7 +421,7 @@ export default function MobileDashboardKaprodi({
                         </div>
                       </div>
                     </div>
-                    <span className="shrink-0 text-[11px] font-extrabold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full">
+                    <span className="shrink-0 whitespace-nowrap text-[11px] font-extrabold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-full">
                       {st.totalBimbingan} Total
                     </span>
                   </div>

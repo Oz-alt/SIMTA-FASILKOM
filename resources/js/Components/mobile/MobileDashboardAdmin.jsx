@@ -252,7 +252,7 @@ export default function MobileDashboardAdmin({
                     <span>{act.kategori} • {act.tanggal || '-'}</span>
                   </div>
                 </div>
-                <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 capitalize">
+                <span className="shrink-0 whitespace-nowrap text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 capitalize">
                   {act.status}
                 </span>
               </div>

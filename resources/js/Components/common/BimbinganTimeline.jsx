@@ -85,11 +85,11 @@ export default function BimbinganTimeline({ consultations = [], currentUser }) {
   // Recap statistics: Sesi terhitung jika status telah dievaluasi (Revisi Mayor, Minor, atau Diterima).
   // Status 'Menunggu' belum terhitung.
   const bimbinganStats = useMemo(() => {
-    return calculateBimbinganEligibility(studentConsultations, {
+    return calculateBimbinganEligibility(studentConsultations, currentUser?.nim || '', {
       minPerAdvisor: minSessionsRequirement?.minPerAdvisor,
       minTotal: minSessionsRequirement?.minTotal
     });
-  }, [studentConsultations, minSessionsRequirement]);
+  }, [studentConsultations, currentUser?.nim, minSessionsRequirement]);
 
   const {
     countPemb1,
@@ -129,7 +129,7 @@ export default function BimbinganTimeline({ consultations = [], currentUser }) {
   };
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-2xs space-y-6">
+    <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm space-y-5">
       
       {/* Modal Ajukan Bimbingan Baru */}
       <ModalAjukanBimbingan 
@@ -139,16 +139,16 @@ export default function BimbinganTimeline({ consultations = [], currentUser }) {
 
       {/* Header Linimasa */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-100">
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           <div className="flex flex-wrap items-center gap-2">
             <div className="inline-flex items-center space-x-2 px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-[11px] font-bold border border-indigo-200/60">
               <Clock className="w-3.5 h-3.5" />
               <span>Linimasa Konsultasi Mahasiswa</span>
             </div>
           </div>
-          <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+          <h3 className="text-base sm:text-xl font-extrabold text-slate-900 tracking-tight flex flex-wrap items-center gap-2">
             <span>Linimasa Bimbingan Tugas Akhir</span>
-            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
+            <span className="inline-flex items-center whitespace-nowrap text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700">
               {studentConsultations.length} Sesi
             </span>
           </h3>
@@ -160,11 +160,11 @@ export default function BimbinganTimeline({ consultations = [], currentUser }) {
 
       {/* Target Progress Summary Card (24 Sesi: 12x Tiap Pembimbing) */}
       <div className="bg-gradient-to-br from-slate-50 via-indigo-50/25 to-slate-50 border border-slate-200/90 rounded-xl p-4 sm:p-5 space-y-3.5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div>
-            <div className="flex items-center space-x-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Progres Kelayakan Sidang</span>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+              <span className={`inline-flex items-center whitespace-nowrap text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${
                 isEligibleForDefense 
                   ? 'bg-emerald-100 text-emerald-800 border-emerald-300' 
                   : 'bg-amber-100 text-amber-800 border-amber-300'
@@ -172,15 +172,15 @@ export default function BimbinganTimeline({ consultations = [], currentUser }) {
                 {isEligibleForDefense ? '✓ Layak Daftar Sidang' : 'Belum Memenuhi Syarat Sidang'}
               </span>
             </div>
-            <p className="text-xs font-semibold text-slate-700 mt-0.5">
+            <p className="text-xs font-semibold text-slate-700 leading-relaxed">
               Tercapai <span className="font-extrabold text-indigo-700">{totalEvaluated}</span> dari target <span className="font-extrabold text-slate-900">{minRequired} Sesi Bimbingan</span> ({minPerPembimbing}x masing-masing pembimbing)
             </p>
-            <p className="text-[10px] text-slate-400 mt-0.5">
+            <p className="text-[11px] text-slate-400 leading-snug">
               Sesi terhitung otomatis setelah dosen memberikan evaluasi (Revisi Mayor, Minor, atau Diterima).
             </p>
           </div>
 
-          <div className="text-left sm:text-right">
+          <div className="text-left sm:text-right shrink-0">
             <span className="text-2xl font-black text-slate-900">{progressPercent}%</span>
             <span className="text-[10px] block text-slate-500 font-medium">Kesiapan Berkas Sidang</span>
           </div>
@@ -197,33 +197,39 @@ export default function BimbinganTimeline({ consultations = [], currentUser }) {
         {/* Dual Breakdown: Pembimbing 1 & Pembimbing 2 */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 text-xs">
           {/* Pembimbing 1 */}
-          <div className="bg-white/80 border border-slate-200 rounded-lg p-2.5 flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-indigo-500" />
-              <span className="font-bold text-slate-700">Dosen Pembimbing 1 (Utama)</span>
+          <div className="bg-white/90 border border-slate-200 rounded-xl px-3 py-2.5 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 shrink-0" />
+              <div className="min-w-0 leading-tight">
+                <span className="font-bold text-slate-800 block text-xs">Pembimbing 1</span>
+                <span className="text-[10px] text-slate-400 font-medium">Utama</span>
+              </div>
             </div>
-            <div className="flex items-center space-x-1.5">
+            <div className="flex items-center gap-1.5 shrink-0 whitespace-nowrap">
               <span className="font-extrabold text-indigo-700">{countPemb1}/{minPerPembimbing}</span>
               {countPemb1 >= minPerPembimbing ? (
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
               ) : (
-                <span className="text-[10px] text-amber-600 font-semibold">(Kurang {minPerPembimbing - countPemb1})</span>
+                <span className="text-[11px] text-amber-600 font-semibold">(Kurang {minPerPembimbing - countPemb1})</span>
               )}
             </div>
           </div>
 
           {/* Pembimbing 2 */}
-          <div className="bg-white/80 border border-slate-200 rounded-lg p-2.5 flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-purple-500" />
-              <span className="font-bold text-slate-700">Dosen Pembimbing 2 (Pendamping)</span>
+          <div className="bg-white/90 border border-slate-200 rounded-xl px-3 py-2.5 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="w-2.5 h-2.5 rounded-full bg-purple-500 shrink-0" />
+              <div className="min-w-0 leading-tight">
+                <span className="font-bold text-slate-800 block text-xs">Pembimbing 2</span>
+                <span className="text-[10px] text-slate-400 font-medium">Pendamping</span>
+              </div>
             </div>
-            <div className="flex items-center space-x-1.5">
+            <div className="flex items-center gap-1.5 shrink-0 whitespace-nowrap">
               <span className="font-extrabold text-purple-700">{countPemb2}/{minPerPembimbing}</span>
               {countPemb2 >= minPerPembimbing ? (
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
               ) : (
-                <span className="text-[10px] text-amber-600 font-semibold">(Kurang {minPerPembimbing - countPemb2})</span>
+                <span className="text-[11px] text-amber-600 font-semibold">(Kurang {minPerPembimbing - countPemb2})</span>
               )}
             </div>
           </div>
@@ -232,7 +238,7 @@ export default function BimbinganTimeline({ consultations = [], currentUser }) {
 
       {/* Filter Tabs by Advisor */}
       <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-        <div className="flex items-center space-x-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => setFilterAdvisor('all')}
             className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
@@ -314,26 +320,26 @@ export default function BimbinganTimeline({ consultations = [], currentUser }) {
                   title={isApproved ? 'Disetujui' : isRevision ? 'Perlu Revisi' : 'Menunggu Validasi'}
                 >
                   {isApproved ? (
-                    <CheckCircle2 className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
+                    <CheckCircle2 className="w-4 h-4" />
                   ) : isRevision ? (
-                    <AlertCircle className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
+                    <AlertCircle className="w-4 h-4" />
                   ) : (
-                    <Clock className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
+                    <Clock className="w-4 h-4" />
                   )}
                 </span>
 
                 {/* Timeline Card */}
-                <div className="bg-white border border-slate-200 hover:border-indigo-300 rounded-xl p-4 sm:p-5 shadow-2xs hover:shadow-sm transition-all space-y-3">
+                <div className="bg-white border border-slate-200 hover:border-indigo-300 rounded-xl p-4 sm:p-5 shadow-sm transition-all space-y-3">
                   {/* Top Meta Bar */}
                   <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
                     <div className="flex flex-wrap items-center gap-2">
                       {seqNumber && (
-                        <span className="text-xs font-black text-slate-800 bg-slate-100 px-2.5 py-0.5 rounded-md">
+                        <span className="text-xs font-black text-slate-800 bg-slate-100 px-2.5 py-0.5 rounded-md whitespace-nowrap">
                           Sesi #{seqNumber}
                         </span>
                       )}
                       
-                      <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${
+                      <span className={`inline-flex items-center whitespace-nowrap text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${
                         item.pembimbing === 'Pembimbing 1'
                           ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
                           : 'bg-purple-50 text-purple-700 border-purple-200'
@@ -341,7 +347,7 @@ export default function BimbinganTimeline({ consultations = [], currentUser }) {
                         {item.pembimbing || 'Pembimbing 1'}
                       </span>
 
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center space-x-1 ${
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border inline-flex items-center whitespace-nowrap space-x-1 ${
                         item.metode === 'daring'
                           ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                           : 'bg-blue-50 text-blue-700 border-blue-200'
@@ -360,20 +366,20 @@ export default function BimbinganTimeline({ consultations = [], currentUser }) {
                       </span>
 
                       <span className="text-xs font-semibold text-slate-800 flex items-center gap-1">
-                        <UserCheck className="w-3.5 h-3.5 text-slate-400" />
+                        <UserCheck className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                         <span>{item.dosen_nama || 'Dosen Pembimbing'}</span>
                       </span>
                     </div>
 
-                    <div className="flex items-center space-x-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span className="text-xs text-slate-400 font-medium flex items-center space-x-1">
-                        <Calendar className="w-3.5 h-3.5" />
+                        <Calendar className="w-3.5 h-3.5 shrink-0" />
                         <span>{formatDate(item.tanggal)}</span>
                         {item.waktu && <span className="font-mono text-[11px]">({item.waktu} WIB)</span>}
                       </span>
 
                       {/* Status Tag */}
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${
+                      <span className={`inline-flex items-center whitespace-nowrap text-[10px] font-bold px-2.5 py-0.5 rounded-full capitalize ${
                         isApproved 
                           ? 'bg-emerald-100 text-emerald-800' 
                           : isRevision 

@@ -320,7 +320,7 @@ export default function MobileDashboardMahasiswa() {
           </h2>
           {myTitle ? (
             <span
-              className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${
+              className={`shrink-0 whitespace-nowrap text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${
                 isTitleApproved
                   ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                   : 'bg-amber-50 text-amber-700 border-amber-200'
@@ -329,7 +329,7 @@ export default function MobileDashboardMahasiswa() {
               {isTitleApproved ? 'Disetujui' : 'Diajukan'}
             </span>
           ) : (
-            <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-500">
+            <span className="shrink-0 whitespace-nowrap text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-500">
               Belum Ada
             </span>
           )}
@@ -369,7 +369,7 @@ export default function MobileDashboardMahasiswa() {
             <Building2 className="w-4 h-4 text-purple-600" />
             <span>Peminjaman Ruang Sidang</span>
           </h2>
-          <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700">
+          <span className="shrink-0 whitespace-nowrap text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700">
             {myBookings.length} Pengajuan
           </span>
         </div>

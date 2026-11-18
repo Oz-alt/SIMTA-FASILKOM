@@ -150,7 +150,7 @@ export default function MobileDashboardDosen({
                   <div className="text-xs font-bold text-slate-900 truncate">{item.studentNama}</div>
                   <div className="text-[10px] text-slate-500 truncate">{item.topic}</div>
                 </div>
-                <span className="shrink-0 text-[10px] font-semibold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
+                <span className="shrink-0 whitespace-nowrap text-[10px] font-semibold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
                   {item.dateFormatted}
                 </span>
               </div>
@@ -229,7 +229,7 @@ export default function MobileDashboardDosen({
                     </div>
                   </div>
                   <span
-                    className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                    className={`shrink-0 whitespace-nowrap px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
                       student.isReadyForDefense
                         ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                         : 'bg-amber-50 text-amber-700 border-amber-200'
@@ -246,8 +246,8 @@ export default function MobileDashboardDosen({
                   </p>
                 )}
 
-                <div className="flex items-center justify-between pt-1.5 border-t border-slate-200/70 text-[10px]">
-                  <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-1.5 border-t border-slate-200/70 text-[10px]">
+                  <div className="flex flex-wrap items-center gap-1.5">
                     {student.isPending && (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-700 font-bold">
                         {student.pendingCount} Menunggu

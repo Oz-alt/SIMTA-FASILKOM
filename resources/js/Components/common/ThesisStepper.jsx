@@ -63,22 +63,26 @@ export default function ThesisStepper({ currentTitle, stages = [] }) {
   ];
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs">
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h3 className="text-sm font-bold text-slate-900 flex items-center space-x-2">
-            <span>Perjalanan Tugas Akhir D3 Manajemen Informatika</span>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
+    <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2.5 mb-4">
+        <div className="min-w-0">
+          <h3 className="text-sm font-bold text-slate-900 leading-snug">
+            Perjalanan Tugas Akhir D3 Manajemen Informatika
+          </h3>
+          <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+            Alur terfokus: Usulan Judul &rarr; Pengerjaan TA &rarr; Sidang Akhir &rarr; Kelulusan
+          </p>
+          <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
+            <span className="inline-flex items-center whitespace-nowrap text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800">
               Alur D3 Terpadu
             </span>
-          </h3>
-          <p className="text-xs text-slate-500 mt-0.5">Alur terfokus: Usulan Judul &rarr; Pengerjaan TA &rarr; Sidang Akhir &rarr; Kelulusan</p>
+            {currentUser?.prodi && (
+              <span className="inline-flex items-center whitespace-nowrap text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                {currentUser.prodi}
+              </span>
+            )}
+          </div>
         </div>
-        {currentUser?.prodi && (
-          <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700">
-            {currentUser.prodi}
-          </span>
-        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
