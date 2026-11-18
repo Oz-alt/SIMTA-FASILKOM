@@ -392,11 +392,23 @@ export default function AjukanJudulPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             
             {/* Student Profile Info */}
-            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs grid grid-cols-2 gap-2 text-slate-700">
-              <div><span className="font-semibold text-slate-500">Nama:</span> {currentUser?.nama || 'Aulia Azzahra'}</div>
-              <div><span className="font-semibold text-slate-500">NIM:</span> {currentUser?.nim || '09010182428002'}</div>
-              <div><span className="font-semibold text-slate-500">Kelas:</span> {currentUser?.kelas || 'MI 5A'}</div>
-              <div><span className="font-semibold text-slate-500">Prodi:</span> {currentUser?.prodi || 'D3 Manajemen Informatika'}</div>
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-xs grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4 text-slate-700">
+              <div className="flex items-start gap-2 min-w-0">
+                <span className="font-semibold text-slate-500 w-12 shrink-0">Nama</span>
+                <span className="font-bold text-slate-900 break-words min-w-0">{currentUser?.nama || 'Aulia Azzahra'}</span>
+              </div>
+              <div className="flex items-start gap-2 min-w-0">
+                <span className="font-semibold text-slate-500 w-12 shrink-0">NIM</span>
+                <span className="font-mono font-semibold text-slate-800">{currentUser?.nim || '09010182428002'}</span>
+              </div>
+              <div className="flex items-start gap-2 min-w-0">
+                <span className="font-semibold text-slate-500 w-12 shrink-0">Kelas</span>
+                <span className="font-medium text-slate-800">{currentUser?.kelas || 'MI 5A'}</span>
+              </div>
+              <div className="flex items-start gap-2 min-w-0">
+                <span className="font-semibold text-slate-500 w-12 shrink-0">Prodi</span>
+                <span className="font-medium text-slate-800 break-words min-w-0">{currentUser?.prodi || 'D3 Manajemen Informatika'}</span>
+              </div>
             </div>
 
             {/* Title Input */}
@@ -425,11 +437,11 @@ export default function AjukanJudulPage() {
 
             {/* Abstrak Input */}
             <div>
-              <div className="flex items-center justify-between mb-1">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
                 <label className="block text-xs font-bold text-slate-700">
                   Abstrak Tugas Akhir <span className="text-red-500 font-bold">*</span>
                 </label>
-                <span className="text-[10px] font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100">
+                <span className="shrink-0 whitespace-nowrap text-[10px] font-medium text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-100">
                   Bilingual ID / EN
                 </span>
               </div>
@@ -550,9 +562,9 @@ export default function AjukanJudulPage() {
 
               {similarityResult.processedAbstractRoots && similarityResult.processedAbstractRoots.length > 0 && (
                 <div className="pt-2 border-t border-slate-200/80">
-                  <div className="flex items-center justify-between gap-2 mb-1">
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
                     <span className="font-bold text-slate-700">Kata Dasar Abstrak (Bilingual ID ↔ EN):</span>
-                    <span className="text-[10px] font-mono text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200/80">
+                    <span className="shrink-0 whitespace-nowrap text-[10px] font-mono text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200/80">
                       {similarityResult.processedAbstractRoots.length} kata dasar
                     </span>
                   </div>

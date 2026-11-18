@@ -37,14 +37,14 @@ export default function SimilarityGauge({
         ? 'bg-slate-50/80 text-slate-700 border-slate-200'
         : threshold.bgClass
     }`}>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center space-x-2 min-w-0">
           {getIcon()}
           <span className="text-xs font-bold uppercase tracking-wider">
             Similarity Check Engine
           </span>
         </div>
-        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border shadow-2xs ${
+        <span className={`shrink-0 whitespace-nowrap text-xs font-semibold px-2.5 py-0.5 rounded-full border shadow-sm ${
           !hasChecked
             ? 'bg-slate-200/80 text-slate-600 border-slate-300'
             : 'bg-white/80 border-current'
@@ -53,18 +53,18 @@ export default function SimilarityGauge({
         </span>
       </div>
 
-      <div className="mt-3 flex items-baseline justify-between">
-        <div className="flex items-baseline space-x-2">
+      <div className="mt-3 flex flex-wrap items-baseline justify-between gap-2">
+        <div className="flex flex-wrap items-baseline gap-2">
           <span className="text-3xl font-extrabold tracking-tight">
             {isChecking ? '...' : (!hasChecked ? '- %' : `${score}%`)}
           </span>
-          <span className="text-xs text-slate-600 font-medium">
+          <span className="text-xs text-slate-600 font-medium leading-snug">
             {hasAbstract ? 'skor gabungan (Judul 50% + Abstrak 50%)' : 'skor kemiripan judul'}
           </span>
         </div>
 
         {/* Repositori UNSRI benchmark pill */}
-        <span className="text-[10px] text-slate-500 bg-white/70 px-2 py-0.5 rounded-md border border-slate-200/60 font-medium hidden sm:inline-flex items-center gap-1">
+        <span className="text-[10px] text-slate-500 bg-white/70 px-2 py-0.5 rounded-md border border-slate-200/60 font-medium hidden sm:inline-flex items-center gap-1 whitespace-nowrap">
           <BookOpen className="w-3 h-3 text-indigo-500" />
           <span>Repo UNSRI Archive</span>
         </span>
@@ -72,15 +72,15 @@ export default function SimilarityGauge({
 
       {/* Breakdown Pill for Judul & Abstrak */}
       {hasChecked && hasAbstract && titleScore !== null && abstractScore !== null && (
-        <div className="mt-2.5 flex items-center gap-2 text-[11px] font-medium">
-          <div className="flex items-center gap-1 bg-white/80 px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs">
+        <div className="mt-2.5 flex flex-wrap items-center gap-2 text-[11px] font-medium">
+          <div className="inline-flex items-center whitespace-nowrap gap-1 bg-white/80 px-2.5 py-1 rounded-lg border border-slate-200 shadow-sm">
             <span className="text-slate-500">Skor Judul:</span>
             <strong className="text-slate-800">{titleScore}%</strong>
           </div>
-          <div className="flex items-center gap-1 bg-white/80 px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs">
+          <div className="inline-flex items-center flex-wrap gap-1 bg-white/80 px-2.5 py-1 rounded-lg border border-slate-200 shadow-sm">
             <span className="text-slate-500">Skor Abstrak:</span>
             <strong className="text-slate-800">{abstractScore}%</strong>
-            <span className="text-[9px] text-indigo-600 bg-indigo-50 px-1 py-0.2 rounded font-semibold ml-0.5">Kata Dasar ID/EN</span>
+            <span className="text-[9px] text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded font-semibold ml-0.5 whitespace-nowrap">Kata Dasar ID/EN</span>
           </div>
         </div>
       )}
