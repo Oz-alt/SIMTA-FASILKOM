@@ -250,3 +250,4 @@ export function getDefaultDashboardRoute(role) {
       return '/dashboard';
   }
 }
+

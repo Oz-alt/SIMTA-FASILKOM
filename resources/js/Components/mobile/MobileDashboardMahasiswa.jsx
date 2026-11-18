@@ -7,8 +7,6 @@ import {
   Archive,
   MessageCircle,
   Users,
-  CheckCircle2,
-  Clock,
   AlertTriangle,
   ChevronRight,
   Building2,
@@ -97,7 +95,7 @@ export default function MobileDashboardMahasiswa() {
   const buildWaUrl = (adv, slotLabel) => {
     const phoneCheck = normalizeWhatsAppNumber(adv?.no_hp);
     if (!phoneCheck.isValid) return null;
-    const text = `Halo ${adv.nama}, saya ${currentUser?.nama || 'Mahasiswa'} (${nim || '-'}), mahasiswa bimbingan ${slotLabel} di SIMONITA FASILKOM UNSRI.`;
+    const text = `Halo ${adv.nama}, saya ${currentUser?.nama || currentUser?.name || 'Mahasiswa'} (${nim || '-'}), mahasiswa bimbingan ${slotLabel} di SIMONITA FASILKOM UNSRI.`;
     return `https://wa.me/${phoneCheck.cleanNumber}?text=${encodeURIComponent(text)}`;
   };
 
@@ -107,28 +105,28 @@ export default function MobileDashboardMahasiswa() {
       sub: myTitle ? 'Judul & similarity' : 'Mulai pengajuan',
       href: isProfileLocked ? '/profile?first_login=true' : '/thesis/submit',
       icon: FilePlus2,
-      tone: 'bg-blue-600 text-white shadow-blue-600/20',
+      tone: 'bg-blue-600 text-white shadow-sm',
     },
     {
       label: 'Bimbingan',
       sub: 'Catat & riwayat',
       href: isProfileLocked ? '/profile?first_login=true' : '/thesis/consultations',
       icon: ClipboardList,
-      tone: 'bg-indigo-600 text-white shadow-indigo-600/20',
+      tone: 'bg-indigo-600 text-white shadow-sm',
     },
     {
       label: 'Kartu Digital',
       sub: 'Bukti bimbingan',
       href: isProfileLocked ? '/profile?first_login=true' : '/thesis/consultations/card',
       icon: FileCheck2,
-      tone: 'bg-emerald-600 text-white shadow-emerald-600/20',
+      tone: 'bg-emerald-600 text-white shadow-sm',
     },
     {
       label: 'Arsip TA',
       sub: 'Referensi judul',
       href: isProfileLocked ? '/profile?first_login=true' : '/thesis/archive',
       icon: Archive,
-      tone: 'bg-slate-800 text-white shadow-slate-800/20',
+      tone: 'bg-slate-800 text-white shadow-sm',
     },
   ];
 
@@ -148,43 +146,44 @@ export default function MobileDashboardMahasiswa() {
 
   return (
     <div className="space-y-4">
-      {/* Compact Hero Greeting Card */}
-      <div className="rounded-3xl bg-gradient-to-br from-blue-900 via-indigo-900 to-slate-900 text-white p-4.5 shadow-md space-y-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/15 text-[10px] font-bold text-blue-100">
-              <Sparkles className="w-3 h-3 text-amber-300" />
-              Portal Mahasiswa TA
-            </span>
-            <h1 className="text-base font-extrabold tracking-tight mt-1.5 truncate">
-              Halo, {currentUser?.nama || currentUser?.name || 'Mahasiswa'}
-            </h1>
-            <p className="text-[11px] text-blue-100/80 font-medium">
-              NIM {nim || '-'} • {currentUser?.prodi || 'D3 Manajemen Informatika'}
-            </p>
-          </div>
+      {/* Hero Greeting Card */}
+      <div className="rounded-3xl bg-gradient-to-br from-blue-900 via-indigo-900 to-slate-900 text-white p-5 shadow-md space-y-4">
+        <div className="flex items-center justify-between gap-2">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/15 text-[11px] font-bold text-blue-100">
+            <Sparkles className="w-3 h-3 text-amber-300" />
+            Portal Mahasiswa TA
+          </span>
           <span
-            className={`shrink-0 px-2.5 py-1 rounded-xl text-[10px] font-extrabold border ${
+            className={`shrink-0 px-2.5 py-1 rounded-full text-[11px] font-extrabold border ${
               eligibility.isEligibleForDefense && eligibility.hasAccPemb1 && eligibility.hasAccPemb2
                 ? 'bg-emerald-500/20 text-emerald-200 border-emerald-400/30'
-                : 'bg-white/10 text-blue-100 border-white/20'
+                : 'bg-white/15 text-blue-100 border-white/20'
             }`}
           >
             {eligibility.progressPercent}% Progres
           </span>
         </div>
 
+        <div className="space-y-1">
+          <h1 className="text-base font-extrabold tracking-tight leading-snug break-words">
+            Halo, {currentUser?.nama || currentUser?.name || 'Mahasiswa'}
+          </h1>
+          <p className="text-xs text-blue-100/85 font-medium leading-relaxed">
+            NIM {nim || '-'} &bull; {currentUser?.prodi || 'D3 Manajemen Informatika'}
+          </p>
+        </div>
+
         {/* Advisor Progress Mini Bars */}
-        <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-3 border border-white/15 space-y-2.5">
-          <div className="flex items-center justify-between text-[11px] font-bold">
+        <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-3.5 border border-white/15 space-y-2.5">
+          <div className="flex items-center justify-between text-xs font-bold">
             <span>Syarat Bimbingan Sidang</span>
             <span className="text-blue-200">
               {eligibility.totalEvaluated} / {eligibility.minRequired} Sesi
             </span>
           </div>
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <div className="flex justify-between text-[10px] text-blue-100 mb-1">
+              <div className="flex justify-between text-[11px] text-blue-100 mb-1.5">
                 <span>Pembimbing 1</span>
                 <span className="font-bold">
                   {eligibility.countPemb1}/{eligibility.minPerPembimbing}
@@ -198,7 +197,7 @@ export default function MobileDashboardMahasiswa() {
               </div>
             </div>
             <div>
-              <div className="flex justify-between text-[10px] text-blue-100 mb-1">
+              <div className="flex justify-between text-[11px] text-blue-100 mb-1.5">
                 <span>Pembimbing 2</span>
                 <span className="font-bold">
                   {eligibility.countPemb2}/{eligibility.minPerPembimbing}
@@ -219,12 +218,12 @@ export default function MobileDashboardMahasiswa() {
       {isProfileLocked && (
         <Link
           href="/profile?first_login=true"
-          className="flex items-center gap-3 p-3.5 rounded-2xl bg-amber-50 border border-amber-300 text-amber-900 shadow-2xs"
+          className="flex items-center gap-3 p-4 rounded-2xl bg-amber-50 border border-amber-300 text-amber-900 shadow-sm"
         >
           <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
           <div className="flex-1 min-w-0">
             <div className="text-xs font-extrabold">Profil Wajib Dilengkapi</div>
-            <p className="text-[11px] text-amber-800 leading-snug">
+            <p className="text-[11px] text-amber-800 leading-relaxed mt-0.5">
               Isi Nomor WhatsApp &amp; ubah sandi awal agar seluruh menu pengajuan terbuka.
             </p>
           </div>
@@ -233,21 +232,21 @@ export default function MobileDashboardMahasiswa() {
       )}
 
       {/* 2x2 Thumb Quick Actions */}
-      <div className="grid grid-cols-2 gap-2.5">
+      <div className="grid grid-cols-2 gap-3">
         {quickActions.map((act) => {
           const Icon = act.icon;
           return (
             <Link
               key={act.label}
               href={act.href}
-              className="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-2xs flex items-center gap-3 active:scale-[0.98] transition-transform"
+              className="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-sm flex items-center gap-3 active:scale-[0.98] transition-transform"
             >
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-xs ${act.tone}`}>
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${act.tone}`}>
                 <Icon className="w-5 h-5" />
               </div>
               <div className="min-w-0">
-                <div className="text-xs font-extrabold text-slate-900 truncate">{act.label}</div>
-                <div className="text-[10px] text-slate-500 truncate">{act.sub}</div>
+                <div className="text-xs font-extrabold text-slate-900 leading-tight truncate">{act.label}</div>
+                <div className="text-[11px] text-slate-500 mt-0.5 leading-tight truncate">{act.sub}</div>
               </div>
             </Link>
           );
@@ -256,12 +255,12 @@ export default function MobileDashboardMahasiswa() {
 
       {/* Dosen Pembimbing Contact Cards */}
       {(dospem1 || dospem2) && (
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-2.5">
-          <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-            <Users className="w-3.5 h-3.5 text-indigo-600" />
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-3">
+          <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
+            <Users className="w-4 h-4 text-indigo-600" />
             <span>Dosen Pembimbing Anda</span>
           </h2>
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             {[
               { role: 'Pembimbing 1', data: dospem1 },
               { role: 'Pembimbing 2', data: dospem2 },
@@ -271,21 +270,23 @@ export default function MobileDashboardMahasiswa() {
               return (
                 <div
                   key={role}
-                  className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2"
+                  className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2.5"
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <span className="text-[10px] font-bold uppercase text-indigo-600">{role}</span>
-                      <div className="text-xs font-bold text-slate-900 leading-snug">{data.nama}</div>
+                  <div className="min-w-0">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600">
+                      {role}
+                    </span>
+                    <div className="text-[13px] font-bold text-slate-900 leading-snug mt-0.5 break-words">
+                      {data.nama}
                     </div>
                   </div>
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="flex flex-wrap gap-2">
                     {waUrl && (
                       <a
                         href={waUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-600 text-white text-[11px] font-bold"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-bold shadow-sm"
                       >
                         <MessageCircle className="w-3.5 h-3.5" />
                         <span>Chat WA</span>
@@ -296,7 +297,7 @@ export default function MobileDashboardMahasiswa() {
                         href={data.link_wa_group}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white border border-emerald-300 text-emerald-700 text-[11px] font-bold"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-emerald-300 text-emerald-700 text-xs font-bold"
                       >
                         <Users className="w-3.5 h-3.5" />
                         <span>Grup WA</span>
@@ -311,15 +312,15 @@ export default function MobileDashboardMahasiswa() {
       )}
 
       {/* Status Pengajuan Judul TA */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-            <BookOpen className="w-3.5 h-3.5 text-blue-600" />
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
+            <BookOpen className="w-4 h-4 text-blue-600" />
             <span>Status Judul TA</span>
           </h2>
           {myTitle ? (
             <span
-              className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
+              className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${
                 isTitleApproved
                   ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                   : 'bg-amber-50 text-amber-700 border-amber-200'
@@ -328,16 +329,18 @@ export default function MobileDashboardMahasiswa() {
               {isTitleApproved ? 'Disetujui' : 'Diajukan'}
             </span>
           ) : (
-            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-500">
+            <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-500">
               Belum Ada
             </span>
           )}
         </div>
 
         {myTitle ? (
-          <div className="space-y-2">
-            <h3 className="text-xs font-bold text-slate-900 leading-snug">{myTitle.judul}</h3>
-            <div className="flex items-center justify-between text-[11px] pt-2 border-t border-slate-100">
+          <div className="space-y-2.5">
+            <h3 className="text-xs font-bold text-slate-900 leading-relaxed break-words">
+              {myTitle.judul}
+            </h3>
+            <div className="flex items-center justify-between text-xs pt-2.5 border-t border-slate-100">
               <span className="text-slate-500">Similarity Score</span>
               <span className="font-bold text-emerald-600">
                 {Number(myTitle.skor_kemiripan_terakhir || 0)}%
@@ -345,7 +348,9 @@ export default function MobileDashboardMahasiswa() {
             </div>
           </div>
         ) : (
-          <p className="text-xs text-slate-500">Belum ada judul Tugas Akhir diajukan.</p>
+          <p className="text-xs text-slate-500 leading-relaxed">
+            Belum ada judul Tugas Akhir diajukan.
+          </p>
         )}
 
         <Link
@@ -358,13 +363,13 @@ export default function MobileDashboardMahasiswa() {
       </div>
 
       {/* Status Ruang Sidang */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-            <Building2 className="w-3.5 h-3.5 text-purple-600" />
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
+            <Building2 className="w-4 h-4 text-purple-600" />
             <span>Peminjaman Ruang Sidang</span>
           </h2>
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">
+          <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700">
             {myBookings.length} Pengajuan
           </span>
         </div>
@@ -380,12 +385,12 @@ export default function MobileDashboardMahasiswa() {
                   <div className="text-xs font-bold text-slate-800 truncate">
                     {b.stage_label || b.purpose}
                   </div>
-                  <div className="text-[10px] text-slate-500 mt-0.5 truncate">
-                    {b.room_name} • {b.booking_date} ({b.start_time}-{b.end_time})
+                  <div className="text-[11px] text-slate-500 mt-0.5 truncate">
+                    {b.room_name} &bull; {b.booking_date} ({b.start_time}-{b.end_time})
                   </div>
                 </div>
                 <span
-                  className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${
+                  className={`shrink-0 text-[10px] font-bold px-2.5 py-0.5 rounded-full capitalize ${
                     b.status === 'disetujui'
                       ? 'bg-emerald-100 text-emerald-700'
                       : 'bg-amber-100 text-amber-700'
@@ -397,7 +402,9 @@ export default function MobileDashboardMahasiswa() {
             ))}
           </div>
         ) : (
-          <p className="text-xs text-slate-500">Belum ada peminjaman ruang sidang diajukan.</p>
+          <p className="text-xs text-slate-500 leading-relaxed">
+            Belum ada peminjaman ruang sidang diajukan.
+          </p>
         )}
 
         <Link

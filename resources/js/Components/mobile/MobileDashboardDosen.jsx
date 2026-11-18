@@ -58,17 +58,19 @@ export default function MobileDashboardDosen({
   return (
     <div className="space-y-4">
       {/* Compact Lecturer Banner */}
-      <div className="rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950 to-blue-900 text-white p-4.5 shadow-md space-y-2.5">
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/15 text-[10px] font-bold text-indigo-100">
+      <div className="rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950 to-blue-900 text-white p-5 shadow-md space-y-3">
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/15 text-[11px] font-bold text-indigo-100">
           <Sparkles className="w-3 h-3 text-amber-300" />
           Portal Dosen Pembimbing
         </span>
-        <h1 className="text-base font-extrabold leading-snug">
-          {currentUser?.nama || currentUser?.name || 'Dosen Pembimbing'}
-        </h1>
-        <p className="text-[11px] text-blue-100/80">
-          NIP {currentUser?.nip || '-'} • {myStudents.length} Mahasiswa Bimbingan Aktif
-        </p>
+        <div className="space-y-1">
+          <h1 className="text-base font-extrabold leading-snug break-words">
+            {currentUser?.nama || currentUser?.name || 'Dosen Pembimbing'}
+          </h1>
+          <p className="text-xs text-blue-100/85">
+            NIP {currentUser?.nip || '-'} &bull; {myStudents.length} Mahasiswa Bimbingan Aktif
+          </p>
+        </div>
 
         <div className="pt-1 grid grid-cols-3 gap-2">
           <Link
@@ -97,7 +99,7 @@ export default function MobileDashboardDosen({
 
       {/* 2x2 KPI Cards */}
       <div className="grid grid-cols-2 gap-2.5">
-        <div className="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-2xs">
+        <div className="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-sm">
           <div className="text-[10px] font-bold uppercase text-slate-400">Menunggu Validasi</div>
           <div className="text-2xl font-extrabold text-indigo-600 mt-1">
             {pendingValidationsList.length}
@@ -105,13 +107,13 @@ export default function MobileDashboardDosen({
           <div className="text-[10px] text-slate-500 mt-0.5">Sesi perlu ditanggapi</div>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-2xs">
+        <div className="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-sm">
           <div className="text-[10px] font-bold uppercase text-slate-400">Belum {minTotalDefense}x</div>
           <div className="text-2xl font-extrabold text-amber-600 mt-1">{under24List.length}</div>
           <div className="text-[10px] text-slate-500 mt-0.5">Belum memenuhi target</div>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-2xs">
+        <div className="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-sm">
           <div className="text-[10px] font-bold uppercase text-slate-400">Inaktif &gt;30 Hari</div>
           <div className="text-2xl font-extrabold text-rose-600 mt-1">{overdueList.length}</div>
           <div className="text-[10px] text-slate-500 mt-0.5">
@@ -119,7 +121,7 @@ export default function MobileDashboardDosen({
           </div>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-2xs">
+        <div className="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-sm">
           <div className="text-[10px] font-bold uppercase text-slate-400">Judul Baru</div>
           <div className="text-2xl font-extrabold text-slate-900 mt-1">{pendingTitles.length}</div>
           <div className="text-[10px] text-slate-500 mt-0.5">Menunggu tinjauan</div>
@@ -158,7 +160,7 @@ export default function MobileDashboardDosen({
       )}
 
       {/* Monitored Students Mobile List */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-3">
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-700">
             Progres Mahasiswa Bimbingan
@@ -191,7 +193,7 @@ export default function MobileDashboardDosen({
                 onClick={() => setActiveFilter(chip.key)}
                 className={`shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold border transition-colors ${
                   active
-                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
+                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
                     : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
                 }`}
               >
@@ -279,3 +281,4 @@ export default function MobileDashboardDosen({
     </div>
   );
 }
+

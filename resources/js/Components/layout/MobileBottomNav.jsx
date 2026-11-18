@@ -88,3 +88,4 @@ export default function MobileBottomNav({ isMenuOpen, onOpenMenu }) {
     </nav>
   );
 }
+

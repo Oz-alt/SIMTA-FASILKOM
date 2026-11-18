@@ -69,15 +69,15 @@ export default function MobileDashboardAdmin({
   return (
     <div className="space-y-4">
       {/* Compact Admin Header Card */}
-      <div className="rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-900 to-blue-900 text-white p-4.5 shadow-md space-y-2">
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-500/25 border border-indigo-400/25 text-[10px] font-bold text-indigo-100">
+      <div className="rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-900 to-blue-900 text-white p-5 shadow-md space-y-2.5">
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-500/25 border border-indigo-400/25 text-[11px] font-bold text-indigo-100">
           <ShieldCheck className="w-3 h-3 text-emerald-300" />
           Administrator SIMONITA
         </span>
-        <h1 className="text-base font-extrabold tracking-tight">
-          Kendali Operasional Mobile
+        <h1 className="text-base font-extrabold tracking-tight leading-snug">
+          Kendali Operasional SIMONITA
         </h1>
-        <p className="text-[11px] text-indigo-100/80 leading-relaxed">
+        <p className="text-xs text-indigo-100/85 leading-relaxed">
           Kelola ruang sidang, verifikasi reset kata sandi, master data akun, dan repositori tugas akhir.
         </p>
       </div>
@@ -86,7 +86,7 @@ export default function MobileDashboardAdmin({
       {pendingResetRequests > 0 && (
         <Link
           href="/admin-simta/accounts/password-resets"
-          className="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-amber-50 border border-amber-300 text-amber-950 shadow-2xs"
+          className="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-amber-50 border border-amber-300 text-amber-950 shadow-sm"
         >
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0">
@@ -113,7 +113,7 @@ export default function MobileDashboardAdmin({
             <Link
               key={act.label}
               href={act.href}
-              className="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-2xs flex items-center gap-2.5 active:scale-[0.98] transition-transform"
+              className="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-sm flex items-center gap-2.5 active:scale-[0.98] transition-transform"
             >
               <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${act.tone}`}>
                 <Icon className="w-4 h-4" />
@@ -128,7 +128,7 @@ export default function MobileDashboardAdmin({
       </div>
 
       {/* Segmented Section Tabs */}
-      <div className="grid grid-cols-3 gap-1 bg-white p-1 rounded-2xl border border-slate-200 shadow-2xs">
+      <div className="grid grid-cols-3 gap-1 bg-white p-1 rounded-2xl border border-slate-200 shadow-sm">
         {[
           { key: 'sarana', label: 'Sarana & Akun' },
           { key: 'konten', label: 'Dokumen & Repo' },
@@ -263,3 +263,4 @@ export default function MobileDashboardAdmin({
     </div>
   );
 }
+
