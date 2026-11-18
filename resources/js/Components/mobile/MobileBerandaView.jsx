@@ -164,27 +164,28 @@ export default function MobileBerandaView() {
         </div>
       </section>
 
-      {/* Horizontal Feature Carousel */}
+      {/* Vertical Feature Cards */}
       <section className="space-y-2.5">
-        <div className="flex items-center justify-between px-0.5">
+        <div className="px-0.5">
           <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-700">
             Fitur Utama Platform
           </h2>
-          <span className="text-[11px] text-slate-400 font-medium">Geser ke samping →</span>
         </div>
-        <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1 snap-x snap-mandatory">
+        <div className="grid grid-cols-1 gap-2.5">
           {FEATURE_CARDS.map((card) => {
             const Icon = card.icon;
             return (
               <div
                 key={card.title}
-                className="snap-start shrink-0 w-[240px] bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-2.5"
+                className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-2"
               >
-                <div className={`w-9 h-9 rounded-xl border flex items-center justify-center ${card.color}`}>
-                  <Icon className="w-4 h-4" />
+                <div className="flex items-center gap-3">
+                  <div className={`w-9 h-9 rounded-xl border flex items-center justify-center shrink-0 ${card.color}`}>
+                    <Icon className="w-4 h-4" />
+                  </div>
+                  <h3 className="text-sm font-bold text-slate-900 leading-snug">{card.title}</h3>
                 </div>
-                <h3 className="text-sm font-bold text-slate-900 leading-snug">{card.title}</h3>
-                <ul className="space-y-1.5">
+                <ul className="space-y-1.5 pl-12">
                   {card.points.map((pt) => (
                     <li key={pt} className="text-[11px] text-slate-600 flex items-start gap-1.5 leading-snug">
                       <CheckCircle2 className="w-3.5 h-3.5 text-indigo-500 shrink-0 mt-0.5" />
