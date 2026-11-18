@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, router, usePage } from '@inertiajs/react';
 import {
   X,
@@ -21,6 +21,11 @@ const ROLE_LABELS = {
 export default function MobileMenuSheet({ isOpen, onClose }) {
   const { url } = usePage();
   const { currentUser, logout } = useAuth();
+  const [avatarError, setAvatarError] = useState(false);
+
+  useEffect(() => {
+    setAvatarError(false);
+  }, [currentUser?.avatar_url]);
 
   if (!isOpen || !currentUser) {
     return null;
@@ -28,7 +33,8 @@ export default function MobileMenuSheet({ isOpen, onClose }) {
 
   const menuGroups = getRoleMenuGroups(currentUser.role);
   const isProfileLocked = currentUser.role === 'mahasiswa' && !currentUser.is_profile_completed;
-  const initials = String(currentUser.name || 'U')
+  const displayName = currentUser.nama || currentUser.name || 'Pengguna';
+  const initials = String(displayName)
     .split(' ')
     .filter(Boolean)
     .slice(0, 2)
@@ -80,14 +86,24 @@ export default function MobileMenuSheet({ isOpen, onClose }) {
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4" data-lenis-prevent>
           {/* User Identity Card */}
           <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-2xl bg-indigo-600 text-white font-bold text-sm flex items-center justify-center shrink-0 shadow-sm">
-              {initials}
+            <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white font-bold text-sm flex items-center justify-center shrink-0 overflow-hidden border border-slate-200 shadow-sm">
+              {currentUser.avatar_url && !avatarError ? (
+                <img
+                  src={currentUser.avatar_url}
+                  alt={displayName}
+                  referrerPolicy="no-referrer"
+                  onError={() => setAvatarError(true)}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span>{initials || 'U'}</span>
+              )}
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-bold text-slate-900 leading-snug break-words">
-                {currentUser.name}
+                {displayName}
               </p>
-              <p className="text-xs text-slate-500 mt-0.5 truncate">
+              <p className="text-xs font-mono text-slate-500 mt-0.5 truncate">
                 {currentUser.nim || currentUser.nip || currentUser.email || '-'}
               </p>
               <span className="inline-block mt-1.5 px-2.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700 text-[10px] font-bold border border-indigo-100">
