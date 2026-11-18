@@ -1,5 +1,7 @@
 import React, { useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { useDevice } from '../../context/DeviceContext.jsx';
+import MobileDashboardAdmin from '../../Components/mobile/MobileDashboardAdmin.jsx';
 import { Link, Head } from '@inertiajs/react';
 import {
   FileStack,
@@ -21,6 +23,7 @@ import {
 } from 'lucide-react';
 
 export default function DashboardAdminSimta() {
+  const { isMobileMode } = useDevice();
   const {
     adminDocuments = [],
     adminTemplates = [],
@@ -109,6 +112,33 @@ export default function DashboardAdminSimta() {
       return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">{status}</span>;
     return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">{status}</span>;
   };
+
+  if (isMobileMode) {
+    return (
+      <>
+        <Head title="Dashboard Admin SIMONITA" />
+        <MobileDashboardAdmin
+          pendingResetRequests={pendingResetRequests}
+          pendingBookings={pendingBookings}
+          approvedBookings={approvedBookings}
+          activeRooms={activeRooms}
+          totalMahasiswa={totalMahasiswa}
+          mahasiswaAktif={mahasiswaAktif}
+          totalDosen={totalDosen}
+          dosenAktif={dosenAktif}
+          totalDokumen={totalDokumen}
+          dokumenAktif={dokumenAktif}
+          totalTemplate={totalTemplate}
+          templateAktif={templateAktif}
+          totalSop={totalSop}
+          sopAktif={sopAktif}
+          totalRepo={totalRepo}
+          repoPublish={repoPublish}
+          recentActivity={recentActivity}
+        />
+      </>
+    );
+  }
 
   return (
     <div className="space-y-6 select-none">

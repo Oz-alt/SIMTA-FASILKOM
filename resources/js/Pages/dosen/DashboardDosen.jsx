@@ -1,5 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { useDevice } from '../../context/DeviceContext.jsx';
+import MobileDashboardDosen from '../../Components/mobile/MobileDashboardDosen.jsx';
 import { Link } from '@inertiajs/react';
 import StudentWhatsAppLink from '../../Components/common/StudentWhatsAppLink.jsx';
 import DosenHeaderBanner from '../../Components/common/DosenHeaderBanner.jsx';
@@ -31,6 +33,7 @@ import {
 
 export default function DashboardDosen() {
   const { currentUser, studentAdvisors = [], thesisTitles = [], thesisStages = [], consultations = [], minSessionsRequirement } = useAuth();
+  const { isMobileMode } = useDevice();
 
   const minTotalDefense = minSessionsRequirement?.minTotal || getMinTotalSessionsDefense();
   const minPerAdvisor = minSessionsRequirement?.minPerAdvisor || getMinSessionsPerAdvisor();
@@ -334,6 +337,22 @@ export default function DashboardDosen() {
 
     return { points, pathD, areaD, width, height };
   }, [monthlyData]);
+
+  if (isMobileMode) {
+    return (
+      <MobileDashboardDosen
+        currentUser={currentUser}
+        myStudents={myStudents}
+        monitoredStudents={monitoredStudents}
+        pendingTitles={pendingTitles}
+        under24List={under24List}
+        overdueList={overdueList}
+        overdue60List={overdue60List}
+        pendingValidationsList={pendingValidationsList}
+        minTotalDefense={minTotalDefense}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6 pb-12 font-sans antialiased text-slate-800">

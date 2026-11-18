@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from '@inertiajs/react';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useDevice } from '../context/DeviceContext.jsx';
+import MobileBerandaView from '../Components/mobile/MobileBerandaView.jsx';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
@@ -27,6 +29,7 @@ import {
 } from 'lucide-react';
 
 export default function BerandaPage() {
+  const { isMobileMode } = useDevice();
   const [activeSlide, setActiveSlide] = useState(0);
 
   // GSAP Refs
@@ -122,6 +125,10 @@ export default function BerandaPage() {
       setActiveSlide(idx);
     }
   };
+
+  if (isMobileMode) {
+    return <MobileBerandaView />;
+  }
 
   return (
     <div className="w-full space-y-12 pb-16">

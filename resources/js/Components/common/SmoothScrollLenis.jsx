@@ -4,6 +4,7 @@ import Lenis from 'lenis';
 import 'lenis/dist/lenis.css';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { DeviceProvider } from '../../context/DeviceContext.jsx';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -107,7 +108,7 @@ export default function SmoothScroll({ children }) {
     };
   }, []);
 
-  return children;
+  return <DeviceProvider>{children}</DeviceProvider>;
 }
 
 // Trigger HMR

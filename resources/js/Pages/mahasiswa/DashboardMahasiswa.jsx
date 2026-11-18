@@ -1,5 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { useDevice } from '../../context/DeviceContext.jsx';
+import MobileDashboardMahasiswa from '../../Components/mobile/MobileDashboardMahasiswa.jsx';
 import { Link } from '@inertiajs/react';
 import ThesisStepper from '../../Components/common/ThesisStepper.jsx';
 import BimbinganReminderBanner from '../../Components/common/BimbinganReminderBanner.jsx';
@@ -32,6 +34,7 @@ function WhatsAppIcon({ className = "w-3.5 h-3.5" }) {
 
 export default function DashboardMahasiswa() {
   const { currentUser, thesisTitles, thesisStages, bookings, getStudentAdvisors, consultations, advisors } = useAuth();
+  const { isMobileMode } = useDevice();
 
   // Get current student's title dynamically
   const myTitle = thesisTitles.find(t => (currentUser?.id && t.profile_id === currentUser.id) || (currentUser?.nim && t.mhs_nim === currentUser.nim)) || null;
@@ -155,6 +158,10 @@ export default function DashboardMahasiswa() {
 
   const waLink1 = getAdvisorWaGroupLink(dospem1, dospem1Nama, 'Dospem1');
   const waLink2 = getAdvisorWaGroupLink(dospem2, dospem2Nama, 'Dospem2');
+
+  if (isMobileMode) {
+    return <MobileDashboardMahasiswa />;
+  }
 
   return (
     <div className="space-y-6 relative">

@@ -1,5 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { useDevice } from '../../context/DeviceContext.jsx';
+import MobileDashboardKaprodi from '../../Components/mobile/MobileDashboardKaprodi.jsx';
 import { Link } from '@inertiajs/react';
 import {
   calculateBimbinganDashboardStats,
@@ -176,6 +178,7 @@ export default function DashboardKaprodi() {
     minSessionsRequirement,
     updateMinSessionsRequirement
   } = useAuth();
+  const { isMobileMode } = useDevice();
 
   // Modal Pengaturan Target Syarat Minimum Bimbingan
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -468,8 +471,24 @@ export default function DashboardKaprodi() {
         </div>
       )}
 
-      {/* Hero Header Banner */}
-      <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 rounded-2xl p-6 text-white shadow-lg border border-blue-700/40 relative overflow-hidden">
+      {isMobileMode ? (
+        <MobileDashboardKaprodi
+          dashboardStats={dashboardStats}
+          availableAngkatans={availableAngkatans}
+          selectedAngkatan={selectedAngkatan}
+          setSelectedAngkatan={setSelectedAngkatan}
+          sortedWorkloads={sortedWorkloads}
+          filteredAdvisorRankings={filteredAdvisorRankings}
+          filteredTopStudents={filteredTopStudents}
+          onOpenSettings={() => setShowSettingsModal(true)}
+          onSelectMonth={(monthData) =>
+            setSelectedMonthModal({ isOpen: true, monthData })
+          }
+        />
+      ) : (
+        <>
+          {/* Hero Header Banner */}
+          <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 rounded-2xl p-6 text-white shadow-lg border border-blue-700/40 relative overflow-hidden">
         <div className="absolute right-0 top-0 bottom-0 w-96 bg-gradient-to-l from-indigo-500/10 to-transparent pointer-events-none" />
         
         <div className="relative z-10 space-y-3">
@@ -1452,6 +1471,8 @@ export default function DashboardKaprodi() {
           </div>
 
         </div>
+        </>
+      )}
 
       {/* ========================================================================= */}
       {/* DRILLDOWN MODAL: DETAIL LOG BIMBINGAN BULAN TERPILIH (REQUIREMENT 4)      */}

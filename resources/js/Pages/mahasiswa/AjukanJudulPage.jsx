@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { useDevice } from '../../context/DeviceContext.jsx';
 import { router } from '@inertiajs/react';
 import SimilarityGauge from '../../Components/common/SimilarityGauge.jsx';
 import { checkClientMultiFieldSimilarity, checkClientSimilarity } from '../../lib/similarityEngine.js';
@@ -34,6 +35,7 @@ export default function AjukanJudulPage() {
     updateThesisSubmission,
     getStudentAdvisors
   } = useAuth();
+  const { isMobileMode } = useDevice();
   const navigate = (url) => router.visit(url);
 
   // Ambil dosen pembimbing terdaftar mahasiswa jika ada
@@ -383,10 +385,10 @@ export default function AjukanJudulPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className={isMobileMode ? 'grid grid-cols-1 gap-4' : 'grid grid-cols-1 lg:grid-cols-12 gap-6'}>
         
         {/* Left: Input Form */}
-        <div className="lg:col-span-7 bg-white border border-slate-200 rounded-xl p-5 shadow-2xs space-y-4">
+        <div className={isMobileMode ? 'bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-4' : 'lg:col-span-7 bg-white border border-slate-200 rounded-xl p-5 shadow-2xs space-y-4'}>
           <form onSubmit={handleSubmit} className="space-y-4">
             
             {/* Student Profile Info */}
@@ -480,7 +482,7 @@ export default function AjukanJudulPage() {
         </div>
 
         {/* Right: Similarity Engine Feedback */}
-        <div className="lg:col-span-5 space-y-4">
+        <div className={isMobileMode ? 'space-y-4' : 'lg:col-span-5 space-y-4'}>
           
           <div className="space-y-3">
             <SimilarityGauge 
