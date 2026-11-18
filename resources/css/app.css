@@ -90,15 +90,8 @@
   scrollbar-width: none;
 }
 
-/* Native Mobile UI mode polish for Android & iOS */
+/* Native mobile tap highlight cleanup */
 html[data-ui-mode="mobile"] {
   -webkit-tap-highlight-color: transparent;
-}
-
-html[data-ui-mode="mobile"] main table {
-  display: block;
-  max-width: 100%;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
 }
 

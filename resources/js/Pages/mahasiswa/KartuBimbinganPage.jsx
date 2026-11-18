@@ -226,32 +226,44 @@ export default function KartuBimbinganPage() {
   const ROWS_COUNT = Math.max(targetRows, studentConsultations.length);
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 select-none bg-slate-50 p-6 min-h-screen">
+    <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6 select-none bg-slate-50 p-2 sm:p-6 min-h-screen">
       
       {/* Top Action Bar (Not printed) */}
-      <div className="space-y-4 print:hidden">
-        <div className="flex items-center justify-between">
+      <div className="space-y-2.5 print:hidden">
+        <div className="flex flex-wrap items-center justify-between gap-2.5">
           <Link
             href="/thesis/consultations"
-            className="inline-flex items-center space-x-2 text-sm font-bold text-slate-600 hover:text-blue-600 transition-colors"
+            className="inline-flex items-center space-x-2 text-xs sm:text-sm font-bold text-slate-600 hover:text-blue-600 transition-colors"
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="w-4 h-4 shrink-0" />
             <span>Kembali ke Entry Bimbingan</span>
           </Link>
           <div className="flex items-center space-x-3">
             <button
               onClick={() => window.print()}
-              className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition-all flex items-center space-x-2 cursor-pointer"
+              className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-sm transition-all flex items-center space-x-2 cursor-pointer"
             >
-              <Printer className="w-4 h-4" />
+              <Printer className="w-4 h-4 shrink-0" />
               <span>Cetak Kartu Bimbingan</span>
             </button>
           </div>
         </div>
+        <p className="text-[11px] text-slate-500 sm:hidden">
+          Geser lembar dokumen ke samping untuk melihat seluruh kolom, QR paraf, dan tanda tangan.
+        </p>
       </div>
 
-      {/* Printable Area */}
-      <div className="bg-white p-8 sm:p-12 shadow-sm border border-slate-200 print:p-0 print:shadow-none print:border-none print:m-0 mx-auto" style={{ width: '100%', maxWidth: '210mm', minHeight: '297mm' }}>
+      {/* Horizontal Scroll Container (Preserves Exact A4 Print Format on Small Screens) */}
+      <div
+        data-lenis-prevent
+        className="kartu-scroll-wrap w-full overflow-x-auto pb-2"
+        style={{ WebkitOverflowScrolling: 'touch' }}
+      >
+        {/* Printable Area */}
+        <div
+          className="kartu-paper bg-white p-10 sm:p-12 shadow-sm border border-slate-200 print:p-0 print:shadow-none print:border-none print:m-0 mx-auto"
+          style={{ width: '210mm', minWidth: '760px', maxWidth: '210mm', minHeight: '297mm' }}
+        >
         
         {/* Kop Surat Resmi UNSRI - Fasilkom */}
         <div className="mb-4">
@@ -260,29 +272,29 @@ export default function KartuBimbinganPage() {
               <img 
                 src={unsriLogo} 
                 alt="Logo Universitas Sriwijaya" 
-                className="w-20 h-20 sm:w-24 sm:h-24 object-contain"
+                className="w-24 h-24 object-contain"
               />
             </div>
             <div className="flex-1 text-center text-black font-serif leading-tight">
-              <p className="text-xs sm:text-sm font-semibold tracking-wide uppercase">
+              <p className="text-sm font-semibold tracking-wide uppercase">
                 KEMENTERIAN PENDIDIKAN TINGGI,<br />SAINS DAN TEKNOLOGI
               </p>
-              <h2 className="text-base sm:text-lg font-extrabold tracking-wide uppercase mt-0.5">
+              <h2 className="text-lg font-extrabold tracking-wide uppercase mt-0.5">
                 UNIVERSITAS SRIWIJAYA
               </h2>
-              <h3 className="text-sm sm:text-base font-bold tracking-wide uppercase">
+              <h3 className="text-base font-bold tracking-wide uppercase">
                 FAKULTAS ILMU KOMPUTER
               </h3>
-              <h4 className="text-xs sm:text-sm font-bold tracking-wide uppercase">
+              <h4 className="text-sm font-bold tracking-wide uppercase">
                 PROGRAM STUDI MANAJEMEN INFORMATIKA
               </h4>
-              <p className="text-[10px] sm:text-[11px] mt-1 text-slate-800 leading-normal">
+              <p className="text-[11px] mt-1 text-slate-800 leading-normal">
                 Kampus Unsri, Jalan Srijaya Negara Bukit Besar Palembang, Kode Pos: 30139<br />
                 Telepon (+62711)379249 Pos-el: <span className="text-blue-700 underline print:text-black print:no-underline">humas@ilkom.unsri.ac.id</span>
               </p>
             </div>
             {/* Spacer placeholder agar teks di tengah tetap persis di tengah dokumen */}
-            <div className="w-20 sm:w-24 shrink-0 hidden sm:block"></div>
+            <div className="w-24 shrink-0"></div>
           </div>
 
           {/* Garis Ganda Kop Surat Resmi (Tebal di atas, tipis di bawah) */}
@@ -404,11 +416,16 @@ export default function KartuBimbinganPage() {
         </div>
 
       </div>
+      </div>
 
       <style dangerouslySetInnerHTML={{__html: `
         @media print {
           body * {
             visibility: hidden;
+          }
+          .kartu-scroll-wrap {
+            overflow: visible !important;
+            padding: 0 !important;
           }
           .print\\:hidden {
             display: none !important;
@@ -442,6 +459,11 @@ export default function KartuBimbinganPage() {
             left: 0;
             top: 0;
             width: 100%;
+          }
+          .kartu-paper {
+            width: 100% !important;
+            min-width: 0 !important;
+            max-width: none !important;
           }
         }
       `}} />
