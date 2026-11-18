@@ -112,27 +112,12 @@ export default function StatusJudulPage() {
 
     setIsCheckingSim(true);
 
-    // 1. Supabase RPC check if available
-    if (isSupabaseConfigured && supabase) {
-      try {
-        const { data, error } = await supabase.rpc('check_title_similarity', {
-          input_title: newJudul.trim()
-        });
-        if (!error && data) {
-          const otherMatches = data.filter(item => item.matched_title.toLowerCase().trim() !== (revisionModalTitle?.judul || '').toLowerCase().trim());
-          const highest = otherMatches.length > 0 ? Math.max(...otherMatches.map(m => m.skor_gabungan || 0)) : 0;
-          setSimScore(highest);
-          setHasCheckedSim(true);
-          setIsCheckingSim(false);
-          return;
-        }
-      } catch (err) {
-        console.error('Supabase RPC similarity check error:', err);
-      }
-    }
-
-    // 2. Client similarity with dual-layer hybrid engine (exclude current title being revised)
-    const otherTitles = allDbTitles.filter(t => t.id !== revisionModalTitle?.id);
+    // Dual-layer hybrid engine dengan pemecahan kata dasar (stemming ID/EN) & Repo UNSRI
+    const myNim = String(currentUser?.nim || '').trim();
+    const otherTitles = allDbTitles.filter(t =>
+      String(t.id) !== String(revisionModalTitle?.id) &&
+      (!myNim || String(t.mhs_nim || '').trim() !== myNim)
+    );
     const res = checkClientMultiFieldSimilarity(
       newJudul,
       newDeskripsi,
@@ -140,7 +125,25 @@ export default function StatusJudulPage() {
       thesisArchives || [],
       { limit: 5 }
     );
-    setSimScore(res.highestScore || 0);
+    let highest = res.highestScore || 0;
+
+    // Tambahkan pengecekan RPC Supabase khusus judul jika abstrak belum diisi (>=30 char)
+    if ((!newDeskripsi || newDeskripsi.trim().length < 30) && isSupabaseConfigured && supabase) {
+      try {
+        const { data, error } = await supabase.rpc('check_title_similarity', {
+          input_title: newJudul.trim()
+        });
+        if (!error && Array.isArray(data)) {
+          const otherMatches = data.filter(item => item.matched_title?.toLowerCase().trim() !== (revisionModalTitle?.judul || '').toLowerCase().trim());
+          const rpcHighest = otherMatches.length > 0 ? Math.max(...otherMatches.map(m => m.skor_gabungan || 0)) : 0;
+          highest = Math.max(highest, rpcHighest);
+        }
+      } catch (err) {
+        console.error('Supabase RPC similarity check error:', err);
+      }
+    }
+
+    setSimScore(highest);
     setHasCheckedSim(true);
     setIsCheckingSim(false);
   };

@@ -1,17 +1,52 @@
 /**
  * SIMTA Similarity Check Engine
- * Dual-Layer Hybrid Architecture:
- * 1. Layer Judul (Title): Trigram Jaccard + Weighted Token Overlap (Indonesian D3 MI/Fasilkom Domain)
- * 2. Layer Abstrak (Abstract): Bilingual (ID <-> EN) Concept & Keyphrase Thesaurus + Token Overlap
+ * Dual-Layer Hybrid Architecture with Bilingual Root Stemming (Kata Dasar ID <-> EN):
+ * 1. Layer Judul (Title): Stemmed Root Token Overlap + Canonical Bilingual Overlap + Character Trigram
+ * 2. Layer Abstrak (Abstract): Pemecahan Kata Dasar (ID/EN Stemming) -> Bilingual Canonical Root Alignment
+ *    + Concept Thesaurus + Trigram Similarity
  * 3. Benchmark Dataset: Real Historical Archives linked to UNSRI Repository (http://repository.unsri.ac.id/)
  */
 
 import {
   preProcessTitle,
   preProcessAbstract,
+  extractTitleRoots,
+  extractAbstractRoots,
   extractKeyConcepts,
   getSimilarityThreshold
 } from '../services/titleService.js';
+
+const ROOT_CACHE_LIMIT = 1500;
+const abstractRootCache = new Map();
+const titleRootCache = new Map();
+const conceptCache = new Map();
+
+function getCachedAbstractRoots(text) {
+  const key = String(text || '');
+  if (abstractRootCache.has(key)) return abstractRootCache.get(key);
+  const val = extractAbstractRoots(key);
+  if (abstractRootCache.size >= ROOT_CACHE_LIMIT) abstractRootCache.clear();
+  abstractRootCache.set(key, val);
+  return val;
+}
+
+function getCachedTitleRoots(text) {
+  const key = String(text || '');
+  if (titleRootCache.has(key)) return titleRootCache.get(key);
+  const val = extractTitleRoots(key);
+  if (titleRootCache.size >= ROOT_CACHE_LIMIT) titleRootCache.clear();
+  titleRootCache.set(key, val);
+  return val;
+}
+
+function getCachedConcepts(text) {
+  const key = String(text || '');
+  if (conceptCache.has(key)) return conceptCache.get(key);
+  const val = extractKeyConcepts(key);
+  if (conceptCache.size >= ROOT_CACHE_LIMIT) conceptCache.clear();
+  conceptCache.set(key, val);
+  return val;
+}
 
 /**
  * Generates character trigrams set from a string.
@@ -47,64 +82,97 @@ export function calculateTrigramSimilarity(str1, str2) {
     }
   }
 
-  const unionCount = new Set([...t1, ...t2]).size;
+  const unionCount = t1.size + t2.size - intersectionCount;
   return unionCount === 0 ? 0 : intersectionCount / unionCount;
+}
+
+/**
+ * Calculates Token / Root Word Overlap ratio with Smoothed Containment, Dice & Jaccard.
+ * Returns numeric ratio (0.0 - 1.0) for backward compatibility, or detailed info via helper.
+ */
+export function calculateRootOverlapDetails(tokensArr1, tokensArr2, minDenominator = 8) {
+  const set1 = new Set(Array.isArray(tokensArr1) ? tokensArr1 : String(tokensArr1 || '').split(' ').filter(Boolean));
+  const set2 = new Set(Array.isArray(tokensArr2) ? tokensArr2 : String(tokensArr2 || '').split(' ').filter(Boolean));
+
+  if (set1.size === 0 || set2.size === 0) {
+    return { score: 0, matchedRoots: [] };
+  }
+
+  const matchedRoots = [];
+  for (const t of set1) {
+    if (set2.has(t)) {
+      matchedRoots.push(t);
+    }
+  }
+
+  const common = matchedRoots.length;
+  if (common === 0) return { score: 0, matchedRoots: [] };
+
+  const minLen = Math.min(set1.size, set2.size);
+  const smoothedMin = Math.max(minDenominator, minLen);
+  const unionLen = set1.size + set2.size - common;
+
+  // Smoothed containment + Sorensen-Dice + Jaccard prevents short abstracts from artificially inflating scores
+  const containment = common / smoothedMin;
+  const dice = (2 * common) / (set1.size + set2.size);
+  const jaccard = unionLen === 0 ? 0 : common / unionLen;
+
+  const score = (0.45 * containment) + (0.40 * dice) + (0.15 * jaccard);
+  return {
+    score: Math.min(1.0, score),
+    matchedRoots
+  };
 }
 
 /**
  * Calculates Token / Word Overlap ratio with Containment & Jaccard
  */
-export function calculateTokenOverlap(str1, str2) {
-  const tokens1 = new Set(String(str1 || '').split(' ').filter(t => t.length > 0));
-  const tokens2 = new Set(String(str2 || '').split(' ').filter(t => t.length > 0));
-
-  if (tokens1.size === 0 || tokens2.size === 0) return 0;
-
-  let common = 0;
-  for (const t of tokens1) {
-    if (tokens2.has(t)) {
-      common++;
-    }
-  }
-
-  const minLen = Math.min(tokens1.size, tokens2.size);
-  const maxLen = Math.max(tokens1.size, tokens2.size);
-  const unionLen = new Set([...tokens1, ...tokens2]).size;
-
-  // Blended score: 60% containment (how much shorter text is in longer text) + 40% Jaccard
-  const containment = common / minLen;
-  const jaccard = unionLen === 0 ? 0 : common / unionLen;
-
-  return (0.6 * containment) + (0.4 * jaccard);
+export function calculateTokenOverlap(str1, str2, minDenominator = 3) {
+  return calculateRootOverlapDetails(str1, str2, minDenominator).score;
 }
 
 /**
  * Calculates Title Similarity between two titles (0.0 to 1.0)
- * Weights: 55% Token Overlap (after removing domain noise) + 45% Character Trigram
+ * Stems title words to root words (kata dasar) and matches both local stems and bilingual canonical roots.
  */
 export function calculateTitleSimilarity(title1, title2) {
-  const p1 = preProcessTitle(title1);
-  const p2 = preProcessTitle(title2);
+  const r1 = getCachedTitleRoots(title1);
+  const r2 = getCachedTitleRoots(title2);
 
-  if (!p1 || !p2) return 0;
-  if (p1 === p2) return 1.0;
+  if (!r1.processedText || !r2.processedText) return 0;
+  if (r1.processedText === r2.processedText) return 1.0;
 
-  const fts = calculateTokenOverlap(p1, p2);
-  const trigram = calculateTrigramSimilarity(p1, p2);
+  const stemOverlap = calculateTokenOverlap(r1.stems, r2.stems, 3);
+  const canonicalOverlap = calculateTokenOverlap(r1.canonicals, r2.canonicals, 3);
+  const effectiveTokenOverlap = Math.max(stemOverlap, 0.92 * canonicalOverlap);
 
-  return Math.min(1.0, (0.55 * fts) + (0.45 * trigram));
+  const trigram = Math.max(
+    calculateTrigramSimilarity(r1.processedText, r2.processedText),
+    0.92 * calculateTrigramSimilarity(r1.canonicals.join(' '), r2.canonicals.join(' '))
+  );
+
+  return Math.min(1.0, (0.58 * effectiveTokenOverlap) + (0.42 * trigram));
 }
 
 /**
- * Calculates Abstract Similarity with Bilingual Concept & Keyword Extraction (0.0 to 1.0)
- * Overcomes language differences (Indonesian input vs English repo abstract, or vice versa)
+ * Calculates Abstract Similarity by breaking both abstracts down into root words (kata dasar)
+ * and aligning Indonesian <-> English stems via canonical root mapping + concept thesaurus.
  */
 export function calculateAbstractSimilarity(abstract1, abstract2) {
-  if (!abstract1 || !abstract2) return 0;
+  if (!abstract1 || !abstract2) {
+    return { score: 0, matchedConcepts: [], matchedRoots: [] };
+  }
 
-  // 1. Concept matching via Bilingual Thesaurus (ID <-> EN)
-  const concepts1 = extractKeyConcepts(abstract1);
-  const concepts2 = extractKeyConcepts(abstract2);
+  // 1. Break abstracts into stemmed kata dasar & bilingual canonical roots
+  const abs1 = getCachedAbstractRoots(abstract1);
+  const abs2 = getCachedAbstractRoots(abstract2);
+
+  const rootOverlap = calculateRootOverlapDetails(abs1.roots, abs2.roots, 10);
+  const rootTokenScore = rootOverlap.score;
+
+  // 2. Bilingual IT Concept Thesaurus matching
+  const concepts1 = getCachedConcepts(abstract1);
+  const concepts2 = getCachedConcepts(abstract2);
 
   let conceptScore = 0;
   const matchedConcepts = [];
@@ -112,40 +180,49 @@ export function calculateAbstractSimilarity(abstract1, abstract2) {
   if (concepts1.length > 0 && concepts2.length > 0) {
     const keys2 = new Set(concepts2.map(c => c.key));
     let commonConcepts = 0;
+    let domainMatches = 0;
 
     for (const c1 of concepts1) {
       if (keys2.has(c1.key)) {
         commonConcepts++;
         matchedConcepts.push(c1.label);
+        if (c1.category === 'domain_bisnis' || c1.category === 'metode_analisis') {
+          domainMatches++;
+        }
       }
     }
 
-    const minConcepts = Math.min(concepts1.length, concepts2.length);
-    const unionConcepts = new Set([...concepts1.map(c => c.key), ...concepts2.map(c => c.key)]).size;
+    if (commonConcepts > 0) {
+      const unionConcepts = new Set([...concepts1.map(c => c.key), ...concepts2.map(c => c.key)]).size;
+      // Laplace smoothing (+2) avoids single-concept matches (e.g. both merely mentioning Android/MySQL) inflated to 100%
+      const smoothedDice = (2 * commonConcepts) / (concepts1.length + concepts2.length + 2);
+      const smoothedJaccard = commonConcepts / (unionConcepts + 1);
+      conceptScore = (0.60 * smoothedDice) + (0.40 * smoothedJaccard);
 
-    conceptScore = minConcepts === 0 ? 0 : (0.7 * (commonConcepts / minConcepts)) + (0.3 * (commonConcepts / unionConcepts));
+      // Sharing only generic tech/testing tags without business domain overlap should stay low
+      if (domainMatches === 0 && rootOverlap.matchedRoots.length <= 2) {
+        conceptScore *= 0.35;
+      }
+    }
   }
 
-  // 2. Pre-processed token overlap (removes stop-words in both ID & EN)
-  const p1 = preProcessAbstract(abstract1);
-  const p2 = preProcessAbstract(abstract2);
-  const tokenScore = calculateTokenOverlap(p1, p2);
+  // 3. Trigram similarity on canonicalized root token strings
+  const sortedRootStr1 = [...abs1.roots].sort().join(' ');
+  const sortedRootStr2 = [...abs2.roots].sort().join(' ');
+  const trigramScore = calculateTrigramSimilarity(sortedRootStr1, sortedRootStr2);
 
-  // 3. Trigram similarity on core token string
-  const trigramScore = calculateTrigramSimilarity(p1, p2);
-
-  // If concept matches exist, weigh them heavily (concept 50%, tokens 30%, trigram 20%)
-  // If no predefined concepts extracted, rely on token & trigram
+  // Combine scores: Canonical root words take primary weight (55%), Concept Thesaurus (30%), Root Trigram (15%)
   let finalScore = 0;
   if (concepts1.length > 0 && concepts2.length > 0) {
-    finalScore = (0.50 * conceptScore) + (0.30 * tokenScore) + (0.20 * trigramScore);
+    finalScore = (0.55 * rootTokenScore) + (0.30 * conceptScore) + (0.15 * trigramScore);
   } else {
-    finalScore = (0.60 * tokenScore) + (0.40 * trigramScore);
+    finalScore = (0.75 * rootTokenScore) + (0.25 * trigramScore);
   }
 
   return {
     score: Math.min(1.0, finalScore),
-    matchedConcepts
+    matchedConcepts,
+    matchedRoots: rootOverlap.matchedRoots
   };
 }
 
@@ -155,30 +232,32 @@ export function calculateAbstractSimilarity(abstract1, abstract2) {
 export function calculateThesisSimilarity(inputTitle, inputAbstract, candidateTitle, candidateAbstract) {
   const titleScore = calculateTitleSimilarity(inputTitle, candidateTitle);
 
-  // Determine if abstract comparison is active
-  const hasInputAbstract = inputAbstract && inputAbstract.trim().length >= 30;
-  const hasCandAbstract = candidateAbstract && candidateAbstract.trim().length >= 30;
+  const hasInputAbstract = Boolean(inputAbstract && inputAbstract.trim().length >= 30);
+  const hasCandAbstract = Boolean(candidateAbstract && candidateAbstract.trim().length >= 30);
 
   let abstractScore = 0;
   let matchedConcepts = [];
+  let matchedRoots = [];
 
   if (hasInputAbstract && hasCandAbstract) {
     const absResult = calculateAbstractSimilarity(inputAbstract, candidateAbstract);
     abstractScore = absResult.score;
     matchedConcepts = absResult.matchedConcepts;
+    matchedRoots = absResult.matchedRoots;
   } else if (hasInputAbstract && !hasCandAbstract) {
-    // Fallback: match input abstract concepts against candidate title
+    // Fallback: match input abstract root words against candidate title
     const absResult = calculateAbstractSimilarity(inputAbstract, candidateTitle);
-    abstractScore = absResult.score * 0.7; // slight discount for title-only
+    abstractScore = absResult.score * 0.7;
     matchedConcepts = absResult.matchedConcepts;
+    matchedRoots = absResult.matchedRoots;
   } else {
     // No abstract provided by user: abstract score equals title score
     abstractScore = titleScore;
   }
 
-  // Also extract concept matches between titles
-  const titleConcepts1 = extractKeyConcepts(inputTitle);
-  const titleConcepts2 = extractKeyConcepts(candidateTitle);
+  // Also include concept matches found in titles
+  const titleConcepts1 = getCachedConcepts(inputTitle);
+  const titleConcepts2 = getCachedConcepts(candidateTitle);
   const titleKeys2 = new Set(titleConcepts2.map(c => c.key));
   for (const c of titleConcepts1) {
     if (titleKeys2.has(c.key) && !matchedConcepts.includes(c.label)) {
@@ -186,25 +265,17 @@ export function calculateThesisSimilarity(inputTitle, inputAbstract, candidateTi
     }
   }
 
-  // Calculate composite weighted score
-  // If abstract provided: 50% Judul + 50% Abstrak
-  // If abstract not provided: 100% Judul
-  let compositeScore = 0;
-  if (hasInputAbstract) {
-    compositeScore = (0.50 * titleScore) + (0.50 * abstractScore);
-  } else {
-    compositeScore = titleScore;
-  }
-
-  const titleScorePercent = Math.min(100, Math.round(titleScore * 100));
-  const abstractScorePercent = Math.min(100, Math.round(abstractScore * 100));
-  const compositePercent = Math.min(100, Math.round(compositeScore * 100));
+  // Composite weighted score: 50% Judul + 50% Abstrak when abstract exists
+  const compositeScore = hasInputAbstract
+    ? (0.50 * titleScore) + (0.50 * abstractScore)
+    : titleScore;
 
   return {
-    skor_judul: titleScorePercent,
-    skor_abstrak: abstractScorePercent,
-    skor_gabungan: compositePercent,
-    matched_keywords: matchedConcepts
+    skor_judul: Math.min(100, Math.round(titleScore * 100)),
+    skor_abstrak: Math.min(100, Math.round(abstractScore * 100)),
+    skor_gabungan: Math.min(100, Math.round(compositeScore * 100)),
+    matched_keywords: matchedConcepts,
+    matched_roots: matchedRoots
   };
 }
 
@@ -230,7 +301,10 @@ export function checkClientMultiFieldSimilarity(
       highestTitleScore: 0,
       highestAbstractScore: 0,
       processedInput: '',
+      processedAbstractRoots: [],
+      abstractTokenDetails: [],
       hasAbstract: false,
+      extractedConcepts: [],
       matches: []
     };
   }
@@ -238,6 +312,9 @@ export function checkClientMultiFieldSimilarity(
   const limit = options.limit || 8;
   const thresholdMin = options.thresholdMin !== undefined ? options.thresholdMin : 10;
   const hasAbstract = Boolean(inputAbstract && inputAbstract.trim().length >= 30);
+  const inputAbsRoots = hasAbstract
+    ? getCachedAbstractRoots(inputAbstract)
+    : { roots: [], rootString: '', tokenDetails: [] };
 
   // Combine and deduplicate candidates
   const candidatePool = [];
@@ -291,7 +368,6 @@ export function checkClientMultiFieldSimilarity(
   const scoredCandidates = candidatePool.map(candidate => {
     const sim = calculateThesisSimilarity(inputTitle, inputAbstract, candidate.judul, candidate.abstrak);
 
-    // Generate abstract preview
     let abstrakPreview = '';
     if (candidate.abstrak) {
       abstrakPreview = candidate.abstrak.length > 170
@@ -304,9 +380,10 @@ export function checkClientMultiFieldSimilarity(
       skor_judul: sim.skor_judul,
       skor_abstrak: sim.skor_abstrak,
       skor_gabungan: sim.skor_gabungan,
-      skor_fts: sim.skor_judul, // backward compatibility
-      skor_trigram: sim.skor_judul, // backward compatibility
+      skor_fts: sim.skor_judul,
+      skor_trigram: sim.skor_judul,
       matched_keywords: sim.matched_keywords,
+      matched_roots: sim.matched_roots,
       abstrak_preview: abstrakPreview
     };
   });
@@ -329,6 +406,8 @@ export function checkClientMultiFieldSimilarity(
     highestAbstractScore,
     hasAbstract,
     processedInput: processedTitle,
+    processedAbstractRoots: inputAbsRoots.roots,
+    abstractTokenDetails: inputAbsRoots.tokenDetails,
     extractedConcepts: extractKeyConcepts(`${inputTitle} ${inputAbstract}`),
     matches: filteredMatches
   };
@@ -339,7 +418,5 @@ export function checkClientMultiFieldSimilarity(
  * Accepts either title-only or multi-field calls seamlessly.
  */
 export function checkClientSimilarity(inputTitle, databaseTitles = [], w1 = 0.6, w2 = 0.4) {
-  // If databaseTitles contains full archives with abstracts, use multi-field engine
   return checkClientMultiFieldSimilarity(inputTitle, '', databaseTitles, [], { limit: 5 });
 }
-

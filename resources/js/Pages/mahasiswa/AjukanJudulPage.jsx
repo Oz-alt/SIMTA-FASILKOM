@@ -65,25 +65,6 @@ export default function AjukanJudulPage() {
   const [hasInitialized, setHasInitialized] = useState(false);
   const toastTimeoutRef = useRef(null);
 
-  // Jika mahasiswa sudah memiliki data usulan judul tersimpan, muat data tersebut ke form
-  useEffect(() => {
-    if (existingThesis && !hasInitialized) {
-      setJudul(existingThesis.judul || '');
-      setAbstrak(existingThesis.deskripsi || existingThesis.abstrak || '');
-      if (existingThesis.skor_kemiripan_terakhir !== undefined && existingThesis.skor_kemiripan_terakhir !== null) {
-        setSimilarityResult(prev => ({
-          ...prev,
-          highestScore: Number(existingThesis.skor_kemiripan_terakhir) || 0,
-          highestTitleScore: Number(existingThesis.skor_kemiripan_terakhir) || 0,
-          highestAbstractScore: Number(existingThesis.skor_kemiripan_terakhir) || 0,
-          hasAbstract: Boolean(existingThesis.deskripsi || existingThesis.abstrak)
-        }));
-        setHasChecked(true);
-      }
-      setHasInitialized(true);
-    }
-  }, [existingThesis, hasInitialized]);
-
   const showToast = (message, type = 'success') => {
     if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
     setToast({ message, type });
@@ -97,6 +78,8 @@ export default function AjukanJudulPage() {
     highestAbstractScore: 0,
     hasAbstract: false,
     processedInput: '',
+    processedAbstractRoots: [],
+    abstractTokenDetails: [],
     extractedConcepts: [],
     matches: []
   });
@@ -128,6 +111,44 @@ export default function AjukanJudulPage() {
     return combined;
   }, [thesisTitles, historicalTitles, existingThesis, currentUser]);
 
+  const filteredArchives = useMemo(() => {
+    const myNim = String(currentUser?.nim || '').trim();
+    if (!myNim || !Array.isArray(thesisArchives)) return thesisArchives || [];
+    return thesisArchives.filter(arc => String(arc.penulis_nim || '').trim() !== myNim);
+  }, [thesisArchives, currentUser?.nim]);
+
+  // Jika mahasiswa sudah memiliki data usulan judul tersimpan, muat data tersebut ke form dan jalankan analisis kemiripan kata dasar aktual
+  useEffect(() => {
+    if (existingThesis && !hasInitialized) {
+      const initJudul = existingThesis.judul || '';
+      const initAbstrak = existingThesis.deskripsi || existingThesis.abstrak || '';
+      setJudul(initJudul);
+      setAbstrak(initAbstrak);
+
+      if (initJudul.trim().length >= 5) {
+        const computed = checkClientMultiFieldSimilarity(
+          initJudul,
+          initAbstrak,
+          allDbTitles,
+          filteredArchives,
+          { limit: 6 }
+        );
+        setSimilarityResult(computed);
+        setHasChecked(true);
+      } else if (existingThesis.skor_kemiripan_terakhir !== undefined && existingThesis.skor_kemiripan_terakhir !== null) {
+        setSimilarityResult(prev => ({
+          ...prev,
+          highestScore: Number(existingThesis.skor_kemiripan_terakhir) || 0,
+          highestTitleScore: Number(existingThesis.skor_kemiripan_terakhir) || 0,
+          highestAbstractScore: Number(existingThesis.skor_kemiripan_terakhir) || 0,
+          hasAbstract: Boolean(initAbstrak)
+        }));
+        setHasChecked(true);
+      }
+      setHasInitialized(true);
+    }
+  }, [existingThesis, hasInitialized, allDbTitles, filteredArchives]);
+
   // Explicit Similarity Check triggered by button click
   const handleCheckSimilarity = async () => {
     if (!judul || judul.trim().length < 5) {
@@ -142,7 +163,7 @@ export default function AjukanJudulPage() {
       judul,
       abstrak,
       allDbTitles,
-      thesisArchives || [],
+      filteredArchives,
       { limit: 6 }
     );
 
@@ -175,7 +196,7 @@ export default function AjukanJudulPage() {
         judul,
         abstrak,
         allDbTitles,
-        thesisArchives || [],
+        filteredArchives,
         { limit: 6 }
       );
       setSimilarityResult(res);
@@ -426,7 +447,7 @@ export default function AjukanJudulPage() {
                 className="w-full text-xs p-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 leading-relaxed overflow-y-auto overscroll-contain no-scrollbar h-36 max-h-56 resize-none"
               />
               <p className="text-[10px] text-slate-400 mt-1">
-                Engine akan mengekstrak konsep metode, framework, dan domain bisnis secara bilingual mencocokkan abstrak bahasa Indonesia maupun Inggris di Repositori UNSRI.
+                Engine akan memecah abstrak ke bentuk <strong>kata dasar (stemming ID/EN)</strong> dan menyelaraskannya secara bilingual sebelum mencocokkan similarity score terhadap abstrak berbahasa Inggris/Indonesia di Repositori UNSRI.
               </p>
             </div>
 
@@ -509,17 +530,54 @@ export default function AjukanJudulPage() {
             </div>
           )}
 
-          {/* Text Pre-processing Token Breakdown */}
-          {hasChecked && similarityResult.processedInput && (
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-xs">
-              <span className="font-bold text-slate-700 block mb-1">Hasil Pre-processing Judul (Token Inti):</span>
-              <div className="flex flex-wrap gap-1.5 mt-1">
-                {similarityResult.processedInput.split(' ').map((token, idx) => (
-                  <span key={idx} className="bg-white border border-slate-300 px-2 py-0.5 rounded text-[11px] font-mono text-slate-700">
-                    {token}
-                  </span>
-                ))}
-              </div>
+          {/* Text Pre-processing Token Breakdown (Judul + Kata Dasar Abstrak) */}
+          {hasChecked && (similarityResult.processedInput || (similarityResult.processedAbstractRoots && similarityResult.processedAbstractRoots.length > 0)) && (
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-xs space-y-2.5">
+              {similarityResult.processedInput && (
+                <div>
+                  <span className="font-bold text-slate-700 block mb-1">Kata Dasar Judul (Token Inti):</span>
+                  <div className="flex flex-wrap gap-1.5 mt-1">
+                    {similarityResult.processedInput.split(' ').map((token, idx) => (
+                      <span key={idx} className="bg-white border border-slate-300 px-2 py-0.5 rounded text-[11px] font-mono text-slate-700">
+                        {token}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {similarityResult.processedAbstractRoots && similarityResult.processedAbstractRoots.length > 0 && (
+                <div className="pt-2 border-t border-slate-200/80">
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <span className="font-bold text-slate-700">Kata Dasar Abstrak (Bilingual ID ↔ EN):</span>
+                    <span className="text-[10px] font-mono text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200/80">
+                      {similarityResult.processedAbstractRoots.length} kata dasar
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {similarityResult.processedAbstractRoots.slice(0, 18).map((root, idx) => {
+                      const detail = similarityResult.abstractTokenDetails?.find(d => d.canonical === root);
+                      const tooltipText = detail && detail.raw !== root
+                        ? `Asli: "${detail.raw}" → Kata dasar: "${detail.stem}" → Padanan bilingual: "${root}"`
+                        : `Kata dasar: "${root}"`;
+                      return (
+                        <span
+                          key={idx}
+                          title={tooltipText}
+                          className="bg-white border border-indigo-200/70 px-1.5 py-0.5 rounded text-[10px] font-mono text-slate-700"
+                        >
+                          {root}
+                        </span>
+                      );
+                    })}
+                    {similarityResult.processedAbstractRoots.length > 18 && (
+                      <span className="text-[10px] text-slate-400 font-medium self-center px-1">
+                        +{similarityResult.processedAbstractRoots.length - 18} lainnya
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -589,7 +647,7 @@ export default function AjukanJudulPage() {
                       {/* Matched Keywords Tags */}
                       {m.matched_keywords && m.matched_keywords.length > 0 && (
                         <div className="flex flex-wrap items-center gap-1 pt-1">
-                          <span className="text-[10px] font-bold text-slate-500 mr-0.5">Kecocokan:</span>
+                          <span className="text-[10px] font-bold text-slate-500 mr-0.5">Konsep:</span>
                           {m.matched_keywords.slice(0, 3).map((kw, kidx) => (
                             <span key={kidx} className="text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-200 px-1.5 py-0.2 rounded font-medium">
                               {kw}
@@ -598,6 +656,23 @@ export default function AjukanJudulPage() {
                           {m.matched_keywords.length > 3 && (
                             <span className="text-[10px] text-slate-400 font-medium">
                               +{m.matched_keywords.length - 3} lagi
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Matched Bilingual Root Words (Kata Dasar) */}
+                      {m.matched_roots && m.matched_roots.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-1 pt-0.5">
+                          <span className="text-[10px] font-bold text-slate-500 mr-0.5">Kata Dasar:</span>
+                          {m.matched_roots.slice(0, 5).map((rw, ridx) => (
+                            <span key={ridx} className="text-[10px] font-mono bg-emerald-50 text-emerald-700 border border-emerald-200/80 px-1.5 py-0.2 rounded">
+                              {rw}
+                            </span>
+                          ))}
+                          {m.matched_roots.length > 5 && (
+                            <span className="text-[10px] text-slate-400 font-medium">
+                              +{m.matched_roots.length - 5} kata
                             </span>
                           )}
                         </div>

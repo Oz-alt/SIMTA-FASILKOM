@@ -80,7 +80,7 @@ export default function SimilarityGauge({
           <div className="flex items-center gap-1 bg-white/80 px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs">
             <span className="text-slate-500">Skor Abstrak:</span>
             <strong className="text-slate-800">{abstractScore}%</strong>
-            <span className="text-[9px] text-indigo-600 bg-indigo-50 px-1 py-0.2 rounded font-semibold ml-0.5">Bilingual</span>
+            <span className="text-[9px] text-indigo-600 bg-indigo-50 px-1 py-0.2 rounded font-semibold ml-0.5">Kata Dasar ID/EN</span>
           </div>
         </div>
       )}
