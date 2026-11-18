@@ -1,6 +1,6 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { ArrowLeft, Printer } from 'lucide-react';
+import { ArrowLeft, Printer, ZoomIn, Maximize2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link } from '@inertiajs/react';
 import BimbinganReminderBanner from '../../Components/common/BimbinganReminderBanner.jsx';
 import { calculateBimbinganReminder } from '../../lib/bimbinganReminder.js';
@@ -225,8 +225,54 @@ export default function KartuBimbinganPage() {
   const targetRows = minSessionsRequirement?.minTotal || getMinTotalSessionsDefense();
   const ROWS_COUNT = Math.max(targetRows, studentConsultations.length);
 
+  const PAPER_WIDTH_PX = 794;
+  const scrollWrapRef = useRef(null);
+  const paperRef = useRef(null);
+  const [zoomMode, setZoomMode] = useState('fit'); // 'fit' | '75' | '100'
+  const [containerWidth, setContainerWidth] = useState(PAPER_WIDTH_PX);
+  const [paperHeight, setPaperHeight] = useState(1123);
+
+  useEffect(() => {
+    const updateMeasurements = () => {
+      if (scrollWrapRef.current) {
+        const w = scrollWrapRef.current.clientWidth;
+        if (w > 0) setContainerWidth(w);
+      }
+      if (paperRef.current) {
+        const h = paperRef.current.offsetHeight || paperRef.current.scrollHeight;
+        if (h > 0) setPaperHeight(h);
+      }
+    };
+
+    updateMeasurements();
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(updateMeasurements) : null;
+    if (ro) {
+      if (scrollWrapRef.current) ro.observe(scrollWrapRef.current);
+      if (paperRef.current) ro.observe(paperRef.current);
+    }
+    window.addEventListener('resize', updateMeasurements);
+    return () => {
+      window.removeEventListener('resize', updateMeasurements);
+      ro?.disconnect();
+    };
+  }, [ROWS_COUNT, studentConsultations.length]);
+
+  const activeScale = useMemo(() => {
+    if (zoomMode === '100') return 1;
+    if (zoomMode === '75') return 0.75;
+    return Math.min(1, Math.max(0.32, containerWidth / PAPER_WIDTH_PX));
+  }, [zoomMode, containerWidth]);
+
+  const isScaledDown = activeScale < 0.99;
+  const needsHorizontalScroll = PAPER_WIDTH_PX * activeScale > containerWidth + 2;
+
+  const nudgeHorizontalScroll = (delta) => {
+    if (!scrollWrapRef.current) return;
+    scrollWrapRef.current.scrollBy({ left: delta, behavior: 'smooth' });
+  };
+
   return (
-    <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6 select-none bg-slate-50 p-2 sm:p-6 min-h-screen">
+    <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6 select-none bg-slate-50 p-1 sm:p-6 min-h-screen">
       
       {/* Top Action Bar (Not printed) */}
       <div className="space-y-2.5 print:hidden">
@@ -248,21 +294,85 @@ export default function KartuBimbinganPage() {
             </button>
           </div>
         </div>
-        <p className="text-[11px] text-slate-500 sm:hidden">
-          Geser lembar dokumen ke samping untuk melihat seluruh kolom, QR paraf, dan tanda tangan.
-        </p>
+
+        {/* Zoom & Scroll Controls Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-2 bg-white border border-slate-200 rounded-xl p-2 shadow-sm">
+          <div className="inline-flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
+            {[
+              { key: 'fit', label: 'Pas Layar', icon: Maximize2 },
+              { key: '75', label: '75%', icon: ZoomIn },
+              { key: '100', label: '100%', icon: ZoomIn },
+            ].map((opt) => {
+              const Icon = opt.icon;
+              const active = zoomMode === opt.key;
+              return (
+                <button
+                  key={opt.key}
+                  type="button"
+                  onClick={() => setZoomMode(opt.key)}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-bold transition-colors ${
+                    active ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Icon className="w-3 h-3" />
+                  <span>{opt.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {needsHorizontalScroll ? (
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => nudgeHorizontalScroll(-180)}
+                aria-label="Geser kiri"
+                className="inline-flex items-center gap-0.5 px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+                <span>Kiri</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => nudgeHorizontalScroll(180)}
+                aria-label="Geser kanan"
+                className="inline-flex items-center gap-0.5 px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold"
+              >
+                <span>Kanan</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ) : (
+            <span className="text-[11px] text-slate-500 px-1">
+              Format A4 Utuh ({Math.round(activeScale * 100)}%)
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Horizontal Scroll Container (Preserves Exact A4 Print Format on Small Screens) */}
       <div
-        data-lenis-prevent
-        className="kartu-scroll-wrap w-full overflow-x-auto pb-2"
-        style={{ WebkitOverflowScrolling: 'touch' }}
+        ref={scrollWrapRef}
+        className="kartu-scroll-wrap w-full overflow-x-auto overflow-y-hidden pb-3"
+        style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-x pan-y' }}
       >
+        <div
+          className="kartu-zoom-sizer mx-auto relative"
+          style={{
+            width: `${Math.round(PAPER_WIDTH_PX * activeScale)}px`,
+            height: `${Math.round(paperHeight * activeScale)}px`,
+          }}
+        >
         {/* Printable Area */}
         <div
-          className="kartu-paper bg-white p-10 sm:p-12 shadow-sm border border-slate-200 print:p-0 print:shadow-none print:border-none print:m-0 mx-auto"
-          style={{ width: '210mm', minWidth: '760px', maxWidth: '210mm', minHeight: '297mm' }}
+          ref={paperRef}
+          className="kartu-paper bg-white p-10 sm:p-12 shadow-sm border border-slate-200 print:p-0 print:shadow-none print:border-none print:m-0"
+          style={{
+            width: `${PAPER_WIDTH_PX}px`,
+            minHeight: '297mm',
+            transform: isScaledDown ? `scale(${activeScale})` : undefined,
+            transformOrigin: 'top left',
+          }}
         >
         
         {/* Kop Surat Resmi UNSRI - Fasilkom */}
@@ -417,8 +527,20 @@ export default function KartuBimbinganPage() {
 
       </div>
       </div>
+      </div>
 
       <style dangerouslySetInnerHTML={{__html: `
+        .kartu-scroll-wrap::-webkit-scrollbar {
+          height: 8px;
+        }
+        .kartu-scroll-wrap::-webkit-scrollbar-thumb {
+          background: #94a3b8;
+          border-radius: 9999px;
+        }
+        .kartu-scroll-wrap::-webkit-scrollbar-track {
+          background: #e2e8f0;
+          border-radius: 9999px;
+        }
         @media print {
           body * {
             visibility: hidden;
@@ -460,7 +582,12 @@ export default function KartuBimbinganPage() {
             top: 0;
             width: 100%;
           }
+          .kartu-zoom-sizer {
+            width: 100% !important;
+            height: auto !important;
+          }
           .kartu-paper {
+            transform: none !important;
             width: 100% !important;
             min-width: 0 !important;
             max-width: none !important;
