@@ -1,10 +1,6 @@
 import React, { useMemo } from 'react';
 import { Link } from '@inertiajs/react';
 import {
-  FilePlus2,
-  ClipboardList,
-  FileCheck2,
-  Archive,
   MessageCircle,
   Users,
   AlertTriangle,
@@ -98,37 +94,6 @@ export default function MobileDashboardMahasiswa() {
     const text = `Halo ${adv.nama}, saya ${currentUser?.nama || currentUser?.name || 'Mahasiswa'} (${nim || '-'}), mahasiswa bimbingan ${slotLabel} di SIMONITA FASILKOM UNSRI.`;
     return `https://wa.me/${phoneCheck.cleanNumber}?text=${encodeURIComponent(text)}`;
   };
-
-  const quickActions = [
-    {
-      label: myTitle ? 'Kelola TA' : 'Ajukan TA',
-      sub: myTitle ? 'Judul & similarity' : 'Mulai pengajuan',
-      href: isProfileLocked ? '/profile?first_login=true' : '/thesis/submit',
-      icon: FilePlus2,
-      tone: 'bg-blue-600 text-white shadow-sm',
-    },
-    {
-      label: 'Bimbingan',
-      sub: 'Catat & riwayat',
-      href: isProfileLocked ? '/profile?first_login=true' : '/thesis/consultations',
-      icon: ClipboardList,
-      tone: 'bg-indigo-600 text-white shadow-sm',
-    },
-    {
-      label: 'Kartu Digital',
-      sub: 'Bukti bimbingan',
-      href: isProfileLocked ? '/profile?first_login=true' : '/thesis/consultations/card',
-      icon: FileCheck2,
-      tone: 'bg-emerald-600 text-white shadow-sm',
-    },
-    {
-      label: 'Arsip TA',
-      sub: 'Referensi judul',
-      href: isProfileLocked ? '/profile?first_login=true' : '/thesis/archive',
-      icon: Archive,
-      tone: 'bg-slate-800 text-white shadow-sm',
-    },
-  ];
 
   const isTitleApproved =
     myTitle?.status === 'disetujui' ||
@@ -230,28 +195,6 @@ export default function MobileDashboardMahasiswa() {
           <ChevronRight className="w-4 h-4 text-amber-600 shrink-0" />
         </Link>
       )}
-
-      {/* 2x2 Thumb Quick Actions */}
-      <div className="grid grid-cols-2 gap-3">
-        {quickActions.map((act) => {
-          const Icon = act.icon;
-          return (
-            <Link
-              key={act.label}
-              href={act.href}
-              className="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-sm flex items-center gap-3 active:scale-[0.98] transition-transform"
-            >
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${act.tone}`}>
-                <Icon className="w-5 h-5" />
-              </div>
-              <div className="min-w-0">
-                <div className="text-xs font-extrabold text-slate-900 leading-tight truncate">{act.label}</div>
-                <div className="text-[11px] text-slate-500 mt-0.5 leading-tight truncate">{act.sub}</div>
-              </div>
-            </Link>
-          );
-        })}
-      </div>
 
       {/* Dosen Pembimbing Contact Cards */}
       {(dospem1 || dospem2) && (
