@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from '@inertiajs/react';
 import {
   ShieldCheck,
   CalendarDays,
@@ -9,7 +8,6 @@ import {
   AlertTriangle,
   XCircle,
   ChevronDown,
-  ChevronRight,
   GraduationCap,
 } from 'lucide-react';
 import diklatImg from '../../assets/photo/diklat.jpg';
@@ -242,14 +240,6 @@ export default function MobileBerandaView() {
             );
           })}
         </div>
-
-        <Link
-          href="/login"
-          className="mt-2 w-full flex items-center justify-between px-4 py-3 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-colors"
-        >
-          <span>Mulai Masuk ke Akun Mahasiswa / Dosen</span>
-          <ChevronRight className="w-4 h-4" />
-        </Link>
       </section>
     </div>
   );
