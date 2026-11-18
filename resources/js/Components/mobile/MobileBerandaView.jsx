@@ -5,14 +5,11 @@ import {
   CalendarDays,
   Briefcase,
   UserCheck,
-  LogIn,
-  FileText,
   CheckCircle2,
   AlertTriangle,
   XCircle,
   ChevronDown,
   ChevronRight,
-  Sparkles,
   GraduationCap,
 } from 'lucide-react';
 import diklatImg from '../../assets/photo/diklat.jpg';
@@ -21,19 +18,16 @@ import serverRoomImg from '../../assets/photo/server_room.jpg';
 
 const SLIDES = [
   {
-    tag: 'Portal Resmi Tugas Akhir',
     title: 'SIMONITA FASILKOM UNSRI',
     desc: 'Monitoring bimbingan, cek kemiripan judul, dan reservasi ruang sidang dalam satu portal terpadu.',
     image: diklatImg,
   },
   {
-    tag: 'Anti-Plagiasi Judul',
     title: 'Similarity Check Engine',
     desc: 'Analisis kemiripan judul & abstrak bilingual secara real-time terhadap arsip UNSRI.',
     image: computerLabImg,
   },
   {
-    tag: 'Jadwal Anti-Bentrok',
     title: 'Ruang Sidang Terpadu',
     desc: 'Pengajuan ruang Sempro, Semhas, & Sidang Akhir otomatis terintegrasi profil TA.',
     image: serverRoomImg,
@@ -106,7 +100,7 @@ export default function MobileBerandaView() {
   return (
     <div className="w-full max-w-lg mx-auto px-4 py-4 space-y-5 pb-10">
       {/* App Hero Card */}
-      <section className="relative rounded-3xl overflow-hidden shadow-lg bg-blue-950 text-white min-h-[260px] flex flex-col justify-between p-5">
+      <section className="relative rounded-3xl overflow-hidden shadow-lg bg-blue-950 text-white min-h-[210px] flex flex-col justify-between p-5">
         <div
           className="absolute inset-0 bg-cover bg-center transition-all duration-700"
           style={{ backgroundImage: `url(${currentSlide.image})` }}
@@ -133,34 +127,13 @@ export default function MobileBerandaView() {
           </div>
         </div>
 
-        <div className="relative z-10 space-y-2.5 pt-8">
-          <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-blue-200">
-            <Sparkles className="w-3 h-3" />
-            {currentSlide.tag}
-          </span>
+        <div className="relative z-10 space-y-2 pt-8">
           <h1 className="text-xl font-extrabold tracking-tight leading-snug">
             {currentSlide.title}
           </h1>
           <p className="text-xs text-slate-200 leading-relaxed">
             {currentSlide.desc}
           </p>
-
-          <div className="pt-2 grid grid-cols-2 gap-2.5">
-            <Link
-              href="/login"
-              className="flex items-center justify-center gap-1.5 py-3 px-4 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md shadow-blue-900/40 active:scale-[0.98] transition-all"
-            >
-              <LogIn className="w-4 h-4" />
-              <span>Masuk Portal</span>
-            </Link>
-            <Link
-              href="/documents"
-              className="flex items-center justify-center gap-1.5 py-3 px-4 rounded-2xl bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/25 text-white font-bold text-xs active:scale-[0.98] transition-all"
-            >
-              <FileText className="w-4 h-4" />
-              <span>Dokumen TA</span>
-            </Link>
-          </div>
         </div>
       </section>
 
