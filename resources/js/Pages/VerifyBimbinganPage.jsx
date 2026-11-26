@@ -41,12 +41,41 @@ export default function VerifyBimbinganPage({ nim: propNim }) {
     };
   }, [allStudents, nim]);
 
+  // Validasi bahwa sesi bimbingan benar-benar telah ditanggapi/disetujui Dosen Pembimbing (bukan Menunggu / Ditolak)
+  const isVerifiedConsultation = (data) => {
+    if (!data) return false;
+    let jenis = data.jenis_revisi;
+    const note = data.masukan_dosen || '';
+    if (note.includes('[Revisi Mayor]') || note.includes('[Mayor]')) {
+      jenis = 'Mayor';
+    } else if (note.includes('[Revisi Minor]') || note.includes('[Minor]')) {
+      jenis = 'Minor';
+    } else if (note.includes('[Diterima]') || note.includes('[Disetujui]')) {
+      jenis = 'Diterima';
+    } else if (note.includes('[Menunggu]')) {
+      jenis = 'Menunggu';
+    }
+
+    if (jenis === 'Menunggu' || jenis === 'Ditolak' || data.status === 'ditolak') return false;
+    if ((data.status === 'menunggu_tanggapan' || data.status === 'menunggu' || data.status === 'menunggu_validasi') && (!data.masukan_dosen || data.masukan_dosen.includes('[Menunggu]'))) {
+      return false;
+    }
+
+    return (
+      data.status === 'disetujui' ||
+      data.status === 'perlu_revisi' ||
+      jenis === 'Diterima' ||
+      jenis === 'Minor' ||
+      jenis === 'Mayor'
+    );
+  };
+
   // Approved consultations for this student in strict chronological order (oldest to newest: Bimbingan 1, 2, 3...)
   const approvedConsultations = useMemo(() => {
     if (!nim) return [];
 
     return consultations
-      .filter(c => String(c.mhs_nim).trim() === String(nim).trim())
+      .filter(c => String(c.mhs_nim).trim() === String(nim).trim() && isVerifiedConsultation(c))
       .sort((a, b) => {
         // 1. Primary: Compare tanggal (YYYY-MM-DD)
         const dateA = a.tanggal || '';
@@ -84,8 +113,7 @@ export default function VerifyBimbinganPage({ nim: propNim }) {
   const targetLogIndex = useMemo(() => {
     if (!approvedConsultations.length) return -1;
     if (logId) {
-      const idx = approvedConsultations.findIndex(c => String(c.id) === String(logId));
-      if (idx >= 0) return idx;
+      return approvedConsultations.findIndex(c => String(c.id) === String(logId));
     }
     return approvedConsultations.length - 1; // default to latest approved session
   }, [approvedConsultations, logId]);
@@ -232,12 +260,14 @@ export default function VerifyBimbinganPage({ nim: propNim }) {
             </div>
           )}
 
-          {/* Official VERIFIED Ribbon Seal Indicator */}
-          <div className="absolute top-0 right-0 w-24 h-24 pointer-events-none overflow-hidden z-20">
-            <div className="absolute transform rotate-45 bg-emerald-600 text-white text-[9px] font-extrabold py-1 right-[-35px] top-[24px] w-[150px] text-center shadow-md border-y border-emerald-400 tracking-wider uppercase font-sans">
-              OFFICIAL VERIFIED
+          {/* Official VERIFIED Ribbon Seal Indicator (Hanya tampil jika sesi ditemukan & sudah divalidasi dosen) */}
+          {targetLog && (
+            <div className="absolute top-0 right-0 w-24 h-24 pointer-events-none overflow-hidden z-20">
+              <div className="absolute transform rotate-45 bg-emerald-600 text-white text-[9px] font-extrabold py-1 right-[-35px] top-[24px] w-[150px] text-center shadow-md border-y border-emerald-400 tracking-wider uppercase font-sans">
+                OFFICIAL VERIFIED
+              </div>
             </div>
-          </div>
+          )}
           
         </div>
 

@@ -18,6 +18,7 @@ export default function RealtimeNotificationToast() {
   const { 
     currentUser, 
     latestRealtimeNotif, 
+    activeRealtimeAlert,
     dismissRealtimeNotif, 
     markNotificationAsRead 
   } = useAuth();
@@ -53,21 +54,33 @@ export default function RealtimeNotificationToast() {
     return () => clearInterval(timer);
   }, [latestRealtimeNotif, isPaused, dismissRealtimeNotif]);
 
-  // Only show if there is an active realtime notification
-  if (!latestRealtimeNotif) return null;
+  // Only show if there is an active realtime notification and no bimbingan alert is occupying the slot
+  if (!latestRealtimeNotif || activeRealtimeAlert) return null;
 
   const notif = latestRealtimeNotif;
   const userRole = currentUser?.role || 'mahasiswa';
 
   // Check relevance to active user
   const isDosen = userRole === 'dosen';
-  const isKaprodiOrAdmin = userRole === 'kaprodi' || userRole === 'admin';
+  const isKaprodi = userRole === 'kaprodi';
+  const isAdmin = userRole === 'admin';
 
-  if (!isDosen && !isKaprodiOrAdmin) return null;
+  if (!isDosen && !isKaprodi && !isAdmin) return null;
 
-  // Filter out mismatched roles
-  if (isDosen && notif.recipient_role && notif.recipient_role !== 'dosen') return null;
-  if (isKaprodiOrAdmin && notif.recipient_role && notif.recipient_role !== 'kaprodi' && notif.recipient_role !== 'admin') return null;
+  // Filter out mismatched roles and ensure lecturer-specific targeting
+  if (isDosen) {
+    if (notif.recipient_role && notif.recipient_role !== 'dosen') return null;
+    const cleanNip = String(currentUser?.nip || currentUser?.nim || '').trim();
+    const cleanNama = (currentUser?.nama || '').toLowerCase().replace(/dr\.|ir\.|prof\.|s\.kom\.|m\.cs\.|m\.t\.|m\.kom\.|ph\.d\.|st\.|s\.t\./gi, '').trim();
+    const notifNip = String(notif.recipient_nip || '').trim();
+    const notifNama = (notif.dosen_nama || notif.recipient_nama || '').toLowerCase().replace(/dr\.|ir\.|prof\.|s\.kom\.|m\.cs\.|m\.t\.|m\.kom\.|ph\.d\.|st\.|s\.t\./gi, '').trim();
+
+    if (notifNip && cleanNip && notifNip !== cleanNip) return null;
+    if (!notifNip && notifNama && cleanNama && !notifNama.includes(cleanNama) && !cleanNama.includes(notifNama)) return null;
+    if (!notif.recipient_role && !notifNip && !notifNama) return null;
+  }
+  if (isKaprodi && notif.recipient_role && notif.recipient_role !== 'kaprodi' && notif.recipient_role !== 'all') return null;
+  if (isAdmin && notif.recipient_role && notif.recipient_role !== 'admin' && notif.recipient_role !== 'all') return null;
 
   // Determine notification type
   const isBimbingan = notif.related_type === 'consultation' || notif.related_type === 'bimbingan_status';

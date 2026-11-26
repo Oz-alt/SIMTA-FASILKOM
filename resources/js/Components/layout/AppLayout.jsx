@@ -39,54 +39,85 @@ export default function AppLayout({ children }) {
     );
   };
 
+  const getRoleHomePath = (role) => {
+    if (role === 'admin') return '/admin-simta/dashboard';
+    if (role === 'kaprodi') return '/kaprodi/dashboard';
+    if (role === 'dosen') return '/dosen/dashboard';
+    return '/dashboard';
+  };
+
+  const cleanPath = (url || '/').split('?')[0].split('#')[0] || '/';
+  const isPublicPath = cleanPath === '/' || cleanPath === '/documents' || cleanPath.startsWith('/documents/') || isAuthRoute(cleanPath);
+
   useEffect(() => {
-    // Abaikan seluruh alur autentikasi publik & verifikasi dari guard dashboard
-    if (isAuthRoute(url)) {
+    // Abaikan seluruh rute publik (Beranda, Dokumen, Login/Reset/Verify)
+    if (isPublicPath) {
       return;
     }
 
-    // 1. Guard Admin Routes: only users with role 'admin' can access /admin and /admin-simta
-    const isAdminRoute = url.startsWith('/admin-simta') || url.startsWith('/admin');
-    if (isAdminRoute) {
-      if (!currentUser) {
-        router.visit('/login');
-        return;
-      }
-      if (currentUser.role !== 'admin') {
-        if (currentUser.role === 'mahasiswa') router.visit('/dashboard');
-        else if (currentUser.role === 'dosen') router.visit('/dosen/dashboard');
-        else if (currentUser.role === 'kaprodi') router.visit('/kaprodi/dashboard');
-        else router.visit('/login');
-        return;
-      }
-    }
-
-    // 2. Prevent Admin from straying into student/dosen/kaprodi workspaces
-    if (currentUser?.role === 'admin' && (url === '/dashboard' || url.startsWith('/kaprodi') || url.startsWith('/dosen'))) {
-      router.visit('/admin-simta/dashboard');
+    // 1. Wajib login untuk seluruh rute non-publik (BUG-01)
+    if (!currentUser) {
+      router.visit('/login');
       return;
     }
 
-    // 3. Role isolation between Dosen and Kaprodi
-    if (currentUser?.role === 'dosen' && url.startsWith('/kaprodi')) {
-      router.visit('/dosen/dashboard');
-    } else if (currentUser?.role === 'kaprodi' && url.startsWith('/dosen')) {
-      router.visit('/kaprodi/dashboard');
+    const role = currentUser.role;
+    const isAdminRoute = cleanPath.startsWith('/admin-simta') || cleanPath.startsWith('/admin');
+    const isKaprodiRoute = cleanPath.startsWith('/kaprodi');
+    const isDosenRoute = cleanPath.startsWith('/dosen');
+    const isSharedAuthenticatedRoute =
+      cleanPath.startsWith('/profile') ||
+      cleanPath === '/thesis/archive' ||
+      cleanPath.startsWith('/thesis/archive/') ||
+      cleanPath === '/schedule' ||
+      cleanPath.startsWith('/schedule/');
+    const isMahasiswaExclusiveRoute =
+      cleanPath === '/dashboard' ||
+      cleanPath.startsWith('/booking') ||
+      (cleanPath.startsWith('/thesis') && !cleanPath.startsWith('/thesis/archive'));
+
+    // 2. Isolasi ketat rute per Role (BUG-02 & BUG-03)
+    if (isAdminRoute && role !== 'admin') {
+      router.visit(getRoleHomePath(role));
+      return;
+    }
+    if (isKaprodiRoute && role !== 'kaprodi') {
+      router.visit(getRoleHomePath(role));
+      return;
+    }
+    if (isDosenRoute && role !== 'dosen') {
+      router.visit(getRoleHomePath(role));
+      return;
+    }
+    if (isMahasiswaExclusiveRoute && role !== 'mahasiswa') {
+      router.visit(getRoleHomePath(role));
+      return;
+    }
+
+    // 3. Kunci aktivasi profil pertama kali login khusus Mahasiswa
+    if (
+      role === 'mahasiswa' &&
+      !currentUser.is_profile_completed &&
+      !cleanPath.startsWith('/profile') &&
+      !isSharedAuthenticatedRoute
+    ) {
+      router.visit('/profile?first_login=true');
     } else if (
-      currentUser?.role === 'mahasiswa' && 
-      !currentUser?.is_profile_completed && 
-      !url.startsWith('/profile') &&
-      !isAuthRoute(url) &&
-      url !== '/' &&
-      url !== '/documents'
+      role === 'mahasiswa' &&
+      !currentUser.is_profile_completed &&
+      !cleanPath.startsWith('/profile')
     ) {
       router.visit('/profile?first_login=true');
     }
-  }, [currentUser?.role, currentUser?.is_profile_completed, url]);
+  }, [currentUser, currentUser?.role, currentUser?.is_profile_completed, cleanPath, isPublicPath]);
 
-  const isHomePage = url === '/';
-  const isDokumenPage = url === '/documents';
-  const isAuthPage = isAuthRoute(url);
+  const isHomePage = cleanPath === '/';
+  const isDokumenPage = cleanPath === '/documents' || cleanPath.startsWith('/documents/');
+  const isAuthPage = isAuthRoute(cleanPath);
+
+  if (!currentUser && !isPublicPath) {
+    return null;
+  }
 
   if (isAuthPage) {
     return (

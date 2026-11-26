@@ -25,7 +25,10 @@ export default function DetailTinjauJudulPage({ titleId: propTitleId }) {
   const { url } = usePage();
   const { 
     thesisTitles, 
+    advisors = [],
+    getStudentAdvisors,
     addProdiRevisionNote, 
+    setThesisTitleFix,
     getAllMahasiswaAccounts,
     accountsVersion
   } = useAuth();
@@ -85,6 +88,21 @@ export default function DetailTinjauJudulPage({ titleId: propTitleId }) {
 
   // State Management for Forms
   const [revisiCatatan, setRevisiCatatan] = useState('');
+  const [fixCatatan, setFixCatatan] = useState('');
+
+  const assignedAdv = useMemo(() => {
+    if (!title?.mhs_nim || typeof getStudentAdvisors !== 'function') return null;
+    return getStudentAdvisors(title.mhs_nim);
+  }, [title?.mhs_nim, getStudentAdvisors]);
+
+  const [selectedDospem1Nip, setSelectedDospem1Nip] = useState('');
+  const [selectedDospem2Nip, setSelectedDospem2Nip] = useState('');
+
+  useEffect(() => {
+    if (!title) return;
+    setSelectedDospem1Nip(title.pembimbing_1_nip || assignedAdv?.dospem1?.nip || '');
+    setSelectedDospem2Nip(title.pembimbing_2_nip || assignedAdv?.dospem2?.nip || '');
+  }, [title?.id, title?.pembimbing_1_nip, title?.pembimbing_2_nip, assignedAdv?.dospem1?.nip, assignedAdv?.dospem2?.nip]);
 
   // Toast Notification
   const [toastMessage, setToastMessage] = useState('');
@@ -100,6 +118,25 @@ export default function DetailTinjauJudulPage({ titleId: propTitleId }) {
     'Ruang lingkup sistem terlalu luas, mohon batasi pada modul inti kebutuhan D3 Manajemen Informatika.',
     'Metodologi pengembangan sistem perlu diperjelas bersama dosen pembimbing.'
   ];
+
+  // Submit Penetapan Judul Fix / Disetujui Prodi (Status berubah jadi "Disetujui / Judul Fix" - Hijau)
+  const handleApproveTitleFix = (e) => {
+    e.preventDefault();
+    if (!title || !setThesisTitleFix) return;
+    if (selectedDospem1Nip && selectedDospem2Nip && selectedDospem1Nip === selectedDospem2Nip) {
+      showToast('Pembimbing 1 dan Pembimbing 2 tidak boleh dosen yang sama.');
+      return;
+    }
+
+    setThesisTitleFix(
+      title.id,
+      selectedDospem1Nip,
+      selectedDospem2Nip,
+      fixCatatan.trim() || 'Judul telah disetujui resmi sebagai JUDUL FIX dalam rapat Prodi.'
+    );
+    showToast(`Judul TA ${title.mhs_nama} berhasil ditetapkan sebagai "Judul Fix" (Disetujui)!`);
+    setFixCatatan('');
+  };
 
   // Submit Catatan Revisi Rapat Prodi (Status berubah jadi "Perlu Revisi" - Kuning)
   const handleSendRevisionNote = (e) => {
@@ -340,8 +377,77 @@ export default function DetailTinjauJudulPage({ titleId: propTitleId }) {
 
         </div>
 
-        {/* Right Column: Actions (Catatan Revisi Rapat Prodi) */}
+        {/* Right Column: Actions (Penetapan Judul Fix & Catatan Revisi Rapat Prodi) */}
         <div className="space-y-6">
+
+          {/* FORM 0: TETAPKAN SEBAGAI JUDUL FIX (ACC PRODI) */}
+          <div className="bg-emerald-50/60 border border-emerald-200 rounded-2xl p-5 shadow-2xs space-y-4">
+            <div className="flex items-center justify-between border-b border-emerald-200/80 pb-3">
+              <h4 className="text-xs font-bold text-emerald-900 flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span>Tetapkan Judul Fix (ACC Prodi)</span>
+              </h4>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                {isFix ? 'Sudah Judul Fix' : 'Ubah Status → Judul Fix'}
+              </span>
+            </div>
+
+            <p className="text-xs text-emerald-900/90 leading-relaxed">
+              Tetapkan pengajuan ini sebagai <strong>Judul Fix (Disetujui)</strong> apabila judul dan skor kemiripan sudah sesuai hasil rapat Prodi.
+            </p>
+
+            <form onSubmit={handleApproveTitleFix} className="space-y-3">
+              <div className="space-y-2">
+                <div>
+                  <label className="block text-[11px] font-bold text-emerald-900 mb-1">Dosen Pembimbing 1</label>
+                  <select
+                    value={selectedDospem1Nip}
+                    onChange={(e) => setSelectedDospem1Nip(e.target.value)}
+                    className="w-full text-xs p-2.5 border border-emerald-300 rounded-xl bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  >
+                    <option value="">-- Pilih Pembimbing 1 (Opsional) --</option>
+                    {advisors.map((adv) => (
+                      <option key={adv.nip} value={adv.nip}>
+                        {adv.nama} ({adv.nip})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-emerald-900 mb-1">Dosen Pembimbing 2</label>
+                  <select
+                    value={selectedDospem2Nip}
+                    onChange={(e) => setSelectedDospem2Nip(e.target.value)}
+                    className="w-full text-xs p-2.5 border border-emerald-300 rounded-xl bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  >
+                    <option value="">-- Pilih Pembimbing 2 (Opsional) --</option>
+                    {advisors.map((adv) => (
+                      <option key={adv.nip} value={adv.nip}>
+                        {adv.nama} ({adv.nip})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <textarea
+                rows={2}
+                value={fixCatatan}
+                onChange={(e) => setFixCatatan(e.target.value)}
+                placeholder="Catatan persetujuan (opsional, misal: Disetujui sebagai Judul Fix pada rapat Prodi)..."
+                className="w-full text-xs p-3 border border-emerald-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-slate-400"
+              />
+
+              <button
+                type="submit"
+                className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs inline-flex items-center justify-center space-x-2 cursor-pointer transition-colors"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>{isFix ? 'Perbarui Ketetapan Judul Fix' : 'Setujui & Tetapkan Judul Fix'}</span>
+              </button>
+            </form>
+          </div>
           
           {/* FORM 1: BERIKAN CATATAN REVISI RAPAT PRODI */}
           <div className="bg-amber-50/60 border border-amber-200 rounded-2xl p-5 shadow-2xs space-y-4">

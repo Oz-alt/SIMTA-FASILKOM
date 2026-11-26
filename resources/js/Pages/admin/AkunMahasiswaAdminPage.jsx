@@ -214,9 +214,21 @@ export default function AkunMahasiswaAdminPage() {
   // Handle Save Student (Add / Edit)
   const handleSaveStudent = async (e) => {
     e.preventDefault();
-    if (!studentForm.nim || !studentForm.nama) {
+    const cleanNim = String(studentForm.nim || '').trim();
+    const cleanNama = String(studentForm.nama || '').trim();
+    if (!cleanNim || !cleanNama) {
       showToast('NIM dan Nama Mahasiswa wajib diisi!');
       return;
+    }
+
+    if (!editingStudent) {
+      const isDuplicate = mahasiswaList.some(
+        (s) => String(s.nim || '').trim().toLowerCase() === cleanNim.toLowerCase()
+      );
+      if (isDuplicate) {
+        showToast(`Gagal menyimpan: Akun mahasiswa dengan NIM ${cleanNim} sudah terdaftar!`);
+        return;
+      }
     }
 
     const emailToUse = studentForm.email || `${studentForm.nim.trim()}@student.unsri.ac.id`;

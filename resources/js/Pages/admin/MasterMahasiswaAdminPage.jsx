@@ -225,7 +225,9 @@ export default function MasterMahasiswaAdminPage() {
   // Save Student (Add / Edit) with Pembimbing 1 & 2
   const handleSaveStudent = async (e) => {
     e.preventDefault();
-    if (!studentForm.nim || !studentForm.nama) {
+    const cleanNim = String(studentForm.nim || '').trim();
+    const cleanNama = String(studentForm.nama || '').trim();
+    if (!cleanNim || !cleanNama) {
       showToast('NIM dan Nama Mahasiswa wajib diisi!');
       return;
     }
@@ -233,6 +235,16 @@ export default function MasterMahasiswaAdminPage() {
     if (studentForm.dospem1_nip && studentForm.dospem2_nip && studentForm.dospem1_nip === studentForm.dospem2_nip) {
       showToast('Dosen Pembimbing 1 dan 2 tidak boleh dosen yang sama!');
       return;
+    }
+
+    if (!editingStudent) {
+      const isDuplicate = rawMahasiswaList.some(
+        (s) => String(s.nim || '').trim().toLowerCase() === cleanNim.toLowerCase()
+      );
+      if (isDuplicate) {
+        showToast(`Gagal menyimpan: Mahasiswa dengan NIM ${cleanNim} sudah terdaftar di data master!`);
+        return;
+      }
     }
 
     const emailToUse = studentForm.email?.trim() || `${studentForm.nim.trim()}@student.unsri.ac.id`;

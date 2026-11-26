@@ -166,6 +166,12 @@ export default function JadwalSidangSection({ showHeaderBanner = true }) {
     }));
   };
 
+  const timeStrToMinutes = (val) => {
+    if (!val) return 0;
+    const [h, m] = String(val).replace('.', ':').trim().split(':').map(Number);
+    return (h || 0) * 60 + (m || 0);
+  };
+
   // Handle Form Submit (Kaprodi Atur Jadwal & Ruangan)
   const handleFormSubmit = (e) => {
     e.preventDefault();
@@ -180,8 +186,52 @@ export default function JadwalSidangSection({ showHeaderBanner = true }) {
       return;
     }
 
+    const startMinutes = timeStrToMinutes(formData.waktu_mulai);
+    const endMinutes = timeStrToMinutes(formData.waktu_selesai);
+    if (endMinutes <= startMinutes) {
+      alert('Rentang waktu tidak valid: Waktu Selesai sidang harus lebih besar dari Waktu Mulai sidang.');
+      return;
+    }
+
     if (!formData.ketua_penguji_nama) {
       alert('Mohon pilih Ketua Penguji sidang.');
+      return;
+    }
+
+    // Validasi duplikasi dosen dalam susunan dewan penguji pada satu sesi sidang
+    const committeeList = [
+      { role: 'Ketua Penguji', key: (formData.ketua_penguji_nip || formData.ketua_penguji_nama || '').trim().toLowerCase(), label: formData.ketua_penguji_nama },
+      { role: 'Sekretaris', key: (formData.sekretaris_nip || formData.sekretaris_nama || '').trim().toLowerCase(), label: formData.sekretaris_nama },
+      { role: 'Penguji 1', key: (formData.penguji1_nip || formData.penguji1_nama || '').trim().toLowerCase(), label: formData.penguji1_nama },
+      { role: 'Penguji 2', key: (formData.penguji2_nip || formData.penguji2_nama || '').trim().toLowerCase(), label: formData.penguji2_nama },
+    ].filter((item) => Boolean(item.key));
+
+    const seenExaminers = new Map();
+    for (const member of committeeList) {
+      if (seenExaminers.has(member.key)) {
+        alert(`Dosen penguji tidak boleh rangkap dalam satu sesi sidang: ${member.label} terpilih pada posisi ${seenExaminers.get(member.key)} sekaligus ${member.role}.`);
+        return;
+      }
+      seenExaminers.set(member.key, member.role);
+    }
+
+    // Validasi bentrok jadwal ruangan & waktu dengan jadwal sidang lain yang aktif pada tanggal yang sama
+    const targetRoom = String(formData.ruangan || '').trim().toLowerCase();
+    const conflictingSchedule = (defenseSchedules || []).find((sch) => {
+      if (!sch || (editingSchedule && String(sch.id) === String(editingSchedule.id))) return false;
+      if (sch.status === 'dibatalkan' || sch.status === 'diajukan') return false;
+      if (sch.tanggal !== formData.tanggal) return false;
+      if (!targetRoom || String(sch.ruangan || '').trim().toLowerCase() !== targetRoom) return false;
+
+      const schStart = timeStrToMinutes(sch.waktu_mulai);
+      const schEnd = timeStrToMinutes(sch.waktu_selesai);
+      return startMinutes < schEnd && endMinutes > schStart;
+    });
+
+    if (conflictingSchedule) {
+      alert(
+        `Jadwal ruangan bentrok! Ruangan "${formData.ruangan}" sudah terjadwal pada tanggal ${formData.tanggal} pukul ${conflictingSchedule.waktu_mulai} - ${conflictingSchedule.waktu_selesai} untuk mahasiswa ${conflictingSchedule.mhs_nama}.`
+      );
       return;
     }
 

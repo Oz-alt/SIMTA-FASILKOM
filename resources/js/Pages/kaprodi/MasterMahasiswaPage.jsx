@@ -414,7 +414,9 @@ export default function MasterMahasiswaPage() {
   // Handle Save Student (Add / Edit)
   const handleSaveStudent = async (e) => {
     e.preventDefault();
-    if (!studentForm.nim || !studentForm.nama) {
+    const cleanNim = String(studentForm.nim || '').trim();
+    const cleanNama = String(studentForm.nama || '').trim();
+    if (!cleanNim || !cleanNama) {
       showToast('NIM dan Nama Mahasiswa wajib diisi!');
       return;
     }
@@ -422,6 +424,16 @@ export default function MasterMahasiswaPage() {
     if (studentForm.dospem1_nip && studentForm.dospem2_nip && studentForm.dospem1_nip === studentForm.dospem2_nip) {
       showToast('Pembimbing 1 dan Pembimbing 2 tidak boleh dosen yang sama!');
       return;
+    }
+
+    if (!editingStudent) {
+      const isDuplicate = registeredStudents.some(
+        (s) => String(s.nim || '').trim().toLowerCase() === cleanNim.toLowerCase()
+      );
+      if (isDuplicate) {
+        showToast(`Gagal menyimpan: Mahasiswa dengan NIM ${cleanNim} sudah terdaftar di sistem!`);
+        return;
+      }
     }
 
     if (editingStudent) {

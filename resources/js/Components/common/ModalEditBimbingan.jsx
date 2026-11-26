@@ -36,6 +36,22 @@ function formatIndoDate(dateStr) {
   }
 }
 
+function getTodayDateString() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
+function isValidHttpUrl(val) {
+  const clean = String(val || '').trim();
+  if (!clean) return true;
+  try {
+    const parsed = new URL(clean);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 export default function ModalEditBimbingan({ isOpen, onClose, consultation, onSaved }) {
   const { consultations, updateConsultation } = useAuth();
 
@@ -84,10 +100,16 @@ export default function ModalEditBimbingan({ isOpen, onClose, consultation, onSa
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
+  const todayStr = getTodayDateString();
+
   // Validasi tanggal & waktu bimbingan
   const validateDateTime = (tanggal, waktu) => {
     if (!tanggal) {
       return 'Tanggal bimbingan wajib diisi.';
+    }
+
+    if (tanggal > todayStr) {
+      return `Tanggal bimbingan tidak boleh melebihi hari ini (${formatIndoDate(todayStr)}).`;
     }
 
     if (precedingBimbinganDate && tanggal < precedingBimbinganDate) {
@@ -171,6 +193,11 @@ export default function ModalEditBimbingan({ isOpen, onClose, consultation, onSa
     const dateTimeError = validateDateTime(formData.tanggal, formData.waktu);
     if (dateTimeError) {
       setErrorMsg(dateTimeError);
+      return;
+    }
+
+    if (!isValidHttpUrl(formData.file_revisi_url)) {
+      setErrorMsg('Format tautan dokumen tidak valid. Gunakan URL lengkap diawali https:// atau http://.');
       return;
     }
 
@@ -268,6 +295,7 @@ export default function ModalEditBimbingan({ isOpen, onClose, consultation, onSa
                   value={formData.tanggal}
                   onChange={handleChange}
                   min={minAllowedDate || undefined}
+                  max={todayStr}
                   className={`w-full px-3 py-2 rounded-xl border font-semibold text-slate-900 bg-white ${
                     precedingBimbinganDate && formData.tanggal && formData.tanggal < precedingBimbinganDate
                       ? 'border-rose-400 ring-2 ring-rose-200'

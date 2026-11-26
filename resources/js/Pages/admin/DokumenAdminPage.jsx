@@ -36,7 +36,7 @@ function Modal({ open, onClose, title, children }) {
   );
 }
 
-const emptyForm = { nama: '', jenis: JENIS_OPTIONS[0], deskripsi: '', file_name: '', status: 'aktif' };
+const emptyForm = { nama: '', jenis: JENIS_OPTIONS[0], deskripsi: '', file_name: '', file_url: '', status: 'aktif' };
 
 export default function DokumenAdminPage() {
   const { adminDocuments, addAdminDocument, updateAdminDocument, deleteAdminDocument } = useAuth();
@@ -49,6 +49,8 @@ export default function DokumenAdminPage() {
   const [editTarget, setEditTarget]   = useState(null);
   const [form, setForm]               = useState(emptyForm);
   const [fileInput, setFileInput]     = useState('');
+  const [fileDataUrl, setFileDataUrl] = useState('');
+  const [formError, setFormError]     = useState('');
 
   const filtered = adminDocuments.filter(d => {
     const matchSearch = !search || d.nama.toLowerCase().includes(search.toLowerCase()) || d.jenis.toLowerCase().includes(search.toLowerCase());
@@ -56,15 +58,124 @@ export default function DokumenAdminPage() {
     return matchSearch && matchJenis;
   });
 
-  const openAdd = () => { setEditTarget(null); setForm(emptyForm); setFileInput(''); setModalForm(true); };
-  const openEdit = (doc) => { setEditTarget(doc); setForm({ nama: doc.nama, jenis: doc.jenis, deskripsi: doc.deskripsi, file_name: doc.file_name, status: doc.status }); setFileInput(doc.file_name); setModalForm(true); };
-  const closeForm = () => { setModalForm(false); setEditTarget(null); };
+  const openAdd = () => {
+    setEditTarget(null);
+    setForm(emptyForm);
+    setFileInput('');
+    setFileDataUrl('');
+    setFormError('');
+    setModalForm(true);
+  };
+
+  const openEdit = (doc) => {
+    setEditTarget(doc);
+    setForm({
+      nama: doc.nama || '',
+      jenis: doc.jenis || JENIS_OPTIONS[0],
+      deskripsi: doc.deskripsi || '',
+      file_name: doc.file_name || '',
+      file_url: doc.file_url && doc.file_url !== '#' ? doc.file_url : '',
+      status: doc.status || 'aktif',
+    });
+    setFileInput(doc.file_name || '');
+    setFileDataUrl('');
+    setFormError('');
+    setModalForm(true);
+  };
+
+  const closeForm = () => {
+    setModalForm(false);
+    setEditTarget(null);
+    setFormError('');
+  };
+
+  const handleFileChange = (e) => {
+    const selected = e.target.files?.[0];
+    if (!selected) return;
+    if (selected.size > 10 * 1024 * 1024) {
+      setFormError('Ukuran berkas maksimal 10 MB. Untuk berkas besar, gunakan tautan Google Drive.');
+      return;
+    }
+    setFormError('');
+    setFileInput(selected.name);
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      if (typeof evt.target?.result === 'string') {
+        setFileDataUrl(evt.target.result);
+      }
+    };
+    reader.readAsDataURL(selected);
+  };
+
+  const handleDownloadDocument = (e, doc) => {
+    if (!doc) return;
+    const rawUrl = String(doc.file_url || '').trim();
+    if (rawUrl && rawUrl !== '#') {
+      return; // Biarkan browser mengunduh Data URL atau membuka tautan eksternal secara alami
+    }
+    e.preventDefault();
+    const content = [
+      `DOKUMEN RESMI SIMONITA FASILKOM UNSRI`,
+      `=====================================`,
+      `Nama Dokumen : ${doc.nama || '-'}`,
+      `Jenis        : ${doc.jenis || '-'}`,
+      `Tanggal      : ${doc.tanggal_upload || '-'}`,
+      `Deskripsi    : ${doc.deskripsi || '-'}`,
+    ].join('\n');
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const blobUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    const fallbackName = doc.file_name
+      ? doc.file_name.replace(/\.[^.]+$/, '.txt')
+      : `${String(doc.nama || 'dokumen').replace(/\s+/g, '_').toLowerCase()}.txt`;
+    link.download = fallbackName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 1500);
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const payload = { ...form, file_name: fileInput || form.file_name || 'dokumen.pdf', file_url: '#' };
-    if (editTarget) { updateAdminDocument(editTarget.id, payload); }
-    else { addAdminDocument(payload); }
+    const cleanNama = String(form.nama || '').trim();
+    if (!cleanNama) {
+      setFormError('Nama dokumen wajib diisi.');
+      return;
+    }
+
+    const cleanExternalUrl = String(form.file_url || '').trim();
+    if (cleanExternalUrl && !cleanExternalUrl.startsWith('data:')) {
+      try {
+        const parsed = new URL(cleanExternalUrl);
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+          setFormError('Tautan dokumen harus diawali https:// atau http://.');
+          return;
+        }
+      } catch {
+        setFormError('Format tautan dokumen eksternal tidak valid.');
+        return;
+      }
+    }
+
+    const finalFileUrl = fileDataUrl || cleanExternalUrl || (editTarget?.file_url && editTarget.file_url !== '#' ? editTarget.file_url : '');
+    if (!finalFileUrl) {
+      setFormError('Silakan pilih file dokumen yang akan diunggah atau masukkan tautan dokumen resmi (https://...).');
+      return;
+    }
+
+    const finalFileName = fileInput || form.file_name || (cleanExternalUrl ? cleanNama : 'dokumen.pdf');
+    const payload = {
+      ...form,
+      nama: cleanNama,
+      file_name: finalFileName,
+      file_url: finalFileUrl,
+    };
+    if (editTarget) {
+      updateAdminDocument(editTarget.id, payload);
+    } else {
+      addAdminDocument(payload);
+    }
     closeForm();
   };
 
@@ -168,7 +279,15 @@ export default function DokumenAdminPage() {
                       <button onClick={() => setModalPreview(doc)} title="Lihat" className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-colors">
                         <Eye className="w-3.5 h-3.5" />
                       </button>
-                      <a href={doc.file_url} download={doc.file_name} title="Download" className="p-1.5 rounded-lg hover:bg-emerald-50 text-slate-400 hover:text-emerald-600 transition-colors">
+                      <a
+                        href={doc.file_url && doc.file_url !== '#' ? doc.file_url : '#download'}
+                        download={doc.file_url?.startsWith('data:') ? doc.file_name : undefined}
+                        target={doc.file_url?.startsWith('http') ? '_blank' : undefined}
+                        rel={doc.file_url?.startsWith('http') ? 'noopener noreferrer' : undefined}
+                        onClick={(e) => handleDownloadDocument(e, doc)}
+                        title="Download"
+                        className="p-1.5 rounded-lg hover:bg-emerald-50 text-slate-400 hover:text-emerald-600 transition-colors"
+                      >
                         <Download className="w-3.5 h-3.5" />
                       </a>
                       <button onClick={() => openEdit(doc)} title="Edit" className="p-1.5 rounded-lg hover:bg-amber-50 text-slate-400 hover:text-amber-600 transition-colors">
@@ -189,6 +308,11 @@ export default function DokumenAdminPage() {
       {/* Modal Form Upload/Edit */}
       <Modal open={modalForm} onClose={closeForm} title={editTarget ? 'Edit Dokumen' : 'Upload Dokumen Baru'}>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {formError && (
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">
+              {formError}
+            </div>
+          )}
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1.5">Nama Dokumen <span className="text-rose-500">*</span></label>
             <input required value={form.nama} onChange={e => setForm(f => ({ ...f, nama: e.target.value }))}
@@ -209,17 +333,28 @@ export default function DokumenAdminPage() {
               className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300 resize-none" />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Upload File</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Upload File {!editTarget && <span className="text-rose-500">*</span>}</label>
             <div className="border-2 border-dashed border-slate-200 rounded-xl p-4 text-center hover:border-indigo-300 transition-colors">
               <Upload className="w-6 h-6 text-slate-300 mx-auto mb-2" />
               <input type="file" className="hidden" id="file-upload"
-                onChange={e => { if (e.target.files[0]) setFileInput(e.target.files[0].name); }} />
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
+                onChange={handleFileChange} />
               <label htmlFor="file-upload" className="cursor-pointer text-xs text-indigo-600 font-semibold hover:text-indigo-800">
                 Pilih file
               </label>
               <span className="text-xs text-slate-400"> atau drag & drop</span>
               {fileInput && <div className="mt-2 text-[10px] text-emerald-600 font-medium">{fileInput}</div>}
             </div>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Atau Tautan Dokumen Eksternal / Google Drive (Opsional)</label>
+            <input
+              type="url"
+              value={form.file_url && !String(form.file_url).startsWith('data:') ? form.file_url : ''}
+              onChange={e => setForm(f => ({ ...f, file_url: e.target.value }))}
+              placeholder="https://drive.google.com/..."
+              className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            />
           </div>
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1.5">Status</label>
@@ -254,7 +389,12 @@ export default function DokumenAdminPage() {
               <div className="col-span-2"><span className="text-slate-500 font-semibold">Deskripsi</span><p className="text-slate-700 mt-0.5 leading-relaxed">{modalPreview.deskripsi}</p></div>
             </div>
             <div className="pt-2 border-t border-slate-100 flex space-x-2">
-              <a href={modalPreview.file_url} download={modalPreview.file_name}
+              <a
+                href={modalPreview.file_url && modalPreview.file_url !== '#' ? modalPreview.file_url : '#download'}
+                download={modalPreview.file_url?.startsWith('data:') ? modalPreview.file_name : undefined}
+                target={modalPreview.file_url?.startsWith('http') ? '_blank' : undefined}
+                rel={modalPreview.file_url?.startsWith('http') ? 'noopener noreferrer' : undefined}
+                onClick={(e) => handleDownloadDocument(e, modalPreview)}
                 className="flex items-center space-x-1.5 px-4 py-2 bg-emerald-600 text-white text-xs font-bold rounded-xl hover:bg-emerald-700 transition-colors">
                 <Download className="w-3.5 h-3.5" /><span>Download</span>
               </a>

@@ -93,31 +93,37 @@ export default function Navbar() {
     setAvatarError(false);
   }, [currentUser?.avatar_url]);
 
-  // Status baca persisten untuk notifikasi sistem & admin
+  const getReadNotifStorageKey = (user) => {
+    const uid = user?.id || user?.nim || user?.nip || user?.email || user?.role || 'guest';
+    return `simta_read_notif_ids_${String(uid).trim()}`;
+  };
+
+  // Status baca persisten yang terisolasi per akun pengguna (BUG-12)
   const [readNotifIds, setReadNotifIds] = useState(() => {
     try {
-      const saved = localStorage.getItem('simta_read_notif_ids') || localStorage.getItem('simta_read_notification_ids');
+      const key = getReadNotifStorageKey(currentUser);
+      const saved = localStorage.getItem(key);
       return new Set(saved ? JSON.parse(saved) : []);
     } catch {
       return new Set();
     }
   });
 
-  const saveReadNotifIds = (newSet) => {
+  const saveReadNotifIds = (newSet, targetUser = currentUser) => {
     setReadNotifIds(newSet);
     const arr = Array.from(newSet);
+    const key = getReadNotifStorageKey(targetUser);
     try {
-      localStorage.setItem('simta_read_notif_ids', JSON.stringify(arr));
-      localStorage.setItem('simta_read_notification_ids', JSON.stringify(arr));
+      localStorage.setItem(key, JSON.stringify(arr));
     } catch {}
 
-    if (isSupabaseConfigured && supabase && currentUser) {
-      const docId = `simta_read_notif_ids_${currentUser.id || currentUser.role || 'admin'}`;
+    if (isSupabaseConfigured && supabase && targetUser) {
+      const docId = key;
       (async () => {
         try {
           await supabase.from('admin_cms').upsert([{
             id: docId,
-            judul: `Notification Read IDs (${currentUser.nama || currentUser.role})`,
+            judul: `Notification Read IDs (${targetUser.nama || targetUser.role})`,
             kategori: 'notification_read_ids',
             isi: JSON.stringify(arr),
             updated_at: new Date().toISOString()
@@ -127,38 +133,54 @@ export default function Navbar() {
     }
   };
 
-  // Sinkronkan status baca dari Supabase saat awal mount
+  // Reset & muat ulang daftar baca khusus akun yang sedang aktif saat login/ganti akun, lalu sinkronkan dari Supabase
   useEffect(() => {
-    if (!isSupabaseConfigured || !supabase || !currentUser) return;
-    const docId = `simta_read_notif_ids_${currentUser.id || currentUser.role || 'admin'}`;
+    if (!currentUser) {
+      setReadNotifIds(new Set());
+      return;
+    }
+
+    const userKey = getReadNotifStorageKey(currentUser);
+    let initialUserSet = new Set();
+    try {
+      const localSaved = localStorage.getItem(userKey);
+      if (localSaved) {
+        initialUserSet = new Set(JSON.parse(localSaved));
+      }
+    } catch {}
+    setReadNotifIds(initialUserSet);
+
+    if (!isSupabaseConfigured || !supabase) return;
+    let active = true;
     supabase.from('admin_cms')
       .select('isi')
-      .eq('id', docId)
+      .eq('id', userKey)
       .maybeSingle()
       .then(({ data }) => {
-        if (data?.isi) {
-          try {
-            const parsed = typeof data.isi === 'string' ? JSON.parse(data.isi) : data.isi;
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              setReadNotifIds(prev => {
-                const merged = new Set([...prev, ...parsed]);
-                try {
-                  localStorage.setItem('simta_read_notif_ids', JSON.stringify(Array.from(merged)));
-                  localStorage.setItem('simta_read_notification_ids', JSON.stringify(Array.from(merged)));
-                } catch {}
-                return merged;
-              });
-            }
-          } catch {}
-        }
+        if (!active || !data?.isi) return;
+        try {
+          const parsed = typeof data.isi === 'string' ? JSON.parse(data.isi) : data.isi;
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const merged = new Set([...initialUserSet, ...parsed]);
+            setReadNotifIds(merged);
+            try {
+              localStorage.setItem(userKey, JSON.stringify(Array.from(merged)));
+            } catch {}
+          }
+        } catch {}
       }).catch(() => {});
-  }, [currentUser?.id, currentUser?.role]);
 
-  // Sinkronkan status baca notifikasi antar-komponen secara real-time
+    return () => {
+      active = false;
+    };
+  }, [currentUser?.id, currentUser?.nim, currentUser?.nip, currentUser?.role]);
+
+  // Sinkronkan status baca notifikasi antar-komponen secara real-time khusus akun aktif
   useEffect(() => {
     const syncReadIds = () => {
+      if (!currentUser) return;
       try {
-        const saved = localStorage.getItem('simta_read_notif_ids') || localStorage.getItem('simta_read_notification_ids');
+        const saved = localStorage.getItem(getReadNotifStorageKey(currentUser));
         if (saved) {
           setReadNotifIds(new Set(JSON.parse(saved)));
         }
@@ -170,7 +192,7 @@ export default function Navbar() {
       window.removeEventListener('storage', syncReadIds);
       window.removeEventListener('simta_notifications_updated', syncReadIds);
     };
-  }, []);
+  }, [currentUser?.id, currentUser?.nim, currentUser?.nip, currentUser?.role]);
 
   // Close floating notification popover on click outside
   useEffect(() => {
@@ -258,9 +280,9 @@ export default function Navbar() {
           };
         });
 
-      // 3. Penjadwalan Sidang Tugas Akhir
+      // 3. Penjadwalan Sidang Tugas Akhir (Hanya yang masih berstatus diajukan / menunggu koordinasi ruangan - BUG-14)
       const defenseNotifs = (defenseSchedules || [])
-        .filter(s => s && s.id && (s.status === 'diajukan' || s.ruangan || s.jenis_sidang))
+        .filter(s => s && s.id && (s.status === 'diajukan' || s.status === 'menunggu' || s.status === 'menunggu_ruangan'))
         .map(s => ({
           id: `notif-defense-${s.id}`,
           source_type: 'defense_schedule',
@@ -663,12 +685,6 @@ export default function Navbar() {
   }, [url, userNotifications, readNotifIds, markNotificationAsRead]);
 
   const handleNotificationItemClick = (n) => {
-    handleMarkSingleAsRead(n.id, n);
-    if (n.action_url) {
-      setShowNotif(false);
-      router.visit(n.action_url);
-      return;
-    }
     handleNotificationClick(n);
   };
 
@@ -712,6 +728,16 @@ export default function Navbar() {
 
       if (n.related_type === 'defense_schedule' || n.related_type === 'defense') {
         router.visit('/dosen/jadwal-sidang');
+        return;
+      }
+
+      if (
+        n.related_type === 'thesis_title' ||
+        n.related_type === 'thesis_title_revised' ||
+        n.related_type === 'similarity_warning' ||
+        (n.action_url && (n.action_url.includes('/kaprodi/titles') || n.action_url.includes('/dosen/validasi-judul')))
+      ) {
+        router.visit('/dosen/rekap');
         return;
       }
     }
@@ -970,7 +996,7 @@ export default function Navbar() {
                                           type="button"
                                           onClick={(e) => {
                                             e.stopPropagation();
-                                            handleMarkSingleAsRead(n.id);
+                                            handleMarkSingleAsRead(n.id, n);
                                           }}
                                           className="p-1 rounded text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 transition-colors ml-0.5"
                                           title="Tandai sudah dibaca"

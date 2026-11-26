@@ -371,9 +371,21 @@ export const isTargetAdvisorForConsultation = (cons, user, studentAdvisors = [],
  * Daftar ID notifikasi yang telah ditandai sudah dibaca atau dihapus pengguna
  * Disimpan di localStorage agar tidak kembali muncul setelah reload / sync Supabase
  */
-export const getReadNotificationIds = () => {
+export const getUserReadNotifKey = (user = null) => {
+  let target = user;
+  if (!target && typeof window !== 'undefined') {
+    try {
+      const raw = localStorage.getItem('simta_active_user');
+      if (raw) target = JSON.parse(raw);
+    } catch { }
+  }
+  const uid = target?.id || target?.nim || target?.nip || target?.email || target?.role || 'guest';
+  return `simta_read_notif_ids_${String(uid).trim()}`;
+};
+
+export const getReadNotificationIds = (user = null) => {
   try {
-    const saved = localStorage.getItem('simta_read_notification_ids') || localStorage.getItem('simta_read_notif_ids');
+    const saved = localStorage.getItem(getUserReadNotifKey(user));
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed)) return new Set(parsed);
@@ -384,23 +396,22 @@ export const getReadNotificationIds = () => {
 
 export const addReadNotificationIds = (idsToAdd = [], currentUser = null) => {
   try {
-    const current = getReadNotificationIds();
+    const key = getUserReadNotifKey(currentUser);
+    const current = getReadNotificationIds(currentUser);
     idsToAdd.forEach(id => {
       if (id !== undefined && id !== null && String(id).trim()) {
         current.add(String(id).trim());
       }
     });
     const arr = Array.from(current);
-    localStorage.setItem('simta_read_notification_ids', JSON.stringify(arr));
-    localStorage.setItem('simta_read_notif_ids', JSON.stringify(arr));
+    localStorage.setItem(key, JSON.stringify(arr));
 
-    if (isSupabaseConfigured && supabase) {
-      const roleOrId = currentUser?.id || currentUser?.role || 'user';
+    if (isSupabaseConfigured && supabase && key !== 'simta_read_notif_ids_guest') {
       (async () => {
         try {
           await supabase.from('admin_cms').upsert([{
-            id: `simta_read_notif_ids_${roleOrId}`,
-            judul: `Read Notifications (${roleOrId})`,
+            id: key,
+            judul: `Read Notifications (${key})`,
             kategori: 'notification_read_ids',
             isi: JSON.stringify(arr),
             updated_at: new Date().toISOString()
@@ -1597,7 +1608,28 @@ export function AuthProvider({ children }) {
   const [historicalTitles, setHistoricalTitles] = useState(MOCK_HISTORICAL_TITLES);
   const [thesisStages, setThesisStages] = useState(MOCK_THESIS_STAGES);
   const [bookings, setBookings] = useState(MOCK_BOOKINGS);
-  const [rooms, setRooms] = useState(MOCK_ROOMS);
+  const [rooms, setRoomsState] = useState(() => {
+    try {
+      const saved = localStorage.getItem('simta_rooms');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch { }
+    return MOCK_ROOMS;
+  });
+
+  const setRooms = (updater) => {
+    setRoomsState((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      try {
+        localStorage.setItem('simta_rooms', JSON.stringify(next));
+      } catch { }
+      return next;
+    });
+  };
   const [buildings, setBuildings] = useState(MOCK_BUILDINGS);
   const [roomPriorities, setRoomPriorities] = useState(MOCK_ROOM_PRIORITIES);
   // Persistent notifications with local storage synchronization
@@ -1608,7 +1640,7 @@ export function AuthProvider({ children }) {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.filter(n => !n.is_read && !readIds.has(String(n.id)));
+          return parsed.map(n => n ? ({ ...n, is_read: Boolean(n.is_read || readIds.has(String(n.id))) }) : n).filter(Boolean);
         }
       }
     } catch { }
@@ -1789,8 +1821,17 @@ export function AuthProvider({ children }) {
   };
 
   // ── Admin SIMTA: Dokumen, CMS, Template ─────────────────────────────────
-  // State diinisialisasi dari mock; Supabase di-fetch on mount (lihat useEffect)
-  const [adminDocuments, setAdminDocuments] = useState(MOCK_ADMIN_DOCUMENTS);
+  // State diinisialisasi dari localStorage/mock; Supabase di-fetch on mount (lihat useEffect)
+  const [adminDocuments, setAdminDocuments] = useState(() => {
+    try {
+      const saved = localStorage.getItem('simta_admin_documents');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch { }
+    return MOCK_ADMIN_DOCUMENTS;
+  });
 
   const addAdminDocument = async (data) => {
     const doc = {
@@ -1801,7 +1842,11 @@ export function AuthProvider({ children }) {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
-    setAdminDocuments(prev => [doc, ...prev]);
+    setAdminDocuments(prev => {
+      const next = [doc, ...prev];
+      try { localStorage.setItem('simta_admin_documents', JSON.stringify(next)); } catch { }
+      return next;
+    });
     if (isSupabaseConfigured && supabase) {
       const { error } = await supabase.from('admin_documents').insert([doc]);
       if (error) console.warn('Supabase admin_documents insert warning:', error.message);
@@ -1811,7 +1856,11 @@ export function AuthProvider({ children }) {
 
   const updateAdminDocument = async (id, fields) => {
     const updated_at = new Date().toISOString();
-    setAdminDocuments(prev => prev.map(d => d.id === id ? { ...d, ...fields, updated_at } : d));
+    setAdminDocuments(prev => {
+      const next = prev.map(d => d.id === id ? { ...d, ...fields, updated_at } : d);
+      try { localStorage.setItem('simta_admin_documents', JSON.stringify(next)); } catch { }
+      return next;
+    });
     if (isSupabaseConfigured && supabase) {
       const { error } = await supabase.from('admin_documents').update({ ...fields, updated_at }).eq('id', id);
       if (error) console.warn('Supabase admin_documents update warning:', error.message);
@@ -1819,7 +1868,11 @@ export function AuthProvider({ children }) {
   };
 
   const deleteAdminDocument = async (id) => {
-    setAdminDocuments(prev => prev.filter(d => d.id !== id));
+    setAdminDocuments(prev => {
+      const next = prev.filter(d => d.id !== id);
+      try { localStorage.setItem('simta_admin_documents', JSON.stringify(next)); } catch { }
+      return next;
+    });
     if (isSupabaseConfigured && supabase) {
       const { error } = await supabase.from('admin_documents').delete().eq('id', id);
       if (error) console.warn('Supabase admin_documents delete warning:', error.message);
@@ -3576,15 +3629,19 @@ export function AuthProvider({ children }) {
       supabase.from('admin_cms').select('*').order('updated_at', { ascending: false })
         .then(({ data, error }) => {
           if (!error && data && data.length > 0) {
-            // Hidrasi status notifikasi yang sudah dibaca pengguna dari Supabase
+            // Hidrasi status notifikasi yang sudah dibaca khusus pengguna aktif dari Supabase (terisolasi per akun)
             try {
-              const readRows = data.filter(r => r && (r.kategori === 'notification_read_ids' || String(r.id || '').startsWith('simta_read_notif_ids_')) && r.isi);
-              readRows.forEach(row => {
-                const parsed = typeof row.isi === 'string' ? JSON.parse(row.isi) : row.isi;
-                if (Array.isArray(parsed) && parsed.length > 0) {
-                  addReadNotificationIds(parsed);
+              const activeUser = currentUserRef.current;
+              if (activeUser) {
+                const targetKey = getUserReadNotifKey(activeUser);
+                const myReadRow = data.find(r => r && r.id === targetKey && r.isi);
+                if (myReadRow) {
+                  const parsed = typeof myReadRow.isi === 'string' ? JSON.parse(myReadRow.isi) : myReadRow.isi;
+                  if (Array.isArray(parsed) && parsed.length > 0) {
+                    addReadNotificationIds(parsed, activeUser);
+                  }
                 }
-              });
+              }
             } catch {}
 
             // Hidrasi pengaturan sistem: minimum bimbingan
@@ -4088,21 +4145,12 @@ export function AuthProvider({ children }) {
             return prev;
           });
 
-          // Trigger popup toast dan suara jika tab aktif adalah penerima notifikasi yang relevan
+          // Trigger popup toast dan suara jika tab aktif adalah penerima notifikasi yang relevan (Hanya RealtimeNotificationToast, tanpa memicu RealtimeBimbinganAlert agar tidak bertumpuk)
           if (activeUser) {
             const matchingNotif = incomingNotifs.find(n => isNotificationForUser(n, activeUser));
             if (matchingNotif) {
               setLatestRealtimeNotif(matchingNotif);
               playNotificationSound();
-              triggerRealtimeAlert({
-                id: `alert-${Date.now()}`,
-                title: matchingNotif.title || 'Pengajuan Judul Tugas Akhir',
-                message: matchingNotif.message,
-                mhs_nama: matchingNotif.student_name || title?.mhs_nama || 'Mahasiswa',
-                mhs_nim: matchingNotif.student_nim || title?.mhs_nim || '',
-                thesis_title: matchingNotif.thesis_title || title?.judul || '',
-                action_url: matchingNotif.action_url || (activeUser.role === 'dosen' ? '/dosen/validasi-judul' : `/kaprodi/titles/${matchingNotif.related_id || ''}`)
-              });
             }
           }
         }
@@ -4142,7 +4190,6 @@ export function AuthProvider({ children }) {
                 jenis_revisi: notif.jenis_revisi,
                 bab_topik: notif.bab_topik || ''
               });
-              setLatestRealtimeNotif(notif);
               playNotificationSound();
             }
           }
@@ -4186,7 +4233,6 @@ export function AuthProvider({ children }) {
                 isDosenAlert: true,
                 action_url: `/dosen/validasi?nim=${notif.mhs_nim || ''}`
               });
-              setLatestRealtimeNotif(notif);
               playNotificationSound();
             }
           }
@@ -4274,20 +4320,6 @@ export function AuthProvider({ children }) {
                 if (exists) return prev;
                 return [notif, ...prev];
               });
-              const activeUser = currentUserRef.current;
-              if (activeUser?.role === 'dosen') {
-                const activeNip = String(activeUser.nip || activeUser.nim || '').trim();
-                const activeNama = (activeUser.nama || '').toLowerCase().trim();
-                const notifNip = String(notif.recipient_nip || '').trim();
-                const notifNama = (notif.dosen_nama || '').toLowerCase().trim();
-                const isMatch = (!notifNip && !notifNama) || 
-                                (activeNip && notifNip && activeNip === notifNip) || 
-                                (activeNama && notifNama && (notifNama.includes(activeNama) || activeNama.includes(notifNama)));
-                if (isMatch) {
-                  setLatestRealtimeNotif(notif);
-                  playNotificationSound();
-                }
-              }
             }
           } else if (event.data?.type === 'DEFENSE_SCHEDULE_CREATED' || event.data?.type === 'DEFENSE_SCHEDULE_UPDATED') {
             const { schedule, notifs } = event.data;
@@ -4368,18 +4400,6 @@ export function AuthProvider({ children }) {
                     action_url: (notif.mhs_nim || consultation?.mhs_nim) ? `/dosen/validasi?nim=${notif.mhs_nim || consultation?.mhs_nim}` : '/dosen/monitoring'
                   });
                 }
-              } else if (current?.role === 'kaprodi' || current?.role === 'admin') {
-                triggerRealtimeAlert({
-                  id: `alert-${Date.now()}`,
-                  title: notif.title,
-                  message: notif.message,
-                  mhs_nama: notif.mhs_nama || consultation?.mhs_nama || 'Mahasiswa',
-                  mhs_nim: notif.mhs_nim || consultation?.mhs_nim || '',
-                  pembimbing: notif.pembimbing || consultation?.pembimbing || 'Pembimbing',
-                  bab_topik: notif.bab_topik || consultation?.bab_topik || '',
-                  isDosenAlert: true,
-                  action_url: '/kaprodi/rekap-bimbingan'
-                });
               }
             }
           }
@@ -5837,7 +5857,7 @@ export function AuthProvider({ children }) {
       return updated;
     });
 
-    // Real-time broadcast
+    // Real-time broadcast (penerima relevan akan menampilkan toast melalui listener)
     broadcastRealtimeNotification('THESIS_TITLE_REVISED', {
       title: affectedTitle,
       notif: notifKaprodi,
@@ -5850,9 +5870,6 @@ export function AuthProvider({ children }) {
         role: currentUser?.role || 'mahasiswa'
       }
     });
-
-    setLatestRealtimeNotif(notifKaprodi);
-    playNotificationSound();
 
     return affectedTitle;
   };

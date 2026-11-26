@@ -163,8 +163,9 @@ export default function BimbinganPage() {
       });
       localStorage.setItem('simta_seen_consultation_ids', JSON.stringify(Array.from(seenIds)));
 
-      // 3. Tandai semua notifikasi terkait mahasiswa ini sebagai sudah dibaca
-      const readNotifs = new Set(JSON.parse(localStorage.getItem('simta_read_notif_ids') || '[]'));
+      // 3. Tandai semua notifikasi terkait mahasiswa ini sebagai sudah dibaca (terisolasi per akun dosen aktif)
+      const userReadKey = `simta_read_notif_ids_${String(currentUser?.id || currentUser?.nim || currentUser?.nip || currentUser?.email || currentUser?.role || 'guest').trim()}`;
+      const readNotifs = new Set(JSON.parse(localStorage.getItem(userReadKey) || '[]'));
       let hasNewRead = false;
       (notifications || []).forEach(n => {
         if (!n) return;
@@ -187,7 +188,7 @@ export default function BimbinganPage() {
       });
 
       if (hasNewRead) {
-        localStorage.setItem('simta_read_notif_ids', JSON.stringify(Array.from(readNotifs)));
+        localStorage.setItem(userReadKey, JSON.stringify(Array.from(readNotifs)));
       }
 
       window.dispatchEvent(new Event('storage'));

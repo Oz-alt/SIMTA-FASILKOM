@@ -9,6 +9,7 @@ export default function KelolaRuanganPage() {
   const [code, setCode] = useState('');
   const [capacity, setCapacity] = useState(25);
   const [buildingId, setBuildingId] = useState(buildings[0]?.id || '');
+  const [errorMsg, setErrorMsg] = useState('');
 
   // Lock background scroll when modal is open
   useEffect(() => {
@@ -34,12 +35,36 @@ export default function KelolaRuanganPage() {
 
   const handleAddRoom = (e) => {
     e.preventDefault();
+    const cleanName = String(name || '').trim();
+    const cleanCode = String(code || '').trim();
+    const parsedCapacity = parseInt(capacity, 10);
+
+    if (!cleanName || !cleanCode) {
+      setErrorMsg('Nama ruangan dan kode ruangan wajib diisi.');
+      return;
+    }
+
+    if (Number.isNaN(parsedCapacity) || parsedCapacity < 1) {
+      setErrorMsg('Kapasitas ruangan harus berupa angka positif minimal 1 orang.');
+      return;
+    }
+
+    const isDuplicate = (rooms || []).some(
+      (r) =>
+        String(r.code || '').trim().toLowerCase() === cleanCode.toLowerCase() ||
+        String(r.name || '').trim().toLowerCase() === cleanName.toLowerCase()
+    );
+    if (isDuplicate) {
+      setErrorMsg('Kode ruangan atau nama ruangan tersebut sudah terdaftar di sistem.');
+      return;
+    }
+
     const newRoom = {
       id: `room-${Date.now()}`,
       building_id: buildingId,
-      name,
-      code,
-      capacity: parseInt(capacity),
+      name: cleanName,
+      code: cleanCode,
+      capacity: parsedCapacity,
       facilities: ['AC', 'Proyektor', 'Whiteboard'],
       status: 'aktif'
     };
@@ -47,6 +72,8 @@ export default function KelolaRuanganPage() {
     setShowModal(false);
     setName('');
     setCode('');
+    setCapacity(25);
+    setErrorMsg('');
   };
 
   return (
@@ -64,7 +91,10 @@ export default function KelolaRuanganPage() {
         </div>
 
         <button
-          onClick={() => setShowModal(true)}
+          onClick={() => {
+            setErrorMsg('');
+            setShowModal(true);
+          }}
           className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center space-x-2 self-start sm:self-auto cursor-pointer"
         >
           <Plus className="w-4 h-4" />
@@ -115,6 +145,12 @@ export default function KelolaRuanganPage() {
           <form onSubmit={handleAddRoom} className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto overscroll-contain my-auto p-6 shadow-2xl space-y-4" data-lenis-prevent>
             <h3 className="text-base font-bold text-slate-900">Tambah Ruangan Sidang Baru</h3>
 
+            {errorMsg && (
+              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">
+                {errorMsg}
+              </div>
+            )}
+
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">Nama Ruangan</label>
               <input
@@ -143,6 +179,7 @@ export default function KelolaRuanganPage() {
               <label className="block text-xs font-bold text-slate-700 mb-1">Kapasitas (Orang)</label>
               <input
                 type="number"
+                min={1}
                 required
                 value={capacity}
                 onChange={(e) => setCapacity(e.target.value)}
