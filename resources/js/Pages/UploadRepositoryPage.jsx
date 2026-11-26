@@ -20,7 +20,6 @@ import {
 import { supabase, isSupabaseConfigured } from '../services/supabase.js';
 
 export default function UploadRepositoryPage() {
-  const navigate = (url) => router.visit(url);
   const { currentUser, uploadThesisRepository, departments, studentAdvisors, advisors } = useAuth();
 
   // Find advisor assignment for current student dynamically

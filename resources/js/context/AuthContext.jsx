@@ -1631,7 +1631,28 @@ export function AuthProvider({ children }) {
     });
   };
   const [buildings, setBuildings] = useState(MOCK_BUILDINGS);
-  const [roomPriorities, setRoomPriorities] = useState(MOCK_ROOM_PRIORITIES);
+  const [roomPriorities, setRoomPrioritiesState] = useState(() => {
+    try {
+      const saved = localStorage.getItem('simta_room_priorities');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch { }
+    return MOCK_ROOM_PRIORITIES;
+  });
+
+  const setRoomPriorities = (updater) => {
+    setRoomPrioritiesState((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      try {
+        localStorage.setItem('simta_room_priorities', JSON.stringify(next));
+      } catch { }
+      return next;
+    });
+  };
   // Persistent notifications with local storage synchronization
   const [notifications, setNotifications] = useState(() => {
     try {
@@ -1914,7 +1935,16 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const [adminTemplates, setAdminTemplates] = useState(MOCK_ADMIN_TEMPLATES);
+  const [adminTemplates, setAdminTemplates] = useState(() => {
+    try {
+      const saved = localStorage.getItem('simta_admin_templates');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch { }
+    return MOCK_ADMIN_TEMPLATES;
+  });
 
   const addAdminTemplate = async (data) => {
     const tpl = {
@@ -1923,7 +1953,11 @@ export function AuthProvider({ children }) {
       updated_at: new Date().toISOString(),
       created_at: new Date().toISOString()
     };
-    setAdminTemplates(prev => [tpl, ...prev]);
+    setAdminTemplates(prev => {
+      const next = [tpl, ...prev];
+      try { localStorage.setItem('simta_admin_templates', JSON.stringify(next)); } catch { }
+      return next;
+    });
     if (isSupabaseConfigured && supabase) {
       const { error } = await supabase.from('admin_templates').insert([tpl]);
       if (error) console.warn('Supabase admin_templates insert warning:', error.message);
@@ -1933,7 +1967,11 @@ export function AuthProvider({ children }) {
 
   const updateAdminTemplate = async (id, fields) => {
     const updated_at = new Date().toISOString();
-    setAdminTemplates(prev => prev.map(t => t.id === id ? { ...t, ...fields, updated_at } : t));
+    setAdminTemplates(prev => {
+      const next = prev.map(t => t.id === id ? { ...t, ...fields, updated_at } : t);
+      try { localStorage.setItem('simta_admin_templates', JSON.stringify(next)); } catch { }
+      return next;
+    });
     if (isSupabaseConfigured && supabase) {
       const { error } = await supabase.from('admin_templates').update({ ...fields, updated_at }).eq('id', id);
       if (error) console.warn('Supabase admin_templates update warning:', error.message);
@@ -1941,7 +1979,11 @@ export function AuthProvider({ children }) {
   };
 
   const deleteAdminTemplate = async (id) => {
-    setAdminTemplates(prev => prev.filter(t => t.id !== id));
+    setAdminTemplates(prev => {
+      const next = prev.filter(t => t.id !== id);
+      try { localStorage.setItem('simta_admin_templates', JSON.stringify(next)); } catch { }
+      return next;
+    });
     if (isSupabaseConfigured && supabase) {
       const { error } = await supabase.from('admin_templates').delete().eq('id', id);
       if (error) console.warn('Supabase admin_templates delete warning:', error.message);

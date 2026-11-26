@@ -8,20 +8,20 @@ export default function PrioritasRuangPage() {
   const roomMap = new Map(rooms.map(r => [r.id, r]));
 
   const movePriority = (index, direction) => {
-    const nextList = [...roomPriorities];
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= nextList.length) return;
+    if (targetIndex < 0 || targetIndex >= roomPriorities.length) return;
 
+    const nextList = roomPriorities.map(item => ({ ...item }));
     const temp = nextList[index];
     nextList[index] = nextList[targetIndex];
     nextList[targetIndex] = temp;
 
-    // Re-index priority order
-    nextList.forEach((item, idx) => {
-      item.priority_order = idx + 1;
-    });
+    const reindexed = nextList.map((item, idx) => ({
+      ...item,
+      priority_order: idx + 1
+    }));
 
-    setRoomPriorities(nextList);
+    setRoomPriorities(reindexed);
   };
 
   return (

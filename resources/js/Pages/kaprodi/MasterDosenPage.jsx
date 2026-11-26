@@ -85,18 +85,45 @@ export default function MasterDosenPage() {
   // Handle Save Dosen (Add / Edit)
   const handleSaveDosen = (e) => {
     e.preventDefault();
-    if (!dosenForm.nip || !dosenForm.nama) {
+    const cleanNip = String(dosenForm.nip || '').trim();
+    const cleanNama = String(dosenForm.nama || '').trim();
+    if (!cleanNip || !cleanNama) {
       showToast('NIP dan Nama Dosen wajib diisi!');
       return;
     }
 
+    const q1 = Number(dosenForm.kuota_dospem1);
+    const q2 = Number(dosenForm.kuota_dospem2);
+    if (Number.isNaN(q1) || q1 < 0 || Number.isNaN(q2) || q2 < 0) {
+      showToast('Kuota bimbingan Dospem 1 dan Dospem 2 tidak boleh bernilai negatif!');
+      return;
+    }
+
+    if (!editingDosen) {
+      const isDuplicate = (advisors || []).some(
+        (a) => String(a.nip || '').trim().toLowerCase() === cleanNip.toLowerCase()
+      );
+      if (isDuplicate) {
+        showToast(`Gagal menyimpan: Dosen dengan NIP ${cleanNip} sudah terdaftar di sistem!`);
+        return;
+      }
+    }
+
+    const normalizedPayload = {
+      ...dosenForm,
+      nip: cleanNip,
+      nama: cleanNama,
+      kuota_dospem1: q1,
+      kuota_dospem2: q2,
+    };
+
     if (editingDosen) {
-      updateAdvisor(editingDosen.id, dosenForm);
-      showToast(`Berhasil memperbarui data dosen ${dosenForm.nama}`);
+      updateAdvisor(editingDosen.id, normalizedPayload);
+      showToast(`Berhasil memperbarui data dosen ${cleanNama}`);
       setEditingDosen(null);
     } else {
-      addAdvisor(dosenForm);
-      showToast(`Berhasil menambahkan dosen baru ${dosenForm.nama}`);
+      addAdvisor(normalizedPayload);
+      showToast(`Berhasil menambahkan dosen baru ${cleanNama}`);
       setIsAddOpen(false);
     }
 

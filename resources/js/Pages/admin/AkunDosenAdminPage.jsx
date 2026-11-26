@@ -189,12 +189,31 @@ export default function AkunDosenAdminPage() {
   // Handle Save Dosen (Add / Edit)
   const handleSaveDosen = async (e) => {
     e.preventDefault();
-    if (!dosenForm.nip || !dosenForm.nama) {
+    const cleanNip = String(dosenForm.nip || '').trim();
+    const cleanNama = String(dosenForm.nama || '').trim();
+    if (!cleanNip || !cleanNama) {
       showToast('NIP dan Nama Dosen wajib diisi!');
       return;
     }
 
-    const emailToUse = dosenForm.email || `${dosenForm.nip.trim()}@unsri.ac.id`;
+    const q1 = Number(dosenForm.kuota_dospem1);
+    const q2 = Number(dosenForm.kuota_dospem2);
+    if (Number.isNaN(q1) || q1 < 0 || Number.isNaN(q2) || q2 < 0) {
+      showToast('Kuota bimbingan Dospem 1 dan Dospem 2 tidak boleh bernilai negatif!');
+      return;
+    }
+
+    if (!editingDosen) {
+      const isDuplicate = (dosenList || []).some(
+        (d) => String(d.nip || '').trim().toLowerCase() === cleanNip.toLowerCase()
+      );
+      if (isDuplicate) {
+        showToast(`Gagal menyimpan: Akun dosen dengan NIP ${cleanNip} sudah terdaftar!`);
+        return;
+      }
+    }
+
+    const emailToUse = dosenForm.email || `${cleanNip}@unsri.ac.id`;
     const keahlianArray = (dosenForm.keahlian || '')
       .split(',')
       .map(k => k.trim())
@@ -202,10 +221,12 @@ export default function AkunDosenAdminPage() {
 
     const payload = {
       ...dosenForm,
+      nip: cleanNip,
+      nama: cleanNama,
       email: emailToUse,
       keahlian: keahlianArray,
-      kuota_dospem1: Number(dosenForm.kuota_dospem1) || 8,
-      kuota_dospem2: Number(dosenForm.kuota_dospem2) || 8
+      kuota_dospem1: q1,
+      kuota_dospem2: q2
     };
 
     if (editingDosen) {

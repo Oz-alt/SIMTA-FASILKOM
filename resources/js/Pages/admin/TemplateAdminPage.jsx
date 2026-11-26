@@ -53,8 +53,8 @@ function Modal({ open, onClose, title, children, maxWidth = 'max-w-lg' }) {
   );
 }
 
-const emptyTemplateForm = { nama: '', jenis: TEMPLATE_JENIS_OPTIONS[0], deskripsi: '', file_name: '', ukuran: '250 KB', status: 'aktif' };
-const emptySuratForm    = { nama: '', jenis: SURAT_JENIS_OPTIONS[0], deskripsi: '', file_name: '', ukuran: '180 KB', status: 'aktif' };
+const emptyTemplateForm = { nama: '', jenis: TEMPLATE_JENIS_OPTIONS[0], deskripsi: '', file_name: '', file_url: '', ukuran: '250 KB', status: 'aktif' };
+const emptySuratForm    = { nama: '', jenis: SURAT_JENIS_OPTIONS[0], deskripsi: '', file_name: '', file_url: '', ukuran: '180 KB', status: 'aktif' };
 
 export default function TemplateAdminPage() {
   const {
@@ -83,6 +83,8 @@ export default function TemplateAdminPage() {
   const [editTarget, setEditTarget]     = useState(null);
   const [form, setForm]                 = useState(emptyTemplateForm);
   const [fileInput, setFileInput]       = useState('');
+  const [fileDataUrl, setFileDataUrl]   = useState('');
+  const [formError, setFormError]       = useState('');
   const [feedback, setFeedback]         = useState('');
 
   const isTemplateTab = activeTab === 'templates';
@@ -110,6 +112,8 @@ export default function TemplateAdminPage() {
     setEditTarget(null);
     setForm(isTemplateTab ? emptyTemplateForm : emptySuratForm);
     setFileInput('');
+    setFileDataUrl('');
+    setFormError('');
     setModalForm(true);
   };
 
@@ -120,40 +124,85 @@ export default function TemplateAdminPage() {
       jenis: item.jenis || currentJenisOptions[0],
       deskripsi: item.deskripsi || '',
       file_name: item.file_name || '',
+      file_url: item.file_url && item.file_url !== '#' ? item.file_url : '',
       ukuran: item.ukuran || '200 KB',
       status: item.status || 'aktif'
     });
     setFileInput(item.file_name || '');
+    setFileDataUrl('');
+    setFormError('');
     setModalForm(true);
   };
 
   const closeForm = () => {
     setModalForm(false);
     setEditTarget(null);
+    setFormError('');
   };
 
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        setFormError('Ukuran berkas maksimal 10 MB. Untuk berkas lebih besar, masukkan tautan Google Drive.');
+        return;
+      }
+      setFormError('');
       setFileInput(file.name);
       const kb = Math.round(file.size / 1024);
       setForm(prev => ({
         ...prev,
         file_name: file.name,
-        ukuran: kb >= 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${kb} KB`
+        ukuran: kb >= 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${Math.max(1, kb)} KB`
       }));
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        if (typeof evt.target?.result === 'string') {
+          setFileDataUrl(evt.target.result);
+        }
+      };
+      reader.readAsDataURL(file);
     }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!form.nama.trim()) return;
+    const cleanNama = String(form.nama || '').trim();
+    if (!cleanNama) {
+      setFormError('Judul / nama berkas wajib diisi.');
+      return;
+    }
+
+    const cleanExternalUrl = String(form.file_url || '').trim();
+    if (cleanExternalUrl && !cleanExternalUrl.startsWith('data:')) {
+      try {
+        const parsed = new URL(cleanExternalUrl);
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+          setFormError('Tautan eksternal harus diawali https:// atau http://.');
+          return;
+        }
+      } catch {
+        setFormError('Format tautan dokumen eksternal tidak valid.');
+        return;
+      }
+    }
+
+    const finalFileUrl =
+      fileDataUrl ||
+      cleanExternalUrl ||
+      (editTarget?.file_url && editTarget.file_url !== '#' ? editTarget.file_url : '');
+
+    if (!finalFileUrl) {
+      setFormError('Silakan pilih berkas dari perangkat atau masukkan tautan dokumen resmi (https://...).');
+      return;
+    }
 
     const defaultExt = isTemplateTab ? 'docx' : 'pdf';
     const payload = {
       ...form,
-      file_name: fileInput || form.file_name || `${form.nama.toLowerCase().replace(/[^a-z0-9]/g, '-')}.${defaultExt}`,
-      file_url: '#'
+      nama: cleanNama,
+      file_name: fileInput || form.file_name || `${cleanNama.toLowerCase().replace(/[^a-z0-9]/g, '-')}.${defaultExt}`,
+      file_url: finalFileUrl
     };
 
     if (isTemplateTab) {
@@ -200,25 +249,45 @@ export default function TemplateAdminPage() {
   };
 
   const handleDownload = (item) => {
+    if (!item) return;
+    const rawUrl = String(item.file_url || '').trim();
+
+    // 1. Jika berkas asli DataURL atau tautan eksternal tersedia, unduh/buka berkas asli tanpa merusak format .docx/.pdf
+    if (rawUrl && rawUrl !== '#') {
+      if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) {
+        window.open(rawUrl, '_blank', 'noopener,noreferrer');
+        return;
+      }
+      const link = document.createElement('a');
+      link.href = rawUrl;
+      link.download = item.file_name || `${item.nama}.${isTemplateTab ? 'docx' : 'pdf'}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      return;
+    }
+
+    // 2. Fallback untuk data contoh bawaan: simpan dengan ekstensi .txt agar tidak error corrupt di Word/PDF Reader
     const content = `BERKAS RESMI SIMONITA FASILKOM UNSRI\n` +
       `===============================================\n\n` +
       `Judul / Nama: ${item.nama}\n` +
       `Jenis / Tipe: ${item.jenis || '-'}\n` +
       `Kategori    : ${isTemplateTab ? 'Template Dokumen Tugas Akhir' : 'Surat Administrasi Mahasiswa / Jurusan'}\n` +
-      `Berkas      : ${item.file_name || 'dokumen.docx'}\n` +
+      `Berkas      : ${item.file_name || 'dokumen.txt'}\n` +
       `Tanggal     : ${item.updated_at || item.tanggal_upload || '-'}\n\n` +
       `Deskripsi & Catatan:\n${item.deskripsi || 'Dokumen resmi terverifikasi Fakultas Ilmu Komputer Universitas Sriwijaya.'}\n\n` +
       `Sistem Monitoring Tugas Akhir (SIMONITA) - Fasilkom UNSRI`;
 
-    const blob = new Blob([content], { type: 'application/octet-stream' });
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = item.file_name || `${item.nama}.${isTemplateTab ? 'docx' : 'pdf'}`;
+    const baseName = (item.file_name || item.nama || 'dokumen').replace(/\.[^.]+$/, '');
+    link.download = `${baseName}.txt`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
   };
 
   const statusBadge = (status) => (
@@ -537,8 +606,13 @@ export default function TemplateAdminPage() {
 
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1">
-              Berkas File ({isTemplateTab ? '.docx, .pptx, .pdf' : '.pdf, .docx'})
+              Berkas File ({isTemplateTab ? '.docx, .pptx, .pdf' : '.pdf, .docx'}) {!editTarget && <span className="text-rose-500">*</span>}
             </label>
+            {formError && (
+              <div className="mb-2.5 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">
+                {formError}
+              </div>
+            )}
             <label className="border-2 border-dashed border-slate-200 hover:border-emerald-400 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer bg-slate-50/50 hover:bg-emerald-50/30 transition-colors">
               <Upload className="w-5 h-5 text-slate-400 mb-1" />
               <span className="text-xs font-semibold text-slate-700">
@@ -554,6 +628,19 @@ export default function TemplateAdminPage() {
                 className="hidden"
               />
             </label>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              Atau Tautan Berkas Eksternal / Google Drive (Opsional)
+            </label>
+            <input
+              type="url"
+              value={form.file_url && !String(form.file_url).startsWith('data:') ? form.file_url : ''}
+              onChange={e => setForm(prev => ({ ...prev, file_url: e.target.value }))}
+              placeholder="https://drive.google.com/..."
+              className="w-full text-xs p-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
           </div>
 
           <div className="pt-3 border-t border-slate-100 flex justify-end space-x-2">
