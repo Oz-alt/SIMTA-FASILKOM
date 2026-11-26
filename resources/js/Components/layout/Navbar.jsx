@@ -831,7 +831,7 @@ export default function Navbar() {
               </button>
 
               {showNotif && (
-                <div className="absolute right-0 mt-2 w-80 sm:w-[420px] rounded-2xl bg-white shadow-2xl border border-slate-200/90 py-0 z-50 animate-in fade-in overflow-hidden">
+                <div className="fixed left-3 right-3 top-16 sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-[420px] rounded-2xl bg-white shadow-2xl border border-slate-200/90 py-0 z-50 animate-in fade-in overflow-hidden">
                   
                   {/* Dropdown Header */}
                   <div className="px-4 py-3 bg-white border-b border-slate-100 flex items-center justify-between">

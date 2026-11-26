@@ -5,7 +5,6 @@ import {
   Users,
   AlertTriangle,
   ChevronRight,
-  Building2,
   Sparkles,
   BookOpen,
 } from 'lucide-react';
@@ -21,7 +20,6 @@ export default function MobileDashboardMahasiswa() {
     currentUser,
     thesisTitles = [],
     thesisStages = [],
-    bookings = [],
     consultations = [],
     studentAdvisors = [],
     advisors = [],
@@ -40,11 +38,6 @@ export default function MobileDashboardMahasiswa() {
     if (!myTitle?.id) return [];
     return (thesisStages || []).filter((s) => s.thesis_title_id === myTitle.id);
   }, [thesisStages, myTitle?.id]);
-
-  const myBookings = useMemo(
-    () => (bookings || []).filter((b) => String(b.mhs_nim || b.student_nim || '').trim() === nim),
-    [bookings, nim]
-  );
 
   const eligibility = useMemo(
     () =>
@@ -301,60 +294,6 @@ export default function MobileDashboardMahasiswa() {
           className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-indigo-50 text-indigo-700 text-xs font-bold"
         >
           <span>{myTitle ? 'Kelola Pengajuan TA' : 'Ajukan Judul Sekarang'}</span>
-          <ChevronRight className="w-4 h-4" />
-        </Link>
-      </div>
-
-      {/* Status Ruang Sidang */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-3">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
-            <Building2 className="w-4 h-4 text-purple-600" />
-            <span>Peminjaman Ruang Sidang</span>
-          </h2>
-          <span className="shrink-0 whitespace-nowrap text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700">
-            {myBookings.length} Pengajuan
-          </span>
-        </div>
-
-        {myBookings.length > 0 ? (
-          <div className="space-y-2">
-            {myBookings.slice(0, 2).map((b) => (
-              <div
-                key={b.id}
-                className="p-3 rounded-xl bg-slate-50 border border-slate-200/70 flex items-center justify-between gap-2"
-              >
-                <div className="min-w-0">
-                  <div className="text-xs font-bold text-slate-800 truncate">
-                    {b.stage_label || b.purpose}
-                  </div>
-                  <div className="text-[11px] text-slate-500 mt-0.5 truncate">
-                    {b.room_name} &bull; {b.booking_date} ({b.start_time}-{b.end_time})
-                  </div>
-                </div>
-                <span
-                  className={`shrink-0 text-[10px] font-bold px-2.5 py-0.5 rounded-full capitalize ${
-                    b.status === 'disetujui'
-                      ? 'bg-emerald-100 text-emerald-700'
-                      : 'bg-amber-100 text-amber-700'
-                  }`}
-                >
-                  {String(b.status || '').replace('_', ' ')}
-                </span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-xs text-slate-500 leading-relaxed">
-            Belum ada peminjaman ruang sidang diajukan.
-          </p>
-        )}
-
-        <Link
-          href="/booking/status"
-          className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold"
-        >
-          <span>Lihat Riwayat Peminjaman</span>
           <ChevronRight className="w-4 h-4" />
         </Link>
       </div>

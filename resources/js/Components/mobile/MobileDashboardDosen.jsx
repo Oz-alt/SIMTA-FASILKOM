@@ -266,7 +266,7 @@ export default function MobileDashboardDosen({
                     )}
                   </div>
                   <Link
-                    href="/dosen/mahasiswa"
+                    href={`/dosen/validasi?nim=${encodeURIComponent(student.student_nim)}`}
                     className="inline-flex items-center gap-0.5 font-bold text-indigo-600"
                   >
                     <span>Kelola</span>

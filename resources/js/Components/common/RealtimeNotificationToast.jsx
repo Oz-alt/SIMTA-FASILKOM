@@ -143,7 +143,7 @@ export default function RealtimeNotificationToast() {
   return (
     <aside
       aria-label="Notifikasi Real-Time"
-      className="fixed top-20 right-4 sm:right-6 z-50 max-w-md w-full animate-in fade-in slide-in-from-top-4 duration-300 pointer-events-auto shadow-2xl"
+      className="fixed top-20 left-4 right-4 sm:left-auto sm:right-6 z-50 sm:max-w-md sm:w-full animate-in fade-in slide-in-from-top-4 duration-300 pointer-events-auto shadow-2xl"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
