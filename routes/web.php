@@ -206,7 +206,7 @@ Route::get('/admin-simta/documents', function () {
 });
 
 Route::get('/admin-simta/cms', function () {
-    return redirect('/admin-simta/dashboard');
+    return Inertia::render('admin/CmsAdminPage');
 });
 
 Route::get('/admin-simta/templates', function () {

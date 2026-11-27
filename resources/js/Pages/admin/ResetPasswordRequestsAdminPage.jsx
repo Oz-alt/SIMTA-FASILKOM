@@ -564,17 +564,19 @@ export default function ResetPasswordRequestsAdminPage() {
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
-                    <th className="py-3 px-4">Pemohon</th>
-                    <th className="py-3 px-4">Kontak &amp; Program Studi</th>
+                    <th className="py-3 px-4">Nama Pemohon</th>
+                    <th className="py-3 px-4">NIM / NIP</th>
+                    <th className="py-3 px-4">Role</th>
+                    <th className="py-3 px-4">Email Pengajuan</th>
                     <th className="py-3 px-4">Waktu Pengajuan</th>
-                    <th className="py-3 px-4">Status &amp; Pengiriman Email</th>
-                    <th className="py-3 px-4 text-right">Aksi &amp; Verifikasi</th>
+                    <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4 text-right">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {filteredRequests.length === 0 ? (
                     <tr>
-                      <td colSpan="5" className="py-16 text-center">
+                      <td colSpan="7" className="py-16 text-center">
                         <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center">
                           <KeyRound className="w-7 h-7 text-slate-400" />
                         </div>
@@ -602,7 +604,7 @@ export default function ResetPasswordRequestsAdminPage() {
 
                       return (
                         <tr key={req.id} className="hover:bg-slate-50/60 transition-colors">
-                          {/* Pemohon */}
+                          {/* Nama Pemohon */}
                           <td className="py-3.5 px-4">
                             <div className="flex items-center space-x-3">
                               <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 ${
@@ -615,12 +617,6 @@ export default function ResetPasswordRequestsAdminPage() {
                               <div className="min-w-0">
                                 <div className="font-bold text-slate-900 truncate flex items-center space-x-1.5">
                                   <span>{displayName}</span>
-                                  <span className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded ${
-                                    isMahasiswa ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-purple-50 text-purple-700 border border-purple-200'
-                                  }`}>
-                                    {isMahasiswa ? 'Mahasiswa' : 'Dosen'}
-                                  </span>
-
                                   {isRowValid && (
                                     <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center space-x-0.5" title="Identitas terdaftar resmi di database">
                                       <Check className="w-2.5 h-2.5 inline" />
@@ -638,88 +634,70 @@ export default function ResetPasswordRequestsAdminPage() {
                                     </span>
                                   )}
                                 </div>
-                                <div className="text-[11px] text-slate-500 font-mono mt-0.5">
-                                  {isMahasiswa ? `NIM: ${req.nim || req.identifier}` : `NIP: ${req.nip || req.identifier}`}
+                                <div className="text-[11px] text-slate-400 mt-0.5">
+                                  {officialUser?.prodi || req.prodi || 'Fakultas Ilmu Komputer'}
                                 </div>
                               </div>
                             </div>
                           </td>
 
-                          {/* Kontak & Prodi */}
-                          <td className="py-3.5 px-4 text-slate-600">
-                            <div className="truncate font-medium">{officialUser?.email || req.email}</div>
-                            <div className="text-[11px] text-slate-400 mt-0.5 flex items-center space-x-1.5">
-                              <span>{officialUser?.prodi || req.prodi || 'D3 Manajemen Informatika'}</span>
-                              <span>•</span>
-                              <span>{officialUser?.kelas || req.kelas || '-'}</span>
-                            </div>
+                          {/* NIM / NIP */}
+                          <td className="py-3.5 px-4 font-mono font-bold text-slate-800">
+                            {req.nim || req.nip || req.identifier}
                           </td>
 
-                          {/* Waktu & Alasan */}
+                          {/* Role */}
+                          <td className="py-3.5 px-4">
+                            <span className={`text-[10px] font-extrabold uppercase px-2 py-1 rounded-md ${
+                              isMahasiswa ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-purple-50 text-purple-700 border border-purple-200'
+                            }`}>
+                              {isMahasiswa ? 'Mahasiswa' : 'Dosen'}
+                            </span>
+                          </td>
+
+                          {/* Email Pengajuan */}
+                          <td className="py-3.5 px-4 text-slate-700">
+                            <div className="font-medium text-xs truncate max-w-[200px]" title={req.email}>
+                              {req.email}
+                            </div>
+                            {officialUser?.email && officialUser.email.toLowerCase() !== req.email.toLowerCase() && (
+                              <div className="text-[10px] text-slate-400 mt-0.5 truncate" title={`Email DB: ${officialUser.email}`}>
+                                DB: {officialUser.email}
+                              </div>
+                            )}
+                          </td>
+
+                          {/* Waktu Pengajuan */}
                           <td className="py-3.5 px-4">
                             <div className="text-slate-800 font-medium">
                               {req.created_at ? new Date(req.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
                             </div>
-                            <div className="text-[11px] text-slate-400 mt-0.5 truncate max-w-xs" title={req.alasan_pengajuan}>
-                              {req.alasan_pengajuan || 'Lupa kata sandi'}
+                            <div className="text-[10px] text-slate-400 mt-0.5">
+                              {req.created_at ? new Date(req.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : ''}
                             </div>
                           </td>
 
-                          {/* Status & Pengiriman Email (Section E.2) */}
+                          {/* Status */}
                           <td className="py-3.5 px-4">
                             {renderStatusBadge(req.status)}
 
-                            {/* Informasi Status Pengiriman Email & Waktu Kadaluarsa 24 Jam */}
-                            {req.status === 'disetujui' && (
-                              <div className="mt-2 p-2 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1 max-w-[220px]">
-                                <div className="flex items-center space-x-1">
-                                  {req.email_status === 'sent' ? (
-                                    <span className="inline-flex items-center space-x-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                      <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
-                                      <span>Berhasil Dikirim</span>
-                                    </span>
-                                  ) : req.email_status === 'sending' ? (
-                                    <span className="inline-flex items-center space-x-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 animate-pulse">
-                                      <Loader2 className="w-3 h-3 animate-spin text-blue-600 shrink-0" />
-                                      <span>Mengirim...</span>
-                                    </span>
-                                  ) : (
-                                    <span className="inline-flex items-center space-x-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200" title={req.email_error || 'Gagal mengirim email'}>
-                                      <AlertCircle className="w-3 h-3 text-rose-600 shrink-0" />
-                                      <span>Gagal Dikirim</span>
-                                    </span>
-                                  )}
-                                </div>
-
-                                <div className="text-[10px] text-slate-500 space-y-0.5 pt-0.5 font-medium">
-                                  <div className="truncate text-slate-600" title={req.email}>
-                                    Tujuan: <span className="font-semibold text-slate-800">{req.email}</span>
-                                  </div>
-                                  <div>
-                                    Kirim: <span className="text-slate-700 font-mono">{req.email_sent_at ? new Date(req.email_sent_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ', ' + new Date(req.email_sent_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : '-'}</span>
-                                  </div>
-                                  <div>
-                                    Kedaluwarsa: <span className="text-amber-700 font-mono font-semibold">{req.expires_at ? new Date(req.expires_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ', ' + new Date(req.expires_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : '24 Jam'}</span>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-
-                            {req.status === 'selesai' && (
-                              <div className="mt-1.5 text-[10px] text-emerald-700 font-semibold flex items-center space-x-1">
-                                <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
-                                <span>Password Diperbarui</span>
-                              </div>
-                            )}
-
-                            {req.processed_by && (
-                              <div className="text-[10px] text-slate-400 mt-1">
-                                Oleh: {req.processed_by}
+                            {req.status === 'disetujui' && req.email_status && (
+                              <div className="mt-1">
+                                {req.email_status === 'sent' ? (
+                                  <span className="inline-flex items-center space-x-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                                    <span>Email Terkirim</span>
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center space-x-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                    <span>Email Pending</span>
+                                  </span>
+                                )}
                               </div>
                             )}
                           </td>
 
-                          {/* Aksi & Verifikasi */}
+                          {/* Aksi */}
                           <td className="py-3.5 px-4 text-right">
                             <div className="inline-flex items-center space-x-1.5 justify-end">
                               {/* 1. Tombol Periksa Identitas */}
@@ -1045,6 +1023,31 @@ export default function ResetPasswordRequestsAdminPage() {
                         </p>
                       </div>
 
+                      {/* Email Pengajuan Aktif Pemohon */}
+                      <div className="p-3 bg-blue-50/70 rounded-xl border border-blue-200/80 space-y-1">
+                        <span className="text-[10px] text-blue-900 font-bold uppercase tracking-wider block">
+                          Email Aktif yang Diajukan Pemohon:
+                        </span>
+                        <div className="flex items-center space-x-2">
+                          <Mail className="w-4 h-4 text-blue-600 shrink-0" />
+                          <span className="font-bold text-slate-900 font-mono text-xs">{verifyingRequest.email}</span>
+                        </div>
+                        <p className="text-[11px] text-blue-700 leading-relaxed">
+                          Pemberitahuan persetujuan dan kata sandi sementara akan dikirimkan ke alamat email aktif ini.
+                        </p>
+                      </div>
+
+                      {/* Penjelasan Tindakan Persetujuan */}
+                      <div className="p-3 bg-emerald-50/70 rounded-xl border border-emerald-200/80 space-y-1">
+                        <span className="text-[10px] text-emerald-900 font-bold uppercase tracking-wider flex items-center space-x-1">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Mekanisme Tindakan Persetujuan:</span>
+                        </span>
+                        <p className="text-[11px] text-emerald-900 leading-relaxed">
+                          Menyetujui permintaan ini akan secara otomatis me-reset kata sandi akun ke <strong>DEFAULT ({dbUser.role === 'mahasiswa' ? 'NIM' : 'NIP'})</strong>, membatalkan kata sandi lama, dan mengirimkan notifikasi ke email pemohon. Pengguna diwajibkan mengganti kata sandi setelah login kembali.
+                        </p>
+                      </div>
+
                       <div className="text-[11px] text-slate-400 flex items-center justify-between pt-1">
                         <span>Basis Data: <strong className="text-slate-600">{checkResult.source}</strong></span>
                         <span>ID Pengajuan: <code className="font-mono text-slate-500">{verifyingRequest.id}</code></span>
@@ -1160,18 +1163,18 @@ export default function ResetPasswordRequestsAdminPage() {
 
               <div className="p-5 space-y-4 text-xs">
                 <p className="text-slate-600 leading-relaxed">
-                  Anda akan menyetujui pemulihan kata sandi untuk akun <span className="font-bold text-slate-900">{displayName}</span>. Sistem akan menghasilkan tautan reset resmi dengan token verifikasi unik yang aktif selama 24 jam.
+                  Anda akan menyetujui pemulihan kata sandi untuk akun <span className="font-bold text-slate-900">{displayName}</span>. Sistem akan me-reset kata sandi akun kembali ke <strong>DEFAULT ({official.user?.role === 'dosen' ? 'NIP' : 'NIM'})</strong>, membatalkan kata sandi lama, dan mengirimkan notifikasi ke email pemohon.
                 </p>
 
-                {/* Otomatis kirim email via SMTP (Section E.1) */}
+                {/* Otomatis kirim email via SMTP */}
                 <div className="p-3.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 space-y-1">
                   <div className="font-bold flex items-center space-x-1.5">
                     <Mail className="w-3.5 h-3.5 text-blue-600" />
-                    <span>Pengiriman Email Resmi Otomatis:</span>
+                    <span>Pemberitahuan Email Resmi ke Pemohon:</span>
                   </div>
                   <p className="text-[11px] text-blue-800 leading-relaxed">
-                    Saat disetujui, sistem SIMONITA akan secara otomatis mengirimkan email resmi berisi tautan pemulihan kata sandi (berlaku 24 jam) ke alamat:
-                    <strong className="block mt-1 font-mono text-slate-900">{official.user?.email || approvingRequest.email}</strong>
+                    Saat disetujui, sistem SIMONITA akan mengirimkan email pemberitahuan yang berisi informasi kata sandi sementara default ke alamat email pemohon:
+                    <strong className="block mt-1 font-mono text-slate-900">{approvingRequest.email}</strong>
                   </p>
                 </div>
 

@@ -219,6 +219,7 @@ export default function Sidebar() {
               label: 'Konten & Dokumen',
               icon: Layers,
               items: [
+                { to: '/admin-simta/cms', label: 'Konten CMS', icon: LayoutGrid },
                 { to: '/admin-simta/templates', label: 'Template & Surat', icon: FileText },
                 { to: '/admin-simta/sop', label: 'Standar Operasional (SOP)', icon: FileCheck }
               ]

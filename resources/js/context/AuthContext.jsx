@@ -1490,7 +1490,16 @@ export function AuthProvider({ children }) {
   const [historicalTitles, setHistoricalTitles] = useState(MOCK_HISTORICAL_TITLES);
   const [thesisStages, setThesisStages] = useState(MOCK_THESIS_STAGES);
   const [bookings, setBookings] = useState(MOCK_BOOKINGS);
-  const [rooms, setRooms] = useState(MOCK_ROOMS);
+  const [rooms, setRooms] = useState(() => {
+    try {
+      const saved = localStorage.getItem('simta_rooms');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return MOCK_ROOMS;
+  });
   const [buildings, setBuildings] = useState(MOCK_BUILDINGS);
   const [roomPriorities, setRoomPriorities] = useState(MOCK_ROOM_PRIORITIES);
   // Persistent notifications with local storage synchronization
@@ -1911,6 +1920,63 @@ export function AuthProvider({ children }) {
     try { localStorage.setItem('simta_password_reset_logs', JSON.stringify([])); } catch {}
     return [];
   });
+
+  // Centralized persistent system activity logs (Audit Trail aktual SIMONITA)
+  const [systemActivities, setSystemActivities] = useState(() => {
+    try {
+      const saved = localStorage.getItem('simta_system_activities');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {}
+    return [];
+  });
+
+  const logSystemActivity = (activity) => {
+    const actorUser = currentUserRef.current || currentUser;
+    const newAct = {
+      id: `sys-act-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      action: activity.action || 'Aktivitas Sistem',
+      actor: activity.actor || (actorUser?.nama || 'Administrator SIMTA'),
+      role: activity.role || (actorUser?.role || 'admin'),
+      target: activity.target || '-',
+      keterangan: activity.keterangan || '',
+      kategori: activity.kategori || 'Sistem',
+      status: activity.status || 'sukses',
+      created_at: new Date().toISOString()
+    };
+
+    setSystemActivities(prev => {
+      const filtered = Array.isArray(prev) ? prev.filter(a => a.id !== newAct.id) : [];
+      const next = [newAct, ...filtered].slice(0, 100);
+      try { localStorage.setItem('simta_system_activities', JSON.stringify(next)); } catch {}
+      return next;
+    });
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const currentSaved = (() => {
+          try {
+            const raw = localStorage.getItem('simta_system_activities');
+            return raw ? JSON.parse(raw) : [];
+          } catch { return []; }
+        })();
+        const toSave = [newAct, ...currentSaved.filter(a => a.id !== newAct.id)].slice(0, 100);
+        supabase.from('admin_cms').upsert([{
+          id: 'system-activity-logs',
+          judul: 'System Activity Logs',
+          kategori: 'system_activity_logs',
+          isi: JSON.stringify(toSave),
+          status: 'aktif',
+          penulis: 'System Auditor',
+          updated_at: new Date().toISOString()
+        }], { onConflict: 'id' }).then(() => {}).catch(() => {});
+      } catch {}
+    }
+
+    return newAct;
+  };
 
   // Effect pembersihan otomatis saat pertama kali komponen AuthProvider dimuat
   useEffect(() => {
@@ -3796,13 +3862,52 @@ export function AuthProvider({ children }) {
             mhsAccountsCacheRef.current = null;
             setAccountsVersion(v => v + 1);
 
-            const cmsItems = data.filter(row =>
-              row &&
-              row.kategori !== 'student_profile_meta' &&
-              row.kategori !== 'account_credential' &&
-              !String(row.id || '').startsWith('student-profile-') &&
-              !String(row.id || '').startsWith('auth-cred-')
-            );
+            // Hidrasi log aktivitas sistem dari Supabase jika tersedia
+            try {
+              const actRow = data.find(r => r && (r.id === 'system-activity-logs' || r.kategori === 'system_activity_logs') && r.isi);
+              if (actRow && actRow.isi) {
+                const parsedActs = typeof actRow.isi === 'string' ? JSON.parse(actRow.isi) : actRow.isi;
+                if (Array.isArray(parsedActs) && parsedActs.length > 0) {
+                  setSystemActivities(prev => {
+                    const seenIds = new Set();
+                    const combined = [...prev, ...parsedActs].filter(a => {
+                      if (!a || !a.id || seenIds.has(a.id)) return false;
+                      seenIds.add(a.id);
+                      return true;
+                    }).sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()).slice(0, 100);
+                    try { localStorage.setItem('simta_system_activities', JSON.stringify(combined)); } catch {}
+                    return combined;
+                  });
+                }
+              }
+            } catch {}
+
+            // Filter KETAT konten CMS: Pisahkan total metadata internal sistem & autentikasi
+            const internalCategories = [
+              'student_profile_meta',
+              'user_profile_meta',
+              'account_credential',
+              'notification_read_ids',
+              'system_activity_logs',
+              'system_activities'
+            ];
+            const cmsItems = data.filter(row => {
+              if (!row) return false;
+              const kat = String(row.kategori || '').toLowerCase();
+              const idStr = String(row.id || '').toLowerCase();
+              if (internalCategories.includes(kat)) return false;
+              if (
+                idStr.startsWith('student-profile-') ||
+                idStr.startsWith('user-profile-') ||
+                idStr.startsWith('auth-cred-') ||
+                idStr.startsWith('simta_read_notif_ids_') ||
+                idStr.startsWith('notif-read-') ||
+                idStr.startsWith('system-activity-')
+              ) {
+                return false;
+              }
+              return true;
+            });
             if (cmsItems.length > 0) {
               setAdminCmsContents(cmsItems);
             }
@@ -4606,6 +4711,20 @@ export function AuthProvider({ children }) {
     const checkSupabaseCredential = async (user) => {
       if (!user) return null;
 
+      const userNim = String(user.nim || '').trim().toLowerCase();
+      const userNip = String(user.nip || '').trim().toLowerCase();
+      const isDefaultAttempt = (userNim && passLower === userNim) || (userNip && passLower === userNip);
+
+      // Jika akun baru ditambahkan atau belum pernah aktivasi / butuh ganti password:
+      const isPendingActivation = (!user.password_changed && !user.is_activated) ||
+        user.requires_password_change === true ||
+        (!user.password && !user.password_hash) ||
+        (user.password && (user.password.toLowerCase() === userNim || user.password.toLowerCase() === userNip));
+
+      if (isPendingActivation && isDefaultAttempt) {
+        return true;
+      }
+
       // 1. Mahasiswa via student_credentials RPC
       if (user.role === 'mahasiswa') {
         const nim = normalizeNim(user.nim || user.nip);
@@ -4941,11 +5060,15 @@ export function AuthProvider({ children }) {
       setCurrentUser(resolvedLocal);
       if (resolvedLocal.role === 'kaprodi') return '/kaprodi/dashboard';
       if (resolvedLocal.role === 'admin' || resolvedLocal.role === 'admin_sarana') return '/admin-simta/dashboard';
-      if (resolvedLocal.role === 'dosen') return '/dosen/dashboard';
+      if (resolvedLocal.role === 'dosen') {
+        const needsPasswordChange = resolvedLocal.requires_password_change === true || !resolvedLocal.password_changed;
+        return needsPasswordChange ? '/profile?first_login=true&change_password_required=true' : '/dosen/dashboard';
+      }
       if (resolvedLocal.role === 'mahasiswa') {
-        const profileDone = resolvedLocal.is_profile_completed === true ||
+        const profileDone = (resolvedLocal.is_profile_completed === true ||
           (localCredential !== null && localCredential.isProfileCompleted === true) ||
-          Boolean(resolvedLocal.no_hp && isValidNonDummyPhone(resolvedLocal.no_hp));
+          Boolean(resolvedLocal.no_hp && isValidNonDummyPhone(resolvedLocal.no_hp))) &&
+          !resolvedLocal.requires_password_change;
         return !profileDone ? '/profile?first_login=true' : '/dashboard';
       }
       return '/dashboard';
@@ -5121,11 +5244,15 @@ export function AuthProvider({ children }) {
       setCurrentUser(finalResolved);
       if (finalResolved.role === 'kaprodi') return '/kaprodi/dashboard';
       if (finalResolved.role === 'admin' || finalResolved.role === 'admin_sarana') return '/admin-simta/dashboard';
-      if (finalResolved.role === 'dosen') return '/dosen/dashboard';
+      if (finalResolved.role === 'dosen') {
+        const needsPasswordChange = finalResolved.requires_password_change === true || !finalResolved.password_changed;
+        return needsPasswordChange ? '/profile?first_login=true&change_password_required=true' : '/dosen/dashboard';
+      }
       if (finalResolved.role === 'mahasiswa') {
-        const profileDone = finalResolved.is_profile_completed === true ||
+        const profileDone = (finalResolved.is_profile_completed === true ||
           (foundCredential !== null && foundCredential.isProfileCompleted === true) ||
-          Boolean(finalResolved.no_hp && isValidNonDummyPhone(finalResolved.no_hp));
+          Boolean(finalResolved.no_hp && isValidNonDummyPhone(finalResolved.no_hp))) &&
+          !finalResolved.requires_password_change;
         return !profileDone ? '/profile?first_login=true' : '/dashboard';
       }
       return '/dashboard';
@@ -6491,7 +6618,105 @@ export function AuthProvider({ children }) {
       };
       setNotifications(prev => [notif, ...prev]);
       sendEmailNotification(studentEmail, notifTitle, notifMessage);
+
+      // Audit Log Aktivitas Sistem
+      try {
+        logSystemActivity({
+          actor: currentUser?.nama || 'Admin Sarana',
+          action: status === 'disetujui' ? 'SETUJUI_PEMINJAMAN_RUANG' : 'TOLAK_PEMINJAMAN_RUANG',
+          category: 'ruangan',
+          target: `${targetBooking.room_name} (${targetBooking.mhs_nama || targetBooking.mhs_nim || 'Mahasiswa'})`,
+          details: status === 'disetujui'
+            ? `Peminjaman ruangan ${targetBooking.room_name} tanggal ${targetBooking.booking_date} (${targetBooking.start_time} - ${targetBooking.end_time}) disetujui.`
+            : `Peminjaman ruangan ${targetBooking.room_name} ditolak. Alasan: ${rejectionReason || '-'}`
+        });
+      } catch {}
     }
+  };
+
+  // Add Room (Admin Ruangan)
+  const addRoom = (roomData) => {
+    const newRoom = {
+      id: roomData.id || `room-${Date.now()}`,
+      building_id: roomData.building_id || buildings[0]?.id || 'bld-diklat',
+      name: roomData.name,
+      code: roomData.code,
+      capacity: parseInt(roomData.capacity) || 20,
+      facilities: roomData.facilities || ['AC', 'Proyektor', 'Whiteboard'],
+      status: roomData.status || 'aktif'
+    };
+    setRooms(prev => {
+      const updated = [...prev, newRoom];
+      try {
+        localStorage.setItem('simta_rooms', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+    try {
+      logSystemActivity({
+        actor: currentUser?.nama || 'Admin SIMTA',
+        action: 'TAMBAH_RUANGAN',
+        category: 'ruangan',
+        target: newRoom.name,
+        details: `Menambahkan ruangan baru: ${newRoom.name} (${newRoom.code}), kapasitas ${newRoom.capacity} orang.`
+      });
+    } catch {}
+    return newRoom;
+  };
+
+  // Update Room (Admin Ruangan)
+  const updateRoom = (roomId, updatedFields) => {
+    let updatedRoom = null;
+    setRooms(prev => {
+      const updated = prev.map(r => {
+        if (r.id === roomId) {
+          updatedRoom = { ...r, ...updatedFields };
+          return updatedRoom;
+        }
+        return r;
+      });
+      try {
+        localStorage.setItem('simta_rooms', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+    if (updatedRoom) {
+      try {
+        logSystemActivity({
+          actor: currentUser?.nama || 'Admin SIMTA',
+          action: 'UPDATE_RUANGAN',
+          category: 'ruangan',
+          target: updatedRoom.name,
+          details: `Memperbarui data ruangan ${updatedRoom.name} (${updatedRoom.code}).`
+        });
+      } catch {}
+    }
+    return updatedRoom;
+  };
+
+  // Delete Room (Admin Ruangan)
+  const deleteRoom = (roomId) => {
+    let deletedRoom = null;
+    setRooms(prev => {
+      deletedRoom = prev.find(r => r.id === roomId);
+      const updated = prev.filter(r => r.id !== roomId);
+      try {
+        localStorage.setItem('simta_rooms', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+    if (deletedRoom) {
+      try {
+        logSystemActivity({
+          actor: currentUser?.nama || 'Admin SIMTA',
+          action: 'HAPUS_RUANGAN',
+          category: 'ruangan',
+          target: deletedRoom.name,
+          details: `Menghapus ruangan ${deletedRoom.name} (${deletedRoom.code}) dari master data.`
+        });
+      } catch {}
+    }
+    return true;
   };
 
   // Upload new Thesis Repository Report (Submitted by Mahasiswa with status 'menunggu_review_kaprodi')
@@ -7370,6 +7595,9 @@ export function AuthProvider({ children }) {
     const cleanEmail = (accountData.email || `${cleanNim}@student.unsri.ac.id`).toLowerCase().trim();
     const hasCustomPassword = Boolean(accountData.password && accountData.password !== cleanNim);
     const initialStatus = accountData.status || (hasCustomPassword ? 'aktif' : 'nonaktif');
+    const passToUse = accountData.password || cleanNim;
+    const passHashVal = await sha256(passToUse);
+
     const newStudent = {
       id: `user-mhs-${cleanNim}`,
       nim: cleanNim,
@@ -7383,7 +7611,9 @@ export function AuthProvider({ children }) {
       status: initialStatus,
       is_activated: hasCustomPassword || initialStatus === 'aktif',
       password_changed: hasCustomPassword,
-      password: accountData.password || cleanNim,
+      requires_password_change: !hasCustomPassword,
+      password: passToUse,
+      password_hash: passHashVal,
       created_at: new Date().toISOString()
     };
 
@@ -7394,24 +7624,50 @@ export function AuthProvider({ children }) {
 
     if (isSupabaseConfigured && supabase) {
       try {
-        const { status, password, ...supabasePayload } = newStudent;
+        const { status, password, password_hash, ...supabasePayload } = newStudent;
         await supabase.from('profiles').upsert(supabasePayload, { onConflict: 'id' });
       } catch (e) {
         console.warn('Supabase profile upsert error:', e);
       }
     }
 
-    // Catat kata sandi awal akun baru di Supabase (default = NIM).
+    // Catat kredensial awal akun baru di Supabase.
+    // Bila password masih default NIM, simpan metadata profil tanpa menandai hasPassword = true
     if (cleanNim) {
-      const saved = await saveStudentCredential({
-        nim: cleanNim,
-        password: newStudent.password,
-        isProfileCompleted: hasCustomPassword
-      });
-      if (!saved.success) {
-        console.warn('Gagal menyimpan kredensial akun mahasiswa baru:', saved.message);
+      if (hasCustomPassword) {
+        const saved = await saveStudentCredential({
+          nim: cleanNim,
+          password: newStudent.password,
+          isProfileCompleted: true,
+          nama: newStudent.nama,
+          email: newStudent.email,
+          kelas: newStudent.kelas,
+          prodi: newStudent.prodi
+        });
+        if (!saved.success) {
+          console.warn('Gagal menyimpan kredensial akun mahasiswa baru:', saved.message);
+        }
+      } else {
+        await saveStudentCredential({
+          nim: cleanNim,
+          isProfileCompleted: false,
+          nama: newStudent.nama,
+          email: newStudent.email,
+          kelas: newStudent.kelas,
+          prodi: newStudent.prodi
+        });
       }
     }
+
+    logSystemActivity({
+      action: 'Tambah Akun Mahasiswa',
+      actor: currentUserRef.current?.nama || 'Administrator SIMTA',
+      role: 'admin',
+      target: `${newStudent.nama} (${cleanNim})`,
+      keterangan: `Akun mahasiswa baru berhasil ditambahkan dengan kata sandi awal NIM.`,
+      kategori: 'Master Data',
+      status: 'sukses'
+    });
 
     if (mhsAccountsCacheRef?.current) {
       mhsAccountsCacheRef.current = null;
@@ -7714,6 +7970,16 @@ export function AuthProvider({ children }) {
       }
     }
 
+    logSystemActivity({
+      action: 'Hapus Akun Mahasiswa',
+      actor: currentUserRef.current?.nama || 'Administrator SIMTA',
+      role: 'admin',
+      target: cleanKey,
+      keterangan: `Akun mahasiswa dengan ID/NIM ${cleanKey} berhasil dihapus dari sistem.`,
+      kategori: 'Master Data',
+      status: 'sukses'
+    });
+
     setAccountsVersion(v => v + 1);
   };
 
@@ -7758,6 +8024,10 @@ export function AuthProvider({ children }) {
   const addDosenAccount = async (dosenData) => {
     const cleanNip = String(dosenData.nip || '').trim();
     const cleanEmail = (dosenData.email || `${cleanNip}@unsri.ac.id`).toLowerCase().trim();
+    const hasCustomPassword = Boolean(dosenData.password && dosenData.password !== cleanNip);
+    const passToUse = dosenData.password || cleanNip;
+    const passHashVal = await sha256(passToUse);
+
     const newAdv = {
       id: `adv-${cleanNip}`,
       nip: cleanNip,
@@ -7774,7 +8044,11 @@ export function AuthProvider({ children }) {
       kuota_dospem2: Number(dosenData.kuota_dospem2) || 8,
       role: dosenData.role || 'dosen',
       status: dosenData.status || 'aktif',
-      password: dosenData.password || cleanNip,
+      is_activated: hasCustomPassword,
+      password_changed: hasCustomPassword,
+      requires_password_change: !hasCustomPassword,
+      password: passToUse,
+      password_hash: passHashVal,
       created_at: new Date().toISOString()
     };
 
@@ -7787,14 +8061,47 @@ export function AuthProvider({ children }) {
     // Sync to Supabase
     if (isSupabaseConfigured && supabase) {
       try {
-        const { password, role, ...advisorPayload } = newAdv;
+        const { password, password_hash, role, ...advisorPayload } = newAdv;
         await supabase.from('advisors').upsert(advisorPayload, { onConflict: 'nip' });
         const { status, keahlian, kuota_dospem1, kuota_dospem2, jabatan_fungsional, ...profilePayload } = newAdv;
         await supabase.from('profiles').upsert(profilePayload, { onConflict: 'id' });
+
+        // Simpan kredensial dosen ke Supabase admin_cms (auth-cred-${cleanNip})
+        await supabase.from('admin_cms').upsert([
+          {
+            id: `auth-cred-${cleanNip}`,
+            judul: cleanNip,
+            kategori: 'account_credential',
+            isi: JSON.stringify({
+              identifier: cleanNip,
+              role: 'dosen',
+              nama: newAdv.nama,
+              password_hash: passHashVal,
+              password_plain: passToUse,
+              is_activated: hasCustomPassword,
+              password_changed: hasCustomPassword,
+              requires_password_change: !hasCustomPassword,
+              updated_at: new Date().toISOString()
+            }),
+            status: 'aktif',
+            penulis: 'Admin Account Protocol',
+            updated_at: new Date().toISOString()
+          }
+        ], { onConflict: 'id' });
       } catch (err) {
         console.warn('Supabase dosen sync error:', err);
       }
     }
+
+    logSystemActivity({
+      action: 'Tambah Akun Dosen',
+      actor: currentUserRef.current?.nama || 'Administrator SIMTA',
+      role: 'admin',
+      target: `${newAdv.nama} (${cleanNip})`,
+      keterangan: `Akun dosen baru berhasil ditambahkan dengan kata sandi awal NIP.`,
+      kategori: 'Master Data',
+      status: 'sukses'
+    });
 
     if (dosenAccountsCacheRef?.current) {
       dosenAccountsCacheRef.current = null;
@@ -8009,6 +8316,16 @@ export function AuthProvider({ children }) {
         console.warn('Supabase delete dosen error:', err);
       }
     }
+
+    logSystemActivity({
+      action: 'Hapus Akun Dosen',
+      actor: currentUserRef.current?.nama || 'Administrator SIMTA',
+      role: 'admin',
+      target: cleanKey,
+      keterangan: `Akun dosen dengan ID/NIP ${cleanKey} berhasil dihapus dari sistem.`,
+      kategori: 'Master Data',
+      status: 'sukses'
+    });
 
     if (dosenAccountsCacheRef?.current) {
       dosenAccountsCacheRef.current = null;
@@ -8230,7 +8547,7 @@ export function AuthProvider({ children }) {
   };
 
   // Helper: Trigger pengiriman email resmi via Laravel Mail / SMTP backend
-  const triggerPasswordResetEmail = async ({ email, name, token, role, identifier }) => {
+  const triggerPasswordResetEmail = async ({ email, name, token, role, identifier, temporaryPassword }) => {
     try {
       const res = await fetch('/api/password-reset/send-email', {
         method: 'POST',
@@ -8243,7 +8560,8 @@ export function AuthProvider({ children }) {
           name,
           token,
           role: role || 'Pengguna',
-          identifier: identifier || ''
+          identifier: identifier || '',
+          temporary_password: temporaryPassword || ''
         })
       });
 
@@ -8268,10 +8586,14 @@ export function AuthProvider({ children }) {
   };
 
   // 2. Ajukan permintaan reset password (oleh Pengguna / Mahasiswa / Dosen)
-  const submitPasswordResetRequest = async ({ identifier, alasan = '' }) => {
+  const submitPasswordResetRequest = async ({ identifier, email = '', alasan = '' }) => {
     const cleanId = String(identifier || '').trim();
+    const cleanSubmittedEmail = String(email || '').trim().toLowerCase();
     if (!cleanId) {
       throw new Error('Masukkan NIM, NIP, atau Email Anda.');
+    }
+    if (cleanSubmittedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanSubmittedEmail)) {
+      throw new Error('Format email yang dimasukkan tidak valid.');
     }
 
     const verification = checkUserIdentityInDatabase(cleanId);
@@ -8280,8 +8602,8 @@ export function AuthProvider({ children }) {
       return {
         success: true,
         status: 'neutral',
-        message: 'Jika identitas atau email tersebut terdaftar dalam sistem SIMONITA, permintaan pemulihan kata sandi telah diproses. Silakan hubungi Administrator SIMTA jika Anda membutuhkan bantuan lebih lanjut.',
-        email: cleanId,
+        message: 'Jika nomor induk atau identitas tersebut terdaftar dalam sistem SIMONITA, permintaan pemulihan kata sandi telah diproses. Silakan hubungi Administrator SIMTA jika Anda membutuhkan bantuan lebih lanjut.',
+        email: cleanSubmittedEmail || cleanId,
         user: null,
         token: null
       };
@@ -8297,6 +8619,34 @@ export function AuthProvider({ children }) {
     const userNip = u.nip || (userRole === 'dosen' ? cleanId : '');
     const userEmail = u.email || `${cleanId}@student.unsri.ac.id`;
     const userNama = u.nama;
+    const contactEmail = cleanSubmittedEmail || userEmail;
+
+    // Ketentuan #2: Pemeriksaan Akun yang Belum Diaktivasi
+    // Fitur reset password HANYA berlaku untuk akun yang sebelumnya SUDAH PERNAH DIAKTIVASI.
+    let isActivated = false;
+    if (userRole === 'mahasiswa') {
+      const cred = getCachedStudentCredential(userNim);
+      isActivated = Boolean(
+        u.is_activated === true ||
+        u.password_changed === true ||
+        u.is_profile_completed === true ||
+        cred?.isProfileCompleted === true ||
+        cred?.hasPassword === true
+      );
+    } else {
+      isActivated = Boolean(
+        u.is_activated === true ||
+        u.password_changed === true ||
+        (u.password && u.password !== u.nip && u.password !== u.nim) ||
+        Boolean(u.password_hash)
+      );
+    }
+
+    if (!isActivated) {
+      throw new Error(
+        `Akun ${userNama} (${cleanId}) belum pernah diaktivasi. Fitur lupa kata sandi hanya berlaku untuk akun yang sudah pernah aktif. Silakan login langsung menggunakan ${userRole === 'mahasiswa' ? 'NIM' : 'NIP'} sebagai kata sandi awal untuk melakukan aktivasi profil Anda.`
+      );
+    }
 
     // Ketentuan C.4: Pembatalan Token Lama
     // Jika pengguna mengajukan reset baru saat token/pengajuan lama masih aktif, batalkan token lama
@@ -8306,7 +8656,7 @@ export function AuthProvider({ children }) {
           r.identifier === cleanId || 
           (userNim && r.nim === userNim) || 
           (userNip && r.nip === userNip) || 
-          (r.email && r.email.toLowerCase() === userEmail.toLowerCase())
+          (r.email && r.email.toLowerCase() === contactEmail.toLowerCase())
         ) && (r.status === 'menunggu' || r.status === 'disetujui');
 
         if (isTarget) {
@@ -8329,7 +8679,8 @@ export function AuthProvider({ children }) {
       nim: userNim,
       nip: userNip,
       nama: userNama,
-      email: userEmail,
+      email: contactEmail,
+      email_resmi: userEmail,
       role: userRole,
       prodi: u.prodi || 'D3 Manajemen Informatika',
       kelas: u.kelas || u.jabatan_fungsional || '-',
@@ -8363,7 +8714,17 @@ export function AuthProvider({ children }) {
       user_identifier: cleanId,
       user_role: userRole,
       actor: 'Pengguna (Portal)',
-      notes: `Pengajuan pemulihan kata sandi masuk ke antrean verifikasi Admin SIMTA. Alasan: ${newRequest.alasan_pengajuan}`
+      notes: `Pengajuan pemulihan kata sandi masuk ke antrean verifikasi Admin SIMTA. Email notifikasi: ${contactEmail}.`
+    });
+
+    logSystemActivity({
+      action: 'Pengajuan Reset Sandi',
+      actor: userNama,
+      role: userRole,
+      target: `${userNama} (${cleanId})`,
+      keterangan: `Pengajuan lupa kata sandi diajukan dengan email notifikasi ${contactEmail}. Menunggu verifikasi Admin.`,
+      kategori: 'Akun',
+      status: 'menunggu'
     });
 
     return {
@@ -8371,7 +8732,7 @@ export function AuthProvider({ children }) {
       status: 'menunggu',
       request: newRequest,
       token: null,
-      email: userEmail,
+      email: contactEmail,
       user: u,
       message: 'Permintaan reset kata sandi berhasil dikirimkan ke Admin SIMTA. Silakan tunggu verifikasi identitas oleh Admin.'
     };
@@ -8482,7 +8843,7 @@ export function AuthProvider({ children }) {
     return newRequest;
   };
 
-  // 4. Tindakan Setujui Permintaan Reset Password (Otomatis picu kirim email resmi via SMTP)
+  // 4. Tindakan Setujui Permintaan Reset Password (Otomatis picu reset kata sandi & kirim email resmi via SMTP)
   const approvePasswordResetRequest = async (requestId, catatan = '') => {
     let updatedTarget = null;
     const secureToken = generateSecureResetToken();
@@ -8495,9 +8856,85 @@ export function AuthProvider({ children }) {
     const verification = checkUserIdentityInDatabase(currentReq.identifier || currentReq.nim || currentReq.nip || currentReq.email);
     const officialUser = verification.user;
     const officialName = (verification.found && officialUser?.nama) ? officialUser.nama : currentReq.nama;
-    const targetEmail = officialUser?.email || currentReq.email;
+    const targetEmail = currentReq.email || officialUser?.email;
+    const targetIdent = String(currentReq.nim || currentReq.nip || currentReq.identifier).trim();
+    const isStudent = currentReq.role === 'mahasiswa';
+    const tempPassword = targetIdent; // Kata sandi sementara = NIM (Mahasiswa) atau NIP (Dosen)
+    const tempHash = await sha256(tempPassword);
 
-    const reset_link = `${origin}/reset-password?token=${secureToken}&email=${encodeURIComponent(targetEmail)}`;
+    // 1. Reset password pengguna menjadi NIM (Mahasiswa) atau NIP (Dosen)
+    try {
+      const regUsers = getRegisteredUsers();
+      const idx = regUsers.findIndex(u => {
+        const uId = String(u.nim || u.nip || u.id || '').trim();
+        return uId === targetIdent || (u.email && u.email.toLowerCase() === targetEmail.toLowerCase());
+      });
+      if (idx >= 0) {
+        regUsers[idx].password = tempPassword;
+        regUsers[idx].password_hash = tempHash;
+        regUsers[idx].password_changed = false;
+        regUsers[idx].is_activated = true;
+        regUsers[idx].requires_password_change = true;
+        localStorage.setItem('simta_registered_users', JSON.stringify(regUsers));
+      } else {
+        regUsers.unshift({
+          id: isStudent ? `user-mhs-${targetIdent}` : `adv-${targetIdent}`,
+          nim: targetIdent,
+          nip: targetIdent,
+          nama: officialName,
+          email: targetEmail,
+          role: currentReq.role,
+          password: tempPassword,
+          password_hash: tempHash,
+          password_changed: false,
+          is_activated: true,
+          requires_password_change: true
+        });
+        localStorage.setItem('simta_registered_users', JSON.stringify(regUsers));
+      }
+    } catch (e) {
+      console.warn('Error resetting user password in registry:', e);
+    }
+
+    // Update student credentials di Supabase / lokal jika mahasiswa
+    if (isStudent) {
+      try {
+        await saveStudentCredential({
+          nim: targetIdent,
+          password: tempPassword,
+          isProfileCompleted: true
+        });
+      } catch (e) {}
+    }
+
+    // Sinkronkan auth-cred ke Supabase admin_cms agar login perangkat lain langsung valid
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('admin_cms').upsert([
+          {
+            id: `auth-cred-${targetIdent}`,
+            judul: targetIdent,
+            kategori: 'account_credential',
+            isi: JSON.stringify({
+              identifier: targetIdent,
+              role: currentReq.role,
+              nama: officialName,
+              password_hash: tempHash,
+              password_plain: tempPassword,
+              requires_password_change: true,
+              password_changed: false,
+              is_activated: true,
+              updated_at: new Date().toISOString()
+            }),
+            status: 'aktif',
+            penulis: 'Admin Reset Protocol',
+            updated_at: new Date().toISOString()
+          }
+        ], { onConflict: 'id' });
+      } catch (err) {}
+    }
+
+    const reset_link = `${origin}/login`;
 
     const initialUpdated = {
       ...currentReq,
@@ -8506,9 +8943,10 @@ export function AuthProvider({ children }) {
       status: 'disetujui',
       processed_at: new Date().toISOString(),
       processed_by: 'Rina Agustina, S.Kom. (Admin SIMTA)',
-      catatan_admin: catatan || 'Identitas akun telah diverifikasi resmi oleh Admin SIMTA.',
+      catatan_admin: catatan || `Identitas akun telah diverifikasi resmi oleh Admin SIMTA. Kata sandi diatur sementara menjadi ${targetIdent}.`,
       token: secureToken,
       reset_link: reset_link,
+      temporary_password: tempPassword,
       expires_at: expiresAt,
       email_status: 'sending',
       email_sent_at: null,
@@ -8531,7 +8969,17 @@ export function AuthProvider({ children }) {
       user_identifier: currentReq.identifier,
       user_role: currentReq.role,
       actor: 'Rina Agustina, S.Kom. (Admin SIMTA)',
-      notes: `Permintaan reset sandi disetujui. Tautan reset aman diaktifkan (berlaku 24 jam). Memproses pengiriman email resmi ke ${targetEmail}.`
+      notes: `Permintaan reset sandi disetujui. Kata sandi sementara diatur ke ${targetIdent}. Memproses pengiriman email resmi ke ${targetEmail}.`
+    });
+
+    logSystemActivity({
+      action: 'Persetujuan Reset Sandi',
+      actor: 'Rina Agustina, S.Kom. (Admin SIMTA)',
+      role: 'admin',
+      target: `${officialName} (${targetIdent})`,
+      keterangan: `Permintaan reset sandi disetujui. Kata sandi sementara diatur ke ${targetIdent}. Email pemberitahuan dikirim ke ${targetEmail}.`,
+      kategori: 'Akun',
+      status: 'disetujui'
     });
 
     // Kirim email resmi secara otomatis melalui backend Laravel / SMTP
@@ -8540,7 +8988,8 @@ export function AuthProvider({ children }) {
       name: officialName,
       token: secureToken,
       role: currentReq.role,
-      identifier: currentReq.identifier
+      identifier: targetIdent,
+      temporaryPassword: tempPassword
     });
 
     const isSuccess = mailResult.status === 'sent' || mailResult.success;
@@ -8570,7 +9019,7 @@ export function AuthProvider({ children }) {
       user_role: currentReq.role,
       actor: 'Sistem SIMONITA (Mailer)',
       notes: isSuccess
-        ? `Email pemulihan kata sandi resmi berhasil dikirim ke ${targetEmail}. Tautan aktif berlaku 24 jam.`
+        ? `Email pemulihan kata sandi resmi berhasil dikirim ke ${targetEmail}. Kata sandi sementara: ${targetIdent}.`
         : `Gagal mengirim email resmi ke ${targetEmail}: ${finalError}`
     });
 
@@ -8594,7 +9043,8 @@ export function AuthProvider({ children }) {
       expiresAtToUse = Date.now() + 24 * 3600 * 1000;
     }
 
-    const reset_link = `${origin}/reset-password?token=${tokenToUse}&email=${encodeURIComponent(currentReq.email)}`;
+    const reset_link = `${origin}/login`;
+    const targetIdent = currentReq.temporary_password || currentReq.identifier || currentReq.nim || currentReq.nip;
 
     setPasswordResetRequests(prev => {
       const next = prev.map(r => r.id === requestId ? {
@@ -8613,7 +9063,8 @@ export function AuthProvider({ children }) {
       name: currentReq.nama,
       token: tokenToUse,
       role: currentReq.role,
-      identifier: currentReq.identifier
+      identifier: targetIdent,
+      temporaryPassword: targetIdent
     });
 
     const isSuccess = mailResult.status === 'sent' || mailResult.success;
@@ -8651,7 +9102,7 @@ export function AuthProvider({ children }) {
       user_role: currentReq.role,
       actor: 'Rina Agustina, S.Kom. (Admin SIMTA)',
       notes: isSuccess
-        ? `Tautan pemulihan kata sandi dikirim ulang ke ${currentReq.email}. Tautan berlaku 24 jam.`
+        ? `Informasi kata sandi sementara dikirim ulang ke ${currentReq.email}.`
         : `Gagal mengirim ulang email ke ${currentReq.email}: ${finalError}`
     });
 
@@ -8694,6 +9145,16 @@ export function AuthProvider({ children }) {
         user_role: updatedTarget.role,
         actor: 'Rina Agustina, S.Kom. (Admin SIMTA)',
         notes: `Permintaan reset sandi ditolak. Alasan: ${alasan || 'Identitas tidak dapat diverifikasi.'}`
+      });
+
+      logSystemActivity({
+        action: 'Penolakan Reset Sandi',
+        actor: 'Rina Agustina, S.Kom. (Admin SIMTA)',
+        role: 'admin',
+        target: `${updatedTarget.nama} (${updatedTarget.identifier})`,
+        keterangan: `Permintaan reset sandi ditolak. Alasan: ${alasan || 'Identitas tidak dapat diverifikasi.'}`,
+        kategori: 'Akun',
+        status: 'ditolak'
       });
     }
 
@@ -8971,8 +9432,11 @@ export function AuthProvider({ children }) {
   };
 
   // Backward compatibility bridges
-  const requestPasswordReset = async (identifier) => {
-    return submitPasswordResetRequest({ identifier });
+  const requestPasswordReset = async (identifier, contactEmail = '', reason = '') => {
+    if (typeof identifier === 'object' && identifier !== null) {
+      return submitPasswordResetRequest(identifier);
+    }
+    return submitPasswordResetRequest({ identifier, email: contactEmail, alasan: reason });
   };
 
   const confirmPasswordReset = async ({ emailOrToken, newPassword }) => {
@@ -9256,6 +9720,11 @@ export function AuthProvider({ children }) {
       bulkImportHistorical,
       addBooking,
       reviewBooking,
+      addRoom,
+      updateRoom,
+      deleteRoom,
+      systemActivities,
+      logSystemActivity,
       adminDocuments,
       addAdminDocument,
       updateAdminDocument,

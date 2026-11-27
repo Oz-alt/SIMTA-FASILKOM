@@ -63,16 +63,14 @@ export default function AppLayout({ children }) {
     } else if (currentUser?.role === 'kaprodi' && url.startsWith('/dosen')) {
       router.visit('/kaprodi/dashboard');
     } else if (
-      currentUser?.role === 'mahasiswa' && 
-      !currentUser?.is_profile_completed && 
+      currentUser && 
+      (currentUser.requires_password_change || (currentUser.role === 'mahasiswa' && !currentUser.is_profile_completed)) && 
       !url.startsWith('/profile') &&
-      !isAuthRoute(url) &&
-      url !== '/' &&
-      url !== '/documents'
+      !isAuthRoute(url)
     ) {
-      router.visit('/profile?first_login=true');
+      router.visit('/profile?change_password_required=true');
     }
-  }, [currentUser?.role, currentUser?.is_profile_completed, url]);
+  }, [currentUser?.role, currentUser?.is_profile_completed, currentUser?.requires_password_change, url]);
 
   const isHomePage = url === '/';
   const isDokumenPage = url === '/documents';

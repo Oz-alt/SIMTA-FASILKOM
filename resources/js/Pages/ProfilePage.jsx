@@ -37,7 +37,11 @@ export default function ProfilePage() {
   const isMahasiswa = currentUser?.role === 'mahasiswa';
   const isAdmin = currentUser?.role === 'admin';
   const isPendingProfile = isMahasiswa && !currentUser?.is_profile_completed;
-  const isFirstLogin = isPendingProfile || (typeof url === 'string' && url.includes('first_login'));
+  const isMandatoryPasswordChange = Boolean(
+    currentUser?.requires_password_change ||
+    (typeof url === 'string' && (url.includes('change_password_required') || url.includes('first_login')))
+  );
+  const isFirstLogin = isPendingProfile || isMandatoryPasswordChange;
 
   const [isEditing, setIsEditing] = useState(() => isFirstLogin || false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
@@ -292,7 +296,7 @@ export default function ProfilePage() {
 
     // Password requirement for ALL roles (Mahasiswa, Dosen, Kaprodi, Admin)
     const hasPasswordInput = Boolean(newPassword.trim() || confirmPassword.trim());
-    if (isPendingProfile || hasPasswordInput) {
+    if (isPendingProfile || isMandatoryPasswordChange || hasPasswordInput) {
       if (!newPassword.trim()) {
         setErrorMsg('Kata sandi baru wajib diisi untuk keamanan akun Anda.');
         return;
@@ -344,6 +348,8 @@ export default function ProfilePage() {
       }
       if (newPassword.trim()) {
         payload.password = newPassword.trim();
+        payload.requires_password_change = false;
+        payload.password_changed = true;
       }
 
       await updateUserProfile(payload);
@@ -360,9 +366,17 @@ export default function ProfilePage() {
         : (isMahasiswa ? 'Profil dan data akun berhasil disimpan!' : 'Profil berhasil diperbarui!')
       );
 
-      if (isFirstLogin && isMahasiswa) {
+      if (isFirstLogin || isMandatoryPasswordChange) {
         setTimeout(() => {
-          router.visit('/dashboard');
+          if (currentUser?.role === 'dosen') {
+            router.visit('/dosen/dashboard');
+          } else if (currentUser?.role === 'kaprodi') {
+            router.visit('/kaprodi/dashboard');
+          } else if (currentUser?.role === 'admin') {
+            router.visit('/admin-simta/dashboard');
+          } else {
+            router.visit('/dashboard');
+          }
         }, 2200);
       }
     } catch (err) {
@@ -759,8 +773,8 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* First-Time Setup Required Banner for Mahasiswa */}
-      {isMahasiswa && (isPendingProfile || (isFirstLogin && !isCompletedSuccess)) && (
+      {/* First-Time Setup / Mandatory Password Change Banner */}
+      {(isPendingProfile || (isMandatoryPasswordChange && !isCompletedSuccess)) && (
         <div className="p-5 rounded-2xl bg-amber-50 border-2 border-amber-300 text-amber-950 shadow-sm animate-in fade-in space-y-3">
           <div className="flex items-start space-x-3.5">
             <div className="p-2.5 rounded-xl bg-amber-500 text-white shrink-0 mt-0.5 shadow-xs">
@@ -769,14 +783,16 @@ export default function ProfilePage() {
             <div className="space-y-1.5 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-extrabold text-sm text-amber-950">
-                  Pengaturan Profil & Keamanan Akun Mahasiswa (Wajib Dilengkapi)
+                  {currentUser?.requires_password_change
+                    ? 'Pembaruan Kata Sandi Wajib (Reset Password)'
+                    : 'Pengaturan Profil & Keamanan Akun (Wajib Dilengkapi)'}
                 </span>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-200 text-amber-900 uppercase tracking-wide border border-amber-300">
-                  Aktivasi Pertama Kali
+                  {currentUser?.requires_password_change ? 'Wajib Ganti Password' : 'Aktivasi Pertama Kali'}
                 </span>
               </div>
               <p className="text-xs text-amber-900/90 leading-relaxed">
-                Halo <strong>{currentUser?.nama}</strong>, akun Anda saat ini terdeteksi masih menggunakan kredensial bawaan (kata sandi default NIM). Demi keamanan data akademik dan privasi proses bimbingan Tugas Akhir Anda di SIMTA, Anda diwajibkan melengkapi nomor WhatsApp aktif, angkatan mahasiswa, serta membuat <strong>kata sandi baru</strong> Anda.
+                Halo <strong>{currentUser?.nama}</strong>, Anda saat ini menggunakan kata sandi sementara default ({isMahasiswa ? 'NIM' : 'NIP'}). Demi keamanan akun, Anda <strong>wajib membuat kata sandi baru</strong> sebelum dapat mengakses menu atau fitur SIMONITA lainnya.
               </p>
             </div>
           </div>

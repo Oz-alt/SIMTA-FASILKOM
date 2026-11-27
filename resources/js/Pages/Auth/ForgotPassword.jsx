@@ -23,8 +23,10 @@ export default function ForgotPassword({ status }) {
   const { requestPasswordReset } = useAuth();
 
   const [identifier, setIdentifier] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [unactivatedNotice, setUnactivatedNotice] = useState(null);
   const [resetResult, setResetResult] = useState(null);
 
   const formPanelRef = useRef(null);
@@ -55,21 +57,39 @@ export default function ForgotPassword({ status }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!identifier.trim()) {
-      setErrorMessage('Silakan masukkan NIM, NIP, atau Email Anda.');
+    setErrorMessage('');
+    setUnactivatedNotice(null);
+
+    const cleanId = identifier.trim();
+    const cleanMail = contactEmail.trim();
+
+    if (!cleanId) {
+      setErrorMessage('Silakan masukkan NIM atau NIP Anda.');
+      return;
+    }
+    if (!cleanMail) {
+      setErrorMessage('Silakan masukkan email aktif yang dapat dihubungi (bisa Gmail, Yahoo, dll.).');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanMail)) {
+      setErrorMessage('Format email yang dimasukkan tidak valid.');
       return;
     }
 
     setIsLoading(true);
-    setErrorMessage('');
 
     try {
-      const res = await requestPasswordReset(identifier);
+      const res = await requestPasswordReset(cleanId, cleanMail);
       setResetResult(res);
       setIsLoading(false);
     } catch (err) {
       setIsLoading(false);
-      setErrorMessage(err.message || 'Akun tidak ditemukan. Silakan periksa kembali identitas Anda.');
+      const msg = err.message || '';
+      if (msg.toLowerCase().includes('belum pernah diaktivasi')) {
+        setUnactivatedNotice(msg);
+      } else {
+        setErrorMessage(msg || 'Akun tidak ditemukan. Silakan periksa kembali identitas Anda.');
+      }
     }
   };
 
@@ -186,6 +206,37 @@ export default function ForgotPassword({ status }) {
               Masukkan NIM, NIP, atau alamat email resmi akun Anda untuk mereset kata sandi.
             </p>
           </div>
+
+          {/* Unactivated Account Warning Alert */}
+          {unactivatedNotice && (
+            <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs space-y-3 animate-in fade-in">
+              <div className="flex items-start space-x-2.5">
+                <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <span className="font-bold block text-sm text-amber-900">Akun Belum Diaktivasi</span>
+                  <p className="text-[12px] text-amber-800 leading-relaxed">
+                    {unactivatedNotice}
+                  </p>
+                </div>
+              </div>
+              <div className="pt-1 flex flex-col sm:flex-row gap-2">
+                <Link
+                  href="/login"
+                  className="w-full sm:w-auto px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-lg text-center transition-all shadow-sm flex items-center justify-center space-x-1.5"
+                >
+                  <ArrowRight className="w-3.5 h-3.5" />
+                  <span>Login dengan NIM / NIP</span>
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setUnactivatedNotice(null)}
+                  className="w-full sm:w-auto px-3 py-2 bg-white border border-amber-300 hover:bg-amber-100 text-amber-800 font-semibold text-xs rounded-lg text-center transition-all"
+                >
+                  Tutup Pemberitahuan
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Error Message Alert */}
           {errorMessage && (
@@ -371,23 +422,45 @@ export default function ForgotPassword({ status }) {
             /* Forgot Password Form */
             <form onSubmit={handleSubmit} className="space-y-4">
 
-              {/* NIM / NIP / Email Input */}
+              {/* NIM / NIP Input */}
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-700">
-                  NIM / NIP / Email Akun *
+                  NIM (Mahasiswa) / NIP (Dosen) *
                 </label>
                 <div className="relative">
                   <input
                     type="text"
+                    required
                     value={identifier}
                     onChange={(e) => setIdentifier(e.target.value)}
-                    placeholder="Contoh: 09010182428002 atau email@unsri.ac.id"
+                    placeholder="Contoh: 09010182428002 atau 198410012009121005"
                     className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 text-xs sm:text-sm text-slate-900 bg-white transition-all outline-none font-medium"
                   />
                   <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 </div>
                 <p className="text-[11px] text-slate-500">
-                  Masukkan identitas nomor induk atau email resmi yang Anda gunakan saat login.
+                  Masukkan identitas nomor induk resmi Anda yang terdaftar pada sistem SIMONITA.
+                </p>
+              </div>
+
+              {/* Contact Email Input */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700">
+                  Email Aktif yang Dapat Dihubungi *
+                </label>
+                <div className="relative">
+                  <input
+                    type="email"
+                    required
+                    value={contactEmail}
+                    onChange={(e) => setContactEmail(e.target.value)}
+                    placeholder="Contoh: nama.anda@gmail.com atau email@unsri.ac.id"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 text-xs sm:text-sm text-slate-900 bg-white transition-all outline-none font-medium"
+                  />
+                  <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  Bisa menggunakan email pribadi (Gmail, Yahoo, dll.) atau email kampus untuk menerima pemberitahuan dan kata sandi sementara.
                 </p>
               </div>
 
