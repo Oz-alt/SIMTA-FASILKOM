@@ -103,7 +103,7 @@ export default function AppLayout({ children }) {
 
     // 1. Wajib login untuk seluruh rute non-publik
     if (!currentUser) {
-      router.visit('/login', { replace: true });
+      window.location.href = '/login';
       return;
     }
 

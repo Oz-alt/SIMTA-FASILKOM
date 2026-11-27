@@ -52,7 +52,7 @@ export default function Sidebar() {
 
   const handleLogout = async () => {
     await logout();
-    router.visit('/');
+    window.location.href = '/login';
   };
 
   // Close floating settings popover on click outside
@@ -221,9 +221,9 @@ export default function Sidebar() {
               label: 'Konten & Dokumen',
               icon: Layers,
               items: [
-                { to: '/admin-simta/documents', label: 'Dokumen / Surat', icon: FileStack },
-                { to: '/admin-simta/cms', label: 'CMS', icon: LayoutGrid },
-                { to: '/admin-simta/templates', label: 'Template', icon: FileText }
+                { to: '/admin-simta/cms', label: 'Konten CMS', icon: LayoutGrid },
+                { to: '/admin-simta/templates', label: 'Template & Surat', icon: FileText },
+                { to: '/admin-simta/sop', label: 'Standar Operasional (SOP)', icon: FileCheck }
               ]
             },
             {
