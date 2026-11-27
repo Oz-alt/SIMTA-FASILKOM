@@ -23,6 +23,28 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
+     * Handle the incoming request.
+     */
+    public function handle(Request $request, \Closure $next)
+    {
+        $response = parent::handle($request, $next);
+
+        // Ensure X-Inertia response header is present and exposed on Inertia responses
+        if ($request->hasHeader('X-Inertia') || $request->header('X-Inertia')) {
+            $response->headers->set('X-Inertia', 'true');
+        }
+
+        $content = $response->getContent();
+        if (is_string($content) && str_starts_with(trim($content), '{') && str_contains($content, '"component"') && str_contains($content, '"props"')) {
+            $response->headers->set('X-Inertia', 'true');
+        }
+
+        $response->headers->set('Access-Control-Expose-Headers', 'X-Inertia, X-Inertia-Version, X-Inertia-Location');
+
+        return $response;
+    }
+
+    /**
      * Define the props that are shared by default.
      *
      * @return array<string, mixed>
