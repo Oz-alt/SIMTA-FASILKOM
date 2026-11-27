@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Link } from '@inertiajs/react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { getStudentSemester, AVAILABLE_SEMESTERS } from '../../lib/academicUtils.js';
+import { checkClientMultiFieldSimilarity } from '../../lib/similarityEngine.js';
 import { getCachedStudentCredential, normalizeStudentAngkatan } from '../../services/studentCredentials.js';
 import { 
   CheckCircle2, 
@@ -14,7 +15,39 @@ import {
 } from 'lucide-react';
 
 export default function TinjauJudulPage() {
-  const { thesisTitles, getStudentAdvisors, getAllMahasiswaAccounts, accountsVersion } = useAuth();
+  const {
+    thesisTitles,
+    historicalTitles = [],
+    thesisArchives = [],
+    getStudentAdvisors,
+    getAllMahasiswaAccounts,
+    accountsVersion
+  } = useAuth();
+
+  // Hitung skor similarity secara sinkron dengan engine halaman Mahasiswa (Judul 50% + Abstrak 50%)
+  const liveScoreById = useMemo(() => {
+    const map = new Map();
+    const combinedTitles = [...(thesisTitles || []), ...(historicalTitles || [])];
+    const archivesList = Array.isArray(thesisArchives) ? thesisArchives : [];
+    for (const t of thesisTitles || []) {
+      const initJudul = String(t?.judul || '').trim();
+      const initAbstrak = String(t?.deskripsi || t?.abstrak || '').trim();
+      if (initJudul.length < 5) {
+        map.set(t.id, Number(t?.skor_kemiripan_terakhir) || 0);
+        continue;
+      }
+      const targetNim = String(t.mhs_nim || '').trim();
+      const otherTitles = combinedTitles.filter(
+        (o) => String(o.id) !== String(t.id) && (!targetNim || String(o.mhs_nim || '').trim() !== targetNim)
+      );
+      const otherArchives = archivesList.filter(
+        (arc) => !targetNim || String(arc.penulis_nim || '').trim() !== targetNim
+      );
+      const res = checkClientMultiFieldSimilarity(initJudul, initAbstrak, otherTitles, otherArchives, { limit: 6 });
+      map.set(t.id, res.highestScore);
+    }
+    return map;
+  }, [thesisTitles, historicalTitles, thesisArchives]);
 
   const resolveAngkatanForTitle = (t) => {
     if (!t) return '';
@@ -389,13 +422,20 @@ export default function TinjauJudulPage() {
                       </td>
 
                       <td className="py-3.5 px-4 text-center align-top">
-                        <span className={`inline-block font-mono font-bold px-2 py-0.5 rounded-full text-xs border ${
-                          t.skor_kemiripan_terakhir > 40
-                            ? 'bg-rose-50 text-rose-700 border-rose-200'
-                            : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                        }`}>
-                          {t.skor_kemiripan_terakhir}%
-                        </span>
+                        {(() => {
+                          const syncedScore = liveScoreById.has(t.id)
+                            ? liveScoreById.get(t.id)
+                            : (Number(t.skor_kemiripan_terakhir) || 0);
+                          return (
+                            <span className={`inline-block font-mono font-bold px-2 py-0.5 rounded-full text-xs border ${
+                              syncedScore > 40
+                                ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            }`}>
+                              {syncedScore}%
+                            </span>
+                          );
+                        })()}
                       </td>
 
                       <td className="py-3.5 px-4 text-center align-top whitespace-nowrap">
@@ -405,7 +445,7 @@ export default function TinjauJudulPage() {
                             className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold text-xs rounded-xl shadow-xs inline-flex items-center justify-center space-x-1.5 cursor-pointer transition-colors whitespace-nowrap"
                           >
                             <BookOpen className="w-3.5 h-3.5 shrink-0" />
-                            <span>Detail &amp; Catatan</span>
+                            <span>Lihat Detail</span>
                           </Link>
                         </div>
                       </td>

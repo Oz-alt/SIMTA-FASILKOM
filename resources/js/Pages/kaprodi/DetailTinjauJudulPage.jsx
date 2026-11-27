@@ -3,6 +3,7 @@ import { Link, usePage } from '@inertiajs/react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import SimilarityGauge from '../../Components/common/SimilarityGauge.jsx';
 import StatusBadge from '../../Components/common/StatusBadge.jsx';
+import { checkClientMultiFieldSimilarity } from '../../lib/similarityEngine.js';
 import { getStudentSemester } from '../../lib/academicUtils.js';
 import {
   getStudentCredential,
@@ -11,24 +12,22 @@ import {
 } from '../../services/studentCredentials.js';
 import {
   ArrowLeft,
-  CheckCircle2, 
-  MessageSquare, 
-  AlertCircle, 
-  GraduationCap, 
+  AlertCircle,
+  GraduationCap,
   BookOpen,
-  Send,
   History,
-  Calendar
+  Calendar,
+  Users
 } from 'lucide-react';
 
 export default function DetailTinjauJudulPage({ titleId: propTitleId }) {
   const { url } = usePage();
-  const { 
-    thesisTitles, 
+  const {
+    thesisTitles,
+    historicalTitles = [],
+    thesisArchives = [],
     advisors = [],
     getStudentAdvisors,
-    addProdiRevisionNote, 
-    setThesisTitleFix,
     getAllMahasiswaAccounts,
     accountsVersion
   } = useAuth();
@@ -86,71 +85,41 @@ export default function DetailTinjauJudulPage({ titleId: propTitleId }) {
     return normalizeStudentAngkatan(title.angkatan || title.mhs_kelas || '');
   }, [title, remoteCred, getAllMahasiswaAccounts, accountsVersion]);
 
-  // State Management for Forms
-  const [revisiCatatan, setRevisiCatatan] = useState('');
-  const [fixCatatan, setFixCatatan] = useState('');
-
   const assignedAdv = useMemo(() => {
     if (!title?.mhs_nim || typeof getStudentAdvisors !== 'function') return null;
     return getStudentAdvisors(title.mhs_nim);
   }, [title?.mhs_nim, getStudentAdvisors]);
 
-  const [selectedDospem1Nip, setSelectedDospem1Nip] = useState('');
-  const [selectedDospem2Nip, setSelectedDospem2Nip] = useState('');
+  const resolvedPembimbing = useMemo(() => {
+    if (!title) return { p1: null, p2: null };
+    const findByNip = (nip) => (advisors || []).find(a => String(a.nip || '').trim() === String(nip || '').trim()) || null;
+    const p1 = assignedAdv?.dospem1 || findByNip(title.pembimbing_1_nip) || (title.pembimbing_1_nama ? { nama: title.pembimbing_1_nama, nip: title.pembimbing_1_nip || '' } : null);
+    const p2 = assignedAdv?.dospem2 || findByNip(title.pembimbing_2_nip) || (title.pembimbing_2_nama ? { nama: title.pembimbing_2_nama, nip: title.pembimbing_2_nip || '' } : null);
+    return { p1, p2 };
+  }, [title, assignedAdv, advisors]);
 
-  useEffect(() => {
-    if (!title) return;
-    setSelectedDospem1Nip(title.pembimbing_1_nip || assignedAdv?.dospem1?.nip || '');
-    setSelectedDospem2Nip(title.pembimbing_2_nip || assignedAdv?.dospem2?.nip || '');
-  }, [title?.id, title?.pembimbing_1_nip, title?.pembimbing_2_nip, assignedAdv?.dospem1?.nip, assignedAdv?.dospem2?.nip]);
-
-  // Toast Notification
-  const [toastMessage, setToastMessage] = useState('');
-  const showToast = (msg) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(''), 4500);
-  };
-
-  // Quick suggestion chips for revision notes
-  const quickNotes = [
-    'Similarity tinggi (>40%), disarankan konsultasikan alternatif formulasi judul dengan dosen pembimbing.',
-    'Ganti objek/studi kasus penelitian agar topik lebih spesifik dan orisinal.',
-    'Ruang lingkup sistem terlalu luas, mohon batasi pada modul inti kebutuhan D3 Manajemen Informatika.',
-    'Metodologi pengembangan sistem perlu diperjelas bersama dosen pembimbing.'
-  ];
-
-  // Submit Penetapan Judul Fix / Disetujui Prodi (Status berubah jadi "Disetujui / Judul Fix" - Hijau)
-  const handleApproveTitleFix = (e) => {
-    e.preventDefault();
-    if (!title || !setThesisTitleFix) return;
-    if (selectedDospem1Nip && selectedDospem2Nip && selectedDospem1Nip === selectedDospem2Nip) {
-      showToast('Pembimbing 1 dan Pembimbing 2 tidak boleh dosen yang sama.');
-      return;
+  // Hitung skor similarity secara real-time dengan engine yang identik 100% dengan halaman Mahasiswa (AjukanJudulPage)
+  const liveSimilarity = useMemo(() => {
+    if (!title) {
+      return { highestScore: 0, highestTitleScore: 0, highestAbstractScore: 0, hasAbstract: false };
     }
-
-    setThesisTitleFix(
-      title.id,
-      selectedDospem1Nip,
-      selectedDospem2Nip,
-      fixCatatan.trim() || 'Judul telah disetujui resmi sebagai JUDUL FIX dalam rapat Prodi.'
+    const initJudul = String(title.judul || '').trim();
+    const initAbstrak = String(title.deskripsi || title.abstrak || '').trim();
+    if (initJudul.length < 5) {
+      const fallback = Number(title.skor_kemiripan_terakhir) || 0;
+      return { highestScore: fallback, highestTitleScore: fallback, highestAbstractScore: 0, hasAbstract: Boolean(initAbstrak) };
+    }
+    const targetNim = String(title.mhs_nim || '').trim();
+    const otherDbTitles = [...(thesisTitles || []), ...(historicalTitles || [])].filter(
+      (t) =>
+        String(t.id) !== String(title.id) &&
+        (!targetNim || String(t.mhs_nim || '').trim() !== targetNim)
     );
-    showToast(`Judul TA ${title.mhs_nama} berhasil ditetapkan sebagai "Judul Fix" (Disetujui)!`);
-    setFixCatatan('');
-  };
-
-  // Submit Catatan Revisi Rapat Prodi (Status berubah jadi "Perlu Revisi" - Kuning)
-  const handleSendRevisionNote = (e) => {
-    e.preventDefault();
-    if (!title) return;
-    if (!revisiCatatan.trim()) {
-      showToast('Harap tuliskan catatan revisi sebelum mengirim.');
-      return;
-    }
-
-    addProdiRevisionNote(title.id, revisiCatatan.trim());
-    showToast(`Catatan revisi berhasil disimpan & dikirim ke ${title.mhs_nama}. Status menjadi "Perlu Revisi".`);
-    setRevisiCatatan('');
-  };
+    const otherArchives = Array.isArray(thesisArchives)
+      ? thesisArchives.filter((arc) => !targetNim || String(arc.penulis_nim || '').trim() !== targetNim)
+      : [];
+    return checkClientMultiFieldSimilarity(initJudul, initAbstrak, otherDbTitles, otherArchives, { limit: 6 });
+  }, [title, thesisTitles, historicalTitles, thesisArchives]);
 
   // Format timestamp helper
   const formatDate = (isoString) => {
@@ -191,19 +160,9 @@ export default function DetailTinjauJudulPage({ titleId: propTitleId }) {
   }
 
   const studentSem = getStudentSemester(title);
-  const isFix = title.status === 'disetujui' || title.status === 'judul_fix';
-  const isRevisi = title.status === 'perlu_revisi';
 
   return (
     <div className="space-y-6 pb-12">
-      
-      {/* Toast Notification */}
-      {toastMessage && (
-        <div className="fixed top-20 right-6 z-50 bg-slate-900 text-white px-5 py-3.5 rounded-2xl shadow-2xl flex items-center space-x-3 text-xs sm:text-sm font-semibold border border-slate-700 animate-in fade-in slide-in-from-top-4">
-          <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
-          <span>{toastMessage}</span>
-        </div>
-      )}
 
       {/* Navigation Top Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-4">
@@ -216,7 +175,7 @@ export default function DetailTinjauJudulPage({ titleId: propTitleId }) {
             <span>Kembali ke Daftar Pengajuan</span>
           </Link>
           <span className="text-slate-300 text-sm">/</span>
-          <span className="text-xs font-bold text-slate-500">Detail &amp; Catatan Rapat Prodi</span>
+          <span className="text-xs font-bold text-slate-500">Detail Tugas Akhir</span>
         </div>
 
         <div className="flex items-center gap-2">
@@ -279,7 +238,7 @@ export default function DetailTinjauJudulPage({ titleId: propTitleId }) {
                 <span>Judul Tugas Akhir (Versi Terkini)</span>
               </h3>
               <span className="text-xs font-mono font-bold text-slate-500">
-                Skor Similarity: <strong className="text-indigo-600">{title.skor_kemiripan_terakhir}%</strong>
+                Skor Similarity: <strong className="text-indigo-600">{liveSimilarity.highestScore}%</strong>
               </span>
             </div>
 
@@ -300,7 +259,12 @@ export default function DetailTinjauJudulPage({ titleId: propTitleId }) {
 
             {/* Similarity Gauge Analysis */}
             <div className="pt-2">
-              <SimilarityGauge score={title.skor_kemiripan_terakhir} />
+              <SimilarityGauge
+                score={liveSimilarity.highestScore}
+                titleScore={liveSimilarity.highestTitleScore}
+                abstractScore={liveSimilarity.highestAbstractScore}
+                hasAbstract={liveSimilarity.hasAbstract}
+              />
             </div>
           </div>
 
@@ -377,130 +341,50 @@ export default function DetailTinjauJudulPage({ titleId: propTitleId }) {
 
         </div>
 
-        {/* Right Column: Actions (Penetapan Judul Fix & Catatan Revisi Rapat Prodi) */}
+        {/* Right Column: Info Dosen Pembimbing */}
         <div className="space-y-6">
-
-          {/* FORM 0: TETAPKAN SEBAGAI JUDUL FIX (ACC PRODI) */}
-          <div className="bg-emerald-50/60 border border-emerald-200 rounded-2xl p-5 shadow-2xs space-y-4">
-            <div className="flex items-center justify-between border-b border-emerald-200/80 pb-3">
-              <h4 className="text-xs font-bold text-emerald-900 flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                <span>Tetapkan Judul Fix (ACC Prodi)</span>
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h4 className="text-xs font-bold text-slate-900 flex items-center gap-2">
+                <Users className="w-4 h-4 text-indigo-600" />
+                <span>Dosen Pembimbing</span>
               </h4>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                {isFix ? 'Sudah Judul Fix' : 'Ubah Status → Judul Fix'}
-              </span>
             </div>
 
-            <p className="text-xs text-emerald-900/90 leading-relaxed">
-              Tetapkan pengajuan ini sebagai <strong>Judul Fix (Disetujui)</strong> apabila judul dan skor kemiripan sudah sesuai hasil rapat Prodi.
-            </p>
-
-            <form onSubmit={handleApproveTitleFix} className="space-y-3">
-              <div className="space-y-2">
-                <div>
-                  <label className="block text-[11px] font-bold text-emerald-900 mb-1">Dosen Pembimbing 1</label>
-                  <select
-                    value={selectedDospem1Nip}
-                    onChange={(e) => setSelectedDospem1Nip(e.target.value)}
-                    className="w-full text-xs p-2.5 border border-emerald-300 rounded-xl bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  >
-                    <option value="">-- Pilih Pembimbing 1 (Opsional) --</option>
-                    {advisors.map((adv) => (
-                      <option key={adv.nip} value={adv.nip}>
-                        {adv.nama} ({adv.nip})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-bold text-emerald-900 mb-1">Dosen Pembimbing 2</label>
-                  <select
-                    value={selectedDospem2Nip}
-                    onChange={(e) => setSelectedDospem2Nip(e.target.value)}
-                    className="w-full text-xs p-2.5 border border-emerald-300 rounded-xl bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  >
-                    <option value="">-- Pilih Pembimbing 2 (Opsional) --</option>
-                    {advisors.map((adv) => (
-                      <option key={adv.nip} value={adv.nip}>
-                        {adv.nama} ({adv.nip})
-                      </option>
-                    ))}
-                  </select>
-                </div>
+            <div className="space-y-3">
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Dosen Pembimbing 1
+                </span>
+                {resolvedPembimbing.p1 ? (
+                  <>
+                    <p className="text-xs font-bold text-slate-900">{resolvedPembimbing.p1.nama}</p>
+                    {resolvedPembimbing.p1.nip && (
+                      <p className="text-[11px] font-mono text-slate-500">NIP: {resolvedPembimbing.p1.nip}</p>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-xs text-slate-400 italic">Belum ditetapkan</p>
+                )}
               </div>
 
-              <textarea
-                rows={2}
-                value={fixCatatan}
-                onChange={(e) => setFixCatatan(e.target.value)}
-                placeholder="Catatan persetujuan (opsional, misal: Disetujui sebagai Judul Fix pada rapat Prodi)..."
-                className="w-full text-xs p-3 border border-emerald-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-slate-400"
-              />
-
-              <button
-                type="submit"
-                className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs inline-flex items-center justify-center space-x-2 cursor-pointer transition-colors"
-              >
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>{isFix ? 'Perbarui Ketetapan Judul Fix' : 'Setujui & Tetapkan Judul Fix'}</span>
-              </button>
-            </form>
-          </div>
-          
-          {/* FORM 1: BERIKAN CATATAN REVISI RAPAT PRODI */}
-          <div className="bg-amber-50/60 border border-amber-200 rounded-2xl p-5 shadow-2xs space-y-4">
-            <div className="flex items-center justify-between border-b border-amber-200/80 pb-3">
-              <h4 className="text-xs font-bold text-amber-900 flex items-center gap-2">
-                <MessageSquare className="w-4 h-4 text-amber-600" />
-                <span>Beri Catatan Revisi Rapat Prodi</span>
-              </h4>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
-                Ubah Status &rarr; Perlu Revisi
-              </span>
-            </div>
-
-            <p className="text-xs text-amber-900/90 leading-relaxed">
-              Jika terdapat masukan pada judul atau similarity, berikan catatan arahan di bawah ini. Status usulan akan otomatis berubah menjadi <strong>Perlu Revisi</strong> (Kuning).
-            </p>
-
-            {/* Quick Chips */}
-            <div className="space-y-1.5 pt-1">
-              <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider block">Template Catatan Cepat:</span>
-              <div className="flex flex-col gap-1.5">
-                {quickNotes.map((note, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => setRevisiCatatan(note)}
-                    className="text-[11px] bg-white hover:bg-amber-100 text-amber-900 border border-amber-200 p-2 rounded-xl transition-colors cursor-pointer text-left leading-snug"
-                  >
-                    + {note}
-                  </button>
-                ))}
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Dosen Pembimbing 2
+                </span>
+                {resolvedPembimbing.p2 ? (
+                  <>
+                    <p className="text-xs font-bold text-slate-900">{resolvedPembimbing.p2.nama}</p>
+                    {resolvedPembimbing.p2.nip && (
+                      <p className="text-[11px] font-mono text-slate-500">NIP: {resolvedPembimbing.p2.nip}</p>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-xs text-slate-400 italic">Belum ditetapkan</p>
+                )}
               </div>
             </div>
-
-            <form onSubmit={handleSendRevisionNote} className="space-y-3 pt-2">
-              <textarea
-                rows={3}
-                value={revisiCatatan}
-                onChange={(e) => setRevisiCatatan(e.target.value)}
-                placeholder="Tuliskan catatan arahan hasil rapat Prodi untuk mahasiswa..."
-                className="w-full text-xs p-3 border border-amber-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder:text-slate-400"
-              />
-
-              <button
-                type="submit"
-                className="w-full py-2.5 px-4 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-xs inline-flex items-center justify-center space-x-2 cursor-pointer transition-colors"
-              >
-                <Send className="w-3.5 h-3.5" />
-                <span>Kirim Catatan (Status Perlu Revisi)</span>
-              </button>
-            </form>
           </div>
-
         </div>
 
       </div>
