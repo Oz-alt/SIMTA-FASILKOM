@@ -131,7 +131,7 @@ export default function MobileMenuSheet({ isOpen, onClose }) {
               <div className="flex-1">
                 <p className="text-xs font-bold text-amber-900">Aktivasi Profil Diperlukan</p>
                 <p className="text-[11px] text-amber-800 mt-0.5 leading-relaxed">
-                  Lengkapi Nomor HP WhatsApp dan kata sandi baru untuk membuka seluruh fitur.
+                  Lengkapi Email Aktif, Nomor HP WhatsApp, dan kata sandi baru untuk membuka seluruh fitur.
                 </p>
               </div>
               <ChevronRight className="w-4 h-4 text-amber-600 shrink-0 mt-1" />

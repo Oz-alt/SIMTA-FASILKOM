@@ -1153,25 +1153,6 @@ export function AuthProvider({ children }) {
         }
       }
 
-      setRegisteredStudents(prev => {
-        if (!Array.isArray(prev) || prev.length === 0) return prev;
-        let changed = false;
-        const next = prev.map(s => {
-          if (normalizeNim(s.nim || s.nip) === userNim) {
-            changed = true;
-            return {
-              ...s,
-              ...(merged.nama ? { nama: merged.nama } : {}),
-              ...(merged.no_hp && isValidNonDummyPhone(merged.no_hp) ? { no_hp: merged.no_hp } : {}),
-              ...(merged.kelas ? { kelas: normalizeStudentAngkatan(merged.kelas) || merged.kelas } : {}),
-              ...(updatedFields.avatar_url !== undefined ? { avatar_url: updatedFields.avatar_url } : {})
-            };
-          }
-          return s;
-        });
-        return changed ? next : prev;
-      });
-
       const studentNim = normalizeNim(merged.nim || merged.nip);
       if (studentNim) {
         const passwordToStore = typeof updatedFields.password === 'string' ? updatedFields.password.trim() : '';
@@ -1257,6 +1238,7 @@ export function AuthProvider({ children }) {
         const isUuid = currentUser.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(currentUser.id);
         const profilePayload = {};
         if (safeFields.nama !== undefined) profilePayload.nama = safeFields.nama;
+        if (safeFields.email !== undefined && String(safeFields.email).trim()) profilePayload.email = String(safeFields.email).trim();
         if (safeFields.no_hp !== undefined) profilePayload.no_hp = safeFields.no_hp;
         if (safeFields.prodi !== undefined) profilePayload.prodi = safeFields.prodi;
         if (safeFields.link_wa_group !== undefined) profilePayload.link_wa_group = safeFields.link_wa_group;
@@ -3747,27 +3729,6 @@ export function AuthProvider({ children }) {
                     return next;
                   }
                   return prev;
-                });
-
-                setRegisteredStudents(prev => {
-                  if (!Array.isArray(prev) || prev.length === 0) return prev;
-                  let changed = false;
-                  const next = prev.map(s => {
-                    const sNim = normalizeNim(s.nim || s.nip);
-                    const meta = metaMap.get(sNim);
-                    if (meta && ((meta.no_hp && s.no_hp !== meta.no_hp) || (meta.avatar_url && s.avatar_url !== meta.avatar_url))) {
-                      changed = true;
-                      return {
-                        ...s,
-                        ...(meta.no_hp ? { no_hp: meta.no_hp } : {}),
-                        ...(meta.avatar_url ? { avatar_url: meta.avatar_url } : {}),
-                        ...(meta.nama ? { nama: meta.nama } : {}),
-                        ...(meta.kelas ? { kelas: meta.kelas } : {})
-                      };
-                    }
-                    return s;
-                  });
-                  return changed ? next : prev;
                 });
 
                 // Sinkronkan juga langsung ke currentUser aktif bila mahasiswa memiliki metadata di admin_cms

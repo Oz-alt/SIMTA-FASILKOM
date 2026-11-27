@@ -391,7 +391,15 @@ export const getStudentCredential = async (nim, options = {}) => {
 
             const localFallback = scanLocalStudentFallback(key);
             const resolvedNama = row?.nama || remoteMeta?.nama || ttNama || profNama || prev.nama || localFallback.nama || null;
-            const resolvedEmail = remoteMeta?.email || profEmail || prev.email || localFallback.email || `${key}@student.unsri.ac.id`;
+            const isUnsriDefaultEmail = (val) => /@student\.unsri\.ac\.id$/i.test(String(val || '').trim());
+            const pickActiveEmail = (...candidates) => {
+                for (const c of candidates) {
+                    const clean = String(c || '').trim();
+                    if (clean && clean.includes('@') && !isUnsriDefaultEmail(clean)) return clean;
+                }
+                return null;
+            };
+            const resolvedEmail = pickActiveEmail(remoteMeta?.email, profEmail, prev.email, localFallback.email);
             const rawPhone = (isValidStudentPhone(row?.no_hp) ? row.no_hp : null)
                 || (isValidStudentPhone(remoteMeta?.noHp || remoteMeta?.no_hp) ? (remoteMeta.noHp || remoteMeta.no_hp) : null)
                 || (isValidStudentPhone(profPhone) ? profPhone : null)

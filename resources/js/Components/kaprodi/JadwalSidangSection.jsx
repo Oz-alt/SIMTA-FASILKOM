@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { getMinSessionsPerAdvisor } from '../../lib/consultationUtils.js';
+import { getStudentCredential } from '../../services/studentCredentials.js';
 import {
   CalendarDays,
   Clock,
@@ -24,7 +25,9 @@ import {
   BookOpen,
   GraduationCap,
   ArrowLeft,
-  Lock
+  Lock,
+  Mail,
+  Send
 } from 'lucide-react';
 
 export default function JadwalSidangSection({ showHeaderBanner = true }) {
@@ -54,11 +57,22 @@ export default function JadwalSidangSection({ showHeaderBanner = true }) {
   const [editingSchedule, setEditingSchedule] = useState(null);
   const [selectedSchedule, setSelectedSchedule] = useState(null);
   const [toastMessage, setToastMessage] = useState('');
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+
+  const isUnsriStudentEmail = (val) => /@student\.unsri\.ac\.id$/i.test(String(val || '').trim());
+  const pickActiveEmail = (...candidates) => {
+    for (const c of candidates) {
+      const clean = String(c || '').trim();
+      if (clean && clean.includes('@') && !isUnsriStudentEmail(clean)) return clean;
+    }
+    return '';
+  };
 
   // Form Initial State
   const initialFormState = {
     mhs_nim: '',
     mhs_nama: '',
+    mhs_email: '',
     prodi: 'D3 Manajemen Informatika',
     judul: '',
     jenis_sidang: 'Seminar Proposal',
@@ -105,10 +119,13 @@ export default function JadwalSidangSection({ showHeaderBanner = true }) {
     setEditingSchedule(sch);
     // Jika status awalnya 'diajukan', form otomatis mengarahkan ke 'dijadwalkan' setelah Kaprodi menentukan tanggal & ruangan
     const nextStatus = (sch.status === 'diajukan' || !sch.tanggal) ? 'dijadwalkan' : (sch.status || 'dijadwalkan');
+    const std = registeredStudents.find(s => String(s.nim || '').trim() === String(sch.mhs_nim || '').trim());
+    const resolvedEmail = pickActiveEmail(sch.mhs_email, std?.email);
 
     setFormData({
       mhs_nim: sch.mhs_nim || '',
       mhs_nama: sch.mhs_nama || '',
+      mhs_email: resolvedEmail,
       prodi: sch.prodi || 'D3 Manajemen Informatika',
       judul: sch.judul || '',
       jenis_sidang: sch.jenis_sidang || 'Sidang Akhir',
@@ -152,11 +169,13 @@ export default function JadwalSidangSection({ showHeaderBanner = true }) {
 
     // Find student's approved thesis title
     const titleObj = (thesisTitles || []).find(t => t.mhs_nim === nim || t.profile_id === std.id);
+    const initialEmail = pickActiveEmail(std.email);
 
     setFormData(prev => ({
       ...prev,
       mhs_nim: std.nim,
       mhs_nama: std.nama,
+      mhs_email: initialEmail,
       prodi: std.prodi || 'D3 Manajemen Informatika',
       judul: titleObj?.judul || prev.judul || 'Judul Tugas Akhir Belum Terdaftar',
       sekretaris_nama: adv1 ? adv1.nama : prev.sekretaris_nama,
@@ -164,6 +183,65 @@ export default function JadwalSidangSection({ showHeaderBanner = true }) {
       penguji1_nama: adv2 ? adv2.nama : prev.penguji1_nama,
       penguji1_nip: adv2 ? adv2.nip : prev.penguji1_nip
     }));
+
+    // Ambil email aktif terbaru mahasiswa dari Supabase (hasil verifikasi profil mahasiswa)
+    getStudentCredential(std.nim, { fresh: true }).then((cred) => {
+      const freshEmail = pickActiveEmail(cred?.email);
+      if (freshEmail) {
+        setFormData(prev => (prev.mhs_nim === std.nim ? { ...prev, mhs_email: freshEmail } : prev));
+      }
+    }).catch(() => {});
+  };
+
+  const sendDefenseScheduleEmail = async (schedulePayload, isUpdate = false) => {
+    const targetEmail = String(schedulePayload.mhs_email || '').trim();
+    if (!targetEmail) {
+      return { success: false, message: 'Email aktif mahasiswa belum diisi.' };
+    }
+    if (isUnsriStudentEmail(targetEmail)) {
+      return { success: false, message: 'Email @student.unsri.ac.id tidak dapat menerima notifikasi. Gunakan email aktif mahasiswa.' };
+    }
+
+    try {
+      setIsSendingEmail(true);
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+      const response = await fetch('/api/defense-schedules/send-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          ...(csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {}),
+        },
+        body: JSON.stringify({
+          email: targetEmail,
+          mhs_nama: schedulePayload.mhs_nama,
+          mhs_nim: schedulePayload.mhs_nim,
+          prodi: schedulePayload.prodi,
+          judul: schedulePayload.judul,
+          jenis_sidang: schedulePayload.jenis_sidang,
+          tanggal: schedulePayload.tanggal,
+          waktu_mulai: schedulePayload.waktu_mulai,
+          waktu_selesai: schedulePayload.waktu_selesai,
+          ruangan: schedulePayload.ruangan,
+          ketua_penguji_nama: schedulePayload.ketua_penguji_nama,
+          sekretaris_nama: schedulePayload.sekretaris_nama,
+          penguji1_nama: schedulePayload.penguji1_nama,
+          penguji2_nama: schedulePayload.penguji2_nama,
+          catatan: schedulePayload.catatan,
+          link_berkas: schedulePayload.link_berkas,
+          is_update: isUpdate,
+        }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (response.ok && result.success) {
+        return { success: true, message: result.message || `Email jadwal sidang terkirim ke ${targetEmail}.` };
+      }
+      return { success: false, message: result.message || 'Gagal mengirim email jadwal sidang.' };
+    } catch (err) {
+      return { success: false, message: err?.message || 'Gagal menghubungi server email.' };
+    } finally {
+      setIsSendingEmail(false);
+    }
   };
 
   const timeStrToMinutes = (val) => {
@@ -172,12 +250,26 @@ export default function JadwalSidangSection({ showHeaderBanner = true }) {
     return (h || 0) * 60 + (m || 0);
   };
 
-  // Handle Form Submit (Kaprodi Atur Jadwal & Ruangan)
-  const handleFormSubmit = (e) => {
+  // Handle Form Submit (Kaprodi Atur Jadwal & Ruangan + Kirim Email ke Mahasiswa)
+  const handleFormSubmit = async (e) => {
     e.preventDefault();
 
     if (!formData.mhs_nim || !formData.mhs_nama) {
       alert('Mohon masukkan NIM dan Nama Mahasiswa.');
+      return;
+    }
+
+    const trimmedEmail = String(formData.mhs_email || '').trim();
+    if (!trimmedEmail) {
+      alert('Mohon isi Email Aktif Mahasiswa tujuan pengiriman undangan jadwal sidang.');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      alert('Format Email Aktif Mahasiswa tidak valid.');
+      return;
+    }
+    if (isUnsriStudentEmail(trimmedEmail)) {
+      alert('Email @student.unsri.ac.id tidak dapat menerima notifikasi sistem. Gunakan email aktif pribadi mahasiswa (misal Gmail).');
       return;
     }
 
@@ -240,15 +332,22 @@ export default function JadwalSidangSection({ showHeaderBanner = true }) {
 
     const payload = {
       ...formData,
+      mhs_email: trimmedEmail,
       status: targetStatus
     };
 
+    const isUpdateAction = Boolean(editingSchedule);
     if (editingSchedule) {
       updateDefenseSchedule(editingSchedule.id, payload);
-      showToast(`Jadwal sidang untuk ${formData.mhs_nama} berhasil ${targetStatus === 'dijadwalkan' ? 'dijadwalkan' : 'diperbarui'}.`);
     } else {
       addDefenseSchedule(payload);
-      showToast(`Jadwal sidang baru untuk ${formData.mhs_nama} berhasil dijadwalkan.`);
+    }
+
+    const emailRes = await sendDefenseScheduleEmail(payload, isUpdateAction);
+    if (emailRes.success) {
+      showToast(`Jadwal sidang ${formData.mhs_nama} tersimpan & undangan email terkirim ke ${trimmedEmail}.`);
+    } else {
+      showToast(`Jadwal sidang ${formData.mhs_nama} tersimpan, namun email gagal dikirim: ${emailRes.message}`);
     }
 
     setViewMode('list');
@@ -375,10 +474,11 @@ export default function JadwalSidangSection({ showHeaderBanner = true }) {
               <button
                 type="submit"
                 form="form-jadwal-sidang"
-                className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-600/30 transition-all cursor-pointer flex items-center space-x-2"
+                disabled={isSendingEmail}
+                className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white text-xs font-bold shadow-md shadow-indigo-600/30 transition-all cursor-pointer flex items-center space-x-2"
               >
-                <CheckCircle2 className="w-4 h-4" />
-                <span>{editingSchedule ? 'Simpan Perubahan' : 'Simpan & Jadwalkan'}</span>
+                <Send className="w-4 h-4" />
+                <span>{isSendingEmail ? 'Mengirim Email...' : (editingSchedule ? 'Simpan & Kirim Email' : 'Simpan & Kirim Email')}</span>
               </button>
             </div>
           </div>
@@ -463,6 +563,26 @@ export default function JadwalSidangSection({ showHeaderBanner = true }) {
                     }`}
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Mail className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>Email Aktif Mahasiswa (Tujuan Notifikasi Jadwal Sidang) <span className="text-rose-500">*</span></span>
+                  </span>
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={formData.mhs_email}
+                  onChange={(e) => setFormData({ ...formData, mhs_email: e.target.value })}
+                  placeholder="Contoh: mahasiswa@gmail.com (otomatis terisi jika mahasiswa sudah verifikasi email)"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:border-indigo-600 text-slate-900 bg-white font-medium text-xs outline-none transition-all"
+                />
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Undangan jadwal sidang akan otomatis dikirim ke email ini saat disimpan. Hindari domain <span className="font-semibold text-amber-700">@student.unsri.ac.id</span>.
+                </p>
               </div>
 
               <div>

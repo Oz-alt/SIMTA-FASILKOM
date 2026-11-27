@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\DefenseScheduleNotificationController;
 use App\Http\Controllers\PasswordResetProtocolController;
 use App\Models\User;
 use Illuminate\Support\Facades\Route;
@@ -11,3 +12,6 @@ Route::get('/get-dosen', function () {
 // SIMONITA Password Reset Protocol Endpoints
 Route::post('/password-reset/send-email', [PasswordResetProtocolController::class, 'sendResetEmail']);
 Route::post('/password-reset/complete', [PasswordResetProtocolController::class, 'completeReset']);
+
+// SIMONITA Defense Schedule Email Notification Endpoint
+Route::post('/defense-schedules/send-email', [DefenseScheduleNotificationController::class, 'sendScheduleEmail']);

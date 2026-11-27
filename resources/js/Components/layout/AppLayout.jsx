@@ -46,8 +46,45 @@ export default function AppLayout({ children }) {
     return '/dashboard';
   };
 
-  const cleanPath = (url || '/').split('?')[0].split('#')[0] || '/';
+  const rawPath = url || (typeof window !== 'undefined' ? window.location?.pathname : '/') || '/';
+  const cleanPath = (rawPath.split('?')[0].split('#')[0].replace(/\/+/g, '/').replace(/\/$/, '') || '/').toLowerCase();
   const isPublicPath = cleanPath === '/' || cleanPath === '/documents' || cleanPath.startsWith('/documents/') || isAuthRoute(cleanPath);
+
+  const role = currentUser?.role || null;
+  const isAdminRoute =
+    cleanPath === '/admin' ||
+    cleanPath.startsWith('/admin/') ||
+    cleanPath === '/admin-simta' ||
+    cleanPath.startsWith('/admin-simta/') ||
+    cleanPath === '/schedule' ||
+    cleanPath.startsWith('/schedule/');
+  const isKaprodiRoute = cleanPath === '/kaprodi' || cleanPath.startsWith('/kaprodi/');
+  const isDosenRoute = cleanPath === '/dosen' || cleanPath.startsWith('/dosen/');
+  const isMahasiswaExclusiveRoute =
+    cleanPath === '/dashboard' ||
+    cleanPath === '/booking' ||
+    cleanPath.startsWith('/booking/') ||
+    (cleanPath.startsWith('/thesis') && !cleanPath.startsWith('/thesis/archive'));
+
+  const isUnauthorizedRole = Boolean(
+    currentUser &&
+    !isPublicPath &&
+    (
+      (isAdminRoute && role !== 'admin') ||
+      (isKaprodiRoute && role !== 'kaprodi') ||
+      (isDosenRoute && role !== 'dosen') ||
+      (isMahasiswaExclusiveRoute && role !== 'mahasiswa')
+    )
+  );
+
+  const isProfileActivationRequired = Boolean(
+    currentUser &&
+    !isPublicPath &&
+    !isUnauthorizedRole &&
+    role === 'mahasiswa' &&
+    !currentUser.is_profile_completed &&
+    !cleanPath.startsWith('/profile')
+  );
 
   useEffect(() => {
     // Abaikan seluruh rute publik (Beranda, Dokumen, Login/Reset/Verify)
@@ -55,67 +92,47 @@ export default function AppLayout({ children }) {
       return;
     }
 
-    // 1. Wajib login untuk seluruh rute non-publik (BUG-01)
+    // 1. Wajib login untuk seluruh rute non-publik
     if (!currentUser) {
-      router.visit('/login');
+      router.visit('/login', { replace: true });
       return;
     }
 
-    const role = currentUser.role;
-    const isAdminRoute = cleanPath.startsWith('/admin-simta') || cleanPath.startsWith('/admin');
-    const isKaprodiRoute = cleanPath.startsWith('/kaprodi');
-    const isDosenRoute = cleanPath.startsWith('/dosen');
-    const isSharedAuthenticatedRoute =
-      cleanPath.startsWith('/profile') ||
-      cleanPath === '/thesis/archive' ||
-      cleanPath.startsWith('/thesis/archive/') ||
-      cleanPath === '/schedule' ||
-      cleanPath.startsWith('/schedule/');
-    const isMahasiswaExclusiveRoute =
-      cleanPath === '/dashboard' ||
-      cleanPath.startsWith('/booking') ||
-      (cleanPath.startsWith('/thesis') && !cleanPath.startsWith('/thesis/archive'));
-
-    // 2. Isolasi ketat rute per Role (BUG-02 & BUG-03)
-    if (isAdminRoute && role !== 'admin') {
-      router.visit(getRoleHomePath(role));
-      return;
-    }
-    if (isKaprodiRoute && role !== 'kaprodi') {
-      router.visit(getRoleHomePath(role));
-      return;
-    }
-    if (isDosenRoute && role !== 'dosen') {
-      router.visit(getRoleHomePath(role));
-      return;
-    }
-    if (isMahasiswaExclusiveRoute && role !== 'mahasiswa') {
-      router.visit(getRoleHomePath(role));
+    // 2. Isolasi ketat rute per Role (cegah akses lintas role via edit URL)
+    if (isUnauthorizedRole) {
+      router.visit(getRoleHomePath(role), { replace: true });
       return;
     }
 
     // 3. Kunci aktivasi profil pertama kali login khusus Mahasiswa
-    if (
-      role === 'mahasiswa' &&
-      !currentUser.is_profile_completed &&
-      !cleanPath.startsWith('/profile') &&
-      !isSharedAuthenticatedRoute
-    ) {
-      router.visit('/profile?first_login=true');
-    } else if (
-      role === 'mahasiswa' &&
-      !currentUser.is_profile_completed &&
-      !cleanPath.startsWith('/profile')
-    ) {
-      router.visit('/profile?first_login=true');
+    if (isProfileActivationRequired) {
+      router.visit('/profile?first_login=true', { replace: true });
     }
-  }, [currentUser, currentUser?.role, currentUser?.is_profile_completed, cleanPath, isPublicPath]);
+  }, [currentUser, role, isPublicPath, isUnauthorizedRole, isProfileActivationRequired, cleanPath]);
 
   const isHomePage = cleanPath === '/';
   const isDokumenPage = cleanPath === '/documents' || cleanPath.startsWith('/documents/');
   const isAuthPage = isAuthRoute(cleanPath);
 
   if (!currentUser && !isPublicPath) {
+    return null;
+  }
+
+  // Blokir render halaman secara sinkron sebelum redirect agar halaman role lain tidak pernah bocor/tampil
+  if (isUnauthorizedRole) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 font-sans">
+        <div className="max-w-md w-full bg-white border border-slate-200 rounded-2xl p-6 text-center shadow-sm space-y-2">
+          <p className="text-sm font-bold text-rose-700">Akses Ditolak</p>
+          <p className="text-xs text-slate-600">
+            Anda tidak memiliki izin untuk membuka halaman ini. Mengalihkan kembali ke dashboard Anda...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isProfileActivationRequired) {
     return null;
   }
 

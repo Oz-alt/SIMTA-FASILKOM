@@ -122,9 +122,19 @@ export default function ProfilePage() {
     return '';
   }, [currentUser, matchedAdvisor]);
 
+  const isUnsriStudentEmail = (val) => /@student\.unsri\.ac\.id$/i.test(String(val || '').trim());
+
+  const resolveInitialEmail = (user, isMhs) => {
+    const raw = String(user?.email || '').trim();
+    if (isMhs && (!raw || isUnsriStudentEmail(raw))) {
+      return '';
+    }
+    return raw;
+  };
+
   const [formData, setFormData] = useState({
     nama: currentUser?.nama || '',
-    email: currentUser?.email || (currentUser?.nim ? `${currentUser.nim}@student.unsri.ac.id` : ''),
+    email: resolveInitialEmail(currentUser, isMahasiswa),
     no_hp: currentUser?.no_hp && currentUser?.no_hp !== '-' ? currentUser.no_hp : '',
     prodi: currentUser?.prodi || 'D3 Manajemen Informatika',
     kelas: isMahasiswa ? resolveStudentAngkatan(currentUser) : resolvedJabatan,
@@ -154,9 +164,13 @@ export default function ProfilePage() {
         const needsAvatarUpdate = hasRemoteAvatar && avatar !== currentUser.avatar_url;
         const needsKelasUpdate = Boolean(cred.kelas && cred.kelas !== currentUser.kelas && (!currentUser.kelas || currentUser.kelas === 'MI 2024' || /^0901\d{8,}$/.test(currentUser.kelas)));
 
-        if (needsPhoneUpdate || needsAvatarUpdate || needsKelasUpdate) {
+        const remoteEmail = cred.email && !isUnsriStudentEmail(cred.email) ? String(cred.email).trim() : '';
+        const needsEmailUpdate = Boolean(remoteEmail && remoteEmail !== currentUser.email);
+
+        if (needsPhoneUpdate || needsAvatarUpdate || needsKelasUpdate || needsEmailUpdate) {
           updateUserProfile({
             ...(needsPhoneUpdate ? { no_hp: phone, is_profile_completed: true } : {}),
+            ...(needsEmailUpdate ? { email: remoteEmail } : {}),
             ...(needsAvatarUpdate ? { avatar_url: avatar } : {}),
             ...(needsKelasUpdate ? { kelas: cred.kelas } : {}),
             ...(cred.nama && (!currentUser.nama || currentUser.nama === 'Mahasiswa UNSRI') ? { nama: cred.nama } : {}),
@@ -200,7 +214,7 @@ export default function ProfilePage() {
       }
       setFormData({
         nama: currentUser.nama || '',
-        email: currentUser.email || (currentUser.nim ? `${currentUser.nim}@student.unsri.ac.id` : ''),
+        email: resolveInitialEmail(currentUser, isMahasiswa),
         no_hp: currentUser.no_hp && currentUser.no_hp !== '-' ? currentUser.no_hp : '',
         prodi: currentUser.prodi || 'D3 Manajemen Informatika',
         kelas: isMahasiswa ? resolveStudentAngkatan(currentUser) : resolvedJabatan,
@@ -208,7 +222,7 @@ export default function ProfilePage() {
         keilmuan: resolvedKeilmuan
       });
     }
-  }, [currentUser?.id, currentUser?.link_wa_group, currentUser?.nip, currentUser?.nim, currentUser?.role, currentUser?.no_hp, currentUser?.kelas, currentUser?.is_profile_completed, resolvedJabatan, resolvedKeilmuan, isMahasiswa]);
+  }, [currentUser?.id, currentUser?.email, currentUser?.link_wa_group, currentUser?.nip, currentUser?.nim, currentUser?.role, currentUser?.no_hp, currentUser?.kelas, currentUser?.is_profile_completed, resolvedJabatan, resolvedKeilmuan, isMahasiswa]);
 
   const roleLabels = {
     mahasiswa: { label: 'Mahasiswa', badge: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
@@ -227,7 +241,7 @@ export default function ProfilePage() {
   const handleStartEdit = () => {
     setFormData({
       nama: currentUser?.nama || '',
-      email: currentUser?.email || (currentUser?.nim ? `${currentUser.nim}@student.unsri.ac.id` : ''),
+      email: resolveInitialEmail(currentUser, isMahasiswa),
       no_hp: currentUser?.no_hp && currentUser?.no_hp !== '-' ? currentUser.no_hp : '',
       prodi: currentUser?.prodi || 'D3 Manajemen Informatika',
       kelas: isMahasiswa ? resolveStudentAngkatan(currentUser) : resolvedJabatan,
@@ -256,7 +270,21 @@ export default function ProfilePage() {
       return;
     }
 
-    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+    const trimmedEmail = String(formData.email || '').trim();
+    if (isMahasiswa) {
+      if (!trimmedEmail) {
+        setErrorMsg('Email aktif wajib diisi untuk verifikasi akun dan penerimaan notifikasi jadwal sidang.');
+        return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+        setErrorMsg('Format email aktif tidak valid.');
+        return;
+      }
+      if (isUnsriStudentEmail(trimmedEmail)) {
+        setErrorMsg('Email @student.unsri.ac.id tidak dapat menerima notifikasi email sistem. Gunakan email aktif pribadi Anda (misal Gmail).');
+        return;
+      }
+    } else if (trimmedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
       setErrorMsg('Format email resmi tidak valid.');
       return;
     }
@@ -857,7 +885,11 @@ export default function ProfilePage() {
                 {currentRole.label}
               </span>
             </div>
-            <p className="text-xs text-slate-500 font-medium">{currentUser?.email || (currentUser?.nim ? `${currentUser.nim}@student.unsri.ac.id` : '-')}</p>
+            <p className="text-xs text-slate-500 font-medium">
+              {currentUser?.email && !(isMahasiswa && isUnsriStudentEmail(currentUser.email))
+                ? currentUser.email
+                : (isMahasiswa ? 'Email aktif belum diisi' : '-')}
+            </p>
             <div className="text-[11px] text-slate-400 font-medium pt-0.5 flex flex-wrap items-center gap-2">
               <span>Fakultas Ilmu Komputer • Universitas Sriwijaya</span>
               <button
@@ -972,27 +1004,39 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* 3. Email Resmi (Bisa diedit oleh mahasiswa maupun role lain) */}
+            {/* 3. Email Aktif (Wajib diisi mahasiswa dengan email aktif non-@student.unsri.ac.id) */}
             <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 space-y-1.5">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                Email Resmi {isEditing && <span className="text-rose-500">*</span>}
+                {isMahasiswa ? 'Email Aktif (Notifikasi Jadwal Sidang)' : 'Email Resmi'} {isEditing && <span className="text-rose-500">*</span>}
               </span>
               {isEditing ? (
-                <div className="relative">
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 text-xs font-semibold text-slate-900 bg-white transition-all outline-none"
-                    placeholder="nama@student.unsri.ac.id"
-                  />
-                  <Mail className="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                <div className="space-y-1">
+                  <div className="relative">
+                    <input
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      required={isMahasiswa}
+                      className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 text-xs font-semibold text-slate-900 bg-white transition-all outline-none"
+                      placeholder={isMahasiswa ? 'Contoh: nama.anda@gmail.com' : 'nama@unsri.ac.id'}
+                    />
+                    <Mail className="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                  </div>
+                  {isMahasiswa && (
+                    <p className="text-[10px] text-amber-700 font-medium leading-snug">
+                      Gunakan email aktif pribadi (misal Gmail) agar notifikasi jadwal sidang masuk. Jangan gunakan <span className="font-bold">@student.unsri.ac.id</span>.
+                    </p>
+                  )}
                 </div>
               ) : (
                 <div className="flex items-center space-x-2 text-slate-900 font-semibold pt-0.5">
                   <Mail className="w-4 h-4 text-slate-400" />
-                  <span>{currentUser?.email || (currentUser?.nim ? `${currentUser.nim}@student.unsri.ac.id` : '-')}</span>
+                  <span>
+                    {currentUser?.email && !(isMahasiswa && isUnsriStudentEmail(currentUser.email))
+                      ? currentUser.email
+                      : <span className="text-slate-400 font-normal italic">Belum diisi</span>}
+                  </span>
                 </div>
               )}
             </div>
