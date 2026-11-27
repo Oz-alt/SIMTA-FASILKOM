@@ -14,31 +14,27 @@ export default function ThesisStepper({ currentTitle, stages = [] }) {
   }
 
   const isGraduated = currentTitle.status_kelulusan === 'lulus' || currentTitle.status_sidang === 'selesai';
-  const isTitleFix = currentTitle.status === 'disetujui' || currentTitle.status === 'judul_fix';
+  const hasThesisTitle = Boolean(String(currentTitle.judul || '').trim());
   const isReadyOrScheduled = currentTitle.status_sidang === 'siap_daftar' || currentTitle.status_sidang === 'terjadwal';
 
   const steps = [
     {
       key: 'title',
-      label: '1. Usulan & Judul Fix',
-      isCompleted: isTitleFix,
-      isPending: currentTitle.status === 'tinjauan' || currentTitle.status === 'diajukan' || currentTitle.status === 'perlu_revisi',
-      statusText: isTitleFix
-        ? 'Judul Fix'
-        : currentTitle.status === 'perlu_revisi'
-        ? 'Perlu Revisi'
-        : 'Dalam Tinjauan'
+      label: '1. Judul Tugas Akhir',
+      isCompleted: hasThesisTitle,
+      isPending: !hasThesisTitle,
+      statusText: hasThesisTitle ? String(currentTitle.judul).trim() : 'Belum Mengajukan Judul'
     },
     {
       key: 'pengerjaan_ta',
       label: '2. Pengerjaan Laporan TA',
       isCompleted: isReadyOrScheduled || isGraduated,
-      isPending: isTitleFix && !isReadyOrScheduled && !isGraduated,
+      isPending: hasThesisTitle && !isReadyOrScheduled && !isGraduated,
       statusText: (isReadyOrScheduled || isGraduated)
         ? 'Siap Sidang Akhir'
-        : isTitleFix
+        : hasThesisTitle
         ? 'Dalam Penyusunan TA'
-        : 'Menunggu Judul Fix'
+        : 'Menunggu Judul TA'
     },
     {
       key: 'kelulusan',
@@ -57,7 +53,7 @@ export default function ThesisStepper({ currentTitle, stages = [] }) {
             Perjalanan Tugas Akhir D3 Manajemen Informatika
           </h3>
           <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-            Alur terfokus: Usulan Judul &rarr; Pengerjaan TA &rarr; Kelulusan (Jadwal sidang dikirim via Email)
+            Alur terfokus: Judul TA &rarr; Pengerjaan TA &rarr; Kelulusan (Jadwal sidang dikirim via Email)
           </p>
           <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
             <span className="inline-flex items-center whitespace-nowrap text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800">
@@ -95,7 +91,7 @@ export default function ThesisStepper({ currentTitle, stages = [] }) {
               )}
             </div>
             
-            <div className="mt-2 text-xs font-semibold">
+            <div className={`mt-2 text-xs font-semibold leading-snug ${step.key === 'title' ? 'line-clamp-3' : ''}`} title={step.statusText}>
               {step.statusText}
             </div>
 
