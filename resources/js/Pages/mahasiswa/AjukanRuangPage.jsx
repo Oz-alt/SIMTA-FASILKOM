@@ -4,10 +4,9 @@ import { router } from '@inertiajs/react';
 import { getRecommendedRooms, checkBookingCollision, STAGE_LABELS } from '../../services/bookingService.js';
 import { Building2, CalendarDays, Clock, CheckCircle2, AlertTriangle, Send, Sparkles } from 'lucide-react';
 
-export default function AjukanRuangPage() {
+export default function AjukanRuangPage({ stage = 'seminar_proposal' }) {
   const { currentUser, thesisTitles, thesisStages, rooms, roomPriorities, bookings, addBooking } = useAuth();
   const navigate = (url) => router.visit(url);
-  const { stage = 'seminar_proposal' } = useParams();
 
   const myApprovedTitle = thesisTitles.find(t => (currentUser?.id && t.profile_id === currentUser.id) || (currentUser?.nim && t.mhs_nim === currentUser.nim)) || thesisTitles[0];
   const myCurrentStage = thesisStages.find(s => s.thesis_title_id === myApprovedTitle?.id && s.stage_type === stage) || thesisStages[0];

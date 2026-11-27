@@ -371,12 +371,6 @@ export default function KelolaRuanganPage() {
               </div>
             )}
 
-            {errorMsg && (
-              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">
-                {errorMsg}
-              </div>
-            )}
-
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">Nama Ruangan *</label>
               <input

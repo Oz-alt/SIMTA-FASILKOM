@@ -4829,6 +4829,7 @@ export function AuthProvider({ children }) {
     const term = String(credential).trim();
     const termLower = term.toLowerCase();
     const inputPass = String(password).trim();
+    const passLower = inputPass.toLowerCase();
 
     if (!term) {
       throw new Error('NIM / NIP atau Username wajib diisi.');
@@ -8633,7 +8634,7 @@ export function AuthProvider({ children }) {
       String(d.email || '').toLowerCase() === term
     );
     if (dsnMatch) {
-      const isDeleted = isDosenDeleted ? isDosenDeleted(dsnMatch) : false;
+      const isDeleted = Boolean(dsnMatch.is_deleted || dsnMatch.deleted_at || String(dsnMatch.status || '').toLowerCase() === 'dihapus');
       const rawStatus = isDeleted ? 'nonaktif' : (dsnMatch.status || 'aktif');
       const isStatusActive = String(rawStatus).toLowerCase() === 'aktif';
       return {

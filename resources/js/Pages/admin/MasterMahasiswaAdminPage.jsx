@@ -309,7 +309,7 @@ export default function MasterMahasiswaAdminPage() {
       `"${std.no_hp || '-'}"`,
       `"${std.prodi || 'D3 Manajemen Informatika'}"`,
       `"${std.kelas || '-'}"`,
-      `"${getStudentSemester(std)}"`,
+      `"${std.semester || '-'}"`,
       `"${std.status || 'aktif'}"`
     ]);
 
