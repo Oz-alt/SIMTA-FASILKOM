@@ -20,7 +20,9 @@ class PasswordResetMail extends Mailable
         public string $name,
         public string $resetUrl,
         public string $expiresAt = '24 Jam',
-        public string $role = 'Pengguna'
+        public string $role = 'Pengguna',
+        public ?string $temporaryPassword = null,
+        public ?string $identifier = null
     ) {}
 
     /**
@@ -45,6 +47,8 @@ class PasswordResetMail extends Mailable
                 'resetUrl' => $this->resetUrl,
                 'expiresAt' => $this->expiresAt,
                 'role' => $this->role,
+                'temporaryPassword' => $this->temporaryPassword,
+                'identifier' => $this->identifier,
             ],
         );
     }

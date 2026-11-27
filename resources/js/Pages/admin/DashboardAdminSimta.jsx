@@ -32,6 +32,7 @@ export default function DashboardAdminSimta() {
     bookings = [],
     rooms = [],
     passwordResetRequests = [],
+    systemActivities = [],
     getAllMahasiswaAccounts,
     getAllDosenAccounts
   } = useAuth();
@@ -83,27 +84,19 @@ export default function DashboardAdminSimta() {
   const totalRepo = repoList.length;
   const repoPublish = repoList.filter(a => a && (a.status || 'dipublikasikan') === 'dipublikasikan').length;
 
-  // Memoize recent activities
+  // Memoize recent activities from actual persistent audit logs
   const recentActivity = useMemo(() => {
     try {
-      return [
-        ...sopList.map(s => ({
-          id: s.id, label: s.nama, kategori: 'SOP', status: s.status,
-          tanggal: s.updated_at, icon: FileCheck, color: 'text-emerald-600', bg: 'bg-emerald-50'
-        })),
-        ...docsList.map(d => ({
-          id: d.id, label: d.nama, kategori: 'Surat', status: d.status,
-          tanggal: d.tanggal_upload, icon: FileStack, color: 'text-blue-600', bg: 'bg-blue-50'
-        })),
-        ...tplList.map(t => ({
-          id: t.id, label: t.nama, kategori: 'Template', status: t.status,
-          tanggal: t.updated_at, icon: FileText, color: 'text-indigo-600', bg: 'bg-indigo-50'
-        }))
-      ].sort((a, b) => (b.tanggal || '').localeCompare(a.tanggal || '')).slice(0, 8);
+      if (Array.isArray(systemActivities) && systemActivities.length > 0) {
+        return [...systemActivities]
+          .sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0))
+          .slice(0, 10);
+      }
+      return [];
     } catch {
       return [];
     }
-  }, [sopList, docsList, tplList]);
+  }, [systemActivities]);
 
   const statusBadge = (status) => {
     if (status === 'aktif' || status === 'publikasi')
@@ -381,7 +374,7 @@ export default function DashboardAdminSimta() {
         </div>
       )}
 
-      {/* Section: Aktivitas Terbaru */}
+      {/* Section: Aktivitas Terbaru Sistem */}
       <div className="bg-white border border-slate-300 rounded-2xl p-5 shadow-xs space-y-4">
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <h3 className="text-sm font-bold text-slate-900 flex items-center space-x-2">
@@ -389,9 +382,10 @@ export default function DashboardAdminSimta() {
             <span>Aktivitas Terbaru Sistem</span>
           </h3>
           <span className="text-[11px] text-slate-400 font-medium">
-            {recentActivity.length > 0 ? `${recentActivity.length} aktivitas terbaru` : 'Belum ada aktivitas'}
+            {recentActivity.length > 0 ? `${recentActivity.length} aktivitas tercatat` : 'Belum ada aktivitas'}
           </span>
         </div>
+
         <div className="space-y-2.5">
           {recentActivity.length === 0 ? (
             <div className="py-8 text-center text-xs text-slate-400">
@@ -399,20 +393,58 @@ export default function DashboardAdminSimta() {
             </div>
           ) : (
             recentActivity.map((item) => {
-              const Icon = item.icon;
+              const category = item.category || 'sistem';
+              const isRuang = category === 'ruangan';
+              const isAkun = category === 'akun';
+              const isReset = category === 'reset_password';
+              const isDoc = category === 'dokumen' || category === 'cms';
+
+              const Icon = isRuang ? Building2 : isAkun ? Users : isReset ? KeyRound : isDoc ? FileText : Clock;
+              const color = isRuang ? 'text-indigo-600' : isAkun ? 'text-blue-600' : isReset ? 'text-amber-600' : isDoc ? 'text-emerald-600' : 'text-slate-600';
+              const bg = isRuang ? 'bg-indigo-50' : isAkun ? 'bg-blue-50' : isReset ? 'bg-amber-50' : isDoc ? 'bg-emerald-50' : 'bg-slate-50';
+
+              const formattedTime = item.timestamp
+                ? new Date(item.timestamp).toLocaleString('id-ID', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })
+                : '-';
+
               return (
-                <div key={`${item.kategori}-${item.id}`}
-                  className="flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-100 bg-slate-50/40 hover:bg-slate-50 transition-colors">
-                  <div className="flex items-center space-x-3 min-w-0">
-                    <div className={`w-8 h-8 rounded-lg ${item.bg} flex items-center justify-center shrink-0`}>
-                      <Icon className={`w-3.5 h-3.5 ${item.color}`} />
+                <div
+                  key={item.id}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 p-3.5 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-50 transition-colors"
+                >
+                  <div className="flex items-start space-x-3 min-w-0">
+                    <div className={`w-8 h-8 rounded-lg ${bg} flex items-center justify-center shrink-0 mt-0.5`}>
+                      <Icon className={`w-4 h-4 ${color}`} />
                     </div>
-                    <div className="min-w-0">
-                      <div className="text-xs font-semibold text-slate-900 truncate">{item.label}</div>
-                      <div className="text-[10px] text-slate-500 mt-0.5">{item.kategori} · {item.tanggal}</div>
+                    <div className="min-w-0 space-y-0.5">
+                      <div className="text-xs font-bold text-slate-900 flex items-center space-x-1.5 flex-wrap">
+                        <span>{item.action?.replace(/_/g, ' ')}</span>
+                        {item.target && (
+                          <span className="text-[11px] text-slate-600 font-normal">
+                            · <strong className="text-slate-800">{item.target}</strong>
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[11px] text-slate-500 leading-relaxed">
+                        {item.details || item.action}
+                      </div>
                     </div>
                   </div>
-                  <div className="shrink-0">{statusBadge(item.status)}</div>
+
+                  <div className="sm:text-right shrink-0 pl-11 sm:pl-0 space-y-0.5">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 block sm:inline-block">
+                      {item.actor || 'Sistem'}
+                    </span>
+                    <div className="text-[10px] text-slate-400 font-mono">
+                      {formattedTime}
+                    </div>
+                  </div>
                 </div>
               );
             })

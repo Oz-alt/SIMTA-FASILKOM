@@ -24,12 +24,15 @@ class PasswordResetProtocolController extends Controller
             'token' => ['required', 'string'],
             'role' => ['nullable', 'string'],
             'identifier' => ['nullable', 'string'],
+            'temporary_password' => ['nullable', 'string'],
         ]);
 
         $email = trim($validated['email']);
         $name = trim($validated['name']);
         $token = trim($validated['token']);
         $role = $validated['role'] ?? 'Pengguna';
+        $identifier = $validated['identifier'] ?? '';
+        $temporaryPassword = $validated['temporary_password'] ?? $identifier;
 
         // Tentukan baseUrl resmi (Hindari localhost hardcoded di produksi)
         $schemeAndHost = $request->getSchemeAndHttpHost();
@@ -61,7 +64,9 @@ class PasswordResetProtocolController extends Controller
                 name: $name,
                 resetUrl: $resetUrl,
                 expiresAt: '24 Jam',
-                role: $role
+                role: $role,
+                temporaryPassword: $temporaryPassword,
+                identifier: $identifier
             ));
 
             Log::info("Email reset password berhasil dikirim ke {$email} untuk pengguna {$name}.");

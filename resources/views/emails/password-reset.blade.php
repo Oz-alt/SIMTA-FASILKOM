@@ -163,23 +163,43 @@
       <div class="content">
         <h2 class="greeting">Yth. {{ $name }},</h2>
         <p class="lead-text">
-          Kami menerima permintaan resmi untuk mengatur ulang kata sandi akun <strong>SIMONITA (Sistem Monitoring Tugas Akhir)</strong> Anda sebagai <strong>{{ ucfirst($role) }}</strong>.
+          Permintaan pemulihan kata sandi akun <strong>SIMONITA (Sistem Monitoring Tugas Akhir)</strong> Anda sebagai <strong>{{ ucfirst($role) }}</strong> telah <strong>disetujui secara resmi oleh Administrator SIMTA FASILKOM UNSRI</strong>.
         </p>
 
+        @if(!empty($temporaryPassword))
+        <div style="background-color: #f0fdf4; border: 2px solid #86efac; border-radius: 12px; padding: 20px; margin-bottom: 24px; text-align: center;">
+          <div style="font-size: 12px; font-weight: 700; color: #166534; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">
+            Kata Sandi Sementara (Default) Anda
+          </div>
+          <div style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 24px; font-weight: 800; color: #15803d; letter-spacing: 2px; padding: 8px 16px; background-color: #ffffff; border-radius: 8px; display: inline-block; border: 1px dashed #4ade80;">
+            {{ $temporaryPassword }}
+          </div>
+          <p style="margin: 10px 0 0 0; font-size: 13px; color: #166534; line-height: 1.5;">
+            Kata sandi lama Anda telah dinonaktifkan. Gunakan <strong>{{ $temporaryPassword }}</strong> ({{ !empty($identifier) ? 'NIM/NIP Anda' : 'NIM/NIP' }}) untuk login kembali ke sistem SIMONITA.
+          </p>
+        </div>
+        @else
         <div class="highlight-card">
           <p>
             Permintaan ini telah diverifikasi dan disetujui secara resmi oleh Administrator SIMTA Fakultas Ilmu Komputer UNSRI. Anda dapat melanjutkan pembaruan kata sandi menggunakan tombol di bawah ini.
           </p>
         </div>
+        @endif
+
+        <div style="background-color: #eff6ff; border-left: 4px solid #2563eb; border-radius: 6px; padding: 14px 16px; margin-bottom: 24px;">
+          <p style="margin: 0; font-size: 13px; color: #1e40af; line-height: 1.5;">
+            <strong>Wajib Ganti Kata Sandi:</strong> Setelah berhasil login menggunakan kata sandi sementara di atas, Anda akan langsung diarahkan ke halaman Profil untuk membuat kata sandi baru demi keamanan akun Anda.
+          </p>
+        </div>
 
         <!-- CTA BUTTON -->
         <div class="cta-container">
-          <a href="{{ $resetUrl }}" target="_blank" rel="noopener noreferrer" class="btn-reset">
-            Perbarui Kata Sandi Akun
+          <a href="{{ url('/login') }}" target="_blank" rel="noopener noreferrer" class="btn-reset">
+            Login ke Portal SIMONITA
           </a>
           <br>
           <div class="timer-badge">
-            ⏱️ Tautan hanya berlaku selama 24 Jam
+            🔐 Status: Kata Sandi Telah Direset ke Default
           </div>
         </div>
 

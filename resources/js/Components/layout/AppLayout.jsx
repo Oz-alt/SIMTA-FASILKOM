@@ -77,10 +77,19 @@ export default function AppLayout({ children }) {
     )
   );
 
+  const isPasswordChangeRequired = Boolean(
+    currentUser &&
+    !isPublicPath &&
+    !isUnauthorizedRole &&
+    currentUser.requires_password_change &&
+    !cleanPath.startsWith('/profile')
+  );
+
   const isProfileActivationRequired = Boolean(
     currentUser &&
     !isPublicPath &&
     !isUnauthorizedRole &&
+    !isPasswordChangeRequired &&
     role === 'mahasiswa' &&
     !currentUser.is_profile_completed &&
     !cleanPath.startsWith('/profile')
@@ -104,11 +113,17 @@ export default function AppLayout({ children }) {
       return;
     }
 
-    // 3. Kunci aktivasi profil pertama kali login khusus Mahasiswa
+    // 3. Wajib ganti kata sandi sementara (pasca reset password oleh Admin)
+    if (isPasswordChangeRequired) {
+      router.visit('/profile?change_password_required=true', { replace: true });
+      return;
+    }
+
+    // 4. Kunci aktivasi profil pertama kali login khusus Mahasiswa
     if (isProfileActivationRequired) {
       router.visit('/profile?first_login=true', { replace: true });
     }
-  }, [currentUser, role, isPublicPath, isUnauthorizedRole, isProfileActivationRequired, cleanPath]);
+  }, [currentUser, role, isPublicPath, isUnauthorizedRole, isPasswordChangeRequired, isProfileActivationRequired, cleanPath]);
 
   const isHomePage = cleanPath === '/';
   const isDokumenPage = cleanPath === '/documents' || cleanPath.startsWith('/documents/');
@@ -132,7 +147,7 @@ export default function AppLayout({ children }) {
     );
   }
 
-  if (isProfileActivationRequired) {
+  if (isProfileActivationRequired || isPasswordChangeRequired) {
     return null;
   }
 

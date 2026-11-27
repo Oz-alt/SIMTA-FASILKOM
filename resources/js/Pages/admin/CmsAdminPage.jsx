@@ -4,7 +4,7 @@ import {
   LayoutGrid, Plus, Search, Eye, Pencil, Trash2, X, Filter, Globe, FileText
 } from 'lucide-react';
 
-const KATEGORI_OPTIONS = ['Beranda', 'Panduan', 'Pengumuman', 'Informasi', 'FAQ'];
+const KATEGORI_OPTIONS = ['Beranda', 'Panduan', 'Pengumuman', 'Informasi', 'FAQ', 'Berita SIMTA'];
 const STATUS_OPTIONS   = ['publikasi', 'draf'];
 
 function Modal({ open, onClose, title, children, maxWidth = 'max-w-lg' }) {
@@ -50,12 +50,37 @@ export default function CmsAdminPage() {
   const [editTarget, setEditTarget]     = useState(null);
   const [form, setForm]                 = useState(emptyForm);
 
-  const filtered = adminCmsContents.filter(c => {
-    const matchSearch    = !search || c.judul.toLowerCase().includes(search.toLowerCase()) || c.kategori.toLowerCase().includes(search.toLowerCase());
-    const matchKategori  = !filterKategori || c.kategori === filterKategori;
-    const matchStatus    = !filterStatus   || c.status === filterStatus;
-    return matchSearch && matchKategori && matchStatus;
-  });
+  const isInternalMetadata = (item) => {
+    if (!item) return true;
+    const cat = String(item.kategori || '').toLowerCase();
+    const id = String(item.id || '').toLowerCase();
+    const judul = String(item.judul || '').toLowerCase();
+    return (
+      cat === 'notification_read_ids' ||
+      cat === 'user_profile_meta' ||
+      cat === 'student_profile_meta' ||
+      cat === 'account_credential' ||
+      cat === 'system_activity_logs' ||
+      id === 'system-activity-logs' ||
+      id.startsWith('auth-cred-') ||
+      id.startsWith('student-profile-') ||
+      id.startsWith('user-profile-') ||
+      id.startsWith('simta_read_notif_ids_') ||
+      id.startsWith('notif-') ||
+      judul.includes('system activity logs') ||
+      judul.includes('credential') ||
+      judul.includes('notification_read_ids')
+    );
+  };
+
+  const filtered = (adminCmsContents || [])
+    .filter(c => !isInternalMetadata(c))
+    .filter(c => {
+      const matchSearch   = !search || String(c.judul || '').toLowerCase().includes(search.toLowerCase()) || String(c.kategori || '').toLowerCase().includes(search.toLowerCase());
+      const matchKategori = !filterKategori || c.kategori === filterKategori;
+      const matchStatus   = !filterStatus   || c.status === filterStatus;
+      return matchSearch && matchKategori && matchStatus;
+    });
 
   const openAdd  = () => { setEditTarget(null); setForm(emptyForm); setModalForm(true); };
   const openEdit = (item) => { setEditTarget(item); setForm({ judul: item.judul, kategori: item.kategori, isi: item.isi, status: item.status }); setModalForm(true); };

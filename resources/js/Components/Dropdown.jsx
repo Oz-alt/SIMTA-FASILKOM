@@ -49,6 +49,8 @@ const Content = ({
         alignmentClasses = 'ltr:origin-top-left rtl:origin-top-right start-0';
     } else if (align === 'right') {
         alignmentClasses = 'ltr:origin-top-right rtl:origin-top-left end-0';
+    } else if (align === 'center') {
+        alignmentClasses = 'origin-top left-1/2 -translate-x-1/2';
     }
 
     let widthClasses = '';
@@ -69,12 +71,12 @@ const Content = ({
                 leaveTo="opacity-0 scale-95"
             >
                 <div
-                    className={`absolute z-50 mt-2 rounded-md shadow-lg ${alignmentClasses} ${widthClasses}`}
+                    className={`absolute z-50 mt-2 rounded-xl shadow-xl max-w-[calc(100vw-24px)] ${alignmentClasses} ${widthClasses}`}
                     onClick={() => setOpen(false)}
                 >
                     <div
                         className={
-                            `rounded-md ring-1 ring-black ring-opacity-5 ` +
+                            `rounded-xl ring-1 ring-black/10 dark:ring-white/10 max-h-80 overflow-y-auto overscroll-contain ` +
                             contentClasses
                         }
                     >
