@@ -41,21 +41,8 @@ export default function ThesisStepper({ currentTitle, stages = [] }) {
         : 'Menunggu Judul Fix'
     },
     {
-      key: 'sidang_akhir',
-      label: '3. Sidang Akhir D3',
-      isCompleted: isGraduated,
-      isPending: currentTitle.status_sidang === 'terjadwal' || currentTitle.status_sidang === 'siap_daftar',
-      statusText: isGraduated
-        ? `Lulus (${currentTitle.nilai_sidang || 'Nilai A'})`
-        : currentTitle.status_sidang === 'terjadwal'
-        ? 'Terjadwal Sidang'
-        : currentTitle.status_sidang === 'siap_daftar'
-        ? 'Siap Daftar Sidang'
-        : 'Belum Terjadwal'
-    },
-    {
       key: 'kelulusan',
-      label: '4. Status Kelulusan',
+      label: '3. Status Kelulusan',
       isCompleted: isGraduated,
       isPending: !isGraduated,
       statusText: isGraduated ? 'LULUS TA D3' : 'Aktif / Dalam Proses'
@@ -70,7 +57,7 @@ export default function ThesisStepper({ currentTitle, stages = [] }) {
             Perjalanan Tugas Akhir D3 Manajemen Informatika
           </h3>
           <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-            Alur terfokus: Usulan Judul &rarr; Pengerjaan TA &rarr; Sidang Akhir &rarr; Kelulusan
+            Alur terfokus: Usulan Judul &rarr; Pengerjaan TA &rarr; Kelulusan (Jadwal sidang dikirim via Email)
           </p>
           <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
             <span className="inline-flex items-center whitespace-nowrap text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800">
@@ -85,7 +72,7 @@ export default function ThesisStepper({ currentTitle, stages = [] }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {steps.map((step, idx) => (
           <div 
             key={step.key}
