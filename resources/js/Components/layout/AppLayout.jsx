@@ -185,7 +185,7 @@ export default function AppLayout({ children }) {
 
   if (isMobileMode) {
     return (
-      <div className="min-h-screen bg-slate-100 flex flex-col font-sans overflow-x-hidden print:bg-white print:min-h-0">
+      <div className="min-h-screen bg-slate-100 flex flex-col font-sans overflow-x-hidden print:block print:bg-white print:min-h-0 print:overflow-visible">
         <Navbar />
         <RealtimeBimbinganAlert />
 
@@ -203,7 +203,7 @@ export default function AppLayout({ children }) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans print:bg-white print:min-h-0">
+    <div className="min-h-screen bg-slate-50 flex flex-col font-sans print:block print:bg-white print:min-h-0">
       <Navbar />
       <RealtimeBimbinganAlert />
       <div className="flex-1 flex w-full print:block">

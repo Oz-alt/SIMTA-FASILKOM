@@ -4,7 +4,7 @@ import { ArrowLeft, Printer } from 'lucide-react';
 import { Link } from '@inertiajs/react';
 import BimbinganReminderBanner from '../../Components/common/BimbinganReminderBanner.jsx';
 import { calculateBimbinganReminder } from '../../lib/bimbinganReminder.js';
-import { getMinTotalSessionsDefense, paginateConsultationRows } from '../../lib/consultationUtils.js';
+import { getMinTotalSessionsDefense } from '../../lib/consultationUtils.js';
 import unsriLogo from '../../assets/photo/unsri logo.png';
 
 export default function KartuBimbinganPage() {
@@ -232,37 +232,31 @@ export default function KartuBimbinganPage() {
     }
     const logVerifyUrl = `${verifyUrl}?log=${data.id}`;
     return (
-      <div className="flex justify-center items-center">
+      <div className="flex justify-center items-center py-1">
         <a href={logVerifyUrl} target="_blank" rel="noopener noreferrer" title="Scan/Klik QR Verifikasi Bimbingan">
           <img
             src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(logVerifyUrl)}`}
             alt={`QR Paraf ${roleLabel}`}
-            className="w-12 h-12 object-contain inline-block border border-slate-300 p-0.5 rounded-sm shadow-2xs hover:scale-105 transition-transform print:border-slate-400"
+            className="w-14 h-14 sm:w-16 sm:h-16 object-contain inline-block border border-slate-300 p-1 rounded-sm shadow-2xs hover:scale-105 transition-transform print:border-slate-400"
           />
         </a>
       </div>
     );
   };
 
-  // Pagination A4: maksimal 8 baris per lembar A4 agar format kop, tabel, dan tanda tangan konsisten di web maupun cetak
-  const ROWS_PER_PAGE = 8;
+  // Jumlah baris dinamis: minimal target prodi (24) dan otomatis bertambah bila sesi > 24
   const targetRows = minSessionsRequirement?.minTotal || getMinTotalSessionsDefense();
   const ROWS_COUNT = Math.max(targetRows, studentConsultations.length);
-
-  const pages = useMemo(() => {
-    return paginateConsultationRows(studentConsultations, targetRows, ROWS_PER_PAGE);
-  }, [studentConsultations, targetRows]);
 
   const formattedToday = useMemo(() => {
     return new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
   }, []);
 
   const PAPER_WIDTH_PX = 794;
-  const DEFAULT_PAPER_HEIGHT_PX = 1123;
   const scrollWrapRef = useRef(null);
-  const sheetRefs = useRef([]);
+  const paperRef = useRef(null);
   const [containerWidth, setContainerWidth] = useState(PAPER_WIDTH_PX);
-  const [sheetHeights, setSheetHeights] = useState({});
+  const [paperHeight, setPaperHeight] = useState(1123);
 
   useEffect(() => {
     const updateMeasurements = () => {
@@ -270,41 +264,24 @@ export default function KartuBimbinganPage() {
         const w = scrollWrapRef.current.clientWidth;
         if (w > 0) setContainerWidth(w);
       }
-      const nextHeights = {};
-      pages.forEach((_, idx) => {
-        const el = sheetRefs.current[idx];
-        if (el) {
-          const h = el.offsetHeight || el.scrollHeight;
-          if (h > 0) nextHeights[idx] = h;
-        }
-      });
-      setSheetHeights((prev) => {
-        const prevKeys = Object.keys(prev);
-        const nextKeys = Object.keys(nextHeights);
-        if (
-          prevKeys.length === nextKeys.length &&
-          nextKeys.every((k) => prev[k] === nextHeights[k])
-        ) {
-          return prev;
-        }
-        return nextHeights;
-      });
+      if (paperRef.current) {
+        const h = paperRef.current.offsetHeight || paperRef.current.scrollHeight;
+        if (h > 0) setPaperHeight(h);
+      }
     };
 
     updateMeasurements();
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(updateMeasurements) : null;
     if (ro) {
       if (scrollWrapRef.current) ro.observe(scrollWrapRef.current);
-      pages.forEach((_, idx) => {
-        if (sheetRefs.current[idx]) ro.observe(sheetRefs.current[idx]);
-      });
+      if (paperRef.current) ro.observe(paperRef.current);
     }
     window.addEventListener('resize', updateMeasurements);
     return () => {
       window.removeEventListener('resize', updateMeasurements);
       ro?.disconnect();
     };
-  }, [ROWS_COUNT, pages]);
+  }, [ROWS_COUNT, studentConsultations.length]);
 
   const activeScale = useMemo(() => {
     return Math.min(1, Math.max(0.32, containerWidth / PAPER_WIDTH_PX));
@@ -327,7 +304,7 @@ export default function KartuBimbinganPage() {
           </Link>
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <span className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-[11px] font-bold text-slate-600 shadow-2xs">
-              {studentConsultations.length} Sesi Tercatat &bull; {pages.length} Lembar A4
+              {studentConsultations.length} Sesi Tercatat
             </span>
             <button
               type="button"
@@ -341,180 +318,156 @@ export default function KartuBimbinganPage() {
         </div>
       </div>
 
-      {/* Document Container (Auto-fit A4 multi-sheet format + Native Pinch-to-Zoom enabled) */}
+      {/* Document Container (Auto-fit A4 width + Native Pinch-to-Zoom enabled) */}
       <div
         ref={scrollWrapRef}
         className="kartu-scroll-wrap w-full overflow-x-hidden pb-6 print:pb-0"
         style={{ touchAction: 'pan-x pan-y pinch-zoom' }}
       >
-        <div className="kartu-pages-list space-y-6 print:space-y-0">
-          {pages.map((page, pageIndex) => {
-            const isLastPage = pageIndex === pages.length - 1;
-            const currentSheetHeight = sheetHeights[pageIndex] || DEFAULT_PAPER_HEIGHT_PX;
-
-            return (
-              <div key={page.pageNumber} className="kartu-sheet-slot space-y-2 print:space-y-0">
-                {/* Web-only page badge */}
-                <div
-                  className="mx-auto flex items-center justify-between text-[11px] font-bold text-slate-500 px-1 print:hidden"
-                  style={{ width: `${Math.round(PAPER_WIDTH_PX * activeScale)}px` }}
-                >
-                  <span>Halaman {page.pageNumber} dari {page.totalPages} (A4)</span>
-                  <span>Pertemuan {page.startNumber} &ndash; {page.endNumber}</span>
+        <div
+          className="kartu-zoom-sizer mx-auto relative"
+          style={{
+            width: `${Math.round(PAPER_WIDTH_PX * activeScale)}px`,
+            height: `${Math.round(paperHeight * activeScale)}px`,
+          }}
+        >
+          {/* Continuous Printable Document (Kop sekali di atas, tabel mengalir antar halaman A4, TTD sekali di akhir) */}
+          <div
+            ref={paperRef}
+            className="kartu-paper bg-white p-10 sm:p-12 shadow-sm border border-slate-200 print:p-0 print:shadow-none print:border-none print:m-0"
+            style={{
+              width: `${PAPER_WIDTH_PX}px`,
+              minHeight: '297mm',
+              transform: isScaledDown ? `scale(${activeScale})` : undefined,
+              transformOrigin: 'top left',
+            }}
+          >
+            <div className="kartu-header-block">
+              {/* Kop Surat Resmi UNSRI - Fasilkom */}
+              <div className="mb-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="shrink-0">
+                    <img 
+                      src={unsriLogo} 
+                      alt="Logo Universitas Sriwijaya" 
+                      className="w-24 h-24 object-contain"
+                    />
+                  </div>
+                  <div className="flex-1 text-center text-black font-serif leading-tight">
+                    <p className="text-sm font-semibold tracking-wide uppercase">
+                      KEMENTERIAN PENDIDIKAN TINGGI,<br />SAINS DAN TEKNOLOGI
+                    </p>
+                    <h2 className="text-lg font-extrabold tracking-wide uppercase mt-0.5">
+                      UNIVERSITAS SRIWIJAYA
+                    </h2>
+                    <h3 className="text-base font-bold tracking-wide uppercase">
+                      FAKULTAS ILMU KOMPUTER
+                    </h3>
+                    <h4 className="text-sm font-bold tracking-wide uppercase">
+                      PROGRAM STUDI MANAJEMEN INFORMATIKA
+                    </h4>
+                    <p className="text-[11px] mt-1 text-slate-800 leading-normal print:text-black">
+                      Kampus Unsri, Jalan Srijaya Negara Bukit Besar Palembang, Kode Pos: 30139<br />
+                      Telepon (+62711)379249 Pos-el: <span className="text-blue-700 underline print:text-black print:no-underline">humas@ilkom.unsri.ac.id</span>
+                    </p>
+                  </div>
+                  {/* Spacer placeholder agar teks di tengah tetap persis di tengah dokumen */}
+                  <div className="w-24 shrink-0"></div>
                 </div>
 
-                <div
-                  className="kartu-zoom-sizer mx-auto relative"
-                  style={{
-                    width: `${Math.round(PAPER_WIDTH_PX * activeScale)}px`,
-                    height: `${Math.round(currentSheetHeight * activeScale)}px`,
-                  }}
-                >
-                  {/* Printable A4 Sheet */}
-                  <div
-                    ref={(el) => {
-                      sheetRefs.current[pageIndex] = el;
-                    }}
-                    className={`kartu-paper bg-white p-9 sm:p-10 shadow-sm border border-slate-200 flex flex-col justify-between print:shadow-none print:border-none print:m-0 ${
-                      isLastPage ? 'kartu-paper-last' : ''
-                    }`}
-                    style={{
-                      width: `${PAPER_WIDTH_PX}px`,
-                      minHeight: '297mm',
-                      transform: isScaledDown ? `scale(${activeScale})` : undefined,
-                      transformOrigin: 'top left',
-                    }}
-                  >
-                    <div>
-                      {/* Kop Surat Resmi UNSRI - Fasilkom */}
-                      <div className="mb-3">
-                        <div className="flex items-center justify-between gap-4">
-                          <div className="shrink-0">
-                            <img 
-                              src={unsriLogo} 
-                              alt="Logo Universitas Sriwijaya" 
-                              className="w-20 h-20 object-contain"
-                            />
-                          </div>
-                          <div className="flex-1 text-center text-black font-serif leading-tight">
-                            <p className="text-xs font-semibold tracking-wide uppercase">
-                              KEMENTERIAN PENDIDIKAN TINGGI,<br />SAINS DAN TEKNOLOGI
-                            </p>
-                            <h2 className="text-lg font-extrabold tracking-wide uppercase mt-0.5">
-                              UNIVERSITAS SRIWIJAYA
-                            </h2>
-                            <h3 className="text-base font-bold tracking-wide uppercase">
-                              FAKULTAS ILMU KOMPUTER
-                            </h3>
-                            <h4 className="text-sm font-bold tracking-wide uppercase">
-                              PROGRAM STUDI MANAJEMEN INFORMATIKA
-                            </h4>
-                            <p className="text-[10.5px] mt-1 text-slate-800 leading-normal print:text-black">
-                              Kampus Unsri, Jalan Srijaya Negara Bukit Besar Palembang, Kode Pos: 30139<br />
-                              Telepon (+62711)379249 Pos-el: <span className="text-blue-700 underline print:text-black print:no-underline">humas@ilkom.unsri.ac.id</span>
-                            </p>
-                          </div>
-                          {/* Spacer placeholder agar teks di tengah tetap persis di tengah dokumen */}
-                          <div className="w-20 shrink-0"></div>
-                        </div>
+                {/* Garis Ganda Kop Surat Resmi (Tebal di atas, tipis di bawah) */}
+                <div className="w-full border-b-[3px] border-black mt-3 mb-0.5"></div>
+                <div className="w-full border-b-[1px] border-black mb-5"></div>
+              </div>
 
-                        {/* Garis Ganda Kop Surat Resmi (Tebal di atas, tipis di bawah) */}
-                        <div className="w-full border-b-[3px] border-black mt-2.5 mb-0.5"></div>
-                        <div className="w-full border-b-[1px] border-black mb-4"></div>
-                      </div>
+              {/* Judul Dokumen */}
+              <div className="text-center mb-6">
+                <h1 className="text-sm sm:text-base font-extrabold uppercase text-black tracking-wider">
+                  CATATAN KEGIATAN KONSULTASI AKADEMIK/PRIBADI
+                </h1>
+              </div>
 
-                      {/* Judul Dokumen */}
-                      <div className="text-center mb-4">
-                        <h1 className="text-sm sm:text-base font-extrabold uppercase text-black tracking-wider">
-                          CATATAN KEGIATAN KONSULTASI AKADEMIK/PRIBADI
-                        </h1>
-                      </div>
-
-                      {/* Info Mahasiswa - Dynamic from logged-in account */}
-                      <div className="grid grid-cols-2 text-xs font-semibold text-black mb-4 gap-x-6 gap-y-1">
-                        <div className="space-y-1">
-                          <p><span className="w-28 inline-block font-bold">Nama</span>: {currentUser?.nama || '-'}</p>
-                          <p><span className="w-28 inline-block font-bold">NIM</span>: {studentNim || '-'}</p>
-                          <p><span className="w-28 inline-block font-bold">Program Studi</span>: {currentUser?.prodi || 'D3 Manajemen Informatika'}</p>
-                        </div>
-                        <div className="space-y-1">
-                          <p><span className="w-28 inline-block font-bold">Pembimbing 1</span>: {dospem1Nama}</p>
-                          <p><span className="w-28 inline-block font-bold">Pembimbing 2</span>: {dospem2Nama}</p>
-                        </div>
-                        <div className="col-span-2 pt-0.5">
-                          <p className="flex items-start">
-                            <span className="w-28 inline-block font-bold shrink-0">Judul TA</span>
-                            <span className="mr-1.5">:</span>
-                            <span className="flex-1 font-semibold leading-snug">{judulTa}</span>
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Tabel Bimbingan */}
-                      <table className="w-full border-collapse border border-black text-xs text-black">
-                        <thead>
-                          <tr className="bg-slate-100">
-                            <th className="border border-black py-1.5 px-1 text-center w-10">No</th>
-                            <th className="border border-black py-1.5 px-2 text-center w-28">Tanggal<br/>Bimbingan</th>
-                            <th className="border border-black py-1.5 px-3 text-center">Materi / Bab<br/>Konsultasi</th>
-                            <th className="border border-black py-1.5 px-2 text-center w-24">Status</th>
-                            <th className="border border-black py-1.5 px-2 text-center w-28 sm:w-32">Paraf<br/>Pembimbing 1</th>
-                            <th className="border border-black py-1.5 px-2 text-center w-28 sm:w-32">Paraf<br/>Pembimbing 2</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {page.rows.map(({ rowNumber, data }) => (
-                            <tr key={rowNumber} className="kartu-row">
-                              <td className="border border-black py-1 px-1 text-center font-semibold align-middle h-[56px]">{rowNumber}</td>
-                              <td className="border border-black py-1 px-2 text-center align-middle h-[56px]">{data ? data.tanggal : ''}</td>
-                              <td className="border border-black py-1 px-3 text-left text-[11px] leading-snug font-medium align-middle h-[56px]">
-                                {data ? data.bab_topik : ''}
-                              </td>
-                              <td className="border border-black p-1 text-center align-middle h-[56px]">
-                                {data ? getStatusBadge(data) : ''}
-                              </td>
-                              <td className="border border-black p-1 text-center align-middle h-[56px]">
-                                {renderParafCell(data, 'Pembimbing 1')}
-                              </td>
-                              <td className="border border-black p-1 text-center align-middle h-[56px]">
-                                {renderParafCell(data, 'Pembimbing 2')}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    {/* Tanda Tangan Kaprodi & Mahasiswa */}
-                    <div className="kartu-signature-block mt-6">
-                      <div className="flex justify-between items-end text-xs text-black">
-                        <div className="w-72 text-center space-y-1">
-                          <p className="font-semibold pb-16">
-                            Koordinator Program Studi<br />
-                            Manajemen Informatika,
-                          </p>
-                          <div className="border-b border-black w-full"></div>
-                          <p className="font-bold pt-1">Dr. Abdiansah, S.Kom., M.Cs.</p>
-                          <p className="font-mono text-[11px]">NIP: 198410012009121005</p>
-                        </div>
-                        
-                        <div className="w-72 text-center space-y-1">
-                          <p className="font-semibold">Palembang, {formattedToday}</p>
-                          <p className="font-semibold pb-16">Mahasiswa Ybs,</p>
-                          <div className="border-b border-black w-full"></div>
-                          <p className="font-bold pt-1">{currentUser?.nama || '-'}</p>
-                          <p className="font-mono text-[11px]">NIM: {studentNim || '-'}</p>
-                        </div>
-                      </div>
-                      <p className="text-[10px] text-slate-600 print:text-black text-right mt-2 font-medium">
-                        Halaman {page.pageNumber} dari {page.totalPages}
-                      </p>
-                    </div>
-                  </div>
+              {/* Info Mahasiswa - Dynamic from logged-in account */}
+              <div className="grid grid-cols-2 text-xs font-semibold text-black mb-6 gap-x-6 gap-y-1.5">
+                <div className="space-y-1">
+                  <p><span className="w-28 inline-block font-bold">Nama</span>: {currentUser?.nama || '-'}</p>
+                  <p><span className="w-28 inline-block font-bold">NIM</span>: {studentNim || '-'}</p>
+                  <p><span className="w-28 inline-block font-bold">Program Studi</span>: {currentUser?.prodi || 'D3 Manajemen Informatika'}</p>
+                </div>
+                <div className="space-y-1">
+                  <p><span className="w-28 inline-block font-bold">Pembimbing 1</span>: {dospem1Nama}</p>
+                  <p><span className="w-28 inline-block font-bold">Pembimbing 2</span>: {dospem2Nama}</p>
+                </div>
+                <div className="col-span-2 pt-1">
+                  <p className="flex items-start">
+                    <span className="w-28 inline-block font-bold shrink-0">Judul TA</span>
+                    <span className="mr-1.5">:</span>
+                    <span className="flex-1 font-semibold leading-relaxed">{judulTa}</span>
+                  </p>
                 </div>
               </div>
-            );
-          })}
+            </div>
+
+            {/* Tabel Bimbingan (mengalir rapi lintas halaman A4, header otomatis berulang saat cetak) */}
+            <table className="kartu-table w-full border-collapse border border-black text-xs text-black">
+              <thead>
+                <tr className="bg-slate-100">
+                  <th className="border border-black py-2 px-1 text-center w-10">No</th>
+                  <th className="border border-black py-2 px-2 text-center w-28">Tanggal<br/>Bimbingan</th>
+                  <th className="border border-black py-2 px-3 text-center">Materi / Bab<br/>Konsultasi</th>
+                  <th className="border border-black py-2 px-2 text-center w-24">Status</th>
+                  <th className="border border-black py-2 px-2 text-center w-28 sm:w-32">Paraf<br/>Pembimbing 1</th>
+                  <th className="border border-black py-2 px-2 text-center w-28 sm:w-32">Paraf<br/>Pembimbing 2</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Array.from({ length: ROWS_COUNT }).map((_, index) => {
+                  const data = studentConsultations[index];
+                  return (
+                    <tr key={index} className="kartu-row">
+                      <td className="border border-black py-2 px-1 text-center font-semibold align-middle h-14">{index + 1}</td>
+                      <td className="border border-black py-2 px-2 text-center align-middle h-14">{data ? data.tanggal : ''}</td>
+                      <td className="border border-black py-2 px-3 text-left font-medium align-middle h-14">
+                        {data ? data.bab_topik : ''}
+                      </td>
+                      <td className="border border-black p-1.5 text-center align-middle h-14">
+                        {data ? getStatusBadge(data) : ''}
+                      </td>
+                      <td className="border border-black p-1.5 text-center align-middle h-14">
+                        {renderParafCell(data, 'Pembimbing 1')}
+                      </td>
+                      <td className="border border-black p-1.5 text-center align-middle h-14">
+                        {renderParafCell(data, 'Pembimbing 2')}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+
+            {/* Tanda Tangan Kaprodi & Mahasiswa (sekali saja di akhir dokumen, tidak pernah terpotong antar halaman) */}
+            <div className="kartu-signature-block mt-12">
+              <div className="flex justify-between items-end text-xs text-black">
+                <div className="w-72 text-center space-y-1">
+                  <p className="font-semibold pb-24">
+                    Koordinator Program Studi<br />
+                    Manajemen Informatika,
+                  </p>
+                  <div className="border-b border-black w-full"></div>
+                  <p className="font-bold pt-1.5">Dr. Abdiansah, S.Kom., M.Cs.</p>
+                  <p className="font-mono text-[11px]">NIP: 198410012009121005</p>
+                </div>
+                
+                <div className="w-72 text-center space-y-1">
+                  <p className="font-semibold">Palembang, {formattedToday}</p>
+                  <p className="font-semibold pb-24">Mahasiswa Ybs,</p>
+                  <div className="border-b border-black w-full"></div>
+                  <p className="font-bold pt-1.5">{currentUser?.nama || '-'}</p>
+                  <p className="font-mono text-[11px]">NIM: {studentNim || '-'}</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -532,13 +485,15 @@ export default function KartuBimbinganPage() {
         }
         @page {
           size: A4 portrait;
-          margin: 0;
+          margin: 12mm 14mm;
         }
         @media print {
           html, body {
             background: #ffffff !important;
             margin: 0 !important;
             padding: 0 !important;
+            height: auto !important;
+            overflow: visible !important;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
           }
@@ -551,42 +506,43 @@ export default function KartuBimbinganPage() {
             padding: 0 !important;
             background: #ffffff !important;
             min-height: 0 !important;
+            display: block !important;
           }
           .kartu-scroll-wrap {
             overflow: visible !important;
             padding: 0 !important;
           }
-          .kartu-pages-list {
-            display: block !important;
-          }
-          .kartu-sheet-slot {
-            margin: 0 !important;
-            padding: 0 !important;
-          }
           .kartu-zoom-sizer {
-            width: auto !important;
+            width: 100% !important;
             height: auto !important;
           }
           .kartu-paper {
+            display: block !important;
             transform: none !important;
-            width: 210mm !important;
-            min-height: 294mm !important;
-            margin: 0 auto !important;
-            padding: 9mm 12mm !important;
+            width: 100% !important;
+            min-width: 0 !important;
+            max-width: none !important;
+            min-height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
             box-shadow: none !important;
             border: none !important;
-            box-sizing: border-box !important;
-            page-break-after: always;
-            break-after: page;
           }
-          .kartu-paper.kartu-paper-last {
-            page-break-after: auto !important;
-            break-after: auto !important;
+          .kartu-table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+          }
+          .kartu-table thead {
+            display: table-header-group;
+          }
+          .kartu-table tbody {
+            display: table-row-group;
           }
           .kartu-row,
+          .kartu-header-block,
           .kartu-signature-block {
-            page-break-inside: avoid;
-            break-inside: avoid;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
           }
         }
       `}} />
