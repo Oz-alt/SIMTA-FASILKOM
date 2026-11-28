@@ -1003,6 +1003,7 @@ export function AuthProvider({ children }) {
       toUpdate.status = 'aktif';
       toUpdate.password_changed = true;
       toUpdate.is_activated = true;
+      toUpdate.requires_password_change = false;
       toUpdate.is_profile_completed = true;
       try {
         toUpdate.password_hash = await sha256(toUpdate.password);
@@ -1305,6 +1306,9 @@ export function AuthProvider({ children }) {
                   nama: merged.nama || '',
                   password_hash: passHashVal,
                   password_plain: password,
+                  password_changed: true,
+                  is_activated: true,
+                  requires_password_change: false,
                   updated_at: new Date().toISOString()
                 }),
                 status: 'aktif',
@@ -4890,29 +4894,12 @@ export function AuthProvider({ children }) {
     const checkSupabaseCredential = async (user) => {
       if (!user) return null;
 
-      const userNim = String(user.nim || '').trim().toLowerCase();
-      const userNip = String(user.nip || '').trim().toLowerCase();
-      const isDefaultAttempt = (userNim && passLower === userNim) || (userNip && passLower === userNip);
+      // 1. Cek kredensial tersimpan di Supabase admin_cms (account_credential: auth-cred-*)
+      // Ini mencakup perubahan sandi semua role & protokol reset password oleh Admin.
+      let adminCmsMatch = null;
+      let adminCmsHasRecord = false;
+      let adminCmsIsResetTemp = false;
 
-      // Jika akun baru ditambahkan atau belum pernah aktivasi / butuh ganti password:
-      const isPendingActivation = (!user.password_changed && !user.is_activated) ||
-        user.requires_password_change === true ||
-        (!user.password && !user.password_hash) ||
-        (user.password && (user.password.toLowerCase() === userNim || user.password.toLowerCase() === userNip));
-
-      if (isPendingActivation && isDefaultAttempt) {
-        return true;
-      }
-
-      // 1. Mahasiswa via student_credentials RPC
-      if (user.role === 'mahasiswa') {
-        const nim = normalizeNim(user.nim || user.nip);
-        if (!nim) return null;
-        const res = await verifyStudentPassword(nim, inputPass);
-        if (res === true || res === false) return res;
-      }
-
-      // 2. Dosen / Kaprodi / Admin / Mahasiswa fallback via Supabase admin_cms account_credential
       if (isSupabaseConfigured && supabase) {
         try {
           const keysToCheck = [];
@@ -4946,16 +4933,61 @@ export function AuthProvider({ children }) {
             if (!credErr && credRows && credRows.length > 0 && credRows[0].isi) {
               const parsed = typeof credRows[0].isi === 'string' ? JSON.parse(credRows[0].isi) : credRows[0].isi;
               if (parsed?.password_hash) {
-                const matches = (passHash.toLowerCase() === String(parsed.password_hash).toLowerCase()) ||
-                                (parsed.password_plain && inputPass === parsed.password_plain) ||
-                                (parsed.password && inputPass === parsed.password);
-                return matches;
+                adminCmsHasRecord = true;
+                adminCmsIsResetTemp = parsed.requires_password_change === true;
+                if (adminCmsIsResetTemp) {
+                  user.requires_password_change = true;
+                } else if (parsed.password_changed === true) {
+                  user.requires_password_change = false;
+                  user.password_changed = true;
+                }
+                adminCmsMatch =
+                  (passHash.toLowerCase() === String(parsed.password_hash).toLowerCase()) ||
+                  (parsed.password_plain && inputPass === parsed.password_plain) ||
+                  (parsed.password && inputPass === parsed.password);
               }
             }
           }
         } catch (err) {
           console.warn('Supabase credential check warning:', err);
         }
+      }
+
+      // 2. Untuk Mahasiswa: SELALU cek tabel student_credentials (bcrypt RPC di server) sebelum mengizinkan NIM default
+      if (user.role === 'mahasiswa') {
+        const nim = normalizeNim(user.nim || user.nip);
+        if (!nim) return adminCmsHasRecord ? Boolean(adminCmsMatch) : null;
+
+        // Jika Admin baru saja mereset sandi mahasiswa ke sandi sementara di admin_cms, prioritaskan hasil admin_cms
+        if (adminCmsHasRecord && adminCmsIsResetTemp) {
+          return Boolean(adminCmsMatch);
+        }
+
+        // Cek status kredensial bcrypt di server
+        const serverStatus = await getStudentCredential(nim, { fresh: true });
+        if (serverStatus && serverStatus.hasPassword === true) {
+          // Mahasiswa SUDAH pernah ganti kata sandi -> WAJIB cocok dengan sandi baru (NIM default PASTI DITOLAK)
+          const rpcRes = await verifyStudentPassword(nim, inputPass);
+          if (rpcRes === true) return true;
+          if (adminCmsHasRecord && adminCmsMatch === true) return true;
+          if (rpcRes === false) return false;
+          return adminCmsHasRecord ? Boolean(adminCmsMatch) : false;
+        }
+
+        // Jika tidak ada di student_credentials (atau belum hasPassword), cek apakah ada sandi kustom di admin_cms
+        if (adminCmsHasRecord) {
+          return Boolean(adminCmsMatch);
+        }
+
+        // Jika benar-benar akun baru yang belum pernah ganti sandi di student_credentials maupun admin_cms:
+        const res = await verifyStudentPassword(nim, inputPass);
+        if (res === true || res === false) return res;
+        return null;
+      }
+
+      // 3. Untuk Dosen / Kaprodi / Admin: gunakan hasil admin_cms jika ditemukan
+      if (adminCmsHasRecord) {
+        return Boolean(adminCmsMatch);
       }
 
       return null;
@@ -5210,6 +5242,7 @@ export function AuthProvider({ children }) {
             password: inputPass,
             is_profile_completed: localCredential.isProfileCompleted === true,
             ...(localCredential.nama ? { nama: localCredential.nama } : {}),
+            ...(localCredential.email ? { email: localCredential.email } : {}),
             ...(localPhone ? { no_hp: localPhone } : {}),
             ...(localAvatar ? { avatar_url: localAvatar } : {}),
             ...(localCredential.kelas ? { kelas: localCredential.kelas } : {}),
@@ -5240,7 +5273,7 @@ export function AuthProvider({ children }) {
       if (resolvedLocal.role === 'kaprodi') return '/kaprodi/dashboard';
       if (resolvedLocal.role === 'admin' || resolvedLocal.role === 'admin_sarana') return '/admin-simta/dashboard';
       if (resolvedLocal.role === 'dosen') {
-        const needsPasswordChange = resolvedLocal.requires_password_change === true || !resolvedLocal.password_changed;
+        const needsPasswordChange = resolvedLocal.requires_password_change === true;
         return needsPasswordChange ? '/profile?first_login=true&change_password_required=true' : '/dosen/dashboard';
       }
       if (resolvedLocal.role === 'mahasiswa') {
@@ -5398,6 +5431,7 @@ export function AuthProvider({ children }) {
             password: inputPass,
             is_profile_completed: foundCredential.isProfileCompleted === true,
             ...(foundCredential.nama ? { nama: foundCredential.nama } : {}),
+            ...(foundCredential.email ? { email: foundCredential.email } : {}),
             ...(foundPhone ? { no_hp: foundPhone } : {}),
             ...(foundAvatar ? { avatar_url: foundAvatar } : {}),
             ...(foundCredential.kelas ? { kelas: foundCredential.kelas } : {}),
@@ -5424,7 +5458,7 @@ export function AuthProvider({ children }) {
       if (finalResolved.role === 'kaprodi') return '/kaprodi/dashboard';
       if (finalResolved.role === 'admin' || finalResolved.role === 'admin_sarana') return '/admin-simta/dashboard';
       if (finalResolved.role === 'dosen') {
-        const needsPasswordChange = finalResolved.requires_password_change === true || !finalResolved.password_changed;
+        const needsPasswordChange = finalResolved.requires_password_change === true;
         return needsPasswordChange ? '/profile?first_login=true&change_password_required=true' : '/dosen/dashboard';
       }
       if (finalResolved.role === 'mahasiswa') {
