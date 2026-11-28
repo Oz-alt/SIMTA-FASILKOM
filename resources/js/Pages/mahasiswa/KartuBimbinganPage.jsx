@@ -486,11 +486,11 @@ export default function KartuBimbinganPage() {
         @page {
           size: A4 portrait;
           margin: 12mm 14mm 15mm 14mm;
-          @top-left { content: none; }
-          @top-center { content: none; }
-          @top-right { content: none; }
-          @bottom-left { content: none; }
-          @bottom-center { content: none; }
+          @top-left { content: ""; }
+          @top-center { content: ""; }
+          @top-right { content: ""; }
+          @bottom-left { content: ""; }
+          @bottom-center { content: ""; }
           @bottom-right {
             content: counter(page);
             font-family: 'Plus Jakarta Sans', 'Inter', Arial, sans-serif;
