@@ -1,18 +1,13 @@
-import { createClient } from '@supabase/supabase-js';
+import { laravelClient } from './laravelClient.js';
 
-let rawUrl = import.meta.env.VITE_SUPABASE_URL || '';
-if (rawUrl.endsWith('/rest/v1/') || rawUrl.endsWith('/rest/v1')) {
-  rawUrl = rawUrl.replace(/\/rest\/v1\/?$/, '');
-}
+/**
+ * Backend data client SIMONITA FASILKOM (Laravel + MySQL/SQLite via `/api/simta/*`).
+ * Eksport `supabase` dan `isSupabaseConfigured` tetap dipertahankan sebagai alias kompatibel
+ * agar seluruh modul layanan bekerja langsung tanpa koneksi ke layanan eksternal Supabase.
+ */
+export const isBackendConfigured = typeof window !== 'undefined';
+export const backendDriver = 'laravel';
 
-const supabaseUrl = rawUrl;
-const supabaseKey = 
-  import.meta.env.VITE_SUPABASE_ANON_KEY || 
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || 
-  '';
-
-export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseKey);
-
-export const supabase = isSupabaseConfigured
-  ? createClient(supabaseUrl, supabaseKey)
-  : null;
+export const isSupabaseConfigured = isBackendConfigured;
+export const supabase = laravelClient;
+export const apiClient = laravelClient;

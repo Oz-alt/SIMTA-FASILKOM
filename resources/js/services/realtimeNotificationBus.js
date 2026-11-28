@@ -1,64 +1,6 @@
-import { supabase, isSupabaseConfigured } from './supabase.js';
-
 const BROADCAST_CHANNEL_NAME = 'simta_realtime_notifications_bus';
 const STORAGE_EVENT_KEY = 'simta_realtime_event_trigger';
-// Nama channel Supabase harus dipakai bersama oleh pengirim dan penerima.
-// Sebelumnya pengirim memakai 'simta-realtime-broadcast' sedangkan penerima
-// membuat nama unik per-tab, sehingga siaran lintas perangkat tidak pernah sampai.
-const SUPABASE_BROADCAST_CHANNEL = 'simta-realtime-broadcast';
-
-/**
- * Satu channel dipakai bersama untuk kirim dan terima.
- *
- * Kenapa singleton: `supabase.channel(nama)` mengembalikan channel yang sudah ada
- * untuk topik yang sama. Kalau pengirim membuat lalu menghapusnya
- * (`removeChannel`), penghapusan itu ikut membuang channel pendengar di tab yang
- * sama, sehingga notifikasi hanya sampai sekali lalu diam. Menyimpan satu channel
- * perangkat membuat kirim dan terima tetap aman.
- */
-let sharedChannelReady = null;
-let envelopeHandler = null;
-
-const deliverEnvelope = (envelope) => {
-  if (envelopeHandler) {
-    envelopeHandler(envelope);
-  }
-};
-
-/**
- * Ambil channel bersama Supabase, buat sekali bila belum ada.
- * @returns {Promise<object|null>} channel yang sudah SUBSCRIBED (atau null)
- */
-const getSharedChannel = async () => {
-  if (!isSupabaseConfigured || !supabase) {
-    return null;
-  }
-
-  if (sharedChannelReady) {
-    return sharedChannelReady;
-  }
-
-  const channel = supabase.channel(SUPABASE_BROADCAST_CHANNEL);
-
-  channel.on('broadcast', { event: '*' }, (message) => {
-    // message.payload adalah envelope utuh ({ id, type, payload, timestamp }).
-    const envelope = message?.payload;
-    if (envelope?.id && envelope?.type) {
-      deliverEnvelope(envelope);
-    }
-  });
-
-  sharedChannelReady = new Promise((resolve) => {
-    channel.subscribe((status) => {
-      if (status === 'SUBSCRIBED') {
-        resolve(channel);
-      }
-    });
-    setTimeout(() => resolve(channel), 5000);
-  });
-
-  return sharedChannelReady;
-};
+const REALTIME_POLL_INTERVAL_MS = 4000;
 
 let sharedSenderBc = null;
 const getSenderBroadcastChannel = () => {
@@ -74,7 +16,8 @@ const getSenderBroadcastChannel = () => {
 };
 
 /**
- * Broadcast an event to all open tabs and devices (BroadcastChannel + LocalStorage + Supabase)
+ * Broadcast an event to all open tabs and devices
+ * (BroadcastChannel + CustomEvent + LocalStorage + Laravel HTTP AJAX polling bus).
  * @param {string} eventType e.g. 'THESIS_TITLE_SUBMITTED'
  * @param {object} payload { title, notif, sender }
  */
@@ -86,7 +29,7 @@ export function broadcastRealtimeNotification(eventType, payload) {
     timestamp: Date.now()
   };
 
-  // 1. Browser BroadcastChannel API (Cross-tab instantaneous sync, persistent channel)
+  // 1. Browser BroadcastChannel API (Cross-tab instantaneous sync)
   const bc = getSenderBroadcastChannel();
   if (bc) {
     try {
@@ -111,21 +54,26 @@ export function broadcastRealtimeNotification(eventType, payload) {
     } catch {}
   }
 
-  // 4. Supabase Realtime Channel Broadcast (Cross-device / WebSocket sync)
-  getSharedChannel()
-    .then((channel) => {
-      if (!channel) {
-        return null;
-      }
-      return channel.send({ type: 'broadcast', event: eventType, payload: envelope });
-    })
-    .catch((err) => {
-      console.debug('Supabase broadcast send note:', err);
+  // 4. Laravel Database Realtime Queue (Cross-device AJAX sync)
+  if (typeof window !== 'undefined' && typeof fetch === 'function') {
+    fetch('/api/simta/realtime/broadcast', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+      credentials: 'same-origin',
+      keepalive: true,
+      body: JSON.stringify(envelope),
+    }).catch((err) => {
+      console.debug('AJAX realtime broadcast note:', err);
     });
+  }
 }
 
 /**
- * Subscribe to real-time notification events across all transport layers
+ * Subscribe to real-time notification events across browser tabs and cross-device AJAX polling.
  * @param {Function} onReceive (envelope) => void
  * @returns {Function} unsubscribe cleanup function
  */
@@ -134,13 +82,13 @@ export function subscribeToRealtimeNotifications(onReceive) {
 
   const cleanups = [];
   const processedIds = new Set();
+  let disposed = false;
 
   const handleEnvelope = (envelope) => {
     if (!envelope || !envelope.id) return;
     if (processedIds.has(envelope.id)) return;
     processedIds.add(envelope.id);
 
-    // Keep set bounded
     if (processedIds.size > 200) {
       const first = processedIds.values().next().value;
       processedIds.delete(first);
@@ -148,9 +96,6 @@ export function subscribeToRealtimeNotifications(onReceive) {
 
     onReceive(envelope);
   };
-
-  // Semua transport memakai satu jalur dedup.
-  envelopeHandler = handleEnvelope;
 
   // 1. BroadcastChannel listener
   if ('BroadcastChannel' in window) {
@@ -192,16 +137,74 @@ export function subscribeToRealtimeNotifications(onReceive) {
   window.addEventListener('simta_realtime_local_event', handleLocalEvent);
   cleanups.push(() => window.removeEventListener('simta_realtime_local_event', handleLocalEvent));
 
-  // 4. Supabase Realtime channel (lintas perangkat)
-  getSharedChannel();
+  // 4. Cross-device HTTP AJAX polling via Laravel endpoint
+  let cursorId = null;
+  let pollingInFlight = false;
+
+  const pollRemoteEvents = async (forceCursorInit = false) => {
+    if (disposed || pollingInFlight) return;
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden' && !forceCursorInit) {
+      return;
+    }
+
+    pollingInFlight = true;
+    try {
+      const query = cursorId === null
+        ? 'cursor_only=1'
+        : `after_id=${encodeURIComponent(String(cursorId))}`;
+      const response = await fetch(`/api/simta/realtime/events?${query}`, {
+        method: 'GET',
+        headers: {
+          Accept: 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        credentials: 'same-origin',
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (typeof data?.latest_id === 'number') {
+          cursorId = cursorId === null ? data.latest_id : Math.max(cursorId, data.latest_id);
+        }
+        if (Array.isArray(data?.events)) {
+          data.events.forEach((evt) => handleEnvelope(evt));
+        }
+      }
+    } catch {
+      // Abaikan gangguan jaringan sementara; interval berikutnya akan mencoba lagi.
+    } finally {
+      pollingInFlight = false;
+    }
+  };
+
+  pollRemoteEvents(true);
+
+  const pollTimer = setInterval(() => {
+    pollRemoteEvents(false);
+  }, REALTIME_POLL_INTERVAL_MS);
+
+  const handleVisibilityOrFocus = () => {
+    if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+      pollRemoteEvents(false);
+    }
+  };
+
+  window.addEventListener('focus', handleVisibilityOrFocus);
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+  }
+
+  cleanups.push(() => {
+    disposed = true;
+    clearInterval(pollTimer);
+    window.removeEventListener('focus', handleVisibilityOrFocus);
+    if (typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+    }
+  });
 
   return () => {
-    // Lepas handler agar listener lama tidak menumpuk. Channel bersama TIDAK
-    // dihapus: pengirim di tab ini masih memakainya untuk broadcast.
-    if (envelopeHandler === handleEnvelope) {
-      envelopeHandler = null;
-    }
-    cleanups.forEach(fn => {
+    cleanups.forEach((fn) => {
       try { fn(); } catch {}
     });
   };
@@ -209,7 +212,7 @@ export function subscribeToRealtimeNotifications(onReceive) {
 
 /**
  * Mencegah satu peristiwa real-time memicu pop-up/suara berkali-kali ketika
- * dikirim bersamaan lewat BroadcastChannel, StorageEvent, dan Supabase.
+ * dikirim bersamaan lewat BroadcastChannel, StorageEvent, dan AJAX polling.
  * @param {Map<string, number>} seenMap
  * @param {string|null|undefined} eventKey
  * @param {number} ttlMs

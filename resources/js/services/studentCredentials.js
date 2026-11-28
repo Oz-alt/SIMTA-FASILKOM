@@ -525,7 +525,7 @@ export const saveStudentCredential = async ({ nim, password, isProfileCompleted,
         return { success: false, message: 'NIM tidak valid.' };
     }
     if (!isReady()) {
-        return { success: false, message: 'Supabase belum dikonfigurasi.' };
+        return { success: false, message: 'Server backend belum siap.' };
     }
 
     const plainPassword = typeof password === 'string' && password.trim() ? password.trim() : null;

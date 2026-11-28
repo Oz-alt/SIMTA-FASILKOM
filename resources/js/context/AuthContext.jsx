@@ -1287,14 +1287,8 @@ export function AuthProvider({ children }) {
           }
         }
 
-        // 2. Sinkronisasi kata sandi jika ada ke Supabase admin_cms & Auth
+        // 2. Sinkronisasi kata sandi ke Laravel backend admin_cms & student_credentials
         if (password) {
-          try {
-            await supabase.auth.updateUser({ password });
-          } catch (passErr) {
-            console.warn('Supabase auth password update warning:', passErr);
-          }
-
           try {
             const passHashVal = toUpdate.password_hash || await sha256(password);
             const userKey = String(merged.nip || merged.nim || merged.username || merged.id || '').trim();
@@ -1547,7 +1541,7 @@ export function AuthProvider({ children }) {
         if (minimalError) {
           console.warn('Gagal menyimpan thesis_titles (mode minimal):', minimalError.message);
         } else {
-          console.warn('thesis_titles tersimpan dengan kolom inti saja. Jalankan scripts/thesis_titles_realtime.sql agar data lengkap tersimpan.');
+          console.warn('thesis_titles tersimpan dengan kolom inti saja. Pastikan migrasi database Laravel sudah dijalankan.');
         }
         return;
       }
@@ -3346,164 +3340,44 @@ export function AuthProvider({ children }) {
           }
         });
 
-      // Real-time WebSocket listener for cross-device live bimbingan updates
-      let consultationsChannel = null;
-      let studentAdvisorsChannel = null;
-      let thesisTitlesChannel = null;
+      // Sinkronisasi AJAX polling lintas perangkat untuk data real-time (pengganti WebSocket Supabase)
+      let cleanupPollingSync = null;
 
       try {
-        if (typeof supabase.getChannels === 'function') {
-          const activeChannels = supabase.getChannels() || [];
-          activeChannels.forEach(ch => {
-            if (ch.topic && ch.topic.includes('schema-db-changes')) {
-              try { supabase.removeChannel(ch); } catch { }
-            }
-          });
-        }
-
-        consultationsChannel = supabase
-          .channel(`schema-db-changes-consultations-${Date.now()}`)
-          .on(
-            'postgres_changes',
-            { event: '*', schema: 'public', table: 'thesis_consultations' },
-            (payload) => {
-              if (payload.eventType === 'INSERT' && payload.new) {
-                const item = parseConsultationItem(payload.new);
-                setConsultations(prev => {
-                  const exists = prev.some(c => String(c.id) === String(item.id));
-                  if (exists) return prev;
-                  const updated = [item, ...prev];
-                  try { localStorage.setItem('simta_consultations', JSON.stringify(updated)); } catch { }
-                  return updated;
-                });
-
-                // Notifikasi real-time untuk Dosen Pembimbing yang bersangkutan
-                const activeUser = currentUserRef.current;
-                if (activeUser?.role === 'dosen' && isLecturerForConsultation(item, activeUser)) {
-                  const notifItem = createConsultationNotificationForDosen(item, activeUser);
-
-                  setNotifications(currNotifs => {
-                    if (currNotifs.some(n => String(n.consultation_id) === String(item.id) && n.related_type === 'bimbingan_masuk')) return currNotifs;
-                    const next = [notifItem, ...currNotifs];
-                    try { localStorage.setItem('simta_notifications', JSON.stringify(next)); } catch {}
-                    return next;
-                  });
-
-                  triggerRealtimeAlert({
-                    id: `alert-${Date.now()}`,
-                    title: notifItem.title,
-                    message: notifItem.message,
-                    mhs_nama: item.mhs_nama,
-                    mhs_nim: item.mhs_nim,
-                    pembimbing: item.pembimbing || 'Pembimbing',
-                    bab_topik: item.bab_topik || '',
-                    isDosenAlert: true,
-                    action_url: `/dosen/validasi?nim=${item.mhs_nim}`
-                  }, `bimbingan-masuk:${item.id}`);
-                }
-              } else if (payload.eventType === 'UPDATE' && payload.new) {
-                const parsedNew = parseConsultationItem(payload.new);
-                setConsultations(prev => {
-                  const updated = prev.map(c => {
-                    if (String(c.id) === String(payload.new.id)) {
-                      return parseConsultationItem({ ...c, ...payload.new });
-                    }
-                    return c;
-                  });
-                  try { localStorage.setItem('simta_consultations', JSON.stringify(updated)); } catch { }
-                  return updated;
-                });
-
-                const newStatus = parsedNew.status;
-                if (newStatus && newStatus !== 'menunggu_tanggapan') {
-                  const studentNim = String(parsedNew.mhs_nim || '').trim();
-                  const resolvedJenisRevisi = parsedNew.jenis_revisi || (
-                    newStatus === 'disetujui' ? 'Diterima' :
-                      newStatus === 'ditolak' ? 'Ditolak' : 'Minor'
-                  );
-                  const notifTitle = newStatus === 'disetujui'
-                    ? `Bimbingan Disetujui (${resolvedJenisRevisi})`
-                    : `Tanggapan Bimbingan: ${resolvedJenisRevisi === 'Ditolak' ? 'Ditolak' : `Revisi ${resolvedJenisRevisi}`}`;
-                  const cleanNote = String(parsedNew.masukan_dosen || '').replace(/^\[.*?\]\s*/, '').trim();
-                  const notifMessage = `${parsedNew.dosen_nama || 'Dosen Pembimbing'} telah memvalidasi sesi bimbingan "${parsedNew.bab_topik || 'Tugas Akhir'}": "${cleanNote || 'Silakan cek kartu dan catatan bimbingan Anda.'}"`;
-
-                  const notifItem = {
-                    id: `notif-${Date.now()}-${parsedNew.id}`,
-                    profile_id: studentNim || 'user-mhs-aulia',
-                    recipient_role: 'mahasiswa',
-                    recipient_nim: studentNim,
-                    recipient_nama: parsedNew.mhs_nama || '',
-                    related_type: 'bimbingan_status',
-                    consultation_id: parsedNew.id,
-                    status: newStatus,
-                    jenis_revisi: resolvedJenisRevisi,
-                    dosen_nama: parsedNew.dosen_nama || 'Dosen Pembimbing',
-                    bab_topik: parsedNew.bab_topik || '',
-                    title: notifTitle,
-                    message: notifMessage,
-                    is_read: false,
-                    is_email_sent: true,
-                    created_at: new Date().toISOString()
-                  };
-
-                  setNotifications(currNotifs => {
-                    const alreadyExists = currNotifs.some(n =>
-                      String(n.consultation_id) === String(parsedNew.id) &&
-                      n.status === newStatus
-                    );
-                    if (alreadyExists) return currNotifs;
-                    const next = [notifItem, ...currNotifs];
-                    try { localStorage.setItem('simta_notifications', JSON.stringify(next)); } catch { }
-                    return next;
-                  });
-
-                  // Trigger toast alert if current active user is the relevant student
-                  const activeUser = currentUserRef.current;
-                  const isCurrentUserStudent = activeUser?.role === 'mahasiswa' &&
-                    (!activeUser?.nim || String(activeUser?.nim).trim() === studentNim);
-
-                  if (isCurrentUserStudent) {
-                    triggerRealtimeAlert({
-                      id: `alert-${Date.now()}`,
-                      title: notifTitle,
-                      message: cleanNote || notifMessage,
-                      dosen_nama: parsedNew.dosen_nama || 'Dosen Pembimbing',
-                      status: newStatus,
-                      jenis_revisi: resolvedJenisRevisi,
-                      bab_topik: parsedNew.bab_topik || ''
-                    }, buildBimbinganStatusDedupKey(parsedNew.id, newStatus, resolvedJenisRevisi, parsedNew.masukan_dosen));
-                  }
-                }
-              } else if (payload.eventType === 'DELETE' && payload.old) {
-                setConsultations(prev => {
-                  const updated = prev.filter(c => String(c.id) !== String(payload.old.id));
-                  try { localStorage.setItem('simta_consultations', JSON.stringify(updated)); } catch { }
-                  return updated;
-                });
-              }
-            }
-          )
-          .subscribe();
-
-        // Sinkronisasi fallback lintas perangkat untuk thesis_consultations saat tab aktif / kembali fokus
-        // Mencegah status bimbingan nyangkut apabila event WebSocket terlewat saat input cepat (spam).
         const consultationFingerprint = (list) =>
           (list || [])
             .map((c) => `${c.id}|${c.status}|${c.jenis_revisi}|${c.masukan_dosen}|${c.catatan_mahasiswa}|${c.tanggal}|${c.waktu}|${c.file_revisi_url || ''}`)
             .sort()
             .join('||');
 
-        const syncConsultationsFromSupabase = async () => {
+        const titleFingerprint = (list) =>
+          (list || [])
+            .map((t) => `${t.id}|${t.status}|${t.judul}|${t.rekomendasi_dospem_status}|${t.pembimbing_1_nip}|${t.pembimbing_2_nip}|${t.updated_at || ''}`)
+            .sort()
+            .join('||');
+
+        const studentAdvisorFingerprint = (list) =>
+          (list || [])
+            .map((sa) => `${sa.student_nim}|${sa.dospem1_nip}|${sa.dospem2_nip}|${sa.status_pembagian}|${sa.updated_at || ''}`)
+            .sort()
+            .join('||');
+
+        let pollInFlight = false;
+        let lastSecondarySyncMs = 0;
+
+        const syncDatasetsViaPolling = async (forceFull = false) => {
           if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+          if (pollInFlight) return;
+          pollInFlight = true;
+
           try {
-            const { data, error } = await supabase.from('thesis_consultations').select('*');
-            if (!error && Array.isArray(data)) {
-              const parsedList = data.map(remoteItem => parseConsultationItem(remoteItem));
+            const { data: consData, error: consErr } = await supabase.from('thesis_consultations').select('*');
+            if (!consErr && Array.isArray(consData)) {
+              const parsedList = consData.map(remoteItem => parseConsultationItem(remoteItem));
               setConsultations(prev => {
                 const nowMs = Date.now();
                 const remoteMap = new Map(parsedList.map(item => [String(item.id), item]));
 
-                // Pertahankan pembaruan lokal yang baru saja dikirim (< 15 detik) agar tidak tertimpa fetch yang berjalan paralel saat spam
                 const reconciledRemote = parsedList.map(remoteItem => {
                   const localMatch = prev.find(p => String(p.id) === String(remoteItem.id));
                   if (!localMatch) return remoteItem;
@@ -3520,7 +3394,6 @@ export function AuthProvider({ children }) {
                   return remoteItem;
                 });
 
-                // Pertahankan entri lokal yang baru saja dibuat (< 15 detik) bila insert belum sempat terbaca
                 const recentLocalOnly = prev.filter(item => {
                   if (remoteMap.has(String(item.id))) return false;
                   const createdMs = item._localUpdatedAt || (item.created_at ? Date.parse(item.created_at) : 0);
@@ -3536,235 +3409,77 @@ export function AuthProvider({ children }) {
                 return merged;
               });
             }
-          } catch { }
-        };
 
-        const handleConsultationsVisibility = () => {
-          if (typeof document === 'undefined' || document.visibilityState === 'visible') {
-            syncConsultationsFromSupabase();
-          }
-        };
+            const nowTick = Date.now();
+            if (forceFull || (nowTick - lastSecondarySyncMs) >= 12000) {
+              lastSecondarySyncMs = nowTick;
 
-        const consultationsPollTimer = setInterval(syncConsultationsFromSupabase, 6000);
-        if (typeof window !== 'undefined') {
-          window.addEventListener('focus', syncConsultationsFromSupabase);
-        }
-        if (typeof document !== 'undefined') {
-          document.addEventListener('visibilitychange', handleConsultationsVisibility);
-        }
+              const [titlesRes, saRes] = await Promise.all([
+                supabase.from('thesis_titles').select('*').order('created_at', { ascending: false }),
+                supabase.from('student_advisors').select('*'),
+              ]);
 
-        // Clean up timer & listeners when realtime channel unmounts
-        const origRemoveChannel = consultationsChannel;
-        if (origRemoveChannel) {
-          origRemoveChannel.__simtaCleanupSync = () => {
-            clearInterval(consultationsPollTimer);
-            if (typeof window !== 'undefined') {
-              window.removeEventListener('focus', syncConsultationsFromSupabase);
-            }
-            if (typeof document !== 'undefined') {
-              document.removeEventListener('visibilitychange', handleConsultationsVisibility);
-            }
-          };
-        }
-
-        // Real-time WebSocket listener for cross-device student advisor assignments
-        studentAdvisorsChannel = supabase
-          .channel(`schema-db-changes-student-advisors-${Date.now()}`)
-          .on(
-            'postgres_changes',
-            { event: '*', schema: 'public', table: 'student_advisors' },
-            (payload) => {
-              if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-                if (payload.new) {
-                  setStudentAdvisors(prev => {
-                    const nim = String(payload.new.student_nim).trim();
-                    const existsIdx = prev.findIndex(sa => String(sa.student_nim).trim() === nim);
-                    const d1 = payload.new.dospem1_nip || null;
-                    const d2 = payload.new.dospem2_nip || null;
+              if (!saRes.error && Array.isArray(saRes.data) && saRes.data.length > 0) {
+                setStudentAdvisors(prev => {
+                  const normalizedSa = saRes.data.map(item => {
+                    const d1 = item.dospem1_nip || null;
+                    const d2 = item.dospem2_nip || null;
                     let st = 'belum';
                     if (d1 && d2) st = 'lengkap';
                     else if (d1 || d2) st = 'partial';
-
-                    const updatedItem = {
-                      ...(existsIdx >= 0 ? prev[existsIdx] : {}),
-                      ...payload.new,
-                      dospem1_nip: d1,
-                      dospem2_nip: d2,
-                      status_pembagian: st
-                    };
-
-                    let updatedList;
-                    if (existsIdx >= 0) {
-                      updatedList = [...prev];
-                      updatedList[existsIdx] = updatedItem;
-                    } else {
-                      updatedList = [updatedItem, ...prev];
-                    }
-                    try { localStorage.setItem('simta_student_advisors', JSON.stringify(updatedList)); } catch { }
-                    return updatedList;
+                    return { ...item, dospem1_nip: d1, dospem2_nip: d2, status_pembagian: st };
                   });
-                }
-              } else if (payload.eventType === 'DELETE' && payload.old) {
-                setStudentAdvisors(prev => {
-                  const updated = prev.filter(sa => String(sa.student_nim).trim() !== String(payload.old.student_nim).trim());
-                  try { localStorage.setItem('simta_student_advisors', JSON.stringify(updated)); } catch { }
-                  return updated;
-                });
-              }
-            }
-          )
-          .subscribe();
-
-        // Real-time WebSocket listener: pengajuan judul baru langsung muncul di kaprodi
-        thesisTitlesChannel = supabase
-          .channel(`schema-db-changes-thesis-titles-${Date.now()}`)
-          .on(
-            'postgres_changes',
-            { event: '*', schema: 'public', table: 'thesis_titles' },
-            (payload) => {
-              if ((payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') && payload.new) {
-                const incoming = normalizeThesisTitleRecord(payload.new);
-                setThesisTitles(prev => {
-                  const idx = prev.findIndex(t => String(t.id) === String(incoming.id));
-                  const existing = idx >= 0 ? prev[idx] : null;
-                  const merged = {
-                    ...(existing || {}),
-                    ...incoming,
-                    mhs_nama: incoming.mhs_nama || existing?.mhs_nama || '',
-                    mhs_nim: incoming.mhs_nim || existing?.mhs_nim || '',
-                    mhs_kelas: incoming.mhs_kelas || existing?.mhs_kelas || ''
-                  };
-                  if (idx >= 0) {
-                    const next = [...prev];
-                    next[idx] = merged;
-                    return next;
-                  }
-                  return [merged, ...prev];
-                });
-
-                if (payload.eventType === 'INSERT' || (payload.eventType === 'UPDATE' && payload.new.status === 'tinjauan')) {
-                  const notifCreated = incoming.created_at || new Date().toISOString();
-                  const isInsert = payload.eventType === 'INSERT';
-
-                  const kaprodiNotif = {
-                    id: `notif-${incoming.id}-${Date.now()}-kaprodi`,
-                    profile_id: 'user-kaprodi-abdiansah',
-                    recipient_role: 'kaprodi',
-                    related_type: isInsert ? 'thesis_title' : 'thesis_title_revised',
-                    related_id: incoming.id,
-                    title: isInsert
-                      ? 'Pengajuan Judul Baru Masuk Tahap Tinjauan'
-                      : 'Pembaruan Judul Revisi Masuk Tahap Tinjauan',
-                    message: `${incoming.mhs_nama || 'Mahasiswa'} (${incoming.mhs_nim || ''}) mengajukan judul: "${incoming.judul}". Otomatis masuk tahap peninjauan rapat Prodi.`,
-                    student_name: incoming.mhs_nama || 'Mahasiswa',
-                    student_nim: incoming.mhs_nim || '',
-                    thesis_title: incoming.judul,
-                    action_url: `/kaprodi/titles/${incoming.id}`,
-                    badge_label: isInsert ? 'Judul TA' : 'Revisi Judul',
-                    is_read: false,
-                    created_at: notifCreated
-                  };
-
-                  const d1Nip = incoming.pembimbing_1_nip;
-                  const d1Nama = incoming.pembimbing_1_nama || incoming.pembimbing_1;
-                  const d2Nip = incoming.pembimbing_2_nip;
-                  const d2Nama = incoming.pembimbing_2_nama || incoming.pembimbing_2;
-
-                  let dospem1Notif = null;
-                  if (d1Nip || d1Nama) {
-                    dospem1Notif = {
-                      id: `notif-${incoming.id}-${Date.now()}-dospem1`,
-                      profile_id: d1Nip || 'dospem1',
-                      recipient_nip: d1Nip,
-                      recipient_role: 'dosen',
-                      dosen_nama: d1Nama,
-                      student_name: incoming.mhs_nama || 'Mahasiswa',
-                      student_nim: incoming.mhs_nim || '',
-                      thesis_title: incoming.judul,
-                      related_type: isInsert ? 'thesis_title' : 'thesis_title_revised',
-                      related_id: incoming.id,
-                      title: isInsert
-                        ? 'Pengajuan Judul Mahasiswa'
-                        : 'Pembaruan Judul Mahasiswa',
-                      message: isInsert
-                        ? `Mahasiswa bimbingan Anda, ${incoming.mhs_nama || 'Mahasiswa'} (${incoming.mhs_nim || ''}) telah melakukan pengajuan usulan pada judul tugas akhir.`
-                        : `Mahasiswa bimbingan Anda, ${incoming.mhs_nama || 'Mahasiswa'} (${incoming.mhs_nim || ''}) telah melakukan perubahan usulan pada judul tugas akhir.`,
-                      action_url: '/dosen/validasi-judul',
-                      badge_label: isInsert ? 'Judul TA' : 'Revisi Judul',
-                      is_read: false,
-                      created_at: notifCreated
-                    };
-                  }
-
-                  let dospem2Notif = null;
-                  if (d2Nip || d2Nama) {
-                    dospem2Notif = {
-                      id: `notif-${incoming.id}-${Date.now()}-dospem2`,
-                      profile_id: d2Nip || 'dospem2',
-                      recipient_nip: d2Nip,
-                      recipient_role: 'dosen',
-                      dosen_nama: d2Nama,
-                      student_name: incoming.mhs_nama || 'Mahasiswa',
-                      student_nim: incoming.mhs_nim || '',
-                      thesis_title: incoming.judul,
-                      related_type: isInsert ? 'thesis_title' : 'thesis_title_revised',
-                      related_id: incoming.id,
-                      title: isInsert
-                        ? 'Pengajuan Judul Mahasiswa'
-                        : 'Pembaruan Judul Mahasiswa',
-                      message: isInsert
-                        ? `Mahasiswa bimbingan Anda, ${incoming.mhs_nama || 'Mahasiswa'} (${incoming.mhs_nim || ''}) telah melakukan pengajuan usulan pada judul tugas akhir.`
-                        : `Mahasiswa bimbingan Anda, ${incoming.mhs_nama || 'Mahasiswa'} (${incoming.mhs_nim || ''}) telah melakukan perubahan usulan pada judul tugas akhir.`,
-                      action_url: '/dosen/validasi-judul',
-                      badge_label: isInsert ? 'Judul TA' : 'Revisi Judul',
-                      is_read: false,
-                      created_at: notifCreated
-                    };
-                  }
-
-                  const batchNotifs = [kaprodiNotif, dospem1Notif, dospem2Notif].filter(Boolean);
-
-                  setNotifications(prev => {
-                    let updated = [...prev];
-                    let changed = false;
-                    batchNotifs.forEach(item => {
-                      const exists = updated.some(n =>
-                        n.id === item.id ||
-                        (String(n.related_id) === String(incoming.id) &&
-                         String(n.recipient_role) === String(item.recipient_role) &&
-                         String(n.recipient_nip || '') === String(item.recipient_nip || ''))
-                      );
-                      if (!exists) {
-                        updated.unshift(item);
-                        changed = true;
-                      }
-                    });
-                    if (changed) {
-                      try { localStorage.setItem('simta_notifications', JSON.stringify(updated)); } catch {}
-                      return updated;
-                    }
+                  if (studentAdvisorFingerprint(prev) === studentAdvisorFingerprint(normalizedSa)) {
                     return prev;
-                  });
-
-                  const activeUser = currentUserRef.current;
-                  if (activeUser) {
-                    const match = batchNotifs.find(n => isNotificationForUser(n, activeUser));
-                    if (match) {
-                      triggerRealtimeToast(
-                        match,
-                        `thesis-title:${incoming.id}:${isInsert ? 'insert' : 'update'}:${match.recipient_role || ''}:${match.recipient_nip || ''}`
-                      );
-                    }
                   }
-                }
-              } else if (payload.eventType === 'DELETE' && payload.old) {
-                setThesisTitles(prev => prev.filter(t => String(t.id) !== String(payload.old.id)));
+                  try { localStorage.setItem('simta_student_advisors', JSON.stringify(normalizedSa)); } catch { }
+                  return normalizedSa;
+                });
+              }
+
+              if (!titlesRes.error && Array.isArray(titlesRes.data)) {
+                const normalizedTitles = titlesRes.data.map(normalizeThesisTitleRecord);
+                setThesisTitles(prev => {
+                  if (titleFingerprint(prev) === titleFingerprint(normalizedTitles)) {
+                    return prev;
+                  }
+                  try { localStorage.setItem('simta_thesis_titles', JSON.stringify(normalizedTitles)); } catch { }
+                  return normalizedTitles;
+                });
               }
             }
-          )
-          .subscribe();
-      } catch (realtimeErr) {
-        console.warn('Realtime subscription error handled safely:', realtimeErr);
+          } catch {
+            // Abaikan kegagalan polling sementara
+          } finally {
+            pollInFlight = false;
+          }
+        };
+
+        const handlePollingVisibility = () => {
+          if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+            syncDatasetsViaPolling(true);
+          }
+        };
+
+        const datasetPollTimer = setInterval(() => syncDatasetsViaPolling(false), 6000);
+        if (typeof window !== 'undefined') {
+          window.addEventListener('focus', handlePollingVisibility);
+        }
+        if (typeof document !== 'undefined') {
+          document.addEventListener('visibilitychange', handlePollingVisibility);
+        }
+
+        cleanupPollingSync = () => {
+          clearInterval(datasetPollTimer);
+          if (typeof window !== 'undefined') {
+            window.removeEventListener('focus', handlePollingVisibility);
+          }
+          if (typeof document !== 'undefined') {
+            document.removeEventListener('visibilitychange', handlePollingVisibility);
+          }
+        };
+      } catch (pollingErr) {
+        console.warn('AJAX polling sync error handled safely:', pollingErr);
       }
       supabase.from('thesis_titles').select('*').order('created_at', { ascending: false })
         .then(async ({ data, error }) => {
@@ -4246,57 +3961,9 @@ export function AuthProvider({ children }) {
           }
         });
 
-      // 2b. Supabase Auth session restore
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session?.user) {
-          const registered = getRegisteredUsers();
-          const matchedReg = registered.find(r => r.email === session.user.email || r.id === session.user.id) || registered[0];
-
-          supabase.from('profiles').select('*').eq('id', session.user.id).single().then(({ data }) => {
-            if (data && data.nama && data.nama !== 'Mahasiswa UNSRI') {
-              setCurrentUser(sanitizeProfile(data));
-            } else if (session.user.user_metadata) {
-              const meta = session.user.user_metadata;
-              const resolvedUser = sanitizeProfile({
-                id: session.user.id,
-                nama: meta.nama || meta.full_name || matchedReg?.nama || 'Mahasiswa',
-                email: session.user.email,
-                nim: meta.nim || matchedReg?.nim || '',
-                no_hp: meta.no_hp || matchedReg?.no_hp || '',
-                role: meta.role || matchedReg?.role || 'mahasiswa',
-                kelas: meta.kelas || matchedReg?.kelas || 'MI 5A'
-              });
-              setCurrentUser(resolvedUser);
-            }
-          });
-        }
-      });
-
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-        if (event === 'SIGNED_OUT') {
-          localStorage.removeItem('simta_active_user');
-          setCurrentUserState(null);
-          setIsAuthenticated(false);
-        } else if (session?.user) {
-          supabase.from('profiles').select('*').eq('id', session.user.id).single().then(({ data }) => {
-            if (data && data.nama) {
-              setCurrentUser(sanitizeProfile(data));
-            }
-          });
-        }
-      });
-
       return () => {
-        try { subscription.unsubscribe(); } catch { }
-        if (consultationsChannel) {
-          try { consultationsChannel.__simtaCleanupSync?.(); } catch { }
-          try { supabase.removeChannel(consultationsChannel); } catch { }
-        }
-        if (studentAdvisorsChannel) {
-          try { supabase.removeChannel(studentAdvisorsChannel); } catch { }
-        }
-        if (thesisTitlesChannel) {
-          try { supabase.removeChannel(thesisTitlesChannel); } catch { }
+        if (typeof cleanupPollingSync === 'function') {
+          try { cleanupPollingSync(); } catch { }
         }
       };
     }
@@ -5332,48 +4999,7 @@ export function AuthProvider({ children }) {
     }
 
 
-    // 7. Try Real Supabase Auth if configured & password provided
-    if (isSupabaseConfigured && supabase && password) {
-      let emailToUse = termLower.includes('@') ? termLower : '';
-      if (!emailToUse) {
-        const { data: prof } = await supabase.from('profiles').select('email').or(`nim.eq.${term},nip.eq.${term}`).single();
-        if (prof && prof.email) {
-          emailToUse = prof.email;
-        }
-      }
-
-      if (emailToUse) {
-        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-          email: emailToUse,
-          password: password
-        });
-
-        if (!authError && authData.user) {
-          const { data: profile } = await supabase.from('profiles').select('*').eq('id', authData.user.id).single();
-          const matchedReg = registered.find(r => r.email === authData.user.email || r.id === authData.user.id) || registered[0];
-          let activeProfile = profile || {
-            id: authData.user.id,
-            nama: authData.user.user_metadata?.nama || authData.user.user_metadata?.full_name || matchedReg?.nama || 'AULIA AZZAHRA',
-            email: authData.user.email,
-            nim: term,
-            no_hp: authData.user.user_metadata?.no_hp || matchedReg?.no_hp || '',
-            role: authData.user.user_metadata?.role || matchedReg?.role || 'mahasiswa',
-            kelas: authData.user.user_metadata?.kelas || matchedReg?.kelas || 'MI 2024'
-          };
-
-          activeProfile = await enrichUserFromSupabase(activeProfile);
-          setCurrentUser(activeProfile);
-
-          if (activeProfile.role === 'kaprodi') return '/kaprodi/dashboard';
-          if (activeProfile.role === 'admin' || activeProfile.role === 'admin_sarana') return '/admin-simta/dashboard';
-          if (activeProfile.role === 'dosen') return '/dosen/dashboard';
-          if (activeProfile.role === 'mahasiswa') {
-            return !activeProfile.is_profile_completed ? '/profile?first_login=true' : '/dashboard';
-          }
-          return '/dashboard';
-        }
-      }
-    }
+    // 7. Autentikasi melalui dataset SIMONITA (dbProfiles, student_credentials, advisors, admin_cms & mock fallback)
 
     // 8. Fallback to Mock Dataset Matching strictly by NIM / NIP / Email (No username/role bypass!)
     let foundUser = MOCK_USERS.find(u =>
@@ -5596,46 +5222,18 @@ export function AuthProvider({ children }) {
       }
     }
 
-    // 1. Try Real Supabase Auth Signup if configured
+    // Simpan profil pengguna baru langsung ke tabel profiles di backend Laravel MySQL
     if (isSupabaseConfigured && supabase) {
       try {
-        const { data, error } = await supabase.auth.signUp({
-          email: cleanEmail,
-          password: password,
-          options: {
-            data: {
-              nama,
-              nim,
-              nip: nim,
-              no_hp: noHp,
-              prodi: prodi || 'D3 Manajemen Informatika',
-              kelas: kelas || (role === 'kaprodi' ? 'Dosen / Kaprodi' : 'MI 5A'),
-              role: role
-            }
-          }
-        });
-
-        if (error) {
-          return { success: false, message: error.message };
-        }
-
-        if (data.user) {
-          newStudentUser.id = data.user.id;
-          saveRegisteredUser(newStudentUser);
-          const { error: profileError } = await supabase.from('profiles').upsert(newStudentUser, { onConflict: 'id' });
-          if (profileError) {
-            console.warn('Supabase profile upsert warning:', profileError.message);
-          }
-
-          setCurrentUser(newStudentUser);
-          return { success: true, redirectPath };
+        const { error: profileError } = await supabase.from('profiles').upsert(newStudentUser, { onConflict: 'id' });
+        if (profileError) {
+          console.warn('Profile upsert warning:', profileError.message);
         }
       } catch (err) {
-        return { success: false, message: err.message || 'Gagal mendaftar ke Supabase.' };
+        console.warn('Gagal menyimpan profil ke backend:', err);
       }
     }
 
-    // 2. Fallback to Local State
     MOCK_USERS.unshift(newStudentUser);
     setCurrentUser(newStudentUser);
 
@@ -5643,9 +5241,6 @@ export function AuthProvider({ children }) {
   };
 
   const logout = async () => {
-    if (isSupabaseConfigured && supabase) {
-      await supabase.auth.signOut();
-    }
     resetCredentialCache();
     localStorage.removeItem('simta_active_user');
     setCurrentUserState(null);
@@ -9691,7 +9286,7 @@ export function AuthProvider({ children }) {
       });
     } catch {}
 
-    // Sinkronisasi Supabase jika aktif
+    // Sinkronisasi kredensial backend Laravel jika aktif
     const studentNimToSync = (!matchedReq?.role || matchedReq.role === 'mahasiswa')
       ? normalizeNim(matchedReq?.nim || targetIdentifier)
       : '';
@@ -9702,10 +9297,6 @@ export function AuthProvider({ children }) {
     }
 
     if (isSupabaseConfigured && supabase) {
-      try {
-        await supabase.auth.updateUser({ password: pass });
-      } catch {}
-
       try {
         const uRole = matchedReq?.role || 'dosen';
         const cleanIdent = String(targetIdentifier).trim();

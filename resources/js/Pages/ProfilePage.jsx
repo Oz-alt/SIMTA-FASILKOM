@@ -28,7 +28,6 @@ import {
   KeyRound,
   ArrowRight
 } from 'lucide-react';
-import { supabase, isSupabaseConfigured } from '../services/supabase.js';
 import { getStudentCredential } from '../services/studentCredentials.js';
 import { isValidNonDummyPhone } from '../lib/whatsappHelper.js';
 

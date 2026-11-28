@@ -702,7 +702,7 @@ export default function MasterDosenAdminPage() {
             Menampilkan <span className="font-bold text-slate-800">{filteredDosen.length}</span> dari <span className="font-bold text-slate-800">{totalDosen}</span> dosen terdaftar
           </div>
           <div className="flex items-center space-x-2 text-[11px] text-slate-400">
-            <span>Sinkronisasi otomatis dengan Database Supabase &amp; Local Storage</span>
+            <span>Sinkronisasi otomatis dengan Database MySQL &amp; Local Storage</span>
           </div>
         </div>
       </div>

@@ -23,8 +23,6 @@ import {
   X
 } from 'lucide-react';
 
-import { supabase, isSupabaseConfigured } from '../../services/supabase.js';
-
 export default function AjukanJudulPage() {
   const { 
     currentUser, 

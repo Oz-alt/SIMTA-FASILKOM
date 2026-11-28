@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use Carbon\Carbon;
+use App\Support\SimtaTableSchema;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -10,89 +10,6 @@ use Illuminate\Support\Facades\Schema;
 
 class SupabaseExportSeeder extends Seeder
 {
-    /**
-     * Primary key per exported SIMTA table.
-     *
-     * @var array<string, string>
-     */
-    private const TABLE_PRIMARY_KEYS = [
-        'profiles' => 'id',
-        'advisors' => 'nip',
-        'student_advisors' => 'student_nim',
-        'thesis_titles' => 'id',
-        'thesis_consultations' => 'id',
-        'thesis_repositories' => 'id',
-        'bookings' => 'id',
-        'admin_cms' => 'id',
-        'admin_documents' => 'id',
-        'admin_templates' => 'id',
-        'student_credentials' => 'nim',
-    ];
-
-    /**
-     * Columns stored as JSON strings.
-     *
-     * @var array<int, string>
-     */
-    private const JSON_COLUMNS = [
-        'keahlian',
-        'riwayat_revisi',
-        'riwayat_pengingat_prodi',
-        'jadwal_sidang',
-        'kata_kunci',
-    ];
-
-    /**
-     * Columns stored as boolean values.
-     *
-     * @var array<int, string>
-     */
-    private const BOOLEAN_COLUMNS = [
-        'is_profile_completed',
-        'requires_password_change',
-        'is_verified',
-        'dospem_confirmed',
-        'has_password',
-    ];
-
-    /**
-     * Columns stored as integers.
-     *
-     * @var array<int, string>
-     */
-    private const INTEGER_COLUMNS = [
-        'kuota_dospem1',
-        'kuota_dospem2',
-        'kuota_bimbingan',
-        'skor_kemiripan_terakhir',
-        'jumlah_diingatkan',
-        'pembimbing',
-    ];
-
-    /**
-     * Columns formatted as YYYY-MM-DD dates.
-     *
-     * @var array<int, string>
-     */
-    private const DATE_COLUMNS = [
-        'tanggal',
-        'tanggal_lulus',
-        'tanggal_upload',
-    ];
-
-    /**
-     * Columns formatted as UTC YYYY-MM-DD HH:MM:SS timestamps.
-     *
-     * @var array<int, string>
-     */
-    private const TIMESTAMP_COLUMNS = [
-        'created_at',
-        'updated_at',
-        'dospem_confirmed_at',
-        'terakhir_diingatkan_prodi',
-        'reviewed_at',
-    ];
-
     /**
      * Run the seeder against the default gitignored Supabase snapshot file.
      */
@@ -150,7 +67,7 @@ class SupabaseExportSeeder extends Seeder
 
         $counts = [];
 
-        foreach (self::TABLE_PRIMARY_KEYS as $table => $primaryKey) {
+        foreach (SimtaTableSchema::TABLE_PRIMARY_KEYS as $table => $primaryKey) {
             if (! Schema::hasTable($table)) {
                 continue;
             }
@@ -236,6 +153,7 @@ class SupabaseExportSeeder extends Seeder
             foreach ($validRows as $row) {
                 if (array_key_exists($column, $row)) {
                     $presentColumns[] = $column;
+
                     break;
                 }
             }
@@ -252,7 +170,7 @@ class SupabaseExportSeeder extends Seeder
             $record = [];
 
             foreach ($presentColumns as $column) {
-                $record[$column] = $this->normalizeValue($column, $row[$column] ?? null);
+                $record[$column] = SimtaTableSchema::normalizeValueForStorage($column, $row[$column] ?? null);
             }
 
             $normalized[] = $record;
@@ -265,61 +183,5 @@ class SupabaseExportSeeder extends Seeder
         }
 
         return count($normalized);
-    }
-
-    /**
-     * Coerce Supabase JSON field values to MySQL and SQLite friendly scalars.
-     */
-    private function normalizeValue(string $column, mixed $value): mixed
-    {
-        if ($value === null) {
-            return null;
-        }
-
-        if (in_array($column, self::JSON_COLUMNS, true)) {
-            if (is_string($value)) {
-                return $value;
-            }
-
-            return json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        }
-
-        if (in_array($column, self::BOOLEAN_COLUMNS, true)) {
-            return (bool) $value;
-        }
-
-        if (in_array($column, self::INTEGER_COLUMNS, true)) {
-            return is_numeric($value) ? (int) $value : null;
-        }
-
-        if (in_array($column, self::DATE_COLUMNS, true)) {
-            return $this->formatTemporalValue($value, 'Y-m-d');
-        }
-
-        if (in_array($column, self::TIMESTAMP_COLUMNS, true)) {
-            return $this->formatTemporalValue($value, 'Y-m-d H:i:s');
-        }
-
-        if (is_array($value)) {
-            return json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        }
-
-        return $value;
-    }
-
-    /**
-     * Parse ISO timestamps or date strings safely into UTC SQL formats.
-     */
-    private function formatTemporalValue(mixed $value, string $format): ?string
-    {
-        if (is_string($value) && trim($value) === '') {
-            return null;
-        }
-
-        try {
-            return Carbon::parse((string) $value)->utc()->format($format);
-        } catch (\Throwable) {
-            return null;
-        }
     }
 }

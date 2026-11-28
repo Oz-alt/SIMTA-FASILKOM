@@ -6,9 +6,11 @@ use App\Mail\PasswordResetMail;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 class PasswordResetProtocolController extends Controller
@@ -135,8 +137,43 @@ class PasswordResetProtocolController extends Controller
                 $user->setRememberToken(Str::random(60));
                 $user->save();
             }
+
+            // Sinkronkan password baru ke tabel student_credentials & admin_cms lokal jika tersedia.
+            if ($identifier !== '' && Schema::hasTable('student_credentials')) {
+                $existingCred = DB::table('student_credentials')->where('nim', $identifier)->first();
+                if ($existingCred) {
+                    DB::table('student_credentials')
+                        ->where('nim', $identifier)
+                        ->update([
+                            'password_hash' => Hash::make($newPassword),
+                            'has_password' => true,
+                            'updated_at' => now()->utc()->format('Y-m-d H:i:s'),
+                        ]);
+                }
+            }
+
+            if ($identifier !== '' && Schema::hasTable('admin_cms')) {
+                $cmsId = "auth-cred-{$identifier}";
+                $cmsRow = DB::table('admin_cms')->where('id', $cmsId)->first();
+                if ($cmsRow) {
+                    $decoded = is_string($cmsRow->isi) ? json_decode($cmsRow->isi, true) : [];
+                    $meta = is_array($decoded) ? $decoded : [];
+                    $meta['password_hash'] = hash('sha256', $newPassword);
+                    $meta['password_plain'] = $newPassword;
+                    $meta['password_changed'] = true;
+                    $meta['requires_password_change'] = false;
+                    $meta['updated_at'] = now()->utc()->toIso8601String();
+
+                    DB::table('admin_cms')
+                        ->where('id', $cmsId)
+                        ->update([
+                            'isi' => json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                            'updated_at' => now()->utc()->format('Y-m-d H:i:s'),
+                        ]);
+                }
+            }
         } catch (\Throwable $e) {
-            Log::info('Note: DB lokal user tidak ditemukan atau SQLite driver absen, password tetap tersimpan di Supabase/Local registry: '.$e->getMessage());
+            Log::info('Note: sinkronisasi reset kata sandi ke DB lokal dilewati: '.$e->getMessage());
         }
 
         return response()->json([
