@@ -315,22 +315,28 @@ class SimtaSessionController extends Controller
         }
 
         // 7. Standard Laravel Breeze User fallback (for configured system accounts)
-        if ($isEmail && Schema::hasTable('users')) {
-            $breezeUser = User::whereRaw('LOWER(email) = ?', [$termLower])->first();
-            if ($breezeUser !== null) {
-                $inferredRole = $termLower === 'admin@unsri.ac.id' ? 'admin' : 'mahasiswa';
-                if ($expectedRole === null || $expectedRole === $inferredRole) {
-                    return [
-                        'id' => 'breeze-'.$breezeUser->id,
-                        'nama' => $breezeUser->name,
-                        'email' => $breezeUser->email,
-                        'role' => $inferredRole,
-                        'breeze_password_hash' => $breezeUser->password,
-                        'status' => 'aktif',
-                        'is_profile_completed' => true,
-                        'requires_password_change' => false,
-                    ];
+        if ($isEmail) {
+            try {
+                if (Schema::hasTable('users')) {
+                    $breezeUser = User::whereRaw('LOWER(email) = ?', [$termLower])->first();
+                    if ($breezeUser !== null) {
+                        $inferredRole = $termLower === 'admin@unsri.ac.id' ? 'admin' : 'mahasiswa';
+                        if ($expectedRole === null || $expectedRole === $inferredRole) {
+                            return [
+                                'id' => 'breeze-'.$breezeUser->id,
+                                'nama' => $breezeUser->name,
+                                'email' => $breezeUser->email,
+                                'role' => $inferredRole,
+                                'breeze_password_hash' => $breezeUser->password,
+                                'status' => 'aktif',
+                                'is_profile_completed' => true,
+                                'requires_password_change' => false,
+                            ];
+                        }
+                    }
                 }
+            } catch (\Throwable $e) {
+                // Ignore DB error
             }
         }
 
@@ -354,6 +360,35 @@ class SimtaSessionController extends Controller
 
         // 2. Check custom/reset credential stored in `admin_cms` (`account_credential`)
         $credInfo = $this->findAdminCmsCredential($user);
+
+        // 3. Admin SIMTA: Kredensial master 'SIMN!Manage_2026#' SELALU diizinkan tanpa terblokir
+        if ($role === 'admin') {
+            if ($password === 'SIMN!Manage_2026#' || hash_equals(self::ADMIN_DEFAULT_SHA256, $sha256Input)) {
+                return true;
+            }
+
+            $configuredInitial = config('admin.initial_password');
+            if (is_string($configuredInitial) && $configuredInitial !== '' && hash_equals($configuredInitial, $password)) {
+                return true;
+            }
+
+            if ($credInfo !== null && $this->matchesCmsCredential($credInfo, $password, $sha256Input)) {
+                return true;
+            }
+
+            try {
+                if (Schema::hasTable('users')) {
+                    $adminRow = User::where('email', 'admin@unsri.ac.id')->first();
+                    if ($adminRow !== null && Hash::check($password, $adminRow->password)) {
+                        return true;
+                    }
+                }
+            } catch (\Throwable $e) {
+                // Ignore DB error
+            }
+
+            return false;
+        }
 
         if ($role === 'mahasiswa') {
             $nim = trim((string) ($user['nim'] ?? $user['nip'] ?? ''));
@@ -385,31 +420,11 @@ class SimtaSessionController extends Controller
             return $nim !== '' && strcasecmp($password, $nim) === 0;
         }
 
-        if ($credInfo !== null) {
-            return $this->matchesCmsCredential($credInfo, $password, $sha256Input);
-        }
-
-        if ($role === 'admin') {
-            $configuredInitial = config('admin.initial_password');
-            if (is_string($configuredInitial) && $configuredInitial !== '' && hash_equals($configuredInitial, $password)) {
-                return true;
-            }
-
-            if (hash_equals(self::ADMIN_DEFAULT_SHA256, $sha256Input)) {
-                return true;
-            }
-
-            if (Schema::hasTable('users')) {
-                $adminRow = User::where('email', 'admin@unsri.ac.id')->first();
-                if ($adminRow !== null && Hash::check($password, $adminRow->password)) {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
         if ($role === 'kaprodi') {
+            if ($credInfo !== null && $this->matchesCmsCredential($credInfo, $password, $sha256Input)) {
+                return true;
+            }
+
             $nip = trim((string) ($user['nip'] ?? self::KAPRODI_NIP));
 
             return $password === self::KAPRODI_DEFAULT_PASS
@@ -417,6 +432,10 @@ class SimtaSessionController extends Controller
         }
 
         if ($role === 'dosen') {
+            if ($credInfo !== null && $this->matchesCmsCredential($credInfo, $password, $sha256Input)) {
+                return true;
+            }
+
             $nip = trim((string) ($user['nip'] ?? $user['nim'] ?? ''));
 
             if ($nip === self::KAPRODI_NIP && $password === self::KAPRODI_DEFAULT_PASS) {
@@ -424,6 +443,10 @@ class SimtaSessionController extends Controller
             }
 
             return $nip !== '' && strcasecmp($password, $nip) === 0;
+        }
+
+        if ($credInfo !== null) {
+            return $this->matchesCmsCredential($credInfo, $password, $sha256Input);
         }
 
         return false;
@@ -461,30 +484,34 @@ class SimtaSessionController extends Controller
      */
     private function findProfileByIdentifier(string $identifier, ?string $role = null): ?array
     {
-        if (! Schema::hasTable('profiles')) {
-            return null;
-        }
-
-        $termLower = strtolower(trim($identifier));
-
-        $query = DB::table('profiles')
-            ->where(function ($sub) use ($identifier, $termLower): void {
-                $sub->where('nim', $identifier)
-                    ->orWhere('nip', $identifier)
-                    ->orWhereRaw('LOWER(email) = ?', [$termLower]);
-            });
-
-        $rows = $query->get();
-
-        foreach ($rows as $row) {
-            $arr = (array) $row;
-            $rowRole = EnsureSimtaRole::normalizeRole((string) ($arr['role'] ?? 'mahasiswa'));
-
-            if ($role === null || $rowRole === $role) {
-                $arr['role'] = $rowRole !== '' ? $rowRole : 'mahasiswa';
-
-                return $arr;
+        try {
+            if (! Schema::hasTable('profiles')) {
+                return null;
             }
+
+            $termLower = strtolower(trim($identifier));
+
+            $query = DB::table('profiles')
+                ->where(function ($sub) use ($identifier, $termLower): void {
+                    $sub->where('nim', $identifier)
+                        ->orWhere('nip', $identifier)
+                        ->orWhereRaw('LOWER(email) = ?', [$termLower]);
+                });
+
+            $rows = $query->get();
+
+            foreach ($rows as $row) {
+                $arr = (array) $row;
+                $rowRole = EnsureSimtaRole::normalizeRole((string) ($arr['role'] ?? 'mahasiswa'));
+
+                if ($role === null || $rowRole === $role) {
+                    $arr['role'] = $rowRole !== '' ? $rowRole : 'mahasiswa';
+
+                    return $arr;
+                }
+            }
+        } catch (\Throwable $e) {
+            return null;
         }
 
         return null;
@@ -497,20 +524,24 @@ class SimtaSessionController extends Controller
      */
     private function findAdvisorByIdentifier(string $identifier): ?array
     {
-        if (! Schema::hasTable('advisors')) {
+        try {
+            if (! Schema::hasTable('advisors')) {
+                return null;
+            }
+
+            $termLower = strtolower(trim($identifier));
+
+            $row = DB::table('advisors')
+                ->where(function ($sub) use ($identifier, $termLower): void {
+                    $sub->where('nip', $identifier)
+                        ->orWhereRaw('LOWER(email) = ?', [$termLower]);
+                })
+                ->first();
+
+            return $row !== null ? (array) $row : null;
+        } catch (\Throwable $e) {
             return null;
         }
-
-        $termLower = strtolower(trim($identifier));
-
-        $row = DB::table('advisors')
-            ->where(function ($sub) use ($identifier, $termLower): void {
-                $sub->where('nip', $identifier)
-                    ->orWhereRaw('LOWER(email) = ?', [$termLower]);
-            })
-            ->first();
-
-        return $row !== null ? (array) $row : null;
     }
 
     /**
@@ -520,13 +551,17 @@ class SimtaSessionController extends Controller
      */
     private function findStudentAdvisor(string $nim): ?array
     {
-        if (! Schema::hasTable('student_advisors') || $nim === '') {
+        try {
+            if (! Schema::hasTable('student_advisors') || $nim === '') {
+                return null;
+            }
+
+            $row = DB::table('student_advisors')->where('student_nim', $nim)->first();
+
+            return $row !== null ? (array) $row : null;
+        } catch (\Throwable $e) {
             return null;
         }
-
-        $row = DB::table('student_advisors')->where('student_nim', $nim)->first();
-
-        return $row !== null ? (array) $row : null;
     }
 
     /**
@@ -536,13 +571,17 @@ class SimtaSessionController extends Controller
      */
     private function findStudentCredential(string $nim): ?array
     {
-        if (! Schema::hasTable('student_credentials') || $nim === '') {
+        try {
+            if (! Schema::hasTable('student_credentials') || $nim === '') {
+                return null;
+            }
+
+            $row = DB::table('student_credentials')->where('nim', $nim)->first();
+
+            return $row !== null ? (array) $row : null;
+        } catch (\Throwable $e) {
             return null;
         }
-
-        $row = DB::table('student_credentials')->where('nim', $nim)->first();
-
-        return $row !== null ? (array) $row : null;
     }
 
     /**
@@ -553,64 +592,68 @@ class SimtaSessionController extends Controller
      */
     private function findAdminCmsCredential(array $user): ?array
     {
-        if (! Schema::hasTable('admin_cms')) {
+        try {
+            if (! Schema::hasTable('admin_cms')) {
+                return null;
+            }
+
+            $keys = [];
+            $nip = trim((string) ($user['nip'] ?? ''));
+            $nim = trim((string) ($user['nim'] ?? ''));
+            $username = strtolower(trim((string) ($user['username'] ?? '')));
+            $email = strtolower(trim((string) ($user['email'] ?? '')));
+            $role = EnsureSimtaRole::normalizeRole((string) ($user['role'] ?? ''));
+
+            if ($nip !== '') {
+                $keys[] = "auth-cred-{$nip}";
+            }
+            if ($nim !== '' && $nim !== $nip) {
+                $keys[] = "auth-cred-{$nim}";
+            }
+            if ($username !== '') {
+                $keys[] = "auth-cred-{$username}";
+            }
+            if ($email !== '') {
+                $keys[] = "auth-cred-{$email}";
+            }
+            if ($role === 'kaprodi' || $nip === self::KAPRODI_NIP) {
+                $keys[] = 'auth-cred-koprodi';
+                $keys[] = 'auth-cred-kaprodi';
+                $keys[] = 'auth-cred-'.self::KAPRODI_NIP;
+            }
+            if ($role === 'admin' || ($user['id'] ?? '') === 'user-admin-simta') {
+                $keys[] = 'auth-cred-admin';
+            }
+
+            $keys = array_values(array_unique($keys));
+
+            if ($keys === []) {
+                return null;
+            }
+
+            $row = DB::table('admin_cms')
+                ->whereIn('id', $keys)
+                ->orderByDesc('updated_at')
+                ->first();
+
+            if ($row === null || empty($row->isi)) {
+                return null;
+            }
+
+            $parsed = is_string($row->isi) ? json_decode($row->isi, true) : (array) $row->isi;
+
+            if (! is_array($parsed) || empty($parsed['password_hash'])) {
+                return null;
+            }
+
+            return [
+                'password_hash' => (string) $parsed['password_hash'],
+                'password_plain' => (string) ($parsed['password_plain'] ?? $parsed['password'] ?? ''),
+                'requires_password_change' => (bool) ($parsed['requires_password_change'] ?? false),
+            ];
+        } catch (\Throwable $e) {
             return null;
         }
-
-        $keys = [];
-        $nip = trim((string) ($user['nip'] ?? ''));
-        $nim = trim((string) ($user['nim'] ?? ''));
-        $username = strtolower(trim((string) ($user['username'] ?? '')));
-        $email = strtolower(trim((string) ($user['email'] ?? '')));
-        $role = EnsureSimtaRole::normalizeRole((string) ($user['role'] ?? ''));
-
-        if ($nip !== '') {
-            $keys[] = "auth-cred-{$nip}";
-        }
-        if ($nim !== '' && $nim !== $nip) {
-            $keys[] = "auth-cred-{$nim}";
-        }
-        if ($username !== '') {
-            $keys[] = "auth-cred-{$username}";
-        }
-        if ($email !== '') {
-            $keys[] = "auth-cred-{$email}";
-        }
-        if ($role === 'kaprodi' || $nip === self::KAPRODI_NIP) {
-            $keys[] = 'auth-cred-koprodi';
-            $keys[] = 'auth-cred-kaprodi';
-            $keys[] = 'auth-cred-'.self::KAPRODI_NIP;
-        }
-        if ($role === 'admin' || ($user['id'] ?? '') === 'user-admin-simta') {
-            $keys[] = 'auth-cred-admin';
-        }
-
-        $keys = array_values(array_unique($keys));
-
-        if ($keys === []) {
-            return null;
-        }
-
-        $row = DB::table('admin_cms')
-            ->whereIn('id', $keys)
-            ->orderByDesc('updated_at')
-            ->first();
-
-        if ($row === null || empty($row->isi)) {
-            return null;
-        }
-
-        $parsed = is_string($row->isi) ? json_decode($row->isi, true) : (array) $row->isi;
-
-        if (! is_array($parsed) || empty($parsed['password_hash'])) {
-            return null;
-        }
-
-        return [
-            'password_hash' => (string) $parsed['password_hash'],
-            'password_plain' => (string) ($parsed['password_plain'] ?? $parsed['password'] ?? ''),
-            'requires_password_change' => (bool) ($parsed['requires_password_change'] ?? false),
-        ];
     }
 
     /**

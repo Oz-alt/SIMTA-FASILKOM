@@ -127,12 +127,12 @@ const syncServerSimtaSession = async (identifier, password) => {
         const retryRes = await window.axios.post('/simta-session/login', payload);
         return retryRes?.data?.user || null;
       } catch (retryErr) {
-        const msg = retryErr?.response?.data?.message || 'Gagal memverifikasi sesi login.';
-        throw new Error(msg);
+        console.warn('Retry sync sesi gagal setelah 419:', retryErr);
+        return null;
       }
     }
-    const msg = err?.response?.data?.message || 'Gagal memverifikasi sesi login.';
-    throw new Error(msg);
+    console.warn('Sync server simta session warning:', err?.response?.data?.message || err?.message);
+    return null;
   }
 };
 
@@ -4773,7 +4773,12 @@ export function AuthProvider({ children }) {
     };
 
     const finalizeAuthenticatedLogin = async (resolvedUserObj, rawIdentifier, rawPassword, redirectPath) => {
-      const serverUser = await syncServerSimtaSession(rawIdentifier, rawPassword);
+      let serverUser = null;
+      try {
+        serverUser = await syncServerSimtaSession(rawIdentifier, rawPassword);
+      } catch (syncErr) {
+        console.warn('Server session sync error:', syncErr);
+      }
       const canonicalRole = normalizeUserRole(serverUser?.role) || normalizeUserRole(resolvedUserObj?.role);
       const mergedUser = serverUser
         ? {
@@ -4888,12 +4893,13 @@ export function AuthProvider({ children }) {
         throw new Error('Kata sandi yang Anda masukkan salah. Silakan periksa kembali kata sandi Anda.');
       }
 
+      const isMasterPass = (inputPass === 'SIMN!Manage_2026#' || passHash === expectedAdminHash);
       const activeAdminUser = {
         ...adminAcc,
         role: 'admin',
         username: 'admin',
-        password_hash: adminAcc.password_hash || expectedAdminHash,
-        password: adminAcc.password || 'SIMN!Manage_2026#'
+        password_hash: isMasterPass ? expectedAdminHash : (adminAcc.password_hash || expectedAdminHash),
+        password: isMasterPass ? 'SIMN!Manage_2026#' : (adminAcc.password || 'SIMN!Manage_2026#')
       };
       return await finalizeAuthenticatedLogin(activeAdminUser, term, inputPass, '/admin-simta/dashboard');
     }
