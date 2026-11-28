@@ -185,11 +185,11 @@ export default function AppLayout({ children }) {
 
   if (isMobileMode) {
     return (
-      <div className="min-h-screen bg-slate-100 flex flex-col font-sans overflow-x-hidden">
+      <div className="min-h-screen bg-slate-100 flex flex-col font-sans overflow-x-hidden print:bg-white print:min-h-0">
         <Navbar />
         <RealtimeBimbinganAlert />
 
-        <main className="flex-1 w-full max-w-lg mx-auto px-4 pt-4 pb-24 min-w-0 overflow-x-hidden">
+        <main className="flex-1 w-full max-w-lg mx-auto px-4 pt-4 pb-24 min-w-0 overflow-x-hidden print:max-w-none print:p-0 print:m-0 print:overflow-visible">
           {children}
         </main>
 
@@ -203,12 +203,12 @@ export default function AppLayout({ children }) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
+    <div className="min-h-screen bg-slate-50 flex flex-col font-sans print:bg-white print:min-h-0">
       <Navbar />
       <RealtimeBimbinganAlert />
-      <div className="flex-1 flex w-full">
+      <div className="flex-1 flex w-full print:block">
         <Sidebar />
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 min-w-0 overflow-x-hidden">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 min-w-0 overflow-x-hidden print:p-0 print:m-0 print:overflow-visible">
           {children}
         </main>
       </div>

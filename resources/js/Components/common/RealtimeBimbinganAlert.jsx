@@ -97,7 +97,7 @@ export default function RealtimeBimbinganAlert() {
       aria-label="Notifikasi Real-time Bimbingan"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
-      className="fixed top-20 left-4 right-4 sm:left-auto sm:right-6 z-50 sm:max-w-md sm:w-full bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-slate-200/90 overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300 transition-all select-none"
+      className="fixed top-20 left-4 right-4 sm:left-auto sm:right-6 z-50 sm:max-w-md sm:w-full bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-slate-200/90 overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300 transition-all select-none print:hidden"
     >
       {/* Top Beacon Bar */}
       <div className={`px-4 py-2 border-b flex items-center justify-between text-xs font-bold ${

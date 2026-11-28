@@ -339,3 +339,44 @@ export function checkStudentDefenseEligibility({
     stats
   };
 }
+
+/**
+ * Membagi baris kartu bimbingan menjadi beberapa lembar halaman A4
+ * agar tata letak web maupun cetak tetap konsisten termasuk jika sesi > 24.
+ *
+ * @param {Array} consultations - Daftar sesi bimbingan terurut kronologis
+ * @param {number} [minTotalRows=24] - Jumlah baris minimum sesuai aturan program studi
+ * @param {number} [rowsPerPage=8] - Batas baris per halaman A4
+ * @returns {Array<{ pageNumber: number, totalPages: number, startNumber: number, endNumber: number, rows: Array<{ rowNumber: number, data: Object|null }> }>}
+ */
+export function paginateConsultationRows(consultations = [], minTotalRows = 24, rowsPerPage = 8) {
+  const list = Array.isArray(consultations) ? consultations : [];
+  const safePerPage = Math.max(1, Number(rowsPerPage) || 8);
+  const safeMinTotal = Math.max(1, Number(minTotalRows) || 24);
+  const totalRows = Math.max(safeMinTotal, list.length);
+  const totalPages = Math.max(1, Math.ceil(totalRows / safePerPage));
+  const pages = [];
+
+  for (let p = 0; p < totalPages; p += 1) {
+    const startIdx = p * safePerPage;
+    const endIdx = Math.min(totalRows, startIdx + safePerPage);
+    const rows = [];
+
+    for (let i = startIdx; i < endIdx; i += 1) {
+      rows.push({
+        rowNumber: i + 1,
+        data: list[i] || null
+      });
+    }
+
+    pages.push({
+      pageNumber: p + 1,
+      totalPages,
+      startNumber: startIdx + 1,
+      endNumber: endIdx,
+      rows
+    });
+  }
+
+  return pages;
+}

@@ -302,7 +302,7 @@ export default function Sidebar() {
   return (
     <aside 
       data-lenis-prevent
-      className="sticky top-16 h-[calc(100vh-4rem)] shrink-0 w-64 bg-white border-r border-slate-200 p-4 hidden md:flex flex-col justify-between select-none overflow-y-auto custom-sidebar-scroll"
+      className="sticky top-16 h-[calc(100vh-4rem)] shrink-0 w-64 bg-white border-r border-slate-200 p-4 hidden md:flex flex-col justify-between select-none overflow-y-auto custom-sidebar-scroll print:hidden"
     >
       
       {/* Top Navigation Items */}
