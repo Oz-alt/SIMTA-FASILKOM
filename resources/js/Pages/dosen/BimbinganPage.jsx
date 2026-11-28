@@ -452,6 +452,7 @@ export default function BimbinganPage() {
       if (reviewConsultation) {
         await reviewConsultation(consId, status, cleanNotes, chosenJenis);
       }
+      setDetailModalCons(null);
       setToastMsg(`Tanggapan bimbingan berhasil disimpan: ${chosenJenis === 'Mayor' ? 'Revisi Mayor' : chosenJenis === 'Minor' ? 'Revisi Minor' : chosenJenis}`);
       setTimeout(() => setToastMsg(''), 4000);
     } catch (err) {

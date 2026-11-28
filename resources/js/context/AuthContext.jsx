@@ -2268,6 +2268,8 @@ export function AuthProvider({ children }) {
     } catch { }
     return [];
   });
+  const consultationsRef = useRef(consultations);
+  consultationsRef.current = consultations;
 
 
   // Dosen Pembimbing (Advisors) master dataset with local persistence
@@ -3460,6 +3462,59 @@ export function AuthProvider({ children }) {
           )
           .subscribe();
 
+        // Sinkronisasi fallback lintas perangkat untuk thesis_consultations saat tab aktif / kembali fokus
+        // Mencegah status bimbingan nyangkut apabila event WebSocket terlewat saat input cepat (spam).
+        const syncConsultationsFromSupabase = async () => {
+          if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+          try {
+            const { data, error } = await supabase.from('thesis_consultations').select('*');
+            if (!error && Array.isArray(data)) {
+              const parsedList = data.map(remoteItem => parseConsultationItem(remoteItem));
+              setConsultations(prev => {
+                // Pertahankan entri lokal yang baru saja dibuat (< 5 detik) bila insert belum sempat terbaca
+                const nowMs = Date.now();
+                const remoteIds = new Set(parsedList.map(item => String(item.id)));
+                const recentLocalOnly = prev.filter(item => {
+                  if (remoteIds.has(String(item.id))) return false;
+                  const createdMs = item.created_at ? Date.parse(item.created_at) : 0;
+                  return createdMs > 0 && (nowMs - createdMs) < 5000;
+                });
+                const merged = [...recentLocalOnly, ...parsedList];
+                try { localStorage.setItem('simta_consultations', JSON.stringify(merged)); } catch { }
+                return merged;
+              });
+            }
+          } catch { }
+        };
+
+        const handleConsultationsVisibility = () => {
+          if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+            syncConsultationsFromSupabase();
+          }
+        };
+
+        const consultationsPollTimer = setInterval(syncConsultationsFromSupabase, 6000);
+        if (typeof window !== 'undefined') {
+          window.addEventListener('focus', syncConsultationsFromSupabase);
+        }
+        if (typeof document !== 'undefined') {
+          document.addEventListener('visibilitychange', handleConsultationsVisibility);
+        }
+
+        // Clean up timer & listeners when realtime channel unmounts
+        const origRemoveChannel = consultationsChannel;
+        if (origRemoveChannel) {
+          origRemoveChannel.__simtaCleanupSync = () => {
+            clearInterval(consultationsPollTimer);
+            if (typeof window !== 'undefined') {
+              window.removeEventListener('focus', syncConsultationsFromSupabase);
+            }
+            if (typeof document !== 'undefined') {
+              document.removeEventListener('visibilitychange', handleConsultationsVisibility);
+            }
+          };
+        }
+
         // Real-time WebSocket listener for cross-device student advisor assignments
         studentAdvisorsChannel = supabase
           .channel(`schema-db-changes-student-advisors-${Date.now()}`)
@@ -4189,6 +4244,7 @@ export function AuthProvider({ children }) {
       return () => {
         try { subscription.unsubscribe(); } catch { }
         if (consultationsChannel) {
+          try { consultationsChannel.__simtaCleanupSync?.(); } catch { }
           try { supabase.removeChannel(consultationsChannel); } catch { }
         }
         if (studentAdvisorsChannel) {
@@ -7234,10 +7290,8 @@ export function AuthProvider({ children }) {
     // Send email notification to lecturer
     sendEmailNotification(targetEmail, notifTitle, notifMessage);
 
-    // Broadcast in real-time across tabs and windows
-    broadcastBimbinganSubmission(newEntry, notifDosen);
-    broadcastRealtimeNotification('BIMBINGAN_ENTRY_SUBMITTED', { consultation: newEntry, notif: notifDosen });
-
+    // Tunggu insert Supabase selesai lebih dulu agar saat dosen langsung merespon (termasuk saat spam),
+    // baris konsultasi sudah benar-benar tersedia di database untuk di-UPDATE.
     if (isSupabaseConfigured && supabase) {
       try {
         const fullPayload = {
@@ -7279,12 +7333,15 @@ export function AuthProvider({ children }) {
       }
     }
 
+    // Broadcast in real-time across tabs and devices SETELAH database tersimpan
+    broadcastBimbinganSubmission(newEntry, notifDosen);
+    broadcastRealtimeNotification('BIMBINGAN_ENTRY_SUBMITTED', { consultation: newEntry, notif: notifDosen });
+
     return newEntry;
   };
 
   // Review consultation / feedback (Dosen / Kaprodi)
   const reviewConsultation = async (consultationId, status, feedbackNotes, jenisRevisi) => {
-    let targetCons = null;
     const resolvedJenisRevisi = jenisRevisi || (
       status === 'disetujui' ? 'Diterima' :
         status === 'ditolak' ? 'Ditolak' :
@@ -7299,23 +7356,86 @@ export function AuthProvider({ children }) {
       noteWithTag = `[${tagLabel}] ${cleanNote}`.trim();
     }
 
+    // Bangun targetCons secara sinkron dari consultationsRef (React 18/19 batching tidak mengeksekusi callback setState secara sinkron)
+    const existingCons = (consultationsRef.current || []).find(c => String(c.id) === String(consultationId)) || null;
+    const reviewedAtIso = new Date().toISOString();
+    const targetCons = existingCons
+      ? {
+          ...existingCons,
+          status: status,
+          jenis_revisi: resolvedJenisRevisi,
+          masukan_dosen: noteWithTag,
+          reviewed_at: reviewedAtIso
+        }
+      : null;
+
     setConsultations(prev => {
       const updated = prev.map(c => {
         if (String(c.id) === String(consultationId)) {
-          targetCons = {
+          return {
             ...c,
             status: status,
             jenis_revisi: resolvedJenisRevisi,
             masukan_dosen: noteWithTag,
-            reviewed_at: new Date().toISOString()
+            reviewed_at: reviewedAtIso
           };
-          return targetCons;
         }
         return c;
       });
+      consultationsRef.current = updated;
       try { localStorage.setItem('simta_consultations', JSON.stringify(updated)); } catch { }
       return updated;
     });
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        // 1. Coba UPDATE langsung dan cek apakah ada baris yang terubah
+        const payload = {
+          status: status,
+          masukan_dosen: noteWithTag
+        };
+        const { data: updatedRows, error } = await supabase
+          .from('thesis_consultations')
+          .update(payload)
+          .eq('id', consultationId)
+          .select('id');
+
+        if (error) {
+          console.warn('Supabase consultation review warning:', error.message);
+        }
+
+        // 2. Fallback anti race-condition saat spam: jika 0 baris ter-update (insert mahasiswa baru selesai/tertinggal),
+        // langsung upsert baris lengkapnya agar status respon dosen tidak pernah nyangkut di database.
+        if (targetCons && (!updatedRows || updatedRows.length === 0)) {
+          const fullUpsert = {
+            id: targetCons.id,
+            mhs_nim: targetCons.mhs_nim,
+            mhs_nama: targetCons.mhs_nama,
+            pembimbing: targetCons.pembimbing,
+            dosen_nama: targetCons.dosen_nama,
+            dosen_nip: targetCons.dosen_nip,
+            metode: targetCons.metode || 'luring',
+            tanggal: targetCons.tanggal,
+            waktu: targetCons.waktu,
+            bab_topik: targetCons.bab_topik,
+            catatan_mahasiswa: targetCons.catatan_mahasiswa,
+            masukan_dosen: noteWithTag,
+            file_revisi_url: targetCons.file_revisi_url || '',
+            status: status,
+            created_at: targetCons.created_at || reviewedAtIso
+          };
+          let { error: upsertErr } = await supabase
+            .from('thesis_consultations')
+            .upsert([fullUpsert], { onConflict: 'id' });
+          if (upsertErr && (upsertErr.code === '42703' || upsertErr.code === 'PGRST204' || String(upsertErr.message || '').includes('does not exist') || String(upsertErr.message || '').includes('Could not find'))) {
+            const { dosen_nip, metode, ...minimalUpsert } = fullUpsert;
+            await supabase.from('thesis_consultations').upsert([minimalUpsert], { onConflict: 'id' });
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to review consultation in Supabase:', err);
+      }
+    }
 
     if (targetCons) {
       const studentNim = String(targetCons.mhs_nim || '').trim();
@@ -7354,7 +7474,7 @@ export function AuthProvider({ children }) {
       });
       sendEmailNotification(studentEmail, notifTitle, notifMessage);
 
-      // Broadcast across tabs and devices
+      // Broadcast across tabs and devices (sekarang PASTI terpanggil karena targetCons sinkron)
       broadcastBimbinganResponse(targetCons, notif);
       broadcastRealtimeNotification('BIMBINGAN_STATUS_RESPONDED', { consultation: targetCons, notif });
 
@@ -7371,39 +7491,24 @@ export function AuthProvider({ children }) {
         });
       }
     }
-
-    if (isSupabaseConfigured && supabase) {
-      try {
-        // Send only valid columns to Supabase: status & masukan_dosen (with category tag)
-        const payload = {
-          status: status,
-          masukan_dosen: noteWithTag
-        };
-        const { error } = await supabase
-          .from('thesis_consultations')
-          .update(payload)
-          .eq('id', consultationId);
-        if (error) console.warn('Supabase consultation review warning:', error.message);
-      } catch (err) {
-        console.warn('Failed to review consultation in Supabase:', err);
-      }
-    }
   };
 
   // Update consultation note/details (Mahasiswa / Dosen)
   const updateConsultation = async (consultationId, updatedFields) => {
-    let finalItem = null;
+    const existingItem = (consultationsRef.current || []).find(c => String(c.id) === String(consultationId)) || null;
+    const finalItem = existingItem ? { ...existingItem, ...updatedFields } : null;
+
     setConsultations(prev => {
       const updated = prev.map(c => {
         if (String(c.id) === String(consultationId)) {
-          finalItem = {
+          return {
             ...c,
             ...updatedFields
           };
-          return finalItem;
         }
         return c;
       });
+      consultationsRef.current = updated;
       try { localStorage.setItem('simta_consultations', JSON.stringify(updated)); } catch { }
       return updated;
     });
