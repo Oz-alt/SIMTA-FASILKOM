@@ -404,6 +404,7 @@ export default function BimbinganPage() {
   };
 
   const handleSaveFeedback = async (consId) => {
+    if (savingId) return;
     const targetCons = studentConsultations.find(sc => String(sc.id) === String(consId));
     
     // Pembatasan hak akses: Setiap pembimbing hanya dapat memberikan tanggapan pada log bimbingan masing-masing
@@ -457,7 +458,7 @@ export default function BimbinganPage() {
       setTimeout(() => setToastMsg(''), 4000);
     } catch (err) {
       console.error(err);
-      setToastMsg('Gagal menyimpan tanggapan.');
+      setToastMsg(err?.message || 'Gagal menyimpan tanggapan.');
       setTimeout(() => setToastMsg(''), 4000);
     } finally {
       setSavingId(null);

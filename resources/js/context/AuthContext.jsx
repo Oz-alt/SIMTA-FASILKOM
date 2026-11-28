@@ -3464,6 +3464,12 @@ export function AuthProvider({ children }) {
 
         // Sinkronisasi fallback lintas perangkat untuk thesis_consultations saat tab aktif / kembali fokus
         // Mencegah status bimbingan nyangkut apabila event WebSocket terlewat saat input cepat (spam).
+        const consultationFingerprint = (list) =>
+          (list || [])
+            .map((c) => `${c.id}|${c.status}|${c.jenis_revisi}|${c.masukan_dosen}|${c.catatan_mahasiswa}|${c.tanggal}|${c.waktu}|${c.file_revisi_url || ''}`)
+            .sort()
+            .join('||');
+
         const syncConsultationsFromSupabase = async () => {
           if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
           try {
@@ -3471,15 +3477,38 @@ export function AuthProvider({ children }) {
             if (!error && Array.isArray(data)) {
               const parsedList = data.map(remoteItem => parseConsultationItem(remoteItem));
               setConsultations(prev => {
-                // Pertahankan entri lokal yang baru saja dibuat (< 5 detik) bila insert belum sempat terbaca
                 const nowMs = Date.now();
-                const remoteIds = new Set(parsedList.map(item => String(item.id)));
-                const recentLocalOnly = prev.filter(item => {
-                  if (remoteIds.has(String(item.id))) return false;
-                  const createdMs = item.created_at ? Date.parse(item.created_at) : 0;
-                  return createdMs > 0 && (nowMs - createdMs) < 5000;
+                const remoteMap = new Map(parsedList.map(item => [String(item.id), item]));
+
+                // Pertahankan pembaruan lokal yang baru saja dikirim (< 15 detik) agar tidak tertimpa fetch yang berjalan paralel saat spam
+                const reconciledRemote = parsedList.map(remoteItem => {
+                  const localMatch = prev.find(p => String(p.id) === String(remoteItem.id));
+                  if (!localMatch) return remoteItem;
+                  const touchedMs = localMatch._localUpdatedAt || (localMatch.reviewed_at ? Date.parse(localMatch.reviewed_at) : 0);
+                  if (touchedMs > 0 && (nowMs - touchedMs) < 15000) {
+                    return {
+                      ...remoteItem,
+                      ...localMatch,
+                    };
+                  }
+                  if (localMatch.reviewed_at && remoteItem.status !== 'menunggu_tanggapan') {
+                    return { ...remoteItem, reviewed_at: localMatch.reviewed_at };
+                  }
+                  return remoteItem;
                 });
-                const merged = [...recentLocalOnly, ...parsedList];
+
+                // Pertahankan entri lokal yang baru saja dibuat (< 15 detik) bila insert belum sempat terbaca
+                const recentLocalOnly = prev.filter(item => {
+                  if (remoteMap.has(String(item.id))) return false;
+                  const createdMs = item._localUpdatedAt || (item.created_at ? Date.parse(item.created_at) : 0);
+                  return createdMs > 0 && (nowMs - createdMs) < 15000;
+                });
+
+                const merged = [...recentLocalOnly, ...reconciledRemote];
+                if (consultationFingerprint(prev) === consultationFingerprint(merged)) {
+                  return prev;
+                }
+                consultationsRef.current = merged;
                 try { localStorage.setItem('simta_consultations', JSON.stringify(merged)); } catch { }
                 return merged;
               });
@@ -7243,11 +7272,13 @@ export function AuthProvider({ children }) {
       masukan_dosen: '',
       file_revisi_url: consData.file_revisi_url || '',
       status: 'menunggu_tanggapan',
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      _localUpdatedAt: Date.now()
     };
 
     setConsultations(prev => {
       const updated = [newEntry, ...prev];
+      consultationsRef.current = updated;
       try { localStorage.setItem('simta_consultations', JSON.stringify(updated)); } catch { }
       return updated;
     });
@@ -7293,43 +7324,53 @@ export function AuthProvider({ children }) {
     // Tunggu insert Supabase selesai lebih dulu agar saat dosen langsung merespon (termasuk saat spam),
     // baris konsultasi sudah benar-benar tersedia di database untuk di-UPDATE.
     if (isSupabaseConfigured && supabase) {
-      try {
-        const fullPayload = {
-          id: newEntry.id,
-          mhs_nim: newEntry.mhs_nim,
-          mhs_nama: newEntry.mhs_nama,
-          pembimbing: newEntry.pembimbing,
-          dosen_nama: newEntry.dosen_nama,
-          dosen_nip: newEntry.dosen_nip,
-          metode: newEntry.metode,
-          tanggal: newEntry.tanggal,
-          waktu: newEntry.waktu,
-          bab_topik: newEntry.bab_topik,
-          catatan_mahasiswa: newEntry.catatan_mahasiswa,
-          masukan_dosen: newEntry.masukan_dosen,
-          file_revisi_url: newEntry.file_revisi_url,
-          status: newEntry.status,
-          created_at: newEntry.created_at
-        };
+      const fullPayload = {
+        id: newEntry.id,
+        mhs_nim: newEntry.mhs_nim,
+        mhs_nama: newEntry.mhs_nama,
+        pembimbing: newEntry.pembimbing,
+        dosen_nama: newEntry.dosen_nama,
+        dosen_nip: newEntry.dosen_nip,
+        metode: newEntry.metode,
+        tanggal: newEntry.tanggal,
+        waktu: newEntry.waktu,
+        bab_topik: newEntry.bab_topik,
+        catatan_mahasiswa: newEntry.catatan_mahasiswa,
+        masukan_dosen: newEntry.masukan_dosen,
+        file_revisi_url: newEntry.file_revisi_url,
+        status: newEntry.status,
+        created_at: newEntry.created_at
+      };
 
-        let { error } = await supabase.from('thesis_consultations').insert([fullPayload]);
-
-        // Kolom metode/dosen_nip belum ada sebelum migrasi dijalankan:
-        // simpan kolom inti dulu supaya konsultasi tetap tercatat.
-        if (error && (error.code === '42703' || error.code === 'PGRST204' || String(error.message || '').includes('does not exist') || String(error.message || '').includes('Could not find'))) {
-          const { dosen_nip, metode, ...minimalPayload } = fullPayload;
-          const retry = await supabase.from('thesis_consultations').insert([minimalPayload]);
-          error = retry.error;
-          if (error) {
-            console.warn('Supabase consultation insert warning:', error.message);
-          } else {
-            console.warn('Konsultasi tersimpan tanpa kolom metode/dosen_nip. Jalankan scripts/thesis_titles_realtime.sql agar grafik metode & peringkat dosen terisi.');
+      let insertErr = null;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          let { error } = await supabase.from('thesis_consultations').insert([fullPayload]);
+          if (error && (error.code === '42703' || error.code === 'PGRST204' || String(error.message || '').includes('does not exist') || String(error.message || '').includes('Could not find'))) {
+            const { dosen_nip, metode, ...minimalPayload } = fullPayload;
+            const retry = await supabase.from('thesis_consultations').insert([minimalPayload]);
+            error = retry.error;
           }
-        } else if (error) {
-          console.warn('Supabase consultation insert warning:', error.message);
+          insertErr = error;
+          if (!insertErr) break;
+        } catch (err) {
+          insertErr = err;
         }
-      } catch (err) {
-        console.warn('Failed to insert consultation to Supabase:', err);
+        if (attempt === 0) {
+          await new Promise(r => setTimeout(r, 400));
+        }
+      }
+
+      if (insertErr) {
+        console.warn('Supabase consultation insert error:', insertErr.message || insertErr);
+        // Rollback state lokal agar tidak menciptakan entri hantu yang tidak pernah masuk database
+        setConsultations(prev => {
+          const rolledBack = prev.filter(c => String(c.id) !== String(newEntry.id));
+          consultationsRef.current = rolledBack;
+          try { localStorage.setItem('simta_consultations', JSON.stringify(rolledBack)); } catch { }
+          return rolledBack;
+        });
+        throw new Error('Gagal menyimpan sesi bimbingan ke server database. Silakan coba lagi.');
       }
     }
 
@@ -7359,13 +7400,15 @@ export function AuthProvider({ children }) {
     // Bangun targetCons secara sinkron dari consultationsRef (React 18/19 batching tidak mengeksekusi callback setState secara sinkron)
     const existingCons = (consultationsRef.current || []).find(c => String(c.id) === String(consultationId)) || null;
     const reviewedAtIso = new Date().toISOString();
+    const touchedAtMs = Date.now();
     const targetCons = existingCons
       ? {
           ...existingCons,
           status: status,
           jenis_revisi: resolvedJenisRevisi,
           masukan_dosen: noteWithTag,
-          reviewed_at: reviewedAtIso
+          reviewed_at: reviewedAtIso,
+          _localUpdatedAt: touchedAtMs
         }
       : null;
 
@@ -7377,7 +7420,8 @@ export function AuthProvider({ children }) {
             status: status,
             jenis_revisi: resolvedJenisRevisi,
             masukan_dosen: noteWithTag,
-            reviewed_at: reviewedAtIso
+            reviewed_at: reviewedAtIso,
+            _localUpdatedAt: touchedAtMs
           };
         }
         return c;
@@ -7388,52 +7432,90 @@ export function AuthProvider({ children }) {
     });
 
     if (isSupabaseConfigured && supabase) {
-      try {
-        // 1. Coba UPDATE langsung dan cek apakah ada baris yang terubah
-        const payload = {
-          status: status,
-          masukan_dosen: noteWithTag
-        };
-        const { data: updatedRows, error } = await supabase
-          .from('thesis_consultations')
-          .update(payload)
-          .eq('id', consultationId)
-          .select('id');
-
-        if (error) {
-          console.warn('Supabase consultation review warning:', error.message);
-        }
-
-        // 2. Fallback anti race-condition saat spam: jika 0 baris ter-update (insert mahasiswa baru selesai/tertinggal),
-        // langsung upsert baris lengkapnya agar status respon dosen tidak pernah nyangkut di database.
-        if (targetCons && (!updatedRows || updatedRows.length === 0)) {
-          const fullUpsert = {
-            id: targetCons.id,
-            mhs_nim: targetCons.mhs_nim,
-            mhs_nama: targetCons.mhs_nama,
-            pembimbing: targetCons.pembimbing,
-            dosen_nama: targetCons.dosen_nama,
-            dosen_nip: targetCons.dosen_nip,
-            metode: targetCons.metode || 'luring',
-            tanggal: targetCons.tanggal,
-            waktu: targetCons.waktu,
-            bab_topik: targetCons.bab_topik,
-            catatan_mahasiswa: targetCons.catatan_mahasiswa,
-            masukan_dosen: noteWithTag,
-            file_revisi_url: targetCons.file_revisi_url || '',
+      let reviewSyncErr = null;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          // 1. Coba UPDATE langsung dan cek apakah ada baris yang terubah
+          const fullUpdatePayload = {
             status: status,
-            created_at: targetCons.created_at || reviewedAtIso
+            jenis_revisi: resolvedJenisRevisi,
+            masukan_dosen: noteWithTag
           };
-          let { error: upsertErr } = await supabase
+          let { data: updatedRows, error } = await supabase
             .from('thesis_consultations')
-            .upsert([fullUpsert], { onConflict: 'id' });
-          if (upsertErr && (upsertErr.code === '42703' || upsertErr.code === 'PGRST204' || String(upsertErr.message || '').includes('does not exist') || String(upsertErr.message || '').includes('Could not find'))) {
-            const { dosen_nip, metode, ...minimalUpsert } = fullUpsert;
-            await supabase.from('thesis_consultations').upsert([minimalUpsert], { onConflict: 'id' });
+            .update(fullUpdatePayload)
+            .eq('id', consultationId)
+            .select('id');
+
+          if (error && (error.code === '42703' || error.code === 'PGRST204' || String(error.message || '').includes('does not exist') || String(error.message || '').includes('Could not find'))) {
+            const retryRes = await supabase
+              .from('thesis_consultations')
+              .update({ status: status, masukan_dosen: noteWithTag })
+              .eq('id', consultationId)
+              .select('id');
+            updatedRows = retryRes.data;
+            error = retryRes.error;
           }
+
+          if (!error && Array.isArray(updatedRows) && updatedRows.length > 0) {
+            reviewSyncErr = null;
+            break;
+          }
+
+          // 2. Fallback anti race-condition saat spam: jika 0 baris ter-update (insert mahasiswa baru selesai/tertinggal),
+          // langsung upsert baris lengkapnya agar status respon dosen tidak pernah nyangkut di database.
+          if (targetCons) {
+            const fullUpsert = {
+              id: targetCons.id,
+              mhs_nim: targetCons.mhs_nim,
+              mhs_nama: targetCons.mhs_nama,
+              pembimbing: targetCons.pembimbing,
+              dosen_nama: targetCons.dosen_nama,
+              dosen_nip: targetCons.dosen_nip,
+              metode: targetCons.metode || 'luring',
+              tanggal: targetCons.tanggal,
+              waktu: targetCons.waktu,
+              bab_topik: targetCons.bab_topik,
+              catatan_mahasiswa: targetCons.catatan_mahasiswa,
+              masukan_dosen: noteWithTag,
+              jenis_revisi: resolvedJenisRevisi,
+              file_revisi_url: targetCons.file_revisi_url || '',
+              status: status,
+              created_at: targetCons.created_at || reviewedAtIso
+            };
+            let { error: upsertErr } = await supabase
+              .from('thesis_consultations')
+              .upsert([fullUpsert], { onConflict: 'id' });
+            if (upsertErr && (upsertErr.code === '42703' || upsertErr.code === 'PGRST204' || String(upsertErr.message || '').includes('does not exist') || String(upsertErr.message || '').includes('Could not find'))) {
+              const { dosen_nip, metode, jenis_revisi, ...minimalUpsert } = fullUpsert;
+              const minRes = await supabase.from('thesis_consultations').upsert([minimalUpsert], { onConflict: 'id' });
+              upsertErr = minRes.error;
+            }
+            reviewSyncErr = upsertErr || error || null;
+          } else {
+            reviewSyncErr = error || new Error('Baris konsultasi tidak ditemukan di database.');
+          }
+          if (!reviewSyncErr) break;
+        } catch (err) {
+          reviewSyncErr = err;
         }
-      } catch (err) {
-        console.warn('Failed to review consultation in Supabase:', err);
+        if (attempt === 0) {
+          await new Promise(r => setTimeout(r, 400));
+        }
+      }
+
+      if (reviewSyncErr) {
+        console.warn('Failed to review consultation in Supabase:', reviewSyncErr.message || reviewSyncErr);
+        // Kembalikan state lokal bila database gagal menyimpan agar Dosen tahu dan bisa klik ulang
+        if (existingCons) {
+          setConsultations(prev => {
+            const rolledBack = prev.map(c => (String(c.id) === String(consultationId) ? existingCons : c));
+            consultationsRef.current = rolledBack;
+            try { localStorage.setItem('simta_consultations', JSON.stringify(rolledBack)); } catch { }
+            return rolledBack;
+          });
+        }
+        throw new Error('Gagal menyimpan tanggapan ke database server. Silakan coba klik Simpan Tanggapan lagi.');
       }
     }
 

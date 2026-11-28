@@ -337,6 +337,7 @@ export default function ModalAjukanBimbingan({ isOpen, onClose }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
 
     if (formData.pembimbing === 'Pembimbing 1' && pendingPemb1) {
       setErrorMsg(`Tidak dapat mencatat sesi ke Pembimbing 1 karena sesi tanggal ${pendingPemb1.tanggal} masih menunggu tanggapan dosen. Silakan pilih Pembimbing 2.`);
