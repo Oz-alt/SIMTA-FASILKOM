@@ -198,18 +198,45 @@ export default function BimbinganPage() {
     }
   }, [selectedNim, studentConsultations, notifications, markNotificationAsRead]);
 
-  // Syarat bimbingan: tervalidasi target per pembimbing untuk kelayakan diterima (dinamis)
+  // Helper resolusi peran pembimbing ('Pembimbing 1' vs 'Pembimbing 2') secara konsisten per sesi
+  const resolveAdvisorRole = (cons) => {
+    if (!cons) return 'Pembimbing 1';
+    const rawPemb = String(cons.pembimbing || '').toLowerCase();
+    if (rawPemb.includes('2')) return 'Pembimbing 2';
+    if (rawPemb.includes('1')) return 'Pembimbing 1';
+    const consNip = String(cons.dosen_nip || '').trim();
+    const consNama = String(cons.dosen_nama || '').toLowerCase().trim();
+    if (currentStudent?.dospem2_nip && consNip && consNip === String(currentStudent.dospem2_nip).trim()) {
+      return 'Pembimbing 2';
+    }
+    if (currentStudent?.dospem2_nama && consNama && currentStudent.dospem2_nama.toLowerCase().includes(consNama)) {
+      return 'Pembimbing 2';
+    }
+    return 'Pembimbing 1';
+  };
+
+  // Syarat bimbingan: tervalidasi target per pembimbing untuk kelayakan diterima (dinamis, default 12 per dosen — TIDAK digabung)
   const TARGET_TERVALIDASI = minSessionsRequirement?.minPerAdvisor || getMinSessionsPerAdvisor();
-  // Total bimbingan yang telah dicapai mahasiswa terpilih
-  const totalBimbinganCount = studentConsultations.length;
-  // Syarat tombol Diterima baru aktif jika mahasiswa telah menyelesaikan minimal 12 kali bimbingan
-  const isEligibleForDiterima = totalBimbinganCount >= TARGET_TERVALIDASI;
+  const countPemb1 = useMemo(
+    () => studentConsultations.filter(c => String(c.status || '').toLowerCase().trim() !== 'ditolak' && resolveAdvisorRole(c) === 'Pembimbing 1').length,
+    [studentConsultations, currentStudent?.dospem2_nip, currentStudent?.dospem2_nama]
+  );
+  const countPemb2 = useMemo(
+    () => studentConsultations.filter(c => String(c.status || '').toLowerCase().trim() !== 'ditolak' && resolveAdvisorRole(c) === 'Pembimbing 2').length,
+    [studentConsultations, currentStudent?.dospem2_nip, currentStudent?.dospem2_nama]
+  );
+  const getAdvisorSessionCount = (cons) => (resolveAdvisorRole(cons) === 'Pembimbing 2' ? countPemb2 : countPemb1);
 
   // Dapatkan data terkini dari sesi yang sedang dibuka di modal detail
   const activeDetailCons = useMemo(() => {
     if (!detailModalCons) return null;
     return consultations.find(c => String(c.id) === String(detailModalCons.id)) || detailModalCons;
   }, [consultations, detailModalCons]);
+
+  const activeAdvisorRole = activeDetailCons ? resolveAdvisorRole(activeDetailCons) : 'Pembimbing 1';
+  const activeAdvisorBimbinganCount = activeDetailCons ? getAdvisorSessionCount(activeDetailCons) : 0;
+  // Syarat tombol Diterima baru aktif jika mahasiswa sudah minimal 12x bimbingan dengan PEMBIMBING TERSEBUT secara terpisah
+  const isEligibleForDiterima = activeAdvisorBimbinganCount >= TARGET_TERVALIDASI;
 
   const activeDetailIndex = useMemo(() => {
     if (!activeDetailCons) return 1;
@@ -437,6 +464,15 @@ export default function BimbinganPage() {
     // 2. Validasi: Dosen wajib memberikan tanggapan atau catatan sebelum menyimpan
     if (!cleanNotes) {
       setToastMsg('Catatan perbaikan untuk mahasiswa wajib diisi sebelum menyimpan tanggapan.');
+      setTimeout(() => setToastMsg(''), 4500);
+      return;
+    }
+
+    // 3. Validasi barrier per-pembimbing: 'Diterima' wajib minimal TARGET_TERVALIDASI (12x) khusus pada pembimbing sesi ini
+    const targetRoleLabel = resolveAdvisorRole(targetCons);
+    const roleCount = getAdvisorSessionCount(targetCons);
+    if (chosenJenis === 'Diterima' && roleCount < TARGET_TERVALIDASI) {
+      setToastMsg(`Status Diterima terkunci: bimbingan dengan ${targetRoleLabel} baru ${roleCount}/${TARGET_TERVALIDASI} sesi.`);
       setTimeout(() => setToastMsg(''), 4500);
       return;
     }
@@ -878,8 +914,8 @@ export default function BimbinganPage() {
                               title={
                                 !isAuthorized
                                   ? 'Hanya dapat dipilih oleh dosen pembimbing bersangkutan'
-                                  : !isEligibleForDiterima 
-                                    ? `Tombol Diterima baru aktif setelah mahasiswa menyelesaikan minimal ${TARGET_TERVALIDASI} kali bimbingan (saat ini: ${totalBimbinganCount}/${TARGET_TERVALIDASI} kali).`
+                                  : !isEligibleForDiterima
+                                    ? `Tombol Diterima baru aktif setelah mahasiswa mencapai minimal ${TARGET_TERVALIDASI} kali bimbingan dengan ${activeAdvisorRole} (saat ini: ${activeAdvisorBimbinganCount}/${TARGET_TERVALIDASI} sesi).`
                                     : 'Beri status Diterima'
                               }
                               className={`px-3 py-2.5 rounded-xl text-xs font-semibold border transition-all text-center ${
@@ -894,6 +930,11 @@ export default function BimbinganPage() {
                             </button>
 
                           </div>
+                          {isAuthorized && !isEligibleForDiterima && (
+                            <p className="text-[11px] text-slate-500 mt-2">
+                              Tombol <strong>Diterima</strong> terkunci hingga mahasiswa mencapai minimal {TARGET_TERVALIDASI} sesi khusus <strong>{activeAdvisorRole}</strong> (saat ini: <span className="font-mono font-semibold text-slate-700">{activeAdvisorBimbinganCount}/{TARGET_TERVALIDASI}</span> sesi).
+                            </p>
+                          )}
                         </div>
                       )}
                     </div>

@@ -239,7 +239,10 @@ export function checkCanAdvisorAccept(studentConsultationsWithAdvisor = [], opti
   const minRequired = Number(options?.minPerAdvisor) > 0 
     ? Number(options.minPerAdvisor) 
     : getMinSessionsPerAdvisor();
-  const sessionCount = (studentConsultationsWithAdvisor || []).length;
+  const validList = (studentConsultationsWithAdvisor || []).filter(
+    (c) => String(c?.status || '').toLowerCase().trim() !== 'ditolak'
+  );
+  const sessionCount = validList.length;
   const canAccept = sessionCount >= minRequired;
   const remainingSessions = Math.max(0, minRequired - sessionCount);
 
