@@ -83,8 +83,13 @@ export default function RealtimeNotificationToast() {
   if (isAdmin && notif.recipient_role && notif.recipient_role !== 'admin' && notif.recipient_role !== 'all') return null;
 
   // Determine notification type
-  const isBimbingan = notif.related_type === 'consultation' || notif.related_type === 'bimbingan_status';
+  const isBimbingan =
+    notif.related_type === 'consultation' ||
+    notif.related_type === 'bimbingan_status' ||
+    notif.related_type === 'bimbingan_masuk';
   const isDefense = notif.related_type === 'defense_schedule' || notif.related_type === 'defense';
+  if (isKaprodi && isBimbingan) return null;
+  const isThesisTitleForDosen = !isBimbingan && !isDefense && isDosen;
 
   // Target navigation URL
   let targetUrl = notif.action_url;
@@ -94,6 +99,8 @@ export default function RealtimeNotificationToast() {
       targetUrl = nim ? `/dosen/validasi?nim=${nim}` : '/dosen/validasi';
     } else if (isDefense) {
       targetUrl = isDosen ? '/dosen/jadwal-sidang' : '/kaprodi/defense-schedules';
+    } else if (isThesisTitleForDosen) {
+      targetUrl = '/dosen/validasi-judul';
     } else {
       targetUrl = notif.related_id ? `/kaprodi/titles/${notif.related_id}` : '/kaprodi/titles';
     }
@@ -115,12 +122,14 @@ export default function RealtimeNotificationToast() {
   };
 
   // Visual metadata
-  let bannerHeader = 'Real-Time Notifikasi Kaprodi';
-  let bannerSub = 'Judul TA Baru Disimpan';
+  let bannerHeader = isThesisTitleForDosen ? 'Real-Time Notifikasi Dosen Pembimbing' : 'Real-Time Notifikasi Kaprodi';
+  let bannerSub = isThesisTitleForDosen
+    ? (notif.related_type === 'thesis_title_revised' ? 'Pembaruan Judul Mahasiswa' : 'Pengajuan Judul Mahasiswa')
+    : 'Judul TA Baru Disimpan';
   let studentName = notif.student_name || notif.mhs_nama || 'Mahasiswa';
   let studentNim = notif.student_nim || notif.mhs_nim || '';
-  let statusBadge = 'Masuk Tahap Tinjauan Rapat Prodi';
-  let actionButtonText = 'Tinjau Judul';
+  let statusBadge = isThesisTitleForDosen ? 'Mahasiswa Bimbingan Anda' : 'Masuk Tahap Tinjauan Rapat Prodi';
+  let actionButtonText = isThesisTitleForDosen ? 'Lihat Judul' : 'Tinjau Judul';
   let IconComponent = GraduationCap;
   let gradientColors = 'from-blue-600 to-indigo-700';
 

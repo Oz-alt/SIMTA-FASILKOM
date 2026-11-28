@@ -206,3 +206,45 @@ export function subscribeToRealtimeNotifications(onReceive) {
     });
   };
 }
+
+/**
+ * Mencegah satu peristiwa real-time memicu pop-up/suara berkali-kali ketika
+ * dikirim bersamaan lewat BroadcastChannel, StorageEvent, dan Supabase.
+ * @param {Map<string, number>} seenMap
+ * @param {string|null|undefined} eventKey
+ * @param {number} ttlMs
+ * @param {number} nowMs
+ * @returns {boolean} true bila peristiwa belum pernah diproses dalam jendela TTL
+ */
+export function shouldTriggerRealtimeEvent(seenMap, eventKey, ttlMs = 30000, nowMs = Date.now()) {
+  if (!eventKey || !seenMap) return true;
+
+  const prevTs = seenMap.get(eventKey);
+  if (prevTs && (nowMs - prevTs) < ttlMs) {
+    return false;
+  }
+
+  seenMap.set(eventKey, nowMs);
+
+  if (seenMap.size > 100) {
+    for (const [key, ts] of seenMap.entries()) {
+      if ((nowMs - ts) >= ttlMs) {
+        seenMap.delete(key);
+      }
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Membentuk kunci deduplikasi kanonik untuk respons bimbingan agar semua kanal
+ * transpor menghasilkan identitas yang sama untuk satu evaluasi dosen.
+ */
+export function buildBimbinganStatusDedupKey(consId, status, jenisRevisi = '', masukanDosen = '') {
+  const cleanNote = String(masukanDosen || '')
+    .replace(/^\[(Revisi Mayor|Revisi Minor|Mayor|Minor|Menunggu|Diterima|Disetujui|Ditolak)\]\s*/i, '')
+    .trim()
+    .slice(0, 60);
+  return `bimbingan-status:${String(consId || '')}:${String(status || '')}:${String(jenisRevisi || '')}:${cleanNote}`;
+}

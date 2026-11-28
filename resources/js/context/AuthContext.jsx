@@ -80,7 +80,12 @@ const runCleanDeploymentMigration = () => {
 runCleanDeploymentMigration();
 
 import { supabase, isSupabaseConfigured } from '../services/supabase.js';
-import { broadcastRealtimeNotification, subscribeToRealtimeNotifications } from '../services/realtimeNotificationBus.js';
+import {
+  broadcastRealtimeNotification,
+  subscribeToRealtimeNotifications,
+  shouldTriggerRealtimeEvent,
+  buildBimbinganStatusDedupKey
+} from '../services/realtimeNotificationBus.js';
 import {
   getStudentCredential,
   getCachedStudentCredential,
@@ -451,7 +456,7 @@ export const isNotificationForUser = (n, currentUser, checkUnreadOnly = true) =>
   if (currentUser.role === 'kaprodi') {
     if (n.recipient_role === 'mahasiswa' || n.recipient_role === 'dosen') return false;
     if (String(n.id || '').endsWith('-mhs') || n.title === 'Usulan Judul Disetujui (ACC) Dosen') return false;
-    if (n.related_type === 'bimbingan_status' || n.related_type === 'consultation' || n.related_type === 'bimbingan_reminder') {
+    if (n.related_type === 'bimbingan_masuk' || n.related_type === 'bimbingan_status' || n.related_type === 'consultation' || n.related_type === 'bimbingan_reminder') {
       return false;
     }
     return (
@@ -1673,24 +1678,34 @@ export function AuthProvider({ children }) {
     }
   });
 
+  const realtimeNotifEnabledRef = useRef(realtimeNotifEnabled);
+  const soundEnabledRef = useRef(soundEnabled);
+  const seenRealtimeEventsRef = useRef(new Map());
+
   useEffect(() => {
+    realtimeNotifEnabledRef.current = realtimeNotifEnabled;
     try {
       localStorage.setItem('simta_realtime_notif_enabled', JSON.stringify(realtimeNotifEnabled));
     } catch { }
   }, [realtimeNotifEnabled]);
 
   useEffect(() => {
+    soundEnabledRef.current = soundEnabled;
     try {
       localStorage.setItem('simta_notif_sound_enabled', JSON.stringify(soundEnabled));
     } catch { }
   }, [soundEnabled]);
 
-  const triggerRealtimeAlert = (alertData) => {
-    if (!realtimeNotifEnabled) return;
+  const triggerRealtimeAlert = (alertData, dedupKey = null) => {
+    if (!realtimeNotifEnabledRef.current) return false;
+    if (dedupKey && !shouldTriggerRealtimeEvent(seenRealtimeEventsRef.current, dedupKey)) {
+      return false;
+    }
     setActiveRealtimeAlert(alertData);
-    if (soundEnabled) {
+    if (soundEnabledRef.current) {
       playNotificationSound();
     }
+    return true;
   };
 
   const dismissRealtimeAlert = () => {
@@ -1703,9 +1718,21 @@ export function AuthProvider({ children }) {
     } catch { }
   }, [notifications]);
 
-  // Real-time notification popup banner for Kaprodi
+  // Real-time notification popup banner for Kaprodi / Penjadwalan / Judul
   const [latestRealtimeNotif, setLatestRealtimeNotif] = useState(null);
   const dismissRealtimeNotif = () => setLatestRealtimeNotif(null);
+  const triggerRealtimeToast = (notifItem, dedupKey = null) => {
+    if (!realtimeNotifEnabledRef.current || !notifItem) return false;
+    const effectiveKey = dedupKey || (notifItem.id ? `toast:${notifItem.id}` : null);
+    if (effectiveKey && !shouldTriggerRealtimeEvent(seenRealtimeEventsRef.current, effectiveKey)) {
+      return false;
+    }
+    setLatestRealtimeNotif(notifItem);
+    if (soundEnabledRef.current) {
+      playNotificationSound();
+    }
+    return true;
+  };
   const markNotificationAsRead = (notifId) => {
     if (!notifId) return;
     setNotifications(prev => {
@@ -3356,7 +3383,7 @@ export function AuthProvider({ children }) {
                   const notifItem = createConsultationNotificationForDosen(item, activeUser);
 
                   setNotifications(currNotifs => {
-                    if (currNotifs.some(n => n.consultation_id === item.id && n.related_type === 'bimbingan_masuk')) return currNotifs;
+                    if (currNotifs.some(n => String(n.consultation_id) === String(item.id) && n.related_type === 'bimbingan_masuk')) return currNotifs;
                     const next = [notifItem, ...currNotifs];
                     try { localStorage.setItem('simta_notifications', JSON.stringify(next)); } catch {}
                     return next;
@@ -3372,9 +3399,7 @@ export function AuthProvider({ children }) {
                     bab_topik: item.bab_topik || '',
                     isDosenAlert: true,
                     action_url: `/dosen/validasi?nim=${item.mhs_nim}`
-                  });
-                  setLatestRealtimeNotif(notifItem);
-                  playNotificationSound();
+                  }, `bimbingan-masuk:${item.id}`);
                 }
               } else if (payload.eventType === 'UPDATE' && payload.new) {
                 const parsedNew = parseConsultationItem(payload.new);
@@ -3446,9 +3471,7 @@ export function AuthProvider({ children }) {
                       status: newStatus,
                       jenis_revisi: resolvedJenisRevisi,
                       bab_topik: parsedNew.bab_topik || ''
-                    });
-                    setLatestRealtimeNotif(notifItem);
-                    playNotificationSound();
+                    }, buildBimbinganStatusDedupKey(parsedNew.id, newStatus, resolvedJenisRevisi, parsedNew.masukan_dosen));
                   }
                 }
               } else if (payload.eventType === 'DELETE' && payload.old) {
@@ -3727,17 +3750,10 @@ export function AuthProvider({ children }) {
                   if (activeUser) {
                     const match = batchNotifs.find(n => isNotificationForUser(n, activeUser));
                     if (match) {
-                      setLatestRealtimeNotif(match);
-                      playNotificationSound();
-                      triggerRealtimeAlert({
-                        id: `alert-${Date.now()}`,
-                        title: match.title,
-                        message: match.message,
-                        mhs_nama: match.student_name || incoming.mhs_nama || 'Mahasiswa',
-                        mhs_nim: match.student_nim || incoming.mhs_nim || '',
-                        thesis_title: match.thesis_title || incoming.judul || '',
-                        action_url: match.action_url
-                      });
+                      triggerRealtimeToast(
+                        match,
+                        `thesis-title:${incoming.id}:${isInsert ? 'insert' : 'update'}:${match.recipient_role || ''}:${match.recipient_nip || ''}`
+                      );
                     }
                   }
                 }
@@ -4286,6 +4302,100 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  // Helper terpusat untuk memproses event bimbingan lintas kanal (Bus & BroadcastChannel) tanpa duplikasi alert/toast
+  const handleIncomingBimbinganResponded = ({ consultation, notif }) => {
+    if (consultation) {
+      setConsultations(prev => {
+        const updated = prev.map(c => {
+          if (String(c.id) === String(consultation.id)) {
+            return parseConsultationItem({ ...c, ...consultation });
+          }
+          return c;
+        });
+        try { localStorage.setItem('simta_consultations', JSON.stringify(updated)); } catch {}
+        return updated;
+      });
+    }
+
+    if (notif) {
+      setNotifications(prev => {
+        if (prev.some(n => String(n.id) === String(notif.id) || (notif.consultation_id && String(n.consultation_id) === String(notif.consultation_id) && n.status === notif.status))) {
+          return prev;
+        }
+        const next = [notif, ...prev];
+        try { localStorage.setItem('simta_notifications', JSON.stringify(next)); } catch {}
+        return next;
+      });
+
+      const current = currentUserRef.current;
+      if (current?.role === 'mahasiswa') {
+        const matchNim = !notif.recipient_nim || !current.nim || String(notif.recipient_nim).trim() === String(current.nim).trim();
+        if (matchNim) {
+          const consId = notif.consultation_id || consultation?.id;
+          triggerRealtimeAlert({
+            id: `alert-${Date.now()}`,
+            title: notif.title,
+            message: notif.message,
+            dosen_nama: notif.dosen_nama || 'Dosen Pembimbing',
+            status: notif.status,
+            jenis_revisi: notif.jenis_revisi,
+            bab_topik: notif.bab_topik || ''
+          }, buildBimbinganStatusDedupKey(consId, notif.status, notif.jenis_revisi, consultation?.masukan_dosen));
+        }
+      }
+    }
+  };
+
+  const handleIncomingBimbinganSubmitted = ({ consultation, notif }) => {
+    if (consultation) {
+      setConsultations(prev => {
+        if (prev.some(c => String(c.id) === String(consultation.id))) return prev;
+        const next = [parseConsultationItem(consultation), ...prev];
+        try { localStorage.setItem('simta_consultations', JSON.stringify(next)); } catch {}
+        return next;
+      });
+    }
+
+    if (notif) {
+      setNotifications(prev => {
+        if (prev.some(n =>
+          String(n.id) === String(notif.id) ||
+          (notif.consultation_id && String(n.consultation_id) === String(notif.consultation_id) && n.related_type === 'bimbingan_masuk')
+        )) {
+          return prev;
+        }
+        const next = [notif, ...prev];
+        try { localStorage.setItem('simta_notifications', JSON.stringify(next)); } catch {}
+        return next;
+      });
+
+      const current = currentUserRef.current;
+      if (current?.role === 'dosen') {
+        const cleanNip = String(current.nip || current.nim || '').trim();
+        const matchNip = notif.recipient_nip && cleanNip && String(notif.recipient_nip).trim() === cleanNip;
+        const matchName = notif.recipient_nama && current.nama && (
+          current.nama.toLowerCase().includes(notif.recipient_nama.toLowerCase()) ||
+          notif.recipient_nama.toLowerCase().includes(current.nama.toLowerCase())
+        );
+        if (matchNip || matchName) {
+          const mhsNim = notif.mhs_nim || consultation?.mhs_nim || '';
+          const consId = notif.consultation_id || consultation?.id || notif.id;
+          triggerRealtimeAlert({
+            id: `alert-${Date.now()}`,
+            title: notif.title,
+            message: notif.message,
+            mhs_nama: notif.mhs_nama || consultation?.mhs_nama || 'Mahasiswa',
+            mhs_nim: mhsNim,
+            pembimbing: notif.pembimbing || consultation?.pembimbing || 'Pembimbing',
+            bab_topik: notif.bab_topik || consultation?.bab_topik || '',
+            isDosenAlert: true,
+            action_url: mhsNim ? `/dosen/validasi?nim=${mhsNim}` : '/dosen/monitoring'
+          }, `bimbingan-masuk:${consId}`);
+        }
+      }
+    }
+  };
+
   // Multi-transport Real-time Bus Listener (BroadcastChannel, Storage Events & Supabase WebSocket)
   useEffect(() => {
     const unsubscribe = subscribeToRealtimeNotifications((envelope) => {
@@ -4337,94 +4447,17 @@ export function AuthProvider({ children }) {
           if (activeUser) {
             const matchingNotif = incomingNotifs.find(n => isNotificationForUser(n, activeUser));
             if (matchingNotif) {
-              setLatestRealtimeNotif(matchingNotif);
-              playNotificationSound();
+              triggerRealtimeToast(
+                matchingNotif,
+                `thesis-title:${matchingNotif.related_id || title?.id || ''}:${envelope.type === 'THESIS_TITLE_SUBMITTED' ? 'insert' : 'update'}:${matchingNotif.recipient_role || ''}:${matchingNotif.recipient_nip || ''}`
+              );
             }
           }
         }
       } else if (envelope.type === 'BIMBINGAN_STATUS_RESPONDED') {
-        const { consultation, notif } = envelope.payload || {};
-        if (consultation) {
-          setConsultations(prev => {
-            const updated = prev.map(c => {
-              if (String(c.id) === String(consultation.id)) {
-                return parseConsultationItem({ ...c, ...consultation });
-              }
-              return c;
-            });
-            try { localStorage.setItem('simta_consultations', JSON.stringify(updated)); } catch {}
-            return updated;
-          });
-        }
-
-        if (notif) {
-          setNotifications(prev => {
-            if (prev.some(n => n.id === notif.id || (String(n.consultation_id) === String(notif.consultation_id) && n.status === notif.status))) return prev;
-            const next = [notif, ...prev];
-            try { localStorage.setItem('simta_notifications', JSON.stringify(next)); } catch {}
-            return next;
-          });
-
-          const current = currentUserRef.current;
-          if (current?.role === 'mahasiswa') {
-            const matchNim = !notif.recipient_nim || !current.nim || String(notif.recipient_nim).trim() === String(current.nim).trim();
-            if (matchNim) {
-              triggerRealtimeAlert({
-                id: `alert-${Date.now()}`,
-                title: notif.title,
-                message: notif.message,
-                dosen_nama: notif.dosen_nama || 'Dosen Pembimbing',
-                status: notif.status,
-                jenis_revisi: notif.jenis_revisi,
-                bab_topik: notif.bab_topik || ''
-              });
-              playNotificationSound();
-            }
-          }
-        }
+        handleIncomingBimbinganResponded(envelope.payload || {});
       } else if (envelope.type === 'BIMBINGAN_ENTRY_SUBMITTED') {
-        const { consultation, notif } = envelope.payload || {};
-        if (consultation) {
-          setConsultations(prev => {
-            if (prev.some(c => String(c.id) === String(consultation.id))) return prev;
-            const next = [parseConsultationItem(consultation), ...prev];
-            try { localStorage.setItem('simta_consultations', JSON.stringify(next)); } catch {}
-            return next;
-          });
-        }
-
-        if (notif) {
-          setNotifications(prev => {
-            if (prev.some(n => n.id === notif.id)) return prev;
-            const next = [notif, ...prev];
-            try { localStorage.setItem('simta_notifications', JSON.stringify(next)); } catch {}
-            return next;
-          });
-
-          const current = currentUserRef.current;
-          if (current?.role === 'dosen') {
-            const cleanNip = String(current.nip || current.nim || '').trim();
-            const matchNip = notif.recipient_nip && cleanNip && String(notif.recipient_nip).trim() === cleanNip;
-            const matchName = notif.recipient_nama && current.nama && (
-              current.nama.toLowerCase().includes(notif.recipient_nama.toLowerCase()) ||
-              notif.recipient_nama.toLowerCase().includes(current.nama.toLowerCase())
-            );
-            if (matchNip || matchName) {
-              triggerRealtimeAlert({
-                id: `alert-${Date.now()}`,
-                title: notif.title,
-                message: notif.message,
-                mhs_nama: notif.mhs_nama || consultation?.mhs_nama || 'Mahasiswa',
-                mhs_nim: notif.mhs_nim || consultation?.mhs_nim || '',
-                pembimbing: notif.pembimbing || consultation?.pembimbing || 'Pembimbing',
-                bab_topik: notif.bab_topik || consultation?.bab_topik || '',
-                isDosenAlert: true,
-                action_url: `/dosen/validasi?nim=${notif.mhs_nim || ''}`
-              });
-              playNotificationSound();
-            }
-          }
-        }
+        handleIncomingBimbinganSubmitted(envelope.payload || {});
       } else if (envelope.type === 'BIMBINGAN_ENTRY_UPDATED' || envelope.type === 'CONSULTATION_UPDATED') {
         const { consultation } = envelope.payload || {};
         if (consultation) {
@@ -4456,43 +4489,7 @@ export function AuthProvider({ children }) {
 
         channel.onmessage = (event) => {
           if (event.data?.type === 'BIMBINGAN_STATUS_RESPONDED') {
-            const { consultation, notif } = event.data;
-            if (consultation) {
-              setConsultations(prev => {
-                const updated = prev.map(c => {
-                  if (String(c.id) === String(consultation.id)) {
-                    return parseConsultationItem({ ...c, ...consultation });
-                  }
-                  return c;
-                });
-                return updated;
-              });
-            }
-
-            if (notif) {
-              setNotifications(prev => {
-                const exists = prev.some(n => n.id === notif.id);
-                if (exists) return prev;
-                return [notif, ...prev];
-              });
-
-              // If current user in this tab is the student, trigger toast and sound!
-              const current = currentUserRef.current;
-              if (current?.role === 'mahasiswa') {
-                const matchNim = !notif.recipient_nim || !current.nim || String(notif.recipient_nim).trim() === String(current.nim).trim();
-                if (matchNim) {
-                  triggerRealtimeAlert({
-                    id: `alert-${Date.now()}`,
-                    title: notif.title,
-                    message: notif.message,
-                    dosen_nama: notif.dosen_nama || 'Dosen Pembimbing',
-                    status: notif.status,
-                    jenis_revisi: notif.jenis_revisi,
-                    bab_topik: notif.bab_topik || ''
-                  });
-                }
-              }
-            }
+            handleIncomingBimbinganResponded(event.data || {});
           } else if (event.data?.type === 'CONSULTATION_SUBMITTED') {
             const { consultation, notif } = event.data;
             if (consultation) {
@@ -4504,7 +4501,10 @@ export function AuthProvider({ children }) {
             }
             if (notif) {
               setNotifications(prev => {
-                const exists = prev.some(n => n.id === notif.id);
+                const exists = prev.some(n =>
+                  String(n.id) === String(notif.id) ||
+                  (notif.consultation_id && String(n.consultation_id) === String(notif.consultation_id) && n.related_type === 'bimbingan_masuk')
+                );
                 if (exists) return prev;
                 return [notif, ...prev];
               });
@@ -4542,54 +4542,14 @@ export function AuthProvider({ children }) {
                          (activeNama && notifNama && (notifNama.includes(activeNama) || activeNama.includes(notifNama)));
                 });
                 if (matched) {
-                  setLatestRealtimeNotif(matched);
-                  playNotificationSound();
+                  triggerRealtimeToast(matched, `defense:${schedule?.id || matched.id}:${event.data?.type}`);
                 }
               }
             }
           }
 
           if (event.data?.type === 'BIMBINGAN_ENTRY_SUBMITTED') {
-            const { consultation, notif } = event.data;
-            if (consultation) {
-              setConsultations(prev => {
-                const exists = prev.some(c => String(c.id) === String(consultation.id));
-                if (exists) return prev;
-                return [parseConsultationItem(consultation), ...prev];
-              });
-            }
-
-            if (notif) {
-              setNotifications(prev => {
-                const exists = prev.some(n => String(n.id) === String(notif.id));
-                if (exists) return prev;
-                return [notif, ...prev];
-              });
-
-              // Trigger alert if active user in this tab is the target lecturer!
-              const current = currentUserRef.current;
-              if (current?.role === 'dosen') {
-                const cleanNip = String(current.nip || current.nim || '').trim();
-                const matchNip = notif.recipient_nip && cleanNip && String(notif.recipient_nip).trim() === cleanNip;
-                const matchName = notif.recipient_nama && current.nama && (
-                  current.nama.toLowerCase().includes(notif.recipient_nama.toLowerCase()) ||
-                  notif.recipient_nama.toLowerCase().includes(current.nama.toLowerCase())
-                );
-                if (matchNip || matchName) {
-                  triggerRealtimeAlert({
-                    id: `alert-${Date.now()}`,
-                    title: notif.title,
-                    message: notif.message,
-                    mhs_nama: notif.mhs_nama || consultation?.mhs_nama || 'Mahasiswa',
-                    mhs_nim: notif.mhs_nim || consultation?.mhs_nim || '',
-                    pembimbing: notif.pembimbing || consultation?.pembimbing || 'Pembimbing',
-                    bab_topik: notif.bab_topik || consultation?.bab_topik || '',
-                    isDosenAlert: true,
-                    action_url: (notif.mhs_nim || consultation?.mhs_nim) ? `/dosen/validasi?nim=${notif.mhs_nim || consultation?.mhs_nim}` : '/dosen/monitoring'
-                  });
-                }
-              }
-            }
+            handleIncomingBimbinganSubmitted(event.data || {});
           }
 
           if (event.data?.type === 'BIMBINGAN_ENTRY_UPDATED' || event.data?.type === 'CONSULTATION_UPDATED') {
@@ -7570,7 +7530,7 @@ export function AuthProvider({ children }) {
           status: status,
           jenis_revisi: resolvedJenisRevisi,
           bab_topik: targetCons.bab_topik || ''
-        });
+        }, buildBimbinganStatusDedupKey(targetCons.id, status, resolvedJenisRevisi, targetCons.masukan_dosen));
       }
     }
   };
