@@ -2,6 +2,8 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Link } from '@inertiajs/react';
 import * as XLSX from 'xlsx';
 import { useAuth } from '../../context/AuthContext.jsx';
+import FilterDropdown from '../../Components/common/FilterDropdown.jsx';
+import FormSelect from '../../Components/common/FormSelect.jsx';
 import {
   GraduationCap,
   Search,
@@ -564,34 +566,31 @@ export default function AkunMahasiswaAdminPage() {
           <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto justify-end">
 
             {/* Status Filter */}
-            <div className="flex items-center space-x-1.5 bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700">
-              <Filter className="w-3.5 h-3.5 text-slate-400" />
-              <span>Status:</span>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="bg-transparent text-xs font-bold text-blue-600 outline-none cursor-pointer"
-              >
-                <option value="ALL">Semua Status</option>
-                <option value="aktif">Aktif</option>
-                <option value="nonaktif">Nonaktif</option>
-              </select>
-            </div>
+            <FilterDropdown
+              label="Status"
+              icon={Filter}
+              value={statusFilter}
+              onChange={setStatusFilter}
+              options={[
+                { value: 'ALL', label: 'Semua Status' },
+                { value: 'aktif', label: 'Aktif' },
+                { value: 'nonaktif', label: 'Nonaktif' }
+              ]}
+              accentColor="blue"
+            />
 
             {/* Angkatan Filter (Ketentuan #4 & #9) */}
-            <div className="flex items-center space-x-1.5 bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700">
-              <GraduationCap className="w-3.5 h-3.5 text-slate-400" />
-              <span>Angkatan:</span>
-              <select
-                value={angkatanFilter}
-                onChange={(e) => setAngkatanFilter(e.target.value)}
-                className="bg-transparent text-xs font-bold text-indigo-600 outline-none cursor-pointer"
-              >
-                {availableAngkatanList.map(a => (
-                  <option key={a} value={a}>{a === 'ALL' ? 'Semua Angkatan' : `Angkatan ${a}`}</option>
-                ))}
-              </select>
-            </div>
+            <FilterDropdown
+              label="Angkatan"
+              icon={GraduationCap}
+              value={angkatanFilter}
+              onChange={setAngkatanFilter}
+              options={availableAngkatanList.map(a => ({
+                value: a,
+                label: a === 'ALL' ? 'Semua Angkatan' : `Angkatan ${a}`
+              }))}
+              accentColor="indigo"
+            />
 
             <div className="text-xs font-bold text-slate-500 px-2">
               Menampilkan <span className="text-slate-900">{filteredStudents.length}</span> dari {mahasiswaList.length} akun
@@ -1078,20 +1077,18 @@ export default function AkunMahasiswaAdminPage() {
 
                 {/* Prodi & Angkatan (Ketentuan #4, #7, #9 - Tidak ada rombel/kelas) */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="font-bold text-slate-700">Program Studi</label>
-                    <select
-                      value={studentForm.prodi}
-                      onChange={(e) => setStudentForm({ ...studentForm, prodi: e.target.value })}
-                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-blue-600 outline-none text-xs font-semibold bg-white cursor-pointer"
-                    >
-                      <option value="D3 Manajemen Informatika">D3 Manajemen Informatika</option>
-                      <option value="D3 Komputerisasi Akuntansi">D3 Komputerisasi Akuntansi</option>
-                      <option value="D3 Teknik Komputer">D3 Teknik Komputer</option>
-                      <option value="S1 Sistem Informasi">S1 Sistem Informasi</option>
-                      <option value="S1 Teknik Informatika">S1 Teknik Informatika</option>
-                    </select>
-                  </div>
+                  <FormSelect
+                    label="Program Studi"
+                    value={studentForm.prodi}
+                    onChange={(e) => setStudentForm({ ...studentForm, prodi: e.target.value })}
+                    options={[
+                      { value: 'D3 Manajemen Informatika', label: 'D3 Manajemen Informatika' },
+                      { value: 'D3 Komputerisasi Akuntansi', label: 'D3 Komputerisasi Akuntansi' },
+                      { value: 'D3 Teknik Komputer', label: 'D3 Teknik Komputer' },
+                      { value: 'S1 Sistem Informasi', label: 'S1 Sistem Informasi' },
+                      { value: 'S1 Teknik Informatika', label: 'S1 Teknik Informatika' }
+                    ]}
+                  />
                   <div className="space-y-1">
                     <label className="font-bold text-slate-700">Angkatan (Tahun Masuk)</label>
                     <input

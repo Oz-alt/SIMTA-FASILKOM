@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import { useAuth } from '../../context/AuthContext.jsx';
+import FilterDropdown from '../../Components/common/FilterDropdown.jsx';
 import { 
   Database, 
   Search, 
@@ -664,44 +665,41 @@ export default function ManajemenRepositoryAdminPage() {
 
             {/* Filter Dropdowns */}
             <div className="flex flex-wrap items-center gap-2">
-              <div className="flex items-center space-x-1.5 bg-white px-2.5 py-1.5 rounded-xl border border-slate-200 shadow-2xs">
-                <span className="text-[11px] font-bold text-slate-400">Prodi:</span>
-                <select
-                  value={selectedProdi}
-                  onChange={(e) => { setSelectedProdi(e.target.value); setCurrentPage(1); }}
-                  className="bg-transparent text-xs font-semibold text-slate-700 focus:outline-none cursor-pointer"
-                >
-                  <option value="Semua">Semua Program Studi</option>
-                  {PRODI_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
-                </select>
-              </div>
+              <FilterDropdown
+                value={selectedProdi}
+                onChange={(val) => { setSelectedProdi(val); setCurrentPage(1); }}
+                label="Prodi"
+                allLabel="Semua Program Studi"
+                options={[
+                  { value: 'Semua', label: 'Semua Program Studi' },
+                  ...PRODI_OPTIONS.map(p => ({ value: p, label: p }))
+                ]}
+              />
 
-              <div className="flex items-center space-x-1.5 bg-white px-2.5 py-1.5 rounded-xl border border-slate-200 shadow-2xs">
-                <span className="text-[11px] font-bold text-slate-400">Tahun:</span>
-                <select
-                  value={selectedTahun}
-                  onChange={(e) => { setSelectedTahun(e.target.value); setCurrentPage(1); }}
-                  className="bg-transparent text-xs font-semibold text-slate-700 focus:outline-none cursor-pointer"
-                >
-                  <option value="Semua">Semua Tahun</option>
-                  {TAHUN_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
-                </select>
-              </div>
+              <FilterDropdown
+                value={selectedTahun}
+                onChange={(val) => { setSelectedTahun(val); setCurrentPage(1); }}
+                label="Tahun"
+                allLabel="Semua Tahun"
+                options={[
+                  { value: 'Semua', label: 'Semua Tahun' },
+                  ...TAHUN_OPTIONS.map(t => ({ value: t, label: t }))
+                ]}
+              />
 
-              <div className="flex items-center space-x-1.5 bg-white px-2.5 py-1.5 rounded-xl border border-slate-200 shadow-2xs">
-                <span className="text-[11px] font-bold text-slate-400">Urutan:</span>
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="bg-transparent text-xs font-semibold text-slate-700 focus:outline-none cursor-pointer"
-                >
-                  <option value="terbaru">Terbaru Ditambahkan</option>
-                  <option value="tahun_desc">Tahun (Terbaru - Terlama)</option>
-                  <option value="tahun_asc">Tahun (Terlama - Terbaru)</option>
-                  <option value="judul_asc">Judul (A-Z)</option>
-                  <option value="penulis_asc">Penulis (A-Z)</option>
-                </select>
-              </div>
+              <FilterDropdown
+                value={sortBy}
+                onChange={setSortBy}
+                label="Urutan"
+                allLabel="Terbaru Ditambahkan"
+                options={[
+                  { value: 'terbaru', label: 'Terbaru Ditambahkan' },
+                  { value: 'tahun_desc', label: 'Tahun (Terbaru - Terlama)' },
+                  { value: 'tahun_asc', label: 'Tahun (Terlama - Terbaru)' },
+                  { value: 'judul_asc', label: 'Judul (A-Z)' },
+                  { value: 'penulis_asc', label: 'Penulis (A-Z)' },
+                ]}
+              />
             </div>
           </div>
 

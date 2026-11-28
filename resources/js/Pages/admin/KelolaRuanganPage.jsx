@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
+import FormSelect from '../../Components/common/FormSelect.jsx';
 import { 
   Building2, 
   Plus, 
@@ -416,18 +417,12 @@ export default function KelolaRuanganPage() {
             </div>
 
             {buildings.length > 0 && (
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Gedung / Lokasi</label>
-                <select
-                  value={buildingId}
-                  onChange={(e) => setBuildingId(e.target.value)}
-                  className="w-full text-xs p-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
-                >
-                  {buildings.map(b => (
-                    <option key={b.id} value={b.id}>{b.name}</option>
-                  ))}
-                </select>
-              </div>
+              <FormSelect
+                label="Gedung / Lokasi"
+                value={buildingId}
+                onChange={(e) => setBuildingId(e.target.value)}
+                options={buildings.map(b => ({ value: b.id, label: b.name }))}
+              />
             )}
 
             <div>
@@ -441,18 +436,16 @@ export default function KelolaRuanganPage() {
               />
             </div>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Status Operasional</label>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                className="w-full text-xs p-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
-              >
-                <option value="aktif">Aktif (Siap Pakai)</option>
-                <option value="maintenance">Maintenance (Perbaikan)</option>
-                <option value="nonaktif">Nonaktif</option>
-              </select>
-            </div>
+            <FormSelect
+              label="Status Operasional"
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+              options={[
+                { value: 'aktif', label: 'Aktif (Siap Pakai)' },
+                { value: 'maintenance', label: 'Maintenance (Perbaikan)' },
+                { value: 'nonaktif', label: 'Nonaktif' },
+              ]}
+            />
 
             <div className="flex justify-end space-x-3 pt-3 border-t border-slate-100">
               <button
@@ -537,18 +530,12 @@ export default function KelolaRuanganPage() {
             </div>
 
             {buildings.length > 0 && (
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Gedung / Lokasi</label>
-                <select
-                  value={editBuildingId}
-                  onChange={(e) => setEditBuildingId(e.target.value)}
-                  className="w-full text-xs p-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
-                >
-                  {buildings.map(b => (
-                    <option key={b.id} value={b.id}>{b.name}</option>
-                  ))}
-                </select>
-              </div>
+              <FormSelect
+                label="Gedung / Lokasi"
+                value={editBuildingId}
+                onChange={(e) => setEditBuildingId(e.target.value)}
+                options={buildings.map(b => ({ value: b.id, label: b.name }))}
+              />
             )}
 
             <div>
@@ -562,18 +549,16 @@ export default function KelolaRuanganPage() {
               />
             </div>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Status Ruangan</label>
-              <select
-                value={editStatus}
-                onChange={(e) => setEditStatus(e.target.value)}
-                className="w-full text-xs p-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
-              >
-                <option value="aktif">Aktif (Siap Digunakan)</option>
-                <option value="maintenance">Maintenance (Perbaikan / Servis)</option>
-                <option value="nonaktif">Nonaktif</option>
-              </select>
-            </div>
+            <FormSelect
+              label="Status Ruangan"
+              value={editStatus}
+              onChange={(e) => setEditStatus(e.target.value)}
+              options={[
+                { value: 'aktif', label: 'Aktif (Siap Digunakan)' },
+                { value: 'maintenance', label: 'Maintenance (Perbaikan / Servis)' },
+                { value: 'nonaktif', label: 'Nonaktif' },
+              ]}
+            />
 
             <div className="flex justify-end space-x-3 pt-3 border-t border-slate-100">
               <button

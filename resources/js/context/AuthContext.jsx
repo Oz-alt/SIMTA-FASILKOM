@@ -4856,42 +4856,44 @@ export function AuthProvider({ children }) {
       termLower === 'admin@unsri.ac.id'
     ) {
       const expectedAdminHash = '1db6767d23d6b98f776a481ae61eb37947016a72bb258c9d779ddd1bc3001973'; // SHA-256 for SIMN!Manage_2026#
-      const supabaseAdminCred = await checkSupabaseCredential({ ...adminAcc, role: 'admin' });
-      if (supabaseAdminCred === false) {
-        throw new Error('Kata sandi yang Anda masukkan salah. Silakan periksa kembali kata sandi Anda.');
+
+      let isPasswordValid = false;
+
+      // 1. Kredensial Master Default SIMONITA: SIMN!Manage_2026# (atau SHA-256 hash-nya) SELALU valid
+      if (inputPass === 'SIMN!Manage_2026#' || passHash === expectedAdminHash) {
+        isPasswordValid = true;
       }
 
-      if (supabaseAdminCred !== true) {
-        // Check if admin has customized their password via the web profile
-        const hasCustomPassword = Boolean(
-          adminAcc.password &&
-          adminAcc.password !== 'SIMN!Manage_2026#' &&
-          adminAcc.password !== 'admin123' &&
-          adminAcc.password !== 'admin' &&
-          adminAcc.password !== adminNipVal &&
-          adminAcc.password !== adminNimVal &&
-          adminAcc.password !== '198503152010122001'
-        );
+      // 2. Cek kredensial sinkronisasi Supabase admin_cms (auth-cred-admin) jika pernah diubah di cloud
+      if (!isPasswordValid) {
+        try {
+          const supabaseCredential = await checkSupabaseCredential({ ...adminAcc, role: 'admin' });
+          if (supabaseCredential === true) {
+            isPasswordValid = true;
+          }
+        } catch {}
+      }
 
-        let isPasswordValid = false;
-        if (hasCustomPassword) {
-          // If changed manually via web, only accept the new custom password or its hash
-          isPasswordValid = (inputPass === adminAcc.password) ||
-                            (Boolean(adminAcc.password_hash) && passHash === adminAcc.password_hash);
-        } else {
-          // Default strictly SIMN!Manage_2026# (or its exact hash) - NO admin123 or other fallback
-          isPasswordValid = (inputPass === 'SIMN!Manage_2026#' || passHash === expectedAdminHash);
+      // 3. Cek kata sandi kustom lokal admin jika diubah via profil web
+      if (!isPasswordValid && adminAcc.password) {
+        if (
+          inputPass === adminAcc.password ||
+          (Boolean(adminAcc.password_hash) && passHash === adminAcc.password_hash)
+        ) {
+          isPasswordValid = true;
         }
+      }
 
-        if (!isPasswordValid) {
-          throw new Error('Kata sandi yang Anda masukkan salah. Silakan periksa kembali kata sandi Anda.');
-        }
+      if (!isPasswordValid) {
+        throw new Error('Kata sandi yang Anda masukkan salah. Silakan periksa kembali kata sandi Anda.');
       }
 
       const activeAdminUser = {
         ...adminAcc,
         role: 'admin',
         username: 'admin',
+        password_hash: adminAcc.password_hash || expectedAdminHash,
+        password: adminAcc.password || 'SIMN!Manage_2026#'
       };
       return await finalizeAuthenticatedLogin(activeAdminUser, term, inputPass, '/admin-simta/dashboard');
     }

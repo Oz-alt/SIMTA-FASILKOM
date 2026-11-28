@@ -29,6 +29,8 @@ import {
   FileSpreadsheet
 } from 'lucide-react';
 import ModalImportMasterData from '../../Components/common/ModalImportMasterData.jsx';
+import FilterDropdown from '../../Components/common/FilterDropdown.jsx';
+import FormSelect from '../../Components/common/FormSelect.jsx';
 
 export default function MasterDosenAdminPage() {
   const { 
@@ -448,62 +450,57 @@ export default function MasterDosenAdminPage() {
           {/* Filters Row */}
           <div className="flex flex-wrap items-center gap-2">
             
-            {/* Role Filter (Ketentuan #7) */}
-            <div className="flex items-center space-x-1.5">
-              <select
-                value={roleFilter}
-                onChange={(e) => setRoleFilter(e.target.value)}
-                className="text-xs py-2 px-3 rounded-xl border border-slate-200 bg-white font-medium text-slate-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
-              >
-                <option value="ALL">Semua Role</option>
-                <option value="dosen">Dosen Pembimbing</option>
-                <option value="kaprodi">Kaprodi</option>
-              </select>
-            </div>
+            {/* Role Filter */}
+            <FilterDropdown
+              value={roleFilter}
+              onChange={setRoleFilter}
+              label="Role"
+              allLabel="Semua Role"
+              options={[
+                { value: 'ALL', label: 'Semua Role' },
+                { value: 'dosen', label: 'Dosen Pembimbing' },
+                { value: 'kaprodi', label: 'Kaprodi' },
+              ]}
+            />
 
             {/* Status Filter */}
-            <div className="flex items-center space-x-1.5">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider hidden sm:inline">Status:</span>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="text-xs py-2 px-3 rounded-xl border border-slate-200 bg-white font-medium text-slate-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
-              >
-                <option value="ALL">Semua Status</option>
-                <option value="aktif">Aktif</option>
-                <option value="tugas_belajar">Tugas Belajar</option>
-                <option value="cuti">Cuti</option>
-                <option value="nonaktif">Nonaktif</option>
-              </select>
-            </div>
+            <FilterDropdown
+              value={statusFilter}
+              onChange={setStatusFilter}
+              label="Status"
+              allLabel="Semua Status"
+              options={[
+                { value: 'ALL', label: 'Semua Status' },
+                { value: 'aktif', label: 'Aktif' },
+                { value: 'tugas_belajar', label: 'Tugas Belajar' },
+                { value: 'cuti', label: 'Cuti' },
+                { value: 'nonaktif', label: 'Nonaktif' },
+              ]}
+            />
 
             {/* Jabatan Fungsional Filter */}
-            <div className="flex items-center space-x-1.5">
-              <select
-                value={jabatanFilter}
-                onChange={(e) => setJabatanFilter(e.target.value)}
-                className="text-xs py-2 px-3 rounded-xl border border-slate-200 bg-white font-medium text-slate-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
-              >
-                <option value="ALL">Semua Jabatan</option>
-                {availableJabatan.filter(j => j !== 'ALL').map(jab => (
-                  <option key={jab} value={jab}>{jab}</option>
-                ))}
-              </select>
-            </div>
+            <FilterDropdown
+              value={jabatanFilter}
+              onChange={setJabatanFilter}
+              label="Jabatan"
+              allLabel="Semua Jabatan"
+              options={[
+                { value: 'ALL', label: 'Semua Jabatan' },
+                ...availableJabatan.filter(j => j !== 'ALL').map(jab => ({ value: jab, label: jab }))
+              ]}
+            />
 
             {/* Prodi Filter */}
-            <div className="flex items-center space-x-1.5">
-              <select
-                value={prodiFilter}
-                onChange={(e) => setProdiFilter(e.target.value)}
-                className="text-xs py-2 px-3 rounded-xl border border-slate-200 bg-white font-medium text-slate-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
-              >
-                <option value="ALL">Semua Program Studi</option>
-                {availableProdis.filter(p => p !== 'ALL').map(prd => (
-                  <option key={prd} value={prd}>{prd}</option>
-                ))}
-              </select>
-            </div>
+            <FilterDropdown
+              value={prodiFilter}
+              onChange={setProdiFilter}
+              label="Prodi"
+              allLabel="Semua Program Studi"
+              options={[
+                { value: 'ALL', label: 'Semua Program Studi' },
+                ...availableProdis.filter(p => p !== 'ALL').map(prd => ({ value: prd, label: prd }))
+              ]}
+            />
 
             {/* Reset Filter Button */}
             {(searchQuery || statusFilter !== 'ALL' || jabatanFilter !== 'ALL' || prodiFilter !== 'ALL' || roleFilter !== 'ALL') && (
@@ -947,34 +944,30 @@ export default function MasterDosenAdminPage() {
 
                 {/* Jabatan Fungsional & Prodi */}
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-slate-700 font-bold mb-1">Jabatan Fungsional</label>
-                    <select
-                      value={dosenForm.jabatan_fungsional}
-                      onChange={(e) => setDosenForm({ ...dosenForm, jabatan_fungsional: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-medium focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
-                    >
-                      <option value="Tenaga Pengajar">Tenaga Pengajar</option>
-                      <option value="Asisten Ahli">Asisten Ahli</option>
-                      <option value="Lektor">Lektor</option>
-                      <option value="Lektor Kepala">Lektor Kepala</option>
-                      <option value="Guru Besar">Guru Besar</option>
-                    </select>
-                  </div>
+                  <FormSelect
+                    label="Jabatan Fungsional"
+                    value={dosenForm.jabatan_fungsional}
+                    onChange={(e) => setDosenForm({ ...dosenForm, jabatan_fungsional: e.target.value })}
+                    options={[
+                      { value: 'Tenaga Pengajar', label: 'Tenaga Pengajar' },
+                      { value: 'Asisten Ahli', label: 'Asisten Ahli' },
+                      { value: 'Lektor', label: 'Lektor' },
+                      { value: 'Lektor Kepala', label: 'Lektor Kepala' },
+                      { value: 'Guru Besar', label: 'Guru Besar' },
+                    ]}
+                  />
 
-                  <div>
-                    <label className="block text-slate-700 font-bold mb-1">Program Studi</label>
-                    <select
-                      value={dosenForm.prodi}
-                      onChange={(e) => setDosenForm({ ...dosenForm, prodi: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-medium focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
-                    >
-                      <option value="D3 Manajemen Informatika">D3 Manajemen Informatika</option>
-                      <option value="D3 Komputerisasi Akuntansi">D3 Komputerisasi Akuntansi</option>
-                      <option value="S1 Sistem Informasi">S1 Sistem Informasi</option>
-                      <option value="S1 Teknik Informatika">S1 Teknik Informatika</option>
-                    </select>
-                  </div>
+                  <FormSelect
+                    label="Program Studi"
+                    value={dosenForm.prodi}
+                    onChange={(e) => setDosenForm({ ...dosenForm, prodi: e.target.value })}
+                    options={[
+                      { value: 'D3 Manajemen Informatika', label: 'D3 Manajemen Informatika' },
+                      { value: 'D3 Komputerisasi Akuntansi', label: 'D3 Komputerisasi Akuntansi' },
+                      { value: 'S1 Sistem Informasi', label: 'S1 Sistem Informasi' },
+                      { value: 'S1 Teknik Informatika', label: 'S1 Teknik Informatika' },
+                    ]}
+                  />
                 </div>
 
                 {/* Bidang Keahlian */}
@@ -1017,19 +1010,17 @@ export default function MasterDosenAdminPage() {
                 </div>
 
                 {/* Status */}
-                <div>
-                  <label className="block text-slate-700 font-bold mb-1">Status Keaktifan</label>
-                  <select
-                    value={dosenForm.status}
-                    onChange={(e) => setDosenForm({ ...dosenForm, status: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-medium focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
-                  >
-                    <option value="aktif">Aktif</option>
-                    <option value="tugas_belajar">Tugas Belajar</option>
-                    <option value="cuti">Cuti</option>
-                    <option value="nonaktif">Nonaktif</option>
-                  </select>
-                </div>
+                <FormSelect
+                  label="Status Keaktifan"
+                  value={dosenForm.status}
+                  onChange={(e) => setDosenForm({ ...dosenForm, status: e.target.value })}
+                  options={[
+                    { value: 'aktif', label: 'Aktif' },
+                    { value: 'tugas_belajar', label: 'Tugas Belajar' },
+                    { value: 'cuti', label: 'Cuti' },
+                    { value: 'nonaktif', label: 'Nonaktif' },
+                  ]}
+                />
               </div>
 
               {/* Submit Buttons (Fixed at bottom) */}

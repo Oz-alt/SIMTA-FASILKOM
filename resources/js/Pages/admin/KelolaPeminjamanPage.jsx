@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { CheckSquare, CheckCircle2, XCircle, AlertTriangle, Building2, Calendar } from 'lucide-react';
+import FilterDropdown from '../../Components/common/FilterDropdown.jsx';
 
 export default function KelolaPeminjamanPage() {
   const { bookings, reviewBooking } = useAuth();
@@ -52,16 +53,18 @@ export default function KelolaPeminjamanPage() {
           </p>
         </div>
 
-        <select
+        <FilterDropdown
           value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          className="text-xs border border-slate-300 rounded-lg px-3 py-1.5 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 self-start sm:self-auto"
-        >
-          <option value="ALL">Semua Status</option>
-          <option value="menunggu_persetujuan">Menunggu Persetujuan</option>
-          <option value="disetujui">Disetujui</option>
-          <option value="ditolak">Ditolak</option>
-        </select>
+          onChange={setFilterStatus}
+          label="Status"
+          allLabel="Semua Status"
+          options={[
+            { value: 'ALL', label: 'Semua Status' },
+            { value: 'menunggu_persetujuan', label: 'Menunggu Persetujuan' },
+            { value: 'disetujui', label: 'Disetujui' },
+            { value: 'ditolak', label: 'Ditolak' },
+          ]}
+        />
       </div>
 
       <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs">

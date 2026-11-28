@@ -196,7 +196,7 @@ Route::middleware('simta.role:admin')->group(function (): void {
     });
 
     Route::get('/admin/priorities', function () {
-        return Inertia::render('admin/PrioritasRuangPage');
+        return redirect('/admin/rooms');
     });
 
     Route::get('/admin/repository/publish', function () {
@@ -264,11 +264,11 @@ Route::middleware('simta.role:admin')->group(function (): void {
     });
 
     Route::get('/admin-simta/thesis-management', function () {
-        return Inertia::render('admin/ManajemenTAAdminPage');
+        return redirect('/admin-simta/dashboard');
     });
 
     Route::get('/admin-simta/manajemen-ta', function () {
-        return Inertia::render('admin/ManajemenTAAdminPage');
+        return redirect('/admin-simta/dashboard');
     });
 
     Route::get('/admin-simta/repository', function () {

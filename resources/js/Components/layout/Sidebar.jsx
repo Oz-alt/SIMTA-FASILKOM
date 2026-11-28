@@ -185,7 +185,6 @@ export default function Sidebar() {
               items: [
                 { to: '/admin/bookings', label: 'Persetujuan Ruangan', icon: CheckSquare },
                 { to: '/admin/rooms', label: 'Kelola Ruang & Gedung', icon: Building2 },
-                { to: '/admin/priorities', label: 'Prioritas Ruangan', icon: ListOrdered },
                 { to: '/schedule', label: 'Jadwal Ruang Sidang', icon: CalendarDays }
               ]
             },
@@ -196,14 +195,6 @@ export default function Sidebar() {
               items: [
                 { to: '/admin-simta/master/mahasiswa', label: 'Data Mahasiswa', icon: GraduationCap },
                 { to: '/admin-simta/master/dosen', label: 'Data Dosen', icon: UserCheck }
-              ]
-            },
-            {
-              id: 'tugas_akhir',
-              label: 'Tugas Akhir',
-              icon: BookOpen,
-              items: [
-                { to: '/admin-simta/thesis-management', label: 'Manajemen Tugas Akhir', icon: BookOpen }
               ]
             },
             {

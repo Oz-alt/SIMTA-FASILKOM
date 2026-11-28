@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
+import FilterDropdown from '../../Components/common/FilterDropdown.jsx';
+import FormSelect from '../../Components/common/FormSelect.jsx';
 import {
   LayoutGrid, Plus, Search, Eye, Pencil, Trash2, X, Filter, Globe, FileText
 } from 'lucide-react';
@@ -137,22 +139,26 @@ export default function CmsAdminPage() {
               placeholder="Cari judul / kategori konten..."
               className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-400" />
           </div>
-          <div className="relative">
-            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-            <select value={filterKategori} onChange={e => setFilterKategori(e.target.value)}
-              className="pl-8 pr-6 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-300 bg-white appearance-none">
-              <option value="">Semua Kategori</option>
-              {KATEGORI_OPTIONS.map(k => <option key={k} value={k}>{k}</option>)}
-            </select>
-          </div>
-          <div className="relative">
-            <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-              className="pl-8 pr-6 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-300 bg-white appearance-none">
-              <option value="">Semua Status</option>
-              {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
+          <FilterDropdown
+            value={filterKategori}
+            onChange={setFilterKategori}
+            label="Kategori"
+            allLabel="Semua Kategori"
+            options={[
+              { value: '', label: 'Semua Kategori' },
+              ...KATEGORI_OPTIONS.map(k => ({ value: k, label: k }))
+            ]}
+          />
+          <FilterDropdown
+            value={filterStatus}
+            onChange={setFilterStatus}
+            label="Status"
+            allLabel="Semua Status"
+            options={[
+              { value: '', label: 'Semua Status' },
+              ...STATUS_OPTIONS.map(s => ({ value: s, label: s.charAt(0).toUpperCase() + s.slice(1) }))
+            ]}
+          />
         </div>
         <button onClick={openAdd}
           className="flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white text-xs font-bold rounded-xl hover:bg-purple-700 transition-colors shadow-sm whitespace-nowrap">
@@ -225,13 +231,13 @@ export default function CmsAdminPage() {
               placeholder="Judul konten..."
               className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-300" />
           </div>
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Kategori / Halaman <span className="text-rose-500">*</span></label>
-            <select value={form.kategori} onChange={e => setForm(f => ({ ...f, kategori: e.target.value }))}
-              className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-300 bg-white">
-              {KATEGORI_OPTIONS.map(k => <option key={k} value={k}>{k}</option>)}
-            </select>
-          </div>
+          <FormSelect
+            label="Kategori / Halaman"
+            required
+            value={form.kategori}
+            onChange={e => setForm(f => ({ ...f, kategori: e.target.value }))}
+            options={KATEGORI_OPTIONS.map(k => ({ value: k, label: k }))}
+          />
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1.5">Isi Konten <span className="text-rose-500">*</span></label>
             <textarea required value={form.isi} onChange={e => setForm(f => ({ ...f, isi: e.target.value }))}

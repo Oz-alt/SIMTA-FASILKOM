@@ -1,5 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
+import FilterDropdown from '../../Components/common/FilterDropdown.jsx';
+import FormSelect from '../../Components/common/FormSelect.jsx';
 import { 
   GraduationCap, 
   Search, 
@@ -492,33 +494,33 @@ export default function MasterMahasiswaAdminPage() {
           <div className="flex flex-wrap items-center gap-2">
             
             {/* Status Filter */}
-            <div className="flex items-center space-x-1.5">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider hidden sm:inline">Status:</span>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="text-xs py-2 px-3 rounded-xl border border-slate-200 bg-white font-medium text-slate-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
-              >
-                <option value="ALL">Semua Status</option>
-                <option value="aktif">Aktif</option>
-                <option value="cuti">Cuti</option>
-                <option value="nonaktif">Nonaktif</option>
-                <option value="lulus">Lulus</option>
-              </select>
-            </div>
+            <FilterDropdown
+              label="Status"
+              icon={Filter}
+              value={statusFilter}
+              onChange={setStatusFilter}
+              options={[
+                { value: 'ALL', label: 'Semua Status' },
+                { value: 'aktif', label: 'Aktif' },
+                { value: 'cuti', label: 'Cuti' },
+                { value: 'nonaktif', label: 'Nonaktif' },
+                { value: 'lulus', label: 'Lulus' }
+              ]}
+              accentColor="blue"
+            />
 
             {/* Angkatan Filter (Ketentuan #4) */}
-            <div className="flex items-center space-x-1.5">
-              <select
-                value={angkatanFilter}
-                onChange={(e) => setAngkatanFilter(e.target.value)}
-                className="text-xs py-2 px-3 rounded-xl border border-slate-200 bg-white font-medium text-slate-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
-              >
-                {AVAILABLE_ANGKATAN.map(a => (
-                  <option key={a} value={a}>{a === 'Semua Angkatan' ? a : `Angkatan ${a}`}</option>
-                ))}
-              </select>
-            </div>
+            <FilterDropdown
+              label="Angkatan"
+              icon={GraduationCap}
+              value={angkatanFilter}
+              onChange={setAngkatanFilter}
+              options={AVAILABLE_ANGKATAN.map(a => ({
+                value: a,
+                label: a === 'Semua Angkatan' ? a : `Angkatan ${a}`
+              }))}
+              accentColor="indigo"
+            />
 
             {/* Reset Filter Button */}
             {(searchQuery || statusFilter !== 'ALL' || angkatanFilter !== 'Semua Angkatan' || prodiFilter !== 'ALL') && (
@@ -993,19 +995,17 @@ export default function MasterMahasiswaAdminPage() {
 
                 {/* Prodi & Kelas Grid */}
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-slate-700 font-bold mb-1">Program Studi</label>
-                    <select
-                      value={studentForm.prodi}
-                      onChange={(e) => setStudentForm({ ...studentForm, prodi: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
-                    >
-                      <option value="D3 Manajemen Informatika">D3 Manajemen Informatika</option>
-                      <option value="D3 Komputerisasi Akuntansi">D3 Komputerisasi Akuntansi</option>
-                      <option value="S1 Sistem Informasi">S1 Sistem Informasi</option>
-                      <option value="S1 Teknik Informatika">S1 Teknik Informatika</option>
-                    </select>
-                  </div>
+                  <FormSelect
+                    label="Program Studi"
+                    value={studentForm.prodi}
+                    onChange={(e) => setStudentForm({ ...studentForm, prodi: e.target.value })}
+                    options={[
+                      { value: 'D3 Manajemen Informatika', label: 'D3 Manajemen Informatika' },
+                      { value: 'D3 Komputerisasi Akuntansi', label: 'D3 Komputerisasi Akuntansi' },
+                      { value: 'S1 Sistem Informasi', label: 'S1 Sistem Informasi' },
+                      { value: 'S1 Teknik Informatika', label: 'S1 Teknik Informatika' },
+                    ]}
+                  />
 
                   <div>
                     <label className="block text-slate-700 font-bold mb-1">Kelas</label>
@@ -1020,19 +1020,17 @@ export default function MasterMahasiswaAdminPage() {
                 </div>
 
                 {/* Status */}
-                <div>
-                  <label className="block text-slate-700 font-bold mb-1">Status Keaktifan</label>
-                  <select
-                    value={studentForm.status}
-                    onChange={(e) => setStudentForm({ ...studentForm, status: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
-                  >
-                    <option value="aktif">Aktif</option>
-                    <option value="cuti">Cuti</option>
-                    <option value="nonaktif">Nonaktif</option>
-                    <option value="lulus">Lulus</option>
-                  </select>
-                </div>
+                <FormSelect
+                  label="Status Keaktifan"
+                  value={studentForm.status}
+                  onChange={(e) => setStudentForm({ ...studentForm, status: e.target.value })}
+                  options={[
+                    { value: 'aktif', label: 'Aktif' },
+                    { value: 'cuti', label: 'Cuti' },
+                    { value: 'nonaktif', label: 'Nonaktif' },
+                    { value: 'lulus', label: 'Lulus' },
+                  ]}
+                />
 
                 {/* Section Dosen Pembimbing 1 & 2 */}
                 <div className="pt-2 border-t border-slate-100 space-y-3">
@@ -1043,42 +1041,32 @@ export default function MasterMahasiswaAdminPage() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {/* Dosen Pembimbing 1 */}
-                    <div>
-                      <label className="block text-slate-700 font-semibold text-[11px] mb-1">
-                        Dosen Pembimbing 1 (Utama)
-                      </label>
-                      <select
-                        value={studentForm.dospem1_nip}
-                        onChange={(e) => setStudentForm({ ...studentForm, dospem1_nip: e.target.value })}
-                        className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
-                      >
-                        <option value="">-- Belum Ditentukan / Kosong --</option>
-                        {sortedAdvisors.map(adv => (
-                          <option key={adv.nip} value={adv.nip}>
-                            {adv.nama} (NIP: {adv.nip})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                    <FormSelect
+                      label="Dosen Pembimbing 1 (Utama)"
+                      value={studentForm.dospem1_nip}
+                      onChange={(e) => setStudentForm({ ...studentForm, dospem1_nip: e.target.value })}
+                      options={[
+                        { value: '', label: '-- Belum Ditentukan / Kosong --' },
+                        ...sortedAdvisors.map(adv => ({
+                          value: adv.nip,
+                          label: `${adv.nama} (NIP: ${adv.nip})`
+                        }))
+                      ]}
+                    />
 
                     {/* Dosen Pembimbing 2 */}
-                    <div>
-                      <label className="block text-slate-700 font-semibold text-[11px] mb-1">
-                        Dosen Pembimbing 2 (Pendamping)
-                      </label>
-                      <select
-                        value={studentForm.dospem2_nip}
-                        onChange={(e) => setStudentForm({ ...studentForm, dospem2_nip: e.target.value })}
-                        className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
-                      >
-                        <option value="">-- Belum Ditentukan / Kosong --</option>
-                        {sortedAdvisors.map(adv => (
-                          <option key={adv.nip} value={adv.nip}>
-                            {adv.nama} (NIP: {adv.nip})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                    <FormSelect
+                      label="Dosen Pembimbing 2 (Pendamping)"
+                      value={studentForm.dospem2_nip}
+                      onChange={(e) => setStudentForm({ ...studentForm, dospem2_nip: e.target.value })}
+                      options={[
+                        { value: '', label: '-- Belum Ditentukan / Kosong --' },
+                        ...sortedAdvisors.map(adv => ({
+                          value: adv.nip,
+                          label: `${adv.nama} (NIP: ${adv.nip})`
+                        }))
+                      ]}
+                    />
                   </div>
 
                   {studentForm.dospem1_nip && studentForm.dospem2_nip && studentForm.dospem1_nip === studentForm.dospem2_nip && (

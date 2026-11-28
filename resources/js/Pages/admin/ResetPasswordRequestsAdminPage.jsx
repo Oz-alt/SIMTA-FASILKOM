@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { Head, Link, router } from '@inertiajs/react';
+import FilterDropdown from '../../Components/common/FilterDropdown.jsx';
 import { 
   KeyRound, 
   Search, 
@@ -524,28 +525,34 @@ export default function ResetPasswordRequestsAdminPage() {
 
               <div className="flex items-center gap-2 flex-wrap">
                 {/* Role Filter */}
-                <select
+                <FilterDropdown
+                  label="Role"
+                  icon={UserCheck}
                   value={roleFilter}
-                  onChange={(e) => setRoleFilter(e.target.value)}
-                  className="px-3 py-2 rounded-xl border border-slate-300 text-xs text-slate-700 font-semibold focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 outline-none bg-white cursor-pointer"
-                >
-                  <option value="ALL">Semua Role</option>
-                  <option value="mahasiswa">Mahasiswa</option>
-                  <option value="dosen">Dosen</option>
-                </select>
+                  onChange={setRoleFilter}
+                  options={[
+                    { value: 'ALL', label: 'Semua Role' },
+                    { value: 'mahasiswa', label: 'Mahasiswa' },
+                    { value: 'dosen', label: 'Dosen' }
+                  ]}
+                  accentColor="indigo"
+                />
 
                 {/* Status Filter */}
-                <select
+                <FilterDropdown
+                  label="Status"
+                  icon={Filter}
                   value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="px-3 py-2 rounded-xl border border-slate-300 text-xs text-slate-700 font-semibold focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 outline-none bg-white cursor-pointer"
-                >
-                  <option value="ALL">Semua Status</option>
-                  <option value="menunggu">Menunggu</option>
-                  <option value="disetujui">Disetujui</option>
-                  <option value="selesai">Selesai</option>
-                  <option value="ditolak">Ditolak</option>
-                </select>
+                  onChange={setStatusFilter}
+                  options={[
+                    { value: 'ALL', label: 'Semua Status' },
+                    { value: 'menunggu', label: 'Menunggu' },
+                    { value: 'disetujui', label: 'Disetujui' },
+                    { value: 'selesai', label: 'Selesai' },
+                    { value: 'ditolak', label: 'Ditolak' }
+                  ]}
+                  accentColor="blue"
+                />
 
                 {(searchQuery || statusFilter !== 'ALL' || roleFilter !== 'ALL') && (
                   <button

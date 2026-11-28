@@ -143,7 +143,6 @@ export function getRoleMenuGroups(role) {
           items: [
             { label: 'Persetujuan Ruangan', to: '/admin/bookings', icon: ClipboardCheck },
             { label: 'Kelola Ruang & Gedung', to: '/admin/rooms', icon: Building2 },
-            { label: 'Prioritas Ruangan', to: '/admin/priorities', icon: ShieldAlert },
             { label: 'Jadwal Ruang Sidang', to: '/schedule', icon: CalendarDays },
           ],
         },
@@ -154,11 +153,6 @@ export function getRoleMenuGroups(role) {
             { label: 'Data Mahasiswa', to: '/admin-simta/master/mahasiswa', icon: GraduationCap },
             { label: 'Data Dosen', to: '/admin-simta/master/dosen', icon: UserCheck },
           ],
-        },
-        {
-          id: 'ta',
-          label: 'Tugas Akhir',
-          items: [{ label: 'Manajemen Tugas Akhir', to: '/admin-simta/thesis-management', icon: BookOpen }],
         },
         {
           id: 'akun',
@@ -230,7 +224,6 @@ export function getMobileBottomTabs(role) {
       return [
         { label: 'Beranda', to: '/admin-simta/dashboard', icon: LayoutDashboard },
         { label: 'Ruangan', to: '/admin/bookings', icon: Building2 },
-        { label: 'Kelola TA', to: '/admin-simta/thesis-management', icon: BookOpen },
         { label: 'Reset PW', to: '/admin-simta/accounts/password-resets', icon: KeyRound },
       ];
     default:

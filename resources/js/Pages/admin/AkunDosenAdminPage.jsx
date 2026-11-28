@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Link } from '@inertiajs/react';
 import { useAuth } from '../../context/AuthContext.jsx';
+import FilterDropdown from '../../Components/common/FilterDropdown.jsx';
+import FormSelect from '../../Components/common/FormSelect.jsx';
 import { 
   UserCheck, 
   Search, 
@@ -415,49 +417,46 @@ export default function AkunDosenAdminPage() {
           <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto justify-end">
             
             {/* Role Filter (Ketentuan #7) */}
-            <div className="flex items-center space-x-1.5 bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700">
-              <span>Role:</span>
-              <select
-                value={roleFilter}
-                onChange={(e) => setRoleFilter(e.target.value)}
-                className="bg-transparent text-xs font-bold text-purple-600 outline-none cursor-pointer"
-              >
-                <option value="ALL">Semua Role</option>
-                <option value="dosen">Dosen Pembimbing</option>
-                <option value="kaprodi">Kaprodi</option>
-              </select>
-            </div>
+            <FilterDropdown
+              label="Role"
+              icon={UserCheck}
+              value={roleFilter}
+              onChange={setRoleFilter}
+              options={[
+                { value: 'ALL', label: 'Semua Role' },
+                { value: 'dosen', label: 'Dosen Pembimbing' },
+                { value: 'kaprodi', label: 'Kaprodi' }
+              ]}
+              accentColor="indigo"
+            />
 
             {/* Status Filter */}
-            <div className="flex items-center space-x-1.5 bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700">
-              <Filter className="w-3.5 h-3.5 text-slate-400" />
-              <span>Status:</span>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="bg-transparent text-xs font-bold text-indigo-600 outline-none cursor-pointer"
-              >
-                <option value="ALL">Semua Status</option>
-                <option value="aktif">Aktif</option>
-                <option value="cuti_studi">Cuti Studi</option>
-                <option value="nonaktif">Nonaktif</option>
-              </select>
-            </div>
+            <FilterDropdown
+              label="Status"
+              icon={Filter}
+              value={statusFilter}
+              onChange={setStatusFilter}
+              options={[
+                { value: 'ALL', label: 'Semua Status' },
+                { value: 'aktif', label: 'Aktif' },
+                { value: 'cuti_studi', label: 'Cuti Studi' },
+                { value: 'nonaktif', label: 'Nonaktif' }
+              ]}
+              accentColor="blue"
+            />
 
             {/* Jabatan Fungsional Filter */}
-            <div className="flex items-center space-x-1.5 bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700">
-              <Award className="w-3.5 h-3.5 text-slate-400" />
-              <span>Jabatan:</span>
-              <select
-                value={jabatanFilter}
-                onChange={(e) => setJabatanFilter(e.target.value)}
-                className="bg-transparent text-xs font-bold text-blue-600 outline-none cursor-pointer"
-              >
-                {availableJabatan.map(j => (
-                  <option key={j} value={j}>{j === 'ALL' ? 'Semua Jabatan' : j}</option>
-                ))}
-              </select>
-            </div>
+            <FilterDropdown
+              label="Jabatan"
+              icon={Award}
+              value={jabatanFilter}
+              onChange={setJabatanFilter}
+              options={availableJabatan.map(j => ({
+                value: j,
+                label: j === 'ALL' ? 'Semua Jabatan' : j
+              }))}
+              accentColor="indigo"
+            />
 
             <div className="text-xs font-bold text-slate-500 px-2">
               Menampilkan <span className="text-slate-900">{filteredDosen.length}</span> dari {dosenList.length} dosen
@@ -739,34 +738,30 @@ export default function AkunDosenAdminPage() {
 
                 {/* Jabatan Fungsional & Prodi */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="font-bold text-slate-700">Jabatan Fungsional</label>
-                    <select
-                      value={dosenForm.jabatan_fungsional}
-                      onChange={(e) => setDosenForm({ ...dosenForm, jabatan_fungsional: e.target.value })}
-                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-600 outline-none text-xs font-semibold bg-white cursor-pointer"
-                    >
-                      <option value="Tenaga Pengajar">Tenaga Pengajar</option>
-                      <option value="Asisten Ahli">Asisten Ahli</option>
-                      <option value="Lektor">Lektor</option>
-                      <option value="Lektor Kepala">Lektor Kepala</option>
-                      <option value="Guru Besar / Profesor">Guru Besar / Profesor</option>
-                    </select>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="font-bold text-slate-700">Program Studi</label>
-                    <select
-                      value={dosenForm.prodi}
-                      onChange={(e) => setDosenForm({ ...dosenForm, prodi: e.target.value })}
-                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-600 outline-none text-xs font-semibold bg-white cursor-pointer"
-                    >
-                      <option value="D3 Manajemen Informatika">D3 Manajemen Informatika</option>
-                      <option value="D3 Teknik Komputer">D3 Teknik Komputer</option>
-                      <option value="S1 Sistem Informasi">S1 Sistem Informasi</option>
-                      <option value="S1 Teknik Informatika">S1 Teknik Informatika</option>
-                      <option value="S1 Sistem Komputer">S1 Sistem Komputer</option>
-                    </select>
-                  </div>
+                  <FormSelect
+                    label="Jabatan Fungsional"
+                    value={dosenForm.jabatan_fungsional}
+                    onChange={(e) => setDosenForm({ ...dosenForm, jabatan_fungsional: e.target.value })}
+                    options={[
+                      { value: 'Tenaga Pengajar', label: 'Tenaga Pengajar' },
+                      { value: 'Asisten Ahli', label: 'Asisten Ahli' },
+                      { value: 'Lektor', label: 'Lektor' },
+                      { value: 'Lektor Kepala', label: 'Lektor Kepala' },
+                      { value: 'Guru Besar / Profesor', label: 'Guru Besar / Profesor' }
+                    ]}
+                  />
+                  <FormSelect
+                    label="Program Studi"
+                    value={dosenForm.prodi}
+                    onChange={(e) => setDosenForm({ ...dosenForm, prodi: e.target.value })}
+                    options={[
+                      { value: 'D3 Manajemen Informatika', label: 'D3 Manajemen Informatika' },
+                      { value: 'D3 Teknik Komputer', label: 'D3 Teknik Komputer' },
+                      { value: 'S1 Sistem Informasi', label: 'S1 Sistem Informasi' },
+                      { value: 'S1 Teknik Informatika', label: 'S1 Teknik Informatika' },
+                      { value: 'S1 Sistem Komputer', label: 'S1 Sistem Komputer' }
+                    ]}
+                  />
                 </div>
 
                 {/* Bidang Keahlian */}
@@ -811,29 +806,25 @@ export default function AkunDosenAdminPage() {
 
                 {/* Status Akun & Role */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="font-bold text-slate-700">Status Akun</label>
-                    <select
-                      value={dosenForm.status}
-                      onChange={(e) => setDosenForm({ ...dosenForm, status: e.target.value })}
-                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-600 outline-none text-xs font-semibold bg-white cursor-pointer"
-                    >
-                      <option value="aktif">Aktif</option>
-                      <option value="cuti_studi">Cuti Studi</option>
-                      <option value="nonaktif">Nonaktif</option>
-                    </select>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="font-bold text-slate-700">Role Sistem</label>
-                    <select
-                      value={dosenForm.role}
-                      onChange={(e) => setDosenForm({ ...dosenForm, role: e.target.value })}
-                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-600 outline-none text-xs font-semibold bg-white cursor-pointer"
-                    >
-                      <option value="dosen">Dosen Pembimbing</option>
-                      <option value="kaprodi">Kaprodi (Ketua Jurusan)</option>
-                    </select>
-                  </div>
+                  <FormSelect
+                    label="Status Akun"
+                    value={dosenForm.status}
+                    onChange={(e) => setDosenForm({ ...dosenForm, status: e.target.value })}
+                    options={[
+                      { value: 'aktif', label: 'Aktif' },
+                      { value: 'cuti_studi', label: 'Cuti Studi' },
+                      { value: 'nonaktif', label: 'Nonaktif' }
+                    ]}
+                  />
+                  <FormSelect
+                    label="Role Sistem"
+                    value={dosenForm.role}
+                    onChange={(e) => setDosenForm({ ...dosenForm, role: e.target.value })}
+                    options={[
+                      { value: 'dosen', label: 'Dosen Pembimbing' },
+                      { value: 'kaprodi', label: 'Kaprodi (Ketua Jurusan)' }
+                    ]}
+                  />
                 </div>
 
                 {/* Password Initial (Only for new accounts) */}

@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
+import FilterDropdown from '../../Components/common/FilterDropdown.jsx';
+import FormSelect from '../../Components/common/FormSelect.jsx';
 import {
   FileStack, Plus, Search, Eye, Download, Pencil, Trash2, X, Upload, Filter
 } from 'lucide-react';
@@ -219,16 +221,16 @@ export default function DokumenAdminPage() {
               className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400"
             />
           </div>
-          <div className="relative">
-            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-            <select
-              value={filterJenis} onChange={e => setFilterJenis(e.target.value)}
-              className="pl-8 pr-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 bg-white appearance-none pr-8"
-            >
-              <option value="">Semua Jenis</option>
-              {JENIS_OPTIONS.map(j => <option key={j} value={j}>{j}</option>)}
-            </select>
-          </div>
+          <FilterDropdown
+            value={filterJenis}
+            onChange={setFilterJenis}
+            label="Jenis"
+            allLabel="Semua Jenis"
+            options={[
+              { value: '', label: 'Semua Jenis' },
+              ...JENIS_OPTIONS.map(j => ({ value: j, label: j }))
+            ]}
+          />
         </div>
         <button
           onClick={openAdd}
@@ -319,13 +321,13 @@ export default function DokumenAdminPage() {
               placeholder="Contoh: Surat Keterangan Aktif Kuliah"
               className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300" />
           </div>
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Jenis Dokumen <span className="text-rose-500">*</span></label>
-            <select value={form.jenis} onChange={e => setForm(f => ({ ...f, jenis: e.target.value }))}
-              className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white">
-              {JENIS_OPTIONS.map(j => <option key={j} value={j}>{j}</option>)}
-            </select>
-          </div>
+          <FormSelect
+            label="Jenis Dokumen"
+            required
+            value={form.jenis}
+            onChange={e => setForm(f => ({ ...f, jenis: e.target.value }))}
+            options={JENIS_OPTIONS.map(j => ({ value: j, label: j }))}
+          />
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1.5">Deskripsi</label>
             <textarea value={form.deskripsi} onChange={e => setForm(f => ({ ...f, deskripsi: e.target.value }))}
@@ -356,13 +358,12 @@ export default function DokumenAdminPage() {
               className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300"
             />
           </div>
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Status</label>
-            <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
-              className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white">
-              {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
+          <FormSelect
+            label="Status"
+            value={form.status}
+            onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
+            options={STATUS_OPTIONS.map(s => ({ value: s, label: s.charAt(0).toUpperCase() + s.slice(1) }))}
+          />
           <div className="flex justify-end space-x-2 pt-2">
             <button type="button" onClick={closeForm}
               className="px-4 py-2 text-xs font-semibold text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">

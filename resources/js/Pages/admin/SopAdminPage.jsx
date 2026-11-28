@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
+import FilterDropdown from '../../Components/common/FilterDropdown.jsx';
+import FormSelect from '../../Components/common/FormSelect.jsx';
 import {
   FileCheck,
   Plus,
@@ -254,26 +256,28 @@ export default function SopAdminPage() {
               className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-slate-50/50"
             />
           </div>
-          <div className="flex gap-2">
-            <select
+          <div className="flex flex-wrap gap-2">
+            <FilterDropdown
               value={filterKategori}
-              onChange={(e) => setFilterKategori(e.target.value)}
-              className="text-xs border border-slate-200 rounded-lg px-3 py-2 bg-slate-50/50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium cursor-pointer"
-            >
-              <option value="">Semua Kategori</option>
-              {KATEGORI_OPTIONS.map(k => (
-                <option key={k} value={k}>{k}</option>
-              ))}
-            </select>
-            <select
+              onChange={setFilterKategori}
+              label="Kategori"
+              allLabel="Semua Kategori"
+              options={[
+                { value: '', label: 'Semua Kategori' },
+                ...KATEGORI_OPTIONS.map(k => ({ value: k, label: k }))
+              ]}
+            />
+            <FilterDropdown
               value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="text-xs border border-slate-200 rounded-lg px-3 py-2 bg-slate-50/50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium cursor-pointer"
-            >
-              <option value="">Semua Status</option>
-              <option value="aktif">Aktif</option>
-              <option value="nonaktif">Nonaktif</option>
-            </select>
+              onChange={setFilterStatus}
+              label="Status"
+              allLabel="Semua Status"
+              options={[
+                { value: '', label: 'Semua Status' },
+                { value: 'aktif', label: 'Aktif' },
+                { value: 'nonaktif', label: 'Nonaktif' },
+              ]}
+            />
           </div>
         </div>
 
@@ -410,29 +414,21 @@ export default function SopAdminPage() {
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Kategori</label>
-              <select
-                value={form.kategori}
-                onChange={(e) => setForm(prev => ({ ...prev, kategori: e.target.value }))}
-                className="w-full text-xs p-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
-              >
-                {KATEGORI_OPTIONS.map(k => (
-                  <option key={k} value={k}>{k}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Status Publikasi</label>
-              <select
-                value={form.status}
-                onChange={(e) => setForm(prev => ({ ...prev, status: e.target.value }))}
-                className="w-full text-xs p-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
-              >
-                <option value="aktif">Aktif</option>
-                <option value="nonaktif">Nonaktif</option>
-              </select>
-            </div>
+            <FormSelect
+              label="Kategori"
+              value={form.kategori}
+              onChange={(e) => setForm(prev => ({ ...prev, kategori: e.target.value }))}
+              options={KATEGORI_OPTIONS.map(k => ({ value: k, label: k }))}
+            />
+            <FormSelect
+              label="Status Publikasi"
+              value={form.status}
+              onChange={(e) => setForm(prev => ({ ...prev, status: e.target.value }))}
+              options={[
+                { value: 'aktif', label: 'Aktif' },
+                { value: 'nonaktif', label: 'Nonaktif' },
+              ]}
+            />
           </div>
 
           <div>
