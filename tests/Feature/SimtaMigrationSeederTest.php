@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use Database\Seeders\CleanLaunchSeeder;
 use Database\Seeders\SupabaseExportSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -156,5 +157,159 @@ class SimtaMigrationSeederTest extends TestCase
         $result = $seeder->seedFromPath(sys_get_temp_dir().DIRECTORY_SEPARATOR.'nonexistent_simta_'.uniqid('', true).'.json');
 
         $this->assertSame([], $result);
+    }
+
+    /**
+     * Ensure CleanLaunchSeeder wipes student accounts, titles, consultations, and test logs
+     * while preserving advisors, advisor-student mappings, kaprodi profiles, and staff credentials.
+     */
+    public function test_clean_launch_seeder_resets_student_testing_data_while_preserving_master_and_staff(): void
+    {
+        $tempPath = sys_get_temp_dir().DIRECTORY_SEPARATOR.'simta_clean_'.uniqid('', true).'.json';
+
+        $fullPayload = [
+            'exportedAt' => '2026-11-28T12:00:00Z',
+            'tables' => [
+                'profiles' => [
+                    [
+                        'id' => 'kaprodi-1',
+                        'nama' => 'Dr. Abdiansah',
+                        'nim' => '198410012009121005',
+                        'nip' => '198410012009121005',
+                        'role' => 'kaprodi',
+                    ],
+                    [
+                        'id' => 'mhs-probe',
+                        'nama' => 'PROBE VERIFIKASI',
+                        'nim' => 'PROBE0001',
+                        'role' => 'mahasiswa',
+                    ],
+                ],
+                'advisors' => [
+                    [
+                        'id' => 'adv-1',
+                        'nip' => '198410012009121005',
+                        'nama' => 'Dr. Abdiansah',
+                        'status' => 'Aktif',
+                    ],
+                ],
+                'student_advisors' => [
+                    [
+                        'student_nim' => '09010282428031',
+                        'student_nama' => 'Muhammad Rizky',
+                        'dospem1_nip' => '198410012009121005',
+                        'dospem2_nip' => '199306042024062006',
+                        'judul_ta' => 'Judul Testing Lama',
+                        'status_pembagian' => 'Ditetapkan',
+                        'is_verified' => true,
+                    ],
+                ],
+                'thesis_titles' => [
+                    [
+                        'id' => 'title-test-1',
+                        'mhs_nim' => '09010282428031',
+                        'judul' => 'Judul Testing',
+                    ],
+                ],
+                'thesis_consultations' => [
+                    [
+                        'id' => 'consult-test-1',
+                        'mhs_nim' => '09010282428031',
+                        'bab_topik' => 'Bab 1 Uji',
+                    ],
+                ],
+                'admin_cms' => [
+                    [
+                        'id' => 'auth-cred-admin',
+                        'kategori' => 'account_credential',
+                        'judul' => 'admin',
+                        'isi' => '{"password":"secret"}',
+                    ],
+                    [
+                        'id' => 'auth-cred-199306042024062006',
+                        'kategori' => 'account_credential',
+                        'judul' => '199306042024062006',
+                        'isi' => '{"password":"secret"}',
+                    ],
+                    [
+                        'id' => 'auth-cred-09010282428031',
+                        'kategori' => 'account_credential',
+                        'judul' => '09010282428031',
+                        'isi' => '{"password":"secret"}',
+                    ],
+                    [
+                        'id' => 'student-profile-09010282428031',
+                        'kategori' => 'student_profile_meta',
+                        'judul' => '09010282428031',
+                        'isi' => '{}',
+                    ],
+                    [
+                        'id' => 'user-profile-kaprodi-198410012009121005',
+                        'kategori' => 'user_profile_meta',
+                        'judul' => '198410012009121005',
+                        'isi' => '{}',
+                    ],
+                    [
+                        'id' => 'system-activity-logs',
+                        'kategori' => 'system_activity_logs',
+                        'judul' => 'Logs',
+                        'isi' => '[]',
+                    ],
+                    [
+                        'id' => 'simta_read_notif_ids_user-mhs-test',
+                        'kategori' => 'notification_read_ids',
+                        'judul' => 'Read Notif',
+                        'isi' => '[]',
+                    ],
+                ],
+            ],
+            'studentCredentialsRpcStatus' => [
+                [
+                    'nim' => '09010282428031',
+                    'has_password' => true,
+                    'is_profile_completed' => true,
+                ],
+            ],
+        ];
+
+        File::put($tempPath, json_encode($fullPayload, JSON_THROW_ON_ERROR));
+
+        try {
+            // Seed full snapshot first to ensure CleanLaunchSeeder clears previously imported test data.
+            (new SupabaseExportSeeder)->seedFromPath($tempPath);
+            $this->assertSame(1, DB::table('thesis_titles')->count());
+            $this->assertSame(1, DB::table('thesis_consultations')->count());
+            $this->assertSame(1, DB::table('student_credentials')->count());
+
+            $counts = (new CleanLaunchSeeder)->seedCleanFromPath($tempPath);
+
+            $this->assertSame(1, $counts['profiles']);
+            $this->assertSame(1, $counts['advisors']);
+            $this->assertSame(1, $counts['student_advisors']);
+            $this->assertSame(0, $counts['thesis_titles']);
+            $this->assertSame(0, $counts['thesis_consultations']);
+            $this->assertSame(0, $counts['student_credentials']);
+
+            $this->assertSame(0, DB::table('thesis_titles')->count());
+            $this->assertSame(0, DB::table('thesis_consultations')->count());
+            $this->assertSame(0, DB::table('student_credentials')->count());
+            $this->assertNull(DB::table('profiles')->where('id', 'mhs-probe')->first());
+            $this->assertNotNull(DB::table('profiles')->where('id', 'kaprodi-1')->first());
+
+            $studentAdvisor = DB::table('student_advisors')->where('student_nim', '09010282428031')->first();
+            $this->assertNotNull($studentAdvisor);
+            $this->assertNull($studentAdvisor->judul_ta);
+            $this->assertSame(0, (int) $studentAdvisor->is_verified);
+
+            $cmsIds = DB::table('admin_cms')->pluck('id')->all();
+            sort($cmsIds);
+            $this->assertSame([
+                'auth-cred-199306042024062006',
+                'auth-cred-admin',
+                'user-profile-kaprodi-198410012009121005',
+            ], $cmsIds);
+        } finally {
+            File::delete($tempPath);
+        }
     }
 }

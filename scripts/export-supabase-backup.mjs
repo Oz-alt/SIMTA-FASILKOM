@@ -3,10 +3,13 @@
  *
  * Mengekspor seluruh tabel publik, status kredensial mahasiswa (via RPC),
  * serta file PDF di bucket Storage `repository-docs` dari Supabase ke
- * folder `database/exports/` (gitignored).
+ * folder `database/exports/` (gitignored), sekaligus menghasilkan paket
+ * clean-launch MySQL (data master dosen & plot pembimbing tetap utuh,
+ * sedangkan akun verifikasi mahasiswa, judul, dan bimbingan di-reset).
  *
  * Cara pakai:
  *   node scripts/export-supabase-backup.mjs
+ *   node scripts/export-supabase-backup.mjs --from-snapshot
  *
  * Opsional (jika memakai service_role key agar bisa membaca RLS ketat seperti
  * tabel `student_credentials`):
@@ -57,15 +60,18 @@ const SUPABASE_ANON_KEY =
   '';
 
 const ACTIVE_KEY = SUPABASE_SERVICE_KEY || SUPABASE_ANON_KEY;
+const FROM_SNAPSHOT_ONLY = process.argv.includes('--from-snapshot');
 
-if (!SUPABASE_URL || !ACTIVE_KEY) {
+if (!FROM_SNAPSHOT_ONLY && (!SUPABASE_URL || !ACTIVE_KEY)) {
   console.error('ERROR: VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY tidak ditemukan di .env');
   process.exit(1);
 }
 
-const supabase = createClient(SUPABASE_URL, ACTIVE_KEY, {
-  auth: { persistSession: false, autoRefreshToken: false },
-});
+const supabase = SUPABASE_URL && ACTIVE_KEY
+  ? createClient(SUPABASE_URL, ACTIVE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    })
+  : null;
 
 const TABLES_TO_EXPORT = [
   'profiles',
@@ -479,9 +485,179 @@ async function listStorageFilesRecursively(bucketName, prefix = '') {
   return { ok: true, error: null, files: collected };
 }
 
+function isStaffAccountCredential(row, advisorNips, staffNips, studentNims) {
+  const id = String(row?.id || '').trim();
+  const ident = String(row?.judul || id.replace(/^auth-cred-/, '')).trim();
+  if (!ident) return false;
+  if (ident.toLowerCase() === 'admin') return true;
+  if (advisorNips.has(ident) || staffNips.has(ident)) return true;
+  if (studentNims.has(ident)) return false;
+  return /^\d{18}$/.test(ident);
+}
+
+function buildCleanLaunchSnapshot(fullSnapshot) {
+  const tables = fullSnapshot.tables || {};
+  const advisors = Array.isArray(tables.advisors) ? tables.advisors : [];
+  const rawProfiles = Array.isArray(tables.profiles) ? tables.profiles : [];
+  const rawStudentAdvisors = Array.isArray(tables.student_advisors) ? tables.student_advisors : [];
+  const rawAdminCms = Array.isArray(tables.admin_cms) ? tables.admin_cms : [];
+
+  const advisorNips = new Set(advisors.map((a) => String(a?.nip || '').trim()).filter(Boolean));
+  const staffProfiles = rawProfiles.filter((p) => String(p?.role || '').toLowerCase() !== 'mahasiswa');
+  const staffNips = new Set(
+    staffProfiles
+      .flatMap((p) => [p?.nip, p?.nim])
+      .map((v) => String(v || '').trim())
+      .filter(Boolean)
+  );
+  const studentNims = new Set(
+    rawStudentAdvisors.map((sa) => String(sa?.student_nim || '').trim()).filter(Boolean)
+  );
+
+  const cleanStudentAdvisors = rawStudentAdvisors.map((sa) => ({
+    ...sa,
+    judul_ta: null,
+    ...(Object.prototype.hasOwnProperty.call(sa || {}, 'is_verified') ? { is_verified: false } : {}),
+  }));
+
+  const cleanAdminCms = rawAdminCms.filter((row) => {
+    const id = String(row?.id || '').trim();
+    const kat = String(row?.kategori || '').trim();
+    if (kat === 'student_profile_meta' || id.startsWith('student-profile-')) return false;
+    if (kat === 'notification_read_ids' || id.startsWith('simta_read_notif_ids_') || id.startsWith('notif-read-')) return false;
+    if (kat === 'system_activity_logs' || id === 'system-activity-logs') return false;
+    if (kat === 'account_credential' || id.startsWith('auth-cred-')) {
+      return isStaffAccountCredential(row, advisorNips, staffNips, studentNims);
+    }
+    return true;
+  });
+
+  const cleanTables = {
+    profiles: staffProfiles,
+    advisors,
+    student_advisors: cleanStudentAdvisors,
+    thesis_titles: [],
+    thesis_consultations: [],
+    thesis_repositories: [],
+    bookings: [],
+    admin_cms: cleanAdminCms,
+    admin_documents: Array.isArray(tables.admin_documents) ? tables.admin_documents : [],
+    admin_templates: Array.isArray(tables.admin_templates) ? tables.admin_templates : [],
+    departments: Array.isArray(tables.departments) ? tables.departments : [],
+    thesis_stages: Array.isArray(tables.thesis_stages) ? tables.thesis_stages : [],
+    student_credentials: [],
+  };
+
+  return {
+    exportedAt: fullSnapshot.exportedAt,
+    cleanLaunchAt: new Date().toISOString(),
+    supabaseUrl: fullSnapshot.supabaseUrl,
+    mode: 'clean_launch',
+    preservedSummary: {
+      staffProfiles: staffProfiles.length,
+      advisors: advisors.length,
+      studentAdvisors: cleanStudentAdvisors.length,
+      adminCmsStaffAndSettings: cleanAdminCms.length,
+    },
+    tables: cleanTables,
+    studentCredentialsRpcStatus: [],
+  };
+}
+
+function writeMysqlDumpFile({
+  filePath,
+  bannerTitle,
+  supabaseUrl,
+  exportedAt,
+  tables,
+  tableStatus = {},
+  rpcCredentials = [],
+  clearTablesBeforeInsert = false,
+}) {
+  const sqlParts = [
+    '-- ============================================================',
+    `-- ${bannerTitle}`,
+    `-- Sumber: ${supabaseUrl}`,
+    `-- Waktu Ekspor: ${exportedAt}`,
+    '-- ============================================================',
+    'SET NAMES utf8mb4;',
+    'SET FOREIGN_KEY_CHECKS = 0;',
+    '',
+  ];
+
+  for (const [tableName, rows] of Object.entries(tables)) {
+    const ddl = buildMysqlTableDdl(tableName, rows);
+    if (!ddl) continue;
+    sqlParts.push(`-- Tabel: ${tableName} (${rows.length} baris)`);
+    sqlParts.push(ddl);
+    if (clearTablesBeforeInsert) {
+      sqlParts.push(`DELETE FROM \`${tableName}\`;`);
+    }
+    sqlParts.push(buildMysqlInserts(tableName, rows));
+  }
+
+  if (
+    (!tableStatus.student_credentials?.ok || (tables.student_credentials || []).length === 0) &&
+    rpcCredentials.length > 0 &&
+    !Object.prototype.hasOwnProperty.call(tables, 'student_credentials')
+  ) {
+    sqlParts.push('-- Tabel: student_credentials (metadata dari RPC; password_hash butuh service_role key)');
+    sqlParts.push(buildMysqlTableDdl('student_credentials', rpcCredentials));
+    if (clearTablesBeforeInsert) {
+      sqlParts.push('DELETE FROM `student_credentials`;');
+    }
+    sqlParts.push(buildMysqlInserts('student_credentials', rpcCredentials));
+  }
+
+  sqlParts.push('SET FOREIGN_KEY_CHECKS = 1;', '');
+  fs.writeFileSync(filePath, sqlParts.join('\n'), 'utf8');
+}
+
 async function main() {
   fs.mkdirSync(EXPORT_DIR, { recursive: true });
   fs.mkdirSync(STORAGE_EXPORT_DIR, { recursive: true });
+
+  const snapshotPath = path.join(EXPORT_DIR, 'supabase-snapshot.json');
+  const mysqlSqlPath = path.join(EXPORT_DIR, 'supabase-data-mysql.sql');
+  const cleanSnapshotPath = path.join(EXPORT_DIR, 'supabase-clean-launch-snapshot.json');
+  const cleanMysqlSqlPath = path.join(EXPORT_DIR, 'supabase-clean-launch-mysql.sql');
+  const summaryPath = path.join(EXPORT_DIR, 'export-summary.txt');
+
+  if (FROM_SNAPSHOT_ONLY) {
+    if (!fs.existsSync(snapshotPath)) {
+      console.error(`ERROR: File snapshot tidak ditemukan di ${snapshotPath}`);
+      process.exit(1);
+    }
+    const existingSnapshot = JSON.parse(fs.readFileSync(snapshotPath, 'utf8'));
+    const cleanSnapshot = buildCleanLaunchSnapshot(existingSnapshot);
+    fs.writeFileSync(cleanSnapshotPath, JSON.stringify(cleanSnapshot, null, 2), 'utf8');
+
+    writeMysqlDumpFile({
+      filePath: mysqlSqlPath,
+      bannerTitle: 'SIMONITA FASILKOM - Export Supabase ke MySQL / MariaDB (Full Snapshot)',
+      supabaseUrl: existingSnapshot.supabaseUrl || SUPABASE_URL,
+      exportedAt: existingSnapshot.exportedAt || new Date().toISOString(),
+      tables: existingSnapshot.tables || {},
+      tableStatus: existingSnapshot.tableStatus || {},
+      rpcCredentials: existingSnapshot.studentCredentialsRpcStatus || [],
+      clearTablesBeforeInsert: false,
+    });
+
+    writeMysqlDumpFile({
+      filePath: cleanMysqlSqlPath,
+      bannerTitle: 'SIMONITA FASILKOM - Paket Clean Launch MySQL / MariaDB (Reset Data Uji Mahasiswa)',
+      supabaseUrl: existingSnapshot.supabaseUrl || SUPABASE_URL,
+      exportedAt: existingSnapshot.exportedAt || new Date().toISOString(),
+      tables: cleanSnapshot.tables,
+      clearTablesBeforeInsert: true,
+    });
+
+    console.log('Regenerasi SQL & Clean Launch selesai dari snapshot lokal:');
+    console.log(`  - ${cleanSnapshotPath}`);
+    console.log(`  - ${cleanMysqlSqlPath}`);
+    console.log(`  - Preserved: ${JSON.stringify(cleanSnapshot.preservedSummary)}`);
+    return;
+  }
 
   console.log('=== Ekspor Supabase SIMONITA FASILKOM ===');
   console.log(`URL: ${SUPABASE_URL}`);
@@ -606,37 +782,31 @@ async function main() {
     studentCredentialsRpcStatus: rpcCredentials,
     storage: storageReport,
   };
-  const snapshotPath = path.join(EXPORT_DIR, 'supabase-snapshot.json');
   fs.writeFileSync(snapshotPath, JSON.stringify(snapshot, null, 2), 'utf8');
 
-  // 2. Tulis dump MySQL siap import (DDL + INSERT IGNORE)
-  const sqlParts = [
-    '-- ============================================================',
-    '-- SIMONITA FASILKOM - Export Supabase ke MySQL / MariaDB',
-    `-- Sumber: ${SUPABASE_URL}`,
-    `-- Waktu Ekspor: ${exportedAt}`,
-    '-- ============================================================',
-    'SET NAMES utf8mb4;',
-    'SET FOREIGN_KEY_CHECKS = 0;',
-    '',
-  ];
+  // 2. Tulis dump MySQL lengkap + dump Clean Launch siap import
+  writeMysqlDumpFile({
+    filePath: mysqlSqlPath,
+    bannerTitle: 'SIMONITA FASILKOM - Export Supabase ke MySQL / MariaDB (Full Snapshot)',
+    supabaseUrl: SUPABASE_URL,
+    exportedAt,
+    tables: tableResults,
+    tableStatus,
+    rpcCredentials,
+    clearTablesBeforeInsert: false,
+  });
 
-  for (const [tableName, rows] of Object.entries(tableResults)) {
-    sqlParts.push(`-- Tabel: ${tableName} (${rows.length} baris)`);
-    sqlParts.push(buildMysqlTableDdl(tableName, rows));
-    sqlParts.push(buildMysqlInserts(tableName, rows));
-  }
+  const cleanSnapshot = buildCleanLaunchSnapshot(snapshot);
+  fs.writeFileSync(cleanSnapshotPath, JSON.stringify(cleanSnapshot, null, 2), 'utf8');
 
-  // Jika student_credentials terkunci RLS saat pakai anon key, tetap buat tabel & isi metadata RPC
-  if ((!tableStatus.student_credentials?.ok || (tableResults.student_credentials || []).length === 0) && rpcCredentials.length > 0) {
-    sqlParts.push('-- Tabel: student_credentials (metadata dari RPC; password_hash butuh service_role key)');
-    sqlParts.push(buildMysqlTableDdl('student_credentials', rpcCredentials));
-    sqlParts.push(buildMysqlInserts('student_credentials', rpcCredentials));
-  }
-
-  sqlParts.push('SET FOREIGN_KEY_CHECKS = 1;', '');
-  const mysqlSqlPath = path.join(EXPORT_DIR, 'supabase-data-mysql.sql');
-  fs.writeFileSync(mysqlSqlPath, sqlParts.join('\n'), 'utf8');
+  writeMysqlDumpFile({
+    filePath: cleanMysqlSqlPath,
+    bannerTitle: 'SIMONITA FASILKOM - Paket Clean Launch MySQL / MariaDB (Reset Data Uji Mahasiswa)',
+    supabaseUrl: SUPABASE_URL,
+    exportedAt,
+    tables: cleanSnapshot.tables,
+    clearTablesBeforeInsert: true,
+  });
 
   // 3. Tulis ringkasan audit ekspor
   const summaryLines = [
@@ -660,21 +830,29 @@ async function main() {
     `   - Sudah ubah password (has_password=true): ${rpcCredentials.filter((r) => r.has_password).length}`,
     `   - Profil selesai (is_profile_completed=true): ${rpcCredentials.filter((r) => r.is_profile_completed).length}`,
     '',
-    '4. STORAGE BUCKET (repository-docs):',
+    '4. PAKET CLEAN LAUNCH (RESET DATA UJI MAHASISWA):',
+    `   - Staff / Kaprodi profiles : ${cleanSnapshot.preservedSummary.staffProfiles} baris`,
+    `   - Master advisors          : ${cleanSnapshot.preservedSummary.advisors} baris`,
+    `   - Mapping student_advisors : ${cleanSnapshot.preservedSummary.studentAdvisors} baris (judul_ta=NULL)`,
+    `   - CMS Staff & Settings     : ${cleanSnapshot.preservedSummary.adminCmsStaffAndSettings} baris`,
+    '   - Dikosongkan ke default   : student_credentials, profiles(mahasiswa), thesis_titles, thesis_consultations, log/notif uji',
+    '',
+    '5. STORAGE BUCKET (repository-docs):',
     `   - Status list: ${storageReport.ok ? 'OK' : 'ERROR'}`,
     `   - Total file terunduh: ${storageReport.downloaded.length}`,
     ...storageReport.downloaded.map((f) => `     * ${f.path} (${f.bytes} bytes)`),
     ...(storageReport.errors.length > 0 ? ['   - Error storage:', ...storageReport.errors.map((e) => `     * ${e.path || '-'}: ${e.error}`)] : []),
     '',
-    '5. FILE HASIL EKSPOR (GITIGNORED):',
-    `   - JSON Lengkap : ${snapshotPath}`,
-    `   - SQL MySQL    : ${mysqlSqlPath}`,
-    `   - File Storage : ${STORAGE_EXPORT_DIR}`,
+    '6. FILE HASIL EKSPOR (GITIGNORED):',
+    `   - JSON Lengkap       : ${snapshotPath}`,
+    `   - SQL MySQL Lengkap  : ${mysqlSqlPath}`,
+    `   - JSON Clean Launch  : ${cleanSnapshotPath}`,
+    `   - SQL Clean Launch   : ${cleanMysqlSqlPath}`,
+    `   - File Storage       : ${STORAGE_EXPORT_DIR}`,
   ];
-  const summaryPath = path.join(EXPORT_DIR, 'export-summary.txt');
   fs.writeFileSync(summaryPath, summaryLines.join('\n'), 'utf8');
 
-  console.log(`\nSelesai! Hasil tersimpan di:\n  - ${summaryPath}\n  - ${snapshotPath}\n  - ${mysqlSqlPath}`);
+  console.log(`\nSelesai! Hasil tersimpan di:\n  - ${summaryPath}\n  - ${snapshotPath}\n  - ${mysqlSqlPath}\n  - ${cleanSnapshotPath}\n  - ${cleanMysqlSqlPath}`);
 }
 
 main().catch((err) => {
