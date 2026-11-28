@@ -99,6 +99,43 @@ import {
 } from '../services/studentCredentials.js';
 import { isValidNonDummyPhone } from '../lib/whatsappHelper.js';
 
+const VALID_SIMTA_ROLES = new Set(['mahasiswa', 'dosen', 'kaprodi', 'admin']);
+
+export const normalizeUserRole = (role) => {
+  const raw = String(role || '').toLowerCase().trim();
+  const normalized = raw === 'admin_sarana' ? 'admin' : raw;
+  return VALID_SIMTA_ROLES.has(normalized) ? normalized : '';
+};
+
+const syncServerSimtaSession = async (identifier, password) => {
+  if (typeof window === 'undefined' || !window.axios) {
+    return null;
+  }
+
+  const payload = {
+    identifier: String(identifier || '').trim(),
+    password: String(password || '').trim(),
+  };
+
+  try {
+    const res = await window.axios.post('/simta-session/login', payload);
+    return res?.data?.user || null;
+  } catch (err) {
+    if (err?.response?.status === 419) {
+      try {
+        await window.axios.get('/login');
+        const retryRes = await window.axios.post('/simta-session/login', payload);
+        return retryRes?.data?.user || null;
+      } catch (retryErr) {
+        const msg = retryErr?.response?.data?.message || 'Gagal memverifikasi sesi login.';
+        throw new Error(msg);
+      }
+    }
+    const msg = err?.response?.data?.message || 'Gagal memverifikasi sesi login.';
+    throw new Error(msg);
+  }
+};
+
 const generateRowId = () => {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();
@@ -872,17 +909,8 @@ export function AuthProvider({ children }) {
     return defaultRegistered;
   };
 
-  // Helper to read initial user from localStorage
+  // Helper to read initial user from localStorage (NO cross-role or default-user auto-login fallback)
   const getSavedUser = () => {
-    const path = typeof window !== 'undefined' ? window.location.pathname : '';
-
-    // Determine which role is required for this route
-    let requiredRole = null;
-    if (path.startsWith('/kaprodi')) requiredRole = 'kaprodi';
-    else if (path.startsWith('/admin-simta') || path.startsWith('/admin')) requiredRole = 'admin';
-    else if (path.startsWith('/dosen')) requiredRole = 'dosen';
-    // mahasiswa & root routes: any role is fine
-
     try {
       const saved = localStorage.getItem('simta_active_user');
       if (saved) {
@@ -892,23 +920,18 @@ export function AuthProvider({ children }) {
           localStorage.removeItem('simta_active_user');
         } else {
           const clean = sanitizeProfile(parsed);
-          if (clean) {
-            // If the saved user role matches what this route needs (or no restriction), use it
-            if (!requiredRole || clean.role === requiredRole) {
-              localStorage.setItem('simta_active_user', JSON.stringify(clean));
-              return clean;
-            }
+          const validRole = clean ? normalizeUserRole(clean.role) : '';
+          if (clean && validRole) {
+            const normalizedUser = { ...clean, role: validRole };
+            localStorage.setItem('simta_active_user', JSON.stringify(normalizedUser));
+            return normalizedUser;
           }
+          localStorage.removeItem('simta_active_user');
         }
       }
     } catch { }
 
-    const registered = getRegisteredUsers();
-    // Pick default user based on current route so demo always shows the right account
-    if (requiredRole) {
-      return registered.find(u => u.role === requiredRole) || registered[0] || null;
-    }
-    return registered[0] || null;
+    return null;
   };
 
 
@@ -966,17 +989,55 @@ export function AuthProvider({ children }) {
     currentUserRef.current = currentUser;
   }, [currentUser]);
 
-  // Setter helper that syncs state with localStorage
+  // Setter helper that syncs state with localStorage (without persisting plaintext/hash secrets)
   const setCurrentUser = (user) => {
-    currentUserRef.current = user;
-    setCurrentUserState(user);
     if (user) {
-      localStorage.setItem('simta_active_user', JSON.stringify(user));
-      saveRegisteredUser(user);
+      const normalizedRole = normalizeUserRole(user.role);
+      if (!normalizedRole) {
+        currentUserRef.current = null;
+        setCurrentUserState(null);
+        localStorage.removeItem('simta_active_user');
+        setIsAuthenticated(false);
+        return;
+      }
+      saveRegisteredUser({ ...user, role: normalizedRole });
+      const { password: _pw, password_hash: _pwh, ...safeSessionUser } = user;
+      const sanitizedUser = { ...safeSessionUser, role: normalizedRole };
+      currentUserRef.current = sanitizedUser;
+      setCurrentUserState(sanitizedUser);
+      localStorage.setItem('simta_active_user', JSON.stringify(sanitizedUser));
       setIsAuthenticated(true);
     } else {
+      currentUserRef.current = null;
+      setCurrentUserState(null);
       localStorage.removeItem('simta_active_user');
       setIsAuthenticated(false);
+    }
+  };
+
+  // Reconcile client auth state against authoritative server session props
+  const syncSessionWithServerUser = (serverSimtaUser, serverBreezeUser = null) => {
+    if (serverSimtaUser && typeof serverSimtaUser === 'object') {
+      const serverRole = normalizeUserRole(serverSimtaUser.role);
+      if (!serverRole) {
+        setCurrentUser(null);
+        return;
+      }
+
+      const active = currentUserRef.current;
+      const activeRole = normalizeUserRole(active?.role);
+      const activeIdent = String(active?.nim || active?.nip || active?.email || active?.id || '').trim().toLowerCase();
+      const serverIdent = String(serverSimtaUser.nim || serverSimtaUser.nip || serverSimtaUser.email || serverSimtaUser.id || '').trim().toLowerCase();
+
+      if (!active || activeRole !== serverRole || (serverIdent && activeIdent && activeIdent !== serverIdent)) {
+        const reconciled = sanitizeProfile({ ...serverSimtaUser, role: serverRole }) || { ...serverSimtaUser, role: serverRole };
+        setCurrentUser({ ...reconciled, role: serverRole });
+      }
+      return;
+    }
+
+    if (!serverBreezeUser && currentUserRef.current) {
+      setCurrentUser(null);
     }
   };
 
@@ -1492,6 +1553,12 @@ export function AuthProvider({ children }) {
       } catch (err) {
         console.warn('Failed to sync profile update to Supabase:', err);
       }
+    }
+
+    if (typeof window !== 'undefined' && window.axios) {
+      try {
+        await window.axios.post('/simta-session/refresh');
+      } catch {}
     }
   };
 
@@ -3004,12 +3071,12 @@ export function AuthProvider({ children }) {
     return deptObj;
   };
 
-  // Restore Supabase Auth session on mount and preserve local active session on refresh
+  // Restore active user strictly from verified local active session (never auto-login fallback)
   useEffect(() => {
-    // 1. Always ensure active user is populated from localStorage / registered users
     const saved = getSavedUser();
-    if (saved && (!currentUser || currentUser.nama === 'Mahasiswa UNSRI')) {
-      setCurrentUser(saved);
+    if (saved && !currentUser) {
+      setCurrentUserState(saved);
+      setIsAuthenticated(true);
     }
 
     // 1b. Reconcile active mahasiswa session with Supabase student_credentials
@@ -4705,6 +4772,23 @@ export function AuthProvider({ children }) {
       return null;
     };
 
+    const finalizeAuthenticatedLogin = async (resolvedUserObj, rawIdentifier, rawPassword, redirectPath) => {
+      const serverUser = await syncServerSimtaSession(rawIdentifier, rawPassword);
+      const canonicalRole = normalizeUserRole(serverUser?.role) || normalizeUserRole(resolvedUserObj?.role);
+      const mergedUser = serverUser
+        ? {
+            ...resolvedUserObj,
+            ...serverUser,
+            role: canonicalRole,
+          }
+        : {
+            ...resolvedUserObj,
+            role: canonicalRole,
+          };
+      setCurrentUser(mergedUser);
+      return redirectPath;
+    };
+
     // 1. Akun Kaprodi (dapat login dengan username "koprodi" / "kaprodi" atau NIP/Email)
     if (termLower === 'koprodi' || termLower === 'kaprodi') {
       const kaprodiUser = {
@@ -4740,8 +4824,7 @@ export function AuthProvider({ children }) {
         }
       }
 
-      setCurrentUser(kaprodiUser);
-      return '/kaprodi/dashboard';
+      return await finalizeAuthenticatedLogin(kaprodiUser, term, inputPass, '/kaprodi/dashboard');
     }
 
     // 2. Akun Admin Utama SIMONITA / SIMTA
@@ -4773,44 +4856,44 @@ export function AuthProvider({ children }) {
       termLower === 'admin@unsri.ac.id'
     ) {
       const expectedAdminHash = '1db6767d23d6b98f776a481ae61eb37947016a72bb258c9d779ddd1bc3001973'; // SHA-256 for SIMN!Manage_2026#
-
-      // Check if admin has customized their password via the web profile
-      const hasCustomPassword = Boolean(
-        adminAcc.password &&
-        adminAcc.password !== 'SIMN!Manage_2026#' &&
-        adminAcc.password !== 'admin123' &&
-        adminAcc.password !== 'admin' &&
-        adminAcc.password !== adminNipVal &&
-        adminAcc.password !== adminNimVal &&
-        adminAcc.password !== '198503152010122001'
-      );
-
-      let isPasswordValid = false;
-      if (hasCustomPassword) {
-        // If changed manually via web, only accept the new custom password or its hash
-        isPasswordValid = (inputPass === adminAcc.password) ||
-                          (Boolean(adminAcc.password_hash) && passHash === adminAcc.password_hash);
-      } else {
-        // Default strictly SIMN!Manage_2026# (or its exact hash) - NO admin123 or other fallback
-        isPasswordValid = (inputPass === 'SIMN!Manage_2026#' || passHash === expectedAdminHash);
+      const supabaseAdminCred = await checkSupabaseCredential({ ...adminAcc, role: 'admin' });
+      if (supabaseAdminCred === false) {
+        throw new Error('Kata sandi yang Anda masukkan salah. Silakan periksa kembali kata sandi Anda.');
       }
 
-      if (!isPasswordValid) {
-        throw new Error('Kata sandi yang Anda masukkan salah. Silakan periksa kembali kata sandi Anda.');
+      if (supabaseAdminCred !== true) {
+        // Check if admin has customized their password via the web profile
+        const hasCustomPassword = Boolean(
+          adminAcc.password &&
+          adminAcc.password !== 'SIMN!Manage_2026#' &&
+          adminAcc.password !== 'admin123' &&
+          adminAcc.password !== 'admin' &&
+          adminAcc.password !== adminNipVal &&
+          adminAcc.password !== adminNimVal &&
+          adminAcc.password !== '198503152010122001'
+        );
+
+        let isPasswordValid = false;
+        if (hasCustomPassword) {
+          // If changed manually via web, only accept the new custom password or its hash
+          isPasswordValid = (inputPass === adminAcc.password) ||
+                            (Boolean(adminAcc.password_hash) && passHash === adminAcc.password_hash);
+        } else {
+          // Default strictly SIMN!Manage_2026# (or its exact hash) - NO admin123 or other fallback
+          isPasswordValid = (inputPass === 'SIMN!Manage_2026#' || passHash === expectedAdminHash);
+        }
+
+        if (!isPasswordValid) {
+          throw new Error('Kata sandi yang Anda masukkan salah. Silakan periksa kembali kata sandi Anda.');
+        }
       }
 
       const activeAdminUser = {
         ...adminAcc,
+        role: 'admin',
         username: 'admin',
-        password_hash: hasCustomPassword ? (adminAcc.password_hash || passHash) : expectedAdminHash
       };
-      if (hasCustomPassword) {
-        activeAdminUser.password = adminAcc.password;
-      } else {
-        activeAdminUser.password = 'SIMN!Manage_2026#';
-      }
-      setCurrentUser(activeAdminUser);
-      return '/admin-simta/dashboard';
+      return await finalizeAuthenticatedLogin(activeAdminUser, term, inputPass, '/admin-simta/dashboard');
     }
 
     // 3. ATURAN USERNAME: Username HANYA berlaku untuk akun Kaprodi dan Admin.
@@ -4827,9 +4910,8 @@ export function AuthProvider({ children }) {
           throw new Error('Kata sandi salah.');
         }
         const enrichedAdmin = await enrichUserFromSupabase(customAdmin);
-        setCurrentUser(enrichedAdmin);
-        if (enrichedAdmin.role === 'kaprodi') return '/kaprodi/dashboard';
-        return '/admin-simta/dashboard';
+        const targetRedirect = enrichedAdmin.role === 'kaprodi' ? '/kaprodi/dashboard' : '/admin-simta/dashboard';
+        return await finalizeAuthenticatedLogin(enrichedAdmin, term, inputPass, targetRedirect);
       }
 
       // Jika bukan akun Kaprodi/Admin atau username salah
@@ -4891,8 +4973,7 @@ export function AuthProvider({ children }) {
       }
 
       dosenUser = await enrichUserFromSupabase(dosenUser);
-      setCurrentUser(dosenUser);
-      return '/dosen/dashboard';
+      return await finalizeAuthenticatedLogin(dosenUser, term, inputPass, '/dosen/dashboard');
     }
 
     // 6. Check local registered users list by NIM, NIP, or Email
@@ -4981,21 +5062,20 @@ export function AuthProvider({ children }) {
         }).catch(() => {});
       }
 
-      setCurrentUser(resolvedLocal);
-      if (resolvedLocal.role === 'kaprodi') return '/kaprodi/dashboard';
-      if (resolvedLocal.role === 'admin' || resolvedLocal.role === 'admin_sarana') return '/admin-simta/dashboard';
-      if (resolvedLocal.role === 'dosen') {
+      let localRedirect = '/dashboard';
+      if (resolvedLocal.role === 'kaprodi') localRedirect = '/kaprodi/dashboard';
+      else if (resolvedLocal.role === 'admin' || resolvedLocal.role === 'admin_sarana') localRedirect = '/admin-simta/dashboard';
+      else if (resolvedLocal.role === 'dosen') {
         const needsPasswordChange = resolvedLocal.requires_password_change === true;
-        return needsPasswordChange ? '/profile?first_login=true&change_password_required=true' : '/dosen/dashboard';
-      }
-      if (resolvedLocal.role === 'mahasiswa') {
+        localRedirect = needsPasswordChange ? '/profile?first_login=true&change_password_required=true' : '/dosen/dashboard';
+      } else if (resolvedLocal.role === 'mahasiswa') {
         const profileDone = (resolvedLocal.is_profile_completed === true ||
           (localCredential !== null && localCredential.isProfileCompleted === true) ||
           Boolean(resolvedLocal.no_hp && isValidNonDummyPhone(resolvedLocal.no_hp))) &&
           !resolvedLocal.requires_password_change;
-        return !profileDone ? '/profile?first_login=true' : '/dashboard';
+        localRedirect = !profileDone ? '/profile?first_login=true' : '/dashboard';
       }
-      return '/dashboard';
+      return await finalizeAuthenticatedLogin(resolvedLocal, term, inputPass, localRedirect);
     }
 
 
@@ -5125,21 +5205,20 @@ export function AuthProvider({ children }) {
           isProfileCompleted: Boolean(finalResolved.is_profile_completed),
         }).catch(() => {});
       }
-      setCurrentUser(finalResolved);
-      if (finalResolved.role === 'kaprodi') return '/kaprodi/dashboard';
-      if (finalResolved.role === 'admin' || finalResolved.role === 'admin_sarana') return '/admin-simta/dashboard';
-      if (finalResolved.role === 'dosen') {
+      let resolvedRedirect = '/dashboard';
+      if (finalResolved.role === 'kaprodi') resolvedRedirect = '/kaprodi/dashboard';
+      else if (finalResolved.role === 'admin' || finalResolved.role === 'admin_sarana') resolvedRedirect = '/admin-simta/dashboard';
+      else if (finalResolved.role === 'dosen') {
         const needsPasswordChange = finalResolved.requires_password_change === true;
-        return needsPasswordChange ? '/profile?first_login=true&change_password_required=true' : '/dosen/dashboard';
-      }
-      if (finalResolved.role === 'mahasiswa') {
+        resolvedRedirect = needsPasswordChange ? '/profile?first_login=true&change_password_required=true' : '/dosen/dashboard';
+      } else if (finalResolved.role === 'mahasiswa') {
         const profileDone = (finalResolved.is_profile_completed === true ||
           (foundCredential !== null && foundCredential.isProfileCompleted === true) ||
           Boolean(finalResolved.no_hp && isValidNonDummyPhone(finalResolved.no_hp))) &&
           !finalResolved.requires_password_change;
-        return !profileDone ? '/profile?first_login=true' : '/dashboard';
+        resolvedRedirect = !profileDone ? '/profile?first_login=true' : '/dashboard';
       }
-      return '/dashboard';
+      return await finalizeAuthenticatedLogin(finalResolved, term, inputPass, resolvedRedirect);
     }
 
     // 9. If no match found in registered users, Supabase, or mock users
@@ -5234,6 +5313,12 @@ export function AuthProvider({ children }) {
       }
     }
 
+    if (password) {
+      try {
+        await syncServerSimtaSession(nim, password);
+      } catch {}
+    }
+
     MOCK_USERS.unshift(newStudentUser);
     setCurrentUser(newStudentUser);
 
@@ -5241,17 +5326,16 @@ export function AuthProvider({ children }) {
   };
 
   const logout = async () => {
+    try {
+      if (typeof window !== 'undefined' && window.axios) {
+        await window.axios.post('/simta-session/logout');
+      }
+    } catch {}
     resetCredentialCache();
     localStorage.removeItem('simta_active_user');
+    currentUserRef.current = null;
     setCurrentUserState(null);
     setIsAuthenticated(false);
-  };
-
-  const switchRole = (roleName) => {
-    const foundUser = MOCK_USERS.find(u => u.role === roleName);
-    if (foundUser) {
-      setCurrentUser(foundUser);
-    }
   };
 
   // Add new Title Submission (Mahasiswa proposes title + dospem 1 & 2)
@@ -9580,12 +9664,13 @@ export function AuthProvider({ children }) {
     <AuthContext.Provider value={{
       currentUser,
       setCurrentUser,
+      syncSessionWithServerUser,
+      normalizeUserRole,
       updateUserProfile,
       isAuthenticated,
       login,
       logout,
       registerStudent,
-      switchRole,
       dbProfiles,
       accountsVersion,
       getAllMahasiswaAccounts,

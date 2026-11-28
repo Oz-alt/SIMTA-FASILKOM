@@ -14,10 +14,16 @@ import RealtimeBimbinganAlert from '../common/RealtimeBimbinganAlert.jsx';
 import { WhatsAppNotificationToast } from '../common/StudentWhatsAppLink.jsx';
 
 export default function AppLayout({ children }) {
-  const { url } = usePage();
-  const { currentUser } = useAuth();
+  const { url, props } = usePage();
+  const { currentUser, syncSessionWithServerUser, normalizeUserRole } = useAuth();
   const { isMobileMode } = useDevice();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const serverSimtaUser = props?.auth?.simtaUser || null;
+  const serverBreezeUser = props?.auth?.user || null;
+
+  useEffect(() => {
+    syncSessionWithServerUser(serverSimtaUser, serverBreezeUser);
+  }, [serverSimtaUser, serverBreezeUser]);
 
   useEffect(() => {
     setMobileMenuOpen(false);
@@ -49,8 +55,10 @@ export default function AppLayout({ children }) {
   const rawPath = url || (typeof window !== 'undefined' ? window.location?.pathname : '/') || '/';
   const cleanPath = (rawPath.split('?')[0].split('#')[0].replace(/\/+/g, '/').replace(/\/$/, '') || '/').toLowerCase();
   const isPublicPath = cleanPath === '/' || cleanPath === '/documents' || cleanPath.startsWith('/documents/') || isAuthRoute(cleanPath);
+  const isProfileWithBreezeSession = cleanPath === '/profile' && Boolean(serverBreezeUser);
 
-  const role = currentUser?.role || null;
+  const effectiveUser = serverSimtaUser || currentUser;
+  const role = normalizeUserRole(effectiveUser?.role);
   const isAdminRoute =
     cleanPath === '/admin' ||
     cleanPath.startsWith('/admin/') ||
@@ -60,38 +68,47 @@ export default function AppLayout({ children }) {
     cleanPath.startsWith('/schedule/');
   const isKaprodiRoute = cleanPath === '/kaprodi' || cleanPath.startsWith('/kaprodi/');
   const isDosenRoute = cleanPath === '/dosen' || cleanPath.startsWith('/dosen/');
+  const isArchiveRoute = cleanPath === '/thesis/archive' || cleanPath.startsWith('/thesis/archive/');
   const isMahasiswaExclusiveRoute =
     cleanPath === '/dashboard' ||
     cleanPath === '/booking' ||
     cleanPath.startsWith('/booking/') ||
-    (cleanPath.startsWith('/thesis') && !cleanPath.startsWith('/thesis/archive'));
+    (cleanPath.startsWith('/thesis') && !isArchiveRoute);
+
+  const hasVerifiedServerSession = Boolean(serverSimtaUser) || isProfileWithBreezeSession;
+  const isMissingProtectedSession = !isPublicPath && (!hasVerifiedServerSession || (!effectiveUser && !isProfileWithBreezeSession));
 
   const isUnauthorizedRole = Boolean(
-    currentUser &&
     !isPublicPath &&
+    !isMissingProtectedSession &&
+    effectiveUser &&
     (
+      !role ||
       (isAdminRoute && role !== 'admin') ||
       (isKaprodiRoute && role !== 'kaprodi') ||
       (isDosenRoute && role !== 'dosen') ||
-      (isMahasiswaExclusiveRoute && role !== 'mahasiswa')
+      (isMahasiswaExclusiveRoute && role !== 'mahasiswa') ||
+      (isArchiveRoute && !['mahasiswa', 'kaprodi', 'admin'].includes(role))
     )
   );
 
   const isPasswordChangeRequired = Boolean(
-    currentUser &&
+    effectiveUser &&
     !isPublicPath &&
+    !isMissingProtectedSession &&
     !isUnauthorizedRole &&
-    currentUser.requires_password_change &&
+    effectiveUser.requires_password_change &&
     !cleanPath.startsWith('/profile')
   );
 
   const isProfileActivationRequired = Boolean(
-    currentUser &&
+    effectiveUser &&
     !isPublicPath &&
+    !isMissingProtectedSession &&
     !isUnauthorizedRole &&
     !isPasswordChangeRequired &&
     role === 'mahasiswa' &&
-    !currentUser.is_profile_completed &&
+    !effectiveUser.is_profile_completed &&
     !cleanPath.startsWith('/profile')
   );
 
@@ -101,8 +118,8 @@ export default function AppLayout({ children }) {
       return;
     }
 
-    // 1. Wajib login untuk seluruh rute non-publik
-    if (!currentUser) {
+    // 1. Wajib login dengan sesi server yang terverifikasi untuk seluruh rute non-publik
+    if (isMissingProtectedSession) {
       window.location.href = '/login';
       return;
     }
@@ -123,13 +140,13 @@ export default function AppLayout({ children }) {
     if (isProfileActivationRequired) {
       router.visit('/profile?first_login=true', { replace: true });
     }
-  }, [currentUser, role, isPublicPath, isUnauthorizedRole, isPasswordChangeRequired, isProfileActivationRequired, cleanPath]);
+  }, [currentUser, effectiveUser, role, isPublicPath, isMissingProtectedSession, isUnauthorizedRole, isPasswordChangeRequired, isProfileActivationRequired, cleanPath]);
 
   const isHomePage = cleanPath === '/';
   const isDokumenPage = cleanPath === '/documents' || cleanPath.startsWith('/documents/');
   const isAuthPage = isAuthRoute(cleanPath);
 
-  if (!currentUser && !isPublicPath) {
+  if (isMissingProtectedSession) {
     return null;
   }
 

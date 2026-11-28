@@ -51,10 +51,13 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        $simtaSession = $request->session()->get('simta_auth');
+
         return [
             ...parent::share($request),
             'auth' => [
                 'user' => $request->user(),
+                'simtaUser' => is_array($simtaSession) ? $simtaSession : null,
             ],
         ];
     }

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureSimtaRole;
 use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -16,6 +17,10 @@ $app = Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(at: '*');
+
+        $middleware->alias([
+            'simta.role' => EnsureSimtaRole::class,
+        ]);
 
         $middleware->web(append: [
             HandleInertiaRequests::class,

@@ -71,7 +71,6 @@ export function formatRelativeTime(dateInput, now = new Date()) {
 export default function Navbar() {
   const { 
     currentUser, 
-    switchRole, 
     notifications = [], 
     passwordResetRequests = [],
     bookings = [],
@@ -84,7 +83,6 @@ export default function Navbar() {
   const { url } = usePage();
   const [showNotif, setShowNotif] = useState(false);
   const [notifFilter, setNotifFilter] = useState('all'); // 'all' | 'unread'
-  const [showRoleMenu, setShowRoleMenu] = useState(false);
   const [avatarError, setAvatarError] = useState(false);
   const [currentTime, setCurrentTime] = useState(() => new Date());
   const notifRef = useRef(null);
@@ -695,7 +693,8 @@ export default function Navbar() {
     admin: { label: 'Admin SIMONITA', color: 'bg-rose-100 text-rose-800 border-rose-300', icon: Building2 }
   };
 
-  const userRole = currentUser?.role || 'mahasiswa';
+  const normalizedRole = String(currentUser?.role || '').toLowerCase().trim();
+  const userRole = normalizedRole === 'admin_sarana' ? 'admin' : normalizedRole;
   const currentRoleBadge = roleBadges[userRole] || roleBadges.mahasiswa;
   const RoleIcon = currentRoleBadge.icon;
 
@@ -754,8 +753,6 @@ export default function Navbar() {
         router.visit('/dosen/jadwal-sidang');
       } else if (userRole === 'kaprodi' || userRole === 'admin') {
         router.visit('/kaprodi/defense-schedules');
-      } else {
-        router.visit('/dosen/jadwal-sidang');
       }
       return;
     }
